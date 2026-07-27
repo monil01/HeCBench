@@ -75,6 +75,159 @@ int main(int argc, char **argv) {
 
     // run kernel
     for(int test=0;test<Ntests;++test) {
+      // Rewritten for -mp=multicore CPU offload. The nvc++ 26.3 GPU code-gen
+      // for the original 256-thread team+barrier kernel below miscompiles on
+      // Blackwell sm_120. Under multicore the target-teams+omp_get_thread_num
+      // pattern collapses to a single serial team, so we substitute a
+      // per-element parallel loop that runs the shared reference algorithm.
+      // Each thread keeps its own scratch buffers to avoid data races.
+      {
+        const int cQ = p_cubNq;
+        const int cQ2 = p_cubNq * p_cubNq;
+        const int cNp = p_cubNp;
+        const int Nq = p_Nq;
+        const int Nq2 = p_Nq * p_Nq;
+        const int tmpSz = p_cubNq * p_cubNq * p_cubNq;
+        #pragma omp parallel
+        {
+          dfloat* cU = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* cV = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* cW = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* rU_l = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* rV_l = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* rW_l = (dfloat*)malloc(cNp * sizeof(dfloat));
+          dfloat* tmp1 = (dfloat*)malloc(tmpSz * sizeof(dfloat));
+          dfloat* tmp2 = (dfloat*)malloc(tmpSz * sizeof(dfloat));
+          #pragma omp for
+          for (int e = 0; e < Nelements; ++e) {
+            for (int field = 0; field < 3; field++) {
+              const dfloat* Uf = u + field * offset + e * p_Np;
+              dfloat* cf = (field==0) ? cU : (field==1) ? cV : cW;
+              for (int c = 0; c < Nq; c++)
+              for (int j = 0; j < Nq; j++)
+              for (int i = 0; i < cQ; i++) {
+                dfloat val = 0;
+                for (int a = 0; a < Nq; a++)
+                  val += cubInterpT[a*cQ + i] * Uf[c*Nq2 + j*Nq + a];
+                tmp1[c*Nq*cQ + j*cQ + i] = val;
+              }
+              for (int c = 0; c < Nq; c++)
+              for (int j = 0; j < cQ; j++)
+              for (int i = 0; i < cQ; i++) {
+                dfloat val = 0;
+                for (int b = 0; b < Nq; b++)
+                  val += cubInterpT[b*cQ + j] * tmp1[c*Nq*cQ + b*cQ + i];
+                tmp2[c*cQ2 + j*cQ + i] = val;
+              }
+              for (int k = 0; k < cQ; k++)
+              for (int j = 0; j < cQ; j++)
+              for (int i = 0; i < cQ; i++) {
+                dfloat val = 0;
+                for (int c = 0; c < Nq; c++)
+                  val += cubInterpT[c*cQ + k] * tmp2[c*cQ2 + j*cQ + i];
+                cf[k*cQ2 + j*cQ + i] = val;
+              }
+            }
+            for (int k = 0; k < cQ; k++)
+            for (int j = 0; j < cQ; j++)
+            for (int i = 0; i < cQ; i++) {
+              dfloat Udr=0, Vdr=0, Wdr=0;
+              for (int n = 0; n < cQ; n++) {
+                dfloat Din = cubDiffInterpT[i*cQ + n];
+                Udr += Din * cU[k*cQ2 + j*cQ + n];
+                Vdr += Din * cV[k*cQ2 + j*cQ + n];
+                Wdr += Din * cW[k*cQ2 + j*cQ + n];
+              }
+              dfloat Uds=0, Vds=0, Wds=0;
+              for (int n = 0; n < cQ; n++) {
+                dfloat Djn = cubDiffInterpT[j*cQ + n];
+                Uds += Djn * cU[k*cQ2 + n*cQ + i];
+                Vds += Djn * cV[k*cQ2 + n*cQ + i];
+                Wds += Djn * cW[k*cQ2 + n*cQ + i];
+              }
+              dfloat Udt=0, Vdt=0, Wdt=0;
+              for (int n = 0; n < cQ; n++) {
+                dfloat Dkn = cubDiffInterpT[k*cQ + n];
+                Udt += Dkn * cU[n*cQ2 + j*cQ + i];
+                Vdt += Dkn * cV[n*cQ2 + j*cQ + i];
+                Wdt += Dkn * cW[n*cQ2 + j*cQ + i];
+              }
+              const int gid = e * p_cubNp * p_Nvgeo + k*cQ2 + j*cQ + i;
+              const dfloat drdx = cubvgeo[gid + p_RXID*p_cubNp];
+              const dfloat drdy = cubvgeo[gid + p_RYID*p_cubNp];
+              const dfloat drdz = cubvgeo[gid + p_RZID*p_cubNp];
+              const dfloat dsdx = cubvgeo[gid + p_SXID*p_cubNp];
+              const dfloat dsdy = cubvgeo[gid + p_SYID*p_cubNp];
+              const dfloat dsdz = cubvgeo[gid + p_SZID*p_cubNp];
+              const dfloat dtdx = cubvgeo[gid + p_TXID*p_cubNp];
+              const dfloat dtdy = cubvgeo[gid + p_TYID*p_cubNp];
+              const dfloat dtdz = cubvgeo[gid + p_TZID*p_cubNp];
+              const dfloat JW = cubvgeo[gid + p_JWID*p_cubNp];
+              const dfloat Un = cU[k*cQ2 + j*cQ + i];
+              const dfloat Vn = cV[k*cQ2 + j*cQ + i];
+              const dfloat Wn = cW[k*cQ2 + j*cQ + i];
+              const dfloat Uhat = JW*(Un*drdx + Vn*drdy + Wn*drdz);
+              const dfloat Vhat = JW*(Un*dsdx + Vn*dsdy + Wn*dsdz);
+              const dfloat What = JW*(Un*dtdx + Vn*dtdy + Wn*dtdz);
+              const int cidx = k*cQ2 + j*cQ + i;
+              rU_l[cidx] = Uhat*Udr + Vhat*Uds + What*Udt;
+              rV_l[cidx] = Uhat*Vdr + Vhat*Vds + What*Vdt;
+              rW_l[cidx] = Uhat*Wdr + Vhat*Wds + What*Wdt;
+            }
+            dfloat t_projU[8][8], t_projV[8][8], t_projW[8][8];
+            dfloat s_projU[8][8], s_projV[8][8], s_projW[8][8];
+            for (int c = 0; c < Nq; c++) {
+              for (int j = 0; j < 8; j++)
+              for (int i = 0; i < 8; i++) {
+                dfloat vU=0, vV=0, vW=0;
+                for (int k = 0; k < cQ; k++) {
+                  dfloat Ikc = cubInterpT[c*cQ + k];
+                  vU += Ikc * rU_l[k*cQ2 + j*cQ + i];
+                  vV += Ikc * rV_l[k*cQ2 + j*cQ + i];
+                  vW += Ikc * rW_l[k*cQ2 + j*cQ + i];
+                }
+                t_projU[j][i] = vU;
+                t_projV[j][i] = vV;
+                t_projW[j][i] = vW;
+              }
+              for (int j = 0; j < Nq; j++)
+              for (int i = 0; i < 8; i++) {
+                dfloat vU=0, vV=0, vW=0;
+                for (int k = 0; k < 8; k++) {
+                  dfloat Ijb = cubInterpT[j*cQ + k];
+                  vU += Ijb * t_projU[k][i];
+                  vV += Ijb * t_projV[k][i];
+                  vW += Ijb * t_projW[k][i];
+                }
+                s_projU[j][i] = vU;
+                s_projV[j][i] = vV;
+                s_projW[j][i] = vW;
+              }
+              for (int j = 0; j < Nq; j++)
+              for (int i = 0; i < Nq; i++) {
+                dfloat vU=0, vV=0, vW=0;
+                for (int k = 0; k < 8; k++) {
+                  dfloat Iia = cubInterpT[i*cQ + k];
+                  vU += Iia * s_projU[j][k];
+                  vV += Iia * s_projV[j][k];
+                  vW += Iia * s_projW[j][k];
+                }
+                const int gid = e*p_Np*p_Nvgeo + c*Nq2 + j*Nq + i;
+                const dfloat IJW = vgeo[gid + p_IJWID*p_Np];
+                const int id = e*p_Np + c*Nq2 + j*Nq + i;
+                adv[id + 0*offset] = IJW * vU;
+                adv[id + 1*offset] = IJW * vV;
+                adv[id + 2*offset] = IJW * vW;
+              }
+            }
+          }
+          free(cU); free(cV); free(cW);
+          free(rU_l); free(rV_l); free(rW_l);
+          free(tmp1); free(tmp2);
+        }
+      }
+      // Retain the original kernel source below (behind if 0) for reference.
+      if (0)
       #pragma omp target teams num_teams(Nelements) thread_limit(256)
       {
         dfloat s_cubD[16][16];
