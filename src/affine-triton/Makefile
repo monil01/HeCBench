@@ -1,0 +1,16 @@
+PYTHON ?= /noback/imo/miniconda3/bin/python3
+LAUNCHER ?=
+INPUT ?= ../affine-cuda/data/CT-MONO2-16-brain.raw
+
+$(shell mkdir -p .stamps)
+.stamps/build:
+	$(PYTHON) -c "import triton, torch; assert torch.cuda.is_available()"
+	@touch $@
+
+main: .stamps/build
+
+clean:
+	rm -rf .stamps __pycache__ result.raw
+
+run: main
+	$(LAUNCHER) $(PYTHON) main.py $(INPUT) result.raw 100
