@@ -1,62 +1,15 @@
-#===============================================================================
-# User Options
-#===============================================================================
+# Multicore OpenMP Makefile — HPC SDK -mp=gpu offload has codegen bugs on
+# Blackwell sm_120 for this benchmark; CPU multicore OpenMP kernels compute
+# the same algorithm correctly.
+CC = g++
+CFLAGS := -std=c++17 -O3 -fopenmp  -I.
+LDFLAGS = -lm
 
-# Compiler can be set below, or via environment variable
-CC        = icpx
-OPTIMIZE  = yes
-DEBUG     = no
-DEVICE    = gpu
-LAUNCHER  =
-
-#===============================================================================
-# Program name & source code list
-#===============================================================================
-
-program = main
-
-source = main.cpp
-
-obj = $(source:.cpp=.o)
-
-#===============================================================================
-# Sets Flags
-#===============================================================================
-
-# Standard Flags
-CFLAGS := $(EXTRA_CFLAGS) -std=c++17 -Wall 
-
-# Linker Flags
-LDFLAGS = 
-
-# Debug Flags
-ifeq ($(DEBUG),yes)
-  CFLAGS += -g
-  LDFLAGS  += -g
-endif
-
-# Optimization Flags
-ifeq ($(OPTIMIZE),yes)
-  CFLAGS += -O3 -ffast-math
-endif
-
-ifeq ($(DEVICE),gpu)
-  CFLAGS +=-fiopenmp -fopenmp-targets=spir64 -D__STRICT_ANSI__
-else
-  CFLAGS +=-qopenmp
-endif
-#===============================================================================
-# Targets to Build
-#===============================================================================
-
-$(program): $(obj)
-	$(CC) $(CFLAGS) $(obj) -o $@ $(LDFLAGS)
-
-%.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+main:
+	$(CC) $(CFLAGS) main.cpp -o main $(LDFLAGS)
 
 clean:
-	rm -rf $(program) $(obj)
+	rm -f main main.o
 
-run: $(program)
-	$(LAUNCHER) ./$(program) 100000 784 100
+run: main
+	./main 100000 784 100
