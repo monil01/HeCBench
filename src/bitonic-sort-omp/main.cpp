@@ -63,7 +63,7 @@ void ParallelBitonicSort(int input[], int n) {
         int two_power = 1 << (step - stage);
 
         // Offload the work to kernel.
-        #pragma omp target teams distribute parallel for thread_limit(256)
+        #pragma omp parallel for
         for (int i = 0; i < size; i++) {
           // Assign the bitonic sequence number.
           int seq_num = i / seq_len;
