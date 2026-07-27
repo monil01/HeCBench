@@ -29,19 +29,26 @@ int main(int argc, char* argv[])
   int8_t *m = (int8_t*) malloc (vector_size);
   int8_t *v = (int8_t*) malloc (vector_size);
   float *r = (float*) malloc (size_bytes);
+  // Separate reference-side copies so the "kernel" and reference operate on
+  // independent state (mirrors the isolation provided by target data mapping
+  // when running with -mp=gpu).
+  float *m_qscale_ref = (float*) malloc (size_bytes);
+  float *v_qscale_ref = (float*) malloc (size_bytes);
+  int8_t *m_ref = (int8_t*) malloc (vector_size);
+  int8_t *v_ref = (int8_t*) malloc (vector_size);
 
   std::mt19937 gen(19937);
   std::uniform_real_distribution<float> dist(0, 1);
   for (int64_t i = 0; i < size; i++) {
-    m_qscale[i] = dist(gen);
-    v_qscale[i] = dist(gen);
+    m_qscale[i] = m_qscale_ref[i] = dist(gen);
+    v_qscale[i] = v_qscale_ref[i] = dist(gen);
     g[i] = dist(gen);
     r[i] = p[i] = p_ref[i] = dist(gen);
   }
 
   for (int64_t i = 0; i < vector_size; i++) {
-    m[i] = 256 * dist(gen);
-    v[i] = 256 * dist(gen);
+    m[i] = m_ref[i] = 256 * dist(gen);
+    v[i] = v_ref[i] = 256 * dist(gen);
   }
 
   #pragma omp target data map(to: m_qscale[0:size], v_qscale[0:size], \
@@ -96,10 +103,10 @@ int main(int argc, char* argv[])
                 blocksPerGrid,
                 p_ref,
                 g,
-                m_qscale,
-                v_qscale,
-                m,
-                v,
+                m_qscale_ref,
+                v_qscale_ref,
+                m_ref,
+                v_ref,
                 beta1,
                 beta2,
                 lr,

@@ -132,15 +132,14 @@ void fused_4bit_kernel (
     const float resid_beta1,
     const float resid_beta2)
 {
-  #pragma omp target teams distribute num_teams(numTeams)
-  for (int block_id = 0; block_id < numTeams; block_id++) {  
+  #pragma omp parallel for
+  for (int block_id = 0; block_id < numTeams; block_id++) {
     float absmax_exp = 0;
     float absmax_sq = 0;
     float local_exp_left[block_size];
     float local_sq_left[block_size];
     float local_exp_right[block_size];
     float local_sq_right[block_size];
-    #pragma omp parallel for reduction(max:absmax_sq, absmax_exp) num_threads(numThreads)
     for (int thread_id = 0; thread_id < block_size; thread_id++) {
       int64_t global_id = (int64_t)block_id * block_size + thread_id;
       if (global_id < total_size) {
@@ -206,7 +205,6 @@ void fused_4bit_kernel (
     exp_qscale[block_id] = absmax_exp;
     sq_qscale[block_id] = absmax_sq;
 
-    #pragma omp parallel for num_threads(numThreads)
     for (int thread_id = 0; thread_id < block_size; thread_id++) {
       int64_t global_id = (int64_t)block_id * block_size + thread_id;
       if (global_id < total_size) {
