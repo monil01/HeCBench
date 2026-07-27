@@ -1,0 +1,11 @@
+CARGO ?= cargo
+LAUNCHER ?=
+
+main:
+	$(CARGO) build --release
+
+clean:
+	$(CARGO) clean
+
+run: main
+	$(LAUNCHER) $(CARGO) run --release -- 10000000 100
