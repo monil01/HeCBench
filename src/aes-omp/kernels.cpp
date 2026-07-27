@@ -98,115 +98,90 @@ void AESEncrypt(      uchar4  *__restrict output  ,
                 const uchar4  *__restrict input   ,
                 const uchar4  *__restrict roundKey,
                 const uchar   *__restrict SBox    ,
-                const uint     width , 
-                const uint     height , 
+                const uint     width ,
+                const uint     height ,
                 const uint     rounds )
-                                
 {
-   const unsigned int teams = width*height/16;
-   const unsigned int threads = 4;
-                                
-   #pragma omp target teams num_teams(teams) thread_limit(threads)
-   {
-    uchar4 block0[4];
-    uchar4 block1[4];
-    #pragma omp parallel 
-    {
-    unsigned int bx = omp_get_team_num() % (width/4);
-    unsigned int by = omp_get_team_num() / (width/4);
- 
-    //unsigned int localIdx = threadIdx.x;
-    unsigned int localIdy = omp_get_thread_num();
-    
-    unsigned int globalIndex = (((by * width/4) + bx) * 4) + (localIdy);
-    unsigned int localIndex  = localIdy;
+   const unsigned int numBlocks = width*height/16;
+   #pragma omp parallel for
+   for (unsigned int blk = 0; blk < numBlocks; ++blk) {
+     uchar4 block0[4];
+     uchar4 block1[4];
+     uchar4 galiosCoeff[4];
+     galiosCoeff[0] = {2, 0, 0, 0};
+     galiosCoeff[1] = {3, 0, 0, 0};
+     galiosCoeff[2] = {1, 0, 0, 0};
+     galiosCoeff[3] = {1, 0, 0, 0};
+     unsigned int bx = blk % (width/4);
+     unsigned int by = blk / (width/4);
+     unsigned int base = ((by * (width/4)) + bx) * 4;
 
-    uchar4 galiosCoeff[4];
-    galiosCoeff[0] = {2, 0, 0, 0};
-    galiosCoeff[1] = {3, 0, 0, 0};
-    galiosCoeff[2] = {1, 0, 0, 0};
-    galiosCoeff[3] = {1, 0, 0, 0};
-
-    block0[localIndex]  = input[globalIndex];
-    
-    block0[localIndex] ^= roundKey[localIndex];
-
-    for(unsigned int r=1; r < rounds; ++r)
-    {
-        block0[localIndex] = sboxRead(SBox, block0[localIndex]);
-
-        block0[localIndex] = shiftRows(block0[localIndex], localIndex); 
-       
-        #pragma omp barrier
-        block1[localIndex]  = mixColumns(block0, galiosCoeff, localIndex); 
-        
-        #pragma omp barrier
-        block0[localIndex] = block1[localIndex]^roundKey[r*4 + localIndex];
-    }  
-    block0[localIndex] = sboxRead(SBox, block0[localIndex]);
-  
-    block0[localIndex] = shiftRows(block0[localIndex], localIndex); 
-
-    output[globalIndex] =  block0[localIndex]^roundKey[(rounds)*4 + localIndex];
-    }
-  }
+     for (unsigned int lid = 0; lid < 4; ++lid) {
+       block0[lid] = input[base + lid];
+       block0[lid] ^= roundKey[lid];
+     }
+     for (unsigned int r = 1; r < rounds; ++r) {
+       for (unsigned int lid = 0; lid < 4; ++lid) {
+         block0[lid] = sboxRead(SBox, block0[lid]);
+         block0[lid] = shiftRows(block0[lid], lid);
+       }
+       for (unsigned int lid = 0; lid < 4; ++lid) {
+         block1[lid] = mixColumns(block0, galiosCoeff, lid);
+       }
+       for (unsigned int lid = 0; lid < 4; ++lid) {
+         block0[lid] = block1[lid] ^ roundKey[r*4 + lid];
+       }
+     }
+     for (unsigned int lid = 0; lid < 4; ++lid) {
+       block0[lid] = sboxRead(SBox, block0[lid]);
+       block0[lid] = shiftRows(block0[lid], lid);
+       output[base + lid] = block0[lid] ^ roundKey[rounds*4 + lid];
+     }
+   }
 }
 
 void AESDecrypt(       uchar4  *__restrict output    ,
                 const  uchar4  *__restrict input     ,
                 const  uchar4  *__restrict roundKey  ,
                 const  uchar   *__restrict SBox      ,
-                const  uint    width , 
-                const  uint    height , 
+                const  uint    width ,
+                const  uint    height ,
                 const  uint    rounds)
-                                
 {
-  const unsigned int teams = width*height/16;
-  const unsigned int threads = 4;
-  #pragma omp target teams num_teams(teams) thread_limit(threads)
-  {
+  const unsigned int numBlocks = width*height/16;
+  #pragma omp parallel for
+  for (unsigned int blk = 0; blk < numBlocks; ++blk) {
     uchar4 block0[4];
     uchar4 block1[4];
-    #pragma omp parallel 
-    {
-
-    unsigned int bx = omp_get_team_num() % (width/4);
-    unsigned int by = omp_get_team_num() / (width/4);
- 
-    //unsigned int localIdx = threadIdx.x;
-    unsigned int localIdy = omp_get_thread_num();
-    
-    unsigned int globalIndex = (((by * width/4) + bx) * 4) + (localIdy);
-    unsigned int localIndex  = localIdy;
-
     uchar4 galiosCoeff[4];
     galiosCoeff[0] = {14, 0, 0, 0};
     galiosCoeff[1] = {11, 0, 0, 0};
     galiosCoeff[2] = {13, 0, 0, 0};
     galiosCoeff[3] = { 9, 0, 0, 0};
+    unsigned int bx = blk % (width/4);
+    unsigned int by = blk / (width/4);
+    unsigned int base = ((by * (width/4)) + bx) * 4;
 
-    block0[localIndex]  = input[globalIndex];
-    
-    block0[localIndex] ^= roundKey[4*rounds + localIndex];
-
-    for(unsigned int r=rounds -1 ; r > 0; --r)
-    {
-        block0[localIndex] = shiftRowsInv(block0[localIndex], localIndex); 
-    
-        block0[localIndex] = sboxRead(SBox, block0[localIndex]);
-        
-        #pragma omp barrier
-        block1[localIndex] = block0[localIndex]^roundKey[r*4 + localIndex];
-
-        #pragma omp barrier
-        block0[localIndex]  = mixColumns(block1, galiosCoeff, localIndex); 
-    }  
-
-    block0[localIndex] = shiftRowsInv(block0[localIndex], localIndex); 
-
-    block0[localIndex] = sboxRead(SBox, block0[localIndex]);
-
-    output[globalIndex] =  block0[localIndex]^roundKey[localIndex];
+    for (unsigned int lid = 0; lid < 4; ++lid) {
+      block0[lid] = input[base + lid];
+      block0[lid] ^= roundKey[4*rounds + lid];
+    }
+    for (unsigned int r = rounds - 1; r > 0; --r) {
+      for (unsigned int lid = 0; lid < 4; ++lid) {
+        block0[lid] = shiftRowsInv(block0[lid], lid);
+        block0[lid] = sboxRead(SBox, block0[lid]);
+      }
+      for (unsigned int lid = 0; lid < 4; ++lid) {
+        block1[lid] = block0[lid] ^ roundKey[r*4 + lid];
+      }
+      for (unsigned int lid = 0; lid < 4; ++lid) {
+        block0[lid] = mixColumns(block1, galiosCoeff, lid);
+      }
+    }
+    for (unsigned int lid = 0; lid < 4; ++lid) {
+      block0[lid] = shiftRowsInv(block0[lid], lid);
+      block0[lid] = sboxRead(SBox, block0[lid]);
+      output[base + lid] = block0[lid] ^ roundKey[lid];
     }
   }
 }
