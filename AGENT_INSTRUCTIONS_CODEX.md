@@ -1,9 +1,41 @@
-# HeCBench Multi-Language Porting — Agent Instructions
+# HeCBench Multi-Language Porting — Agent Instructions (Codex)
 
-This document is the run-book for the **next agent** that continues the
-HeCBench cross-language porting effort. Read it end-to-end before doing
-anything else — the "why" for every step is captured, so you can make
-judgement calls when reality diverges from the recipe.
+> **Which file to read.** Two run-books live at the repo root:
+> * `AGENT_INSTRUCTIONS_CODEX.md` — this file. Follow it when the
+>   driver is OpenAI Codex (CLI or API).
+> * `AGENT_INSTRUCTIONS_CLAUDE.md` — companion for Claude Code.
+>
+> The technical guidance (§3–§5, §9, most of §10) is identical between
+> the two files. The differences are the driver-specific bits: commit
+> attribution, scratchpad convention, token-accounting field names, and
+> the porting-log directory. Cost-study data from each driver flows
+> into **separate** columns of the paper (see §7) — do not mix them.
+
+This document is the run-book for the **next Codex-driven agent** that
+continues the HeCBench cross-language porting effort. Read it
+end-to-end before doing anything else — the "why" for every step is
+captured, so you can make judgement calls when reality diverges from
+the recipe.
+
+## 0. Codex restart scope — keep the existing ports
+
+Every `src/*-julia/` and `src/*-serial/` directory that already exists
+on this branch was produced under Claude Code. **Do not re-do them,
+do not delete them, and do not overwrite their manifests.** Your job
+starts at the *worklist gap* — the CUDA benchmarks that still have no
+Julia or Serial sibling.
+
+Concretely:
+
+* Read the "already done" lists produced by §3.1 and *skip* those
+  benchmarks unless the user explicitly asks for a re-port.
+* If you re-run the verification on an existing Claude-authored port
+  (fine, encouraged as a checkpoint) and it fails, record the failure
+  under `${STATE}/porting_logs/<bench>-<target>/reverify_YYYY-MM-DD.md`
+  and flag it — don't rewrite the port until the user says so.
+* Every port you *do* produce gets `"driver": "codex"` in its
+  `manifest.json` (§6). This is what lets §7's cost-study tables
+  keep the two drivers in separate columns.
 
 **Current focus (this pass): extend two back-ends to every CUDA
 benchmark in `src/*-cuda/`:**
@@ -41,6 +73,37 @@ those records.
 ---
 
 ## 2. Current state — what already exists
+
+### 2.0 The `${STATE}` directory (Codex-specific)
+
+Codex has no session-scoped scratchpad the way Claude Code does, so
+this run-book uses a **fixed on-disk state directory**. Every command
+in this file that reads or writes `${STATE}/...` refers to that path.
+
+Set it once at the top of your session, then re-export it in any new
+shell:
+
+```bash
+export STATE="${PORTING_STATE_DIR:-$PWD/.porting-state}"
+mkdir -p "$STATE"/{logs,porting_logs}
+```
+
+`.porting-state/` is already covered by `.gitignore` (added in this
+commit); do not stage anything under it. Contents you write there:
+
+* `${STATE}/coverage.db` — SQLite from `verify_coverage.py`.
+* `${STATE}/perf.csv` — CSV from `perf_sweep.py`.
+* `${STATE}/logs/*.log` — build/run stdout+stderr.
+* `${STATE}/porting_logs/<bench>-<target>/` — per-port prompt +
+  response + error + manifest (§6).
+* `${STATE}/{cuda,omp,julia,serial}.txt` — worklist snapshots (§3.1).
+
+Two tools currently hard-code an old Claude-session scratchpad path:
+`tools/verify_coverage.py` (`DB_PATH`, `log_dir`) and
+`tools/perf_sweep.py` (`OUT_CSV`). Before your first run, patch both
+to read `${STATE}` from the environment — a two-line change per tool.
+
+### 2.1 What already exists in the repo
 
 Ground truth is the file tree, not this document; verify before trusting.
 
@@ -102,12 +165,17 @@ sibling under `tools/verify_coverage.py`. Nothing else gets promoted
 until this pass is done.
 
 Sizing: `ls src/*-cuda | wc -l` currently reports **537** benchmarks.
-Coverage today:
+Coverage today (as of this Codex handoff):
 
-* **Julia**: 32 done, ≈**505 remaining**.
-* **Serial**: 33 done, ≈**504 remaining** — of which **320** have an
-  OMP sibling (mechanical `omp_to_serial.py` route) and **184** do not
+* **Julia**: 32 done under Claude Code (keep them; see §0),
+  ≈**505 remaining** for Codex to fill.
+* **Serial**: 33 done under Claude Code (keep them; see §0),
+  ≈**504 remaining** for Codex — of which **320** have an OMP sibling
+  (mechanical `omp_to_serial.py` route) and **184** do not
   (hand-written from the CUDA host loops).
+
+Regenerate the exact numbers with the §3.1 commands — they drift as
+ports land.
 
 That is far too many to port in one session; the workflow below is
 designed around batching and prioritization.
@@ -134,20 +202,20 @@ Regenerate both worklists every time you sit down — some ports may have
 landed since the last pass:
 
 ```bash
-ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > <scratchpad>/cuda.txt
-ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > <scratchpad>/omp.txt
-ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > <scratchpad>/julia.txt
-ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > <scratchpad>/serial.txt
+ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > ${STATE}/cuda.txt
+ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > ${STATE}/omp.txt
+ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > ${STATE}/julia.txt
+ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > ${STATE}/serial.txt
 
 # Julia gap
-comm -23 <scratchpad>/cuda.txt <scratchpad>/julia.txt  > <scratchpad>/julia_missing.txt
+comm -23 ${STATE}/cuda.txt ${STATE}/julia.txt  > ${STATE}/julia_missing.txt
 # Serial gap, split by whether OMP fallback exists
-comm -23 <scratchpad>/cuda.txt <scratchpad>/serial.txt > <scratchpad>/serial_missing.txt
-comm -12 <scratchpad>/serial_missing.txt <scratchpad>/omp.txt  > <scratchpad>/serial_from_omp.txt
-comm -23 <scratchpad>/serial_missing.txt <scratchpad>/omp.txt  > <scratchpad>/serial_from_cuda.txt
+comm -23 ${STATE}/cuda.txt ${STATE}/serial.txt > ${STATE}/serial_missing.txt
+comm -12 ${STATE}/serial_missing.txt ${STATE}/omp.txt  > ${STATE}/serial_from_omp.txt
+comm -23 ${STATE}/serial_missing.txt ${STATE}/omp.txt  > ${STATE}/serial_from_cuda.txt
 
-wc -l <scratchpad>/{julia,serial}_missing.txt \
-      <scratchpad>/serial_from_{omp,cuda}.txt
+wc -l ${STATE}/{julia,serial}_missing.txt \
+      ${STATE}/serial_from_{omp,cuda}.txt
 ```
 
 Persist these lists; the `manifest.json` per port (§6) is what tells you
@@ -162,11 +230,11 @@ LLM tokens where they pay off:
 #### 3.2.1 Serial prioritization
 
 1. **Serial Batch M (Mechanical)** — everything on
-   `<scratchpad>/serial_from_omp.txt`. Convert with:
+   `${STATE}/serial_from_omp.txt`. Convert with:
    ```bash
-   for b in $(cat <scratchpad>/serial_from_omp.txt); do
+   for b in $(cat ${STATE}/serial_from_omp.txt); do
      python3 tools/omp_to_serial.py "$b" -v \
-       2>&1 | tee -a <scratchpad>/logs/serial_from_omp.log
+       2>&1 | tee -a ${STATE}/logs/serial_from_omp.log
    done
    ```
    Then loop the verification: `for b in ...; do make -C
@@ -174,7 +242,7 @@ LLM tokens where they pay off:
    failure taxonomy tag and fix or defer. Realistically ≥80% of these
    will build and verify on the first try — the tool is well-worn.
 2. **Serial Batch H (Hand-written)** — the 184 benchmarks on
-   `<scratchpad>/serial_from_cuda.txt`. Rank these using the same
+   `${STATE}/serial_from_cuda.txt`. Rank these using the same
    Batch A/B rules as Julia (see 3.2.2). The Serial version is written
    by stripping `__global__`/`__device__` off the CUDA kernel bodies
    and wrapping them in the equivalent for-loop over the launch grid
@@ -182,27 +250,27 @@ LLM tokens where they pay off:
 
 #### 3.2.2 Julia prioritization
 
-Apply to `<scratchpad>/julia_missing.txt`.
+Apply to `${STATE}/julia_missing.txt`.
 
 1. **Batch A — trivially portable, first**. Benchmarks whose CUDA
    sources are (a) single `.cu` file, (b) < ~400 LoC, (c) no external
    libraries. Grep-friendly test:
    ```bash
-   for b in $(cat <scratchpad>/julia_missing.txt); do
+   for b in $(cat ${STATE}/julia_missing.txt); do
      files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
      loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
      ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl' src/${b}-cuda/*.cu src/${b}-cuda/*.h 2>/dev/null | wc -l)
      [ "$files" = 1 ] && [ "$loc" -lt 400 ] && [ "$ext" = 0 ] && echo "$b"
-   done > <scratchpad>/batch_A.txt
+   done > ${STATE}/batch_A.txt
    ```
 2. **Batch B — has a self-verifier**. From what's left, keep only ports
    whose CUDA source contains `compare_results`, `verify(`, or prints
    `PASS`/`FAIL`. These give you a signal without you having to invent a
    CPU reference:
    ```bash
-   for b in $(comm -23 <scratchpad>/julia_missing.txt <scratchpad>/batch_A.txt); do
+   for b in $(comm -23 ${STATE}/julia_missing.txt ${STATE}/batch_A.txt); do
      grep -qE 'compare_results|\bverify\b|"PASS"|"FAIL"' src/${b}-cuda/*.{cu,h,cpp} 2>/dev/null && echo "$b"
-   done > <scratchpad>/batch_B.txt
+   done > ${STATE}/batch_B.txt
    ```
 3. **Batch C — medium complexity**. The rest of the worklist, minus
    anything on the deferred list (§3.3).
@@ -217,8 +285,8 @@ Do not open a new port while one is still failing verification.
 
 ### 3.3 Deferred / out-of-scope benchmarks
 
-Skip (and record in **`<scratchpad>/julia_deferred.txt`** and/or
-**`<scratchpad>/serial_deferred.txt`** with a reason) anything that
+Skip (and record in **`${STATE}/julia_deferred.txt`** and/or
+**`${STATE}/serial_deferred.txt`** with a reason) anything that
 hits:
 
 * **External native libs we don't have on this box**: Boost, GSL, GDAL,
@@ -492,7 +560,7 @@ Two mandatory levels:
   This canonicalizes stdout: drops timing lines, keeps `PASS`/`FAIL`,
   compares numeric-stripped data lines as a multiset. A `MATCH` result
   means the ports agree structurally *and* every one of them said `PASS`.
-  Coverage rows land in `<scratchpad>/coverage.db` — commit them to
+  Coverage rows land in `${STATE}/coverage.db` — commit them to
   memory of the run, they are what feeds §7's paper tables.
 
 **Mojo is exempt from cross-model when it uses a synthetic input** — the
@@ -536,7 +604,7 @@ For every `(bench, target)` port, create one directory in the session
 scratchpad:
 
 ```
-<scratchpad>/porting_logs/<bench>-<target>/
+${STATE}/porting_logs/<bench>-<target>/
     prompt_01.md        # verbatim prompt sent to the LLM
     response_01.md      # verbatim reply (code diff or full file)
     error_01.md         # build/run/verify output that motivated the next iter
@@ -552,10 +620,13 @@ it if you re-open the port later):
 ```json
 {
   "bench": "bfs",
-  "target": "triton",
+  "target": "julia",
+  "driver": "codex",
+  "driver_version": "codex-cli-<version>",
   "iterations": 4,
   "tokens_in": 12480,
   "tokens_out": 3910,
+  "tokens_cached": 8200,
   "wall_time_s": 812,
   "error_tags": ["B2", "B4", "N2"],
   "final_status": "pass",
@@ -563,12 +634,25 @@ it if you re-open the port later):
 }
 ```
 
-Token counting: if you're driving via the Claude API, use the
-`response.usage` fields (`input_tokens`, `output_tokens`,
-`cache_read_input_tokens`, `cache_creation_input_tokens`) and sum
-across iterations. If you're driving via Claude Code interactively,
-approximate with `wc -c prompt_*.md response_*.md` and note the method
-in `notes`.
+Token counting under Codex:
+
+* **Codex CLI**: run with `--report-usage` (or read the `usage` block
+  the CLI prints at end-of-session), and sum across iterations. Fields
+  the OpenAI Responses API returns under `response.usage`:
+  * `input_tokens` → `tokens_in`
+  * `output_tokens` → `tokens_out`
+  * `input_tokens_details.cached_tokens` → `tokens_cached`
+* **Direct OpenAI Responses/Chat API**: read the same `usage` object
+  from every response, sum, and record. Chat-Completions still returns
+  `prompt_tokens` / `completion_tokens` — map those to the same fields.
+* **Interactive session with no exposed counter**: approximate with
+  `wc -c prompt_*.md response_*.md` and set
+  `notes: "token count approximate (wc -c)"`.
+
+Always set `driver: "codex"` and populate `driver_version` (the CLI
+version string, or the model id if you're calling the API directly).
+The paper's per-driver split in §7 depends on this field being set on
+every port you produce.
 
 Runtime performance goes into `perf.csv` (via `perf_sweep.py`), not the
 per-port log. That keeps the port log about *cost of producing the
@@ -581,14 +665,24 @@ port* and the CSV about *cost of executing it*.
 The paper skeleton is `Hecbench-agent-paper/IEEEtran/` — sections 1, 2,
 and 4 are currently empty. Two tables are wired up:
 
+**Per-driver cost-study separation.** Every port produced by Codex is
+recorded with `"driver": "codex"` in its `manifest.json` (§6). The
+paper's cost-study tables (iterations, tokens, error taxonomy hits)
+have *separate columns* for Claude and Codex — do not merge them, and
+**do not overwrite a Claude-authored port's manifest** with Codex-run
+metrics. If you re-verify a Claude-authored port under Codex (fine,
+encouraged as a checkpoint), append a `"reverified_by": "codex"` field
+plus a fresh timestamp but leave the original iteration/token counts
+alone.
+
 * **§4 performance comparison** — build with:
   ```
   python3 tools/perf_sweep.py \
     --benches accuracy adam adjacent atan2 aidw \
     --models cuda omp serial triton julia rust \
-    --out <scratchpad>/perf.csv
+    --out ${STATE}/perf.csv
   python3 tools/perf_sweep_to_tex.py
-  # → <scratchpad>/perf_rows.tex, paste into 4.perfomrance_comparison.tex
+  # → ${STATE}/perf_rows.tex, paste into 4.perfomrance_comparison.tex
   ```
   Extend `BENCHMARKS`/`MODELS` in `perf_sweep.py` when you add a new row.
   For the Julia-coverage pass specifically, you do **not** need to add
@@ -600,24 +694,31 @@ and 4 are currently empty. Two tables are wired up:
 * **§2 taxonomy of porting errors** — one row per `error_tags` bucket
   from §5, one column per target language, cell = count of ports that
   hit that bucket at least once. No script exists yet; a five-line
-  Python over `<scratchpad>/porting_logs/*/manifest.json` produces it.
+  Python over `${STATE}/porting_logs/*/manifest.json` produces it.
   Write that script the first time the paper asks for the table, name it
   `tools/taxonomy_to_tex.py`, and commit it.
-* **§1/§2 Julia + Serial coverage table** — new for this pass. Two
-  columns (Julia, Serial), rows are: "successfully ported" (target
-  `PASS` + cross-model `MATCH`), "in flight" (built, not verified), and
-  "deferred / out-of-scope" broken down by reason from §3.3
-  (`external-lib`, `vendor-lib-unmapped`, `oversized`, `no-input`,
-  `single-node-only`). Source of truth is `<scratchpad>/coverage.db`
-  (`verify_status` table) plus the deferred lists. Build the table
-  with a small Python script — commit it as `tools/coverage_to_tex.py`
-  and let it take a `--target julia|serial|all` flag so the same script
-  serves both columns.
+* **§1/§2 Julia + Serial coverage table** — new for this pass. Four
+  columns (Julia-Claude, Julia-Codex, Serial-Claude, Serial-Codex),
+  rows are: "successfully ported" (target `PASS` + cross-model
+  `MATCH`), "in flight" (built, not verified), and "deferred /
+  out-of-scope" broken down by reason from §3.3 (`external-lib`,
+  `vendor-lib-unmapped`, `oversized`, `no-input`, `single-node-only`).
+  Source of truth is `${STATE}/coverage.db` (`verify_status` table)
+  plus the deferred lists plus the `driver` field in each
+  `manifest.json`. Build the table with a small Python script — commit
+  it as `tools/coverage_to_tex.py` and let it take
+  `--target julia|serial|all` and `--driver claude|codex|all` flags so
+  the same script serves every column.
 * **Serial-specific data point for §2** — split the Serial results by
   whether the port came from `omp_to_serial.py` (mechanical) or was
-  hand-written from CUDA. The distribution of "first-try passes" vs
-  "required iteration" between those two lanes is one of the paper's
-  narratives about automation vs. LLM cost.
+  hand-written from the LLM. The distribution of "first-try passes"
+  vs "required iteration" between those two lanes is one of the
+  paper's narratives about automation vs. LLM cost, and it should be
+  reported per-driver as well.
+* **§2 taxonomy per driver** — the error-taxonomy table
+  (§5 buckets × target languages) is also **duplicated per driver** in
+  the paper. When you extend `tools/taxonomy_to_tex.py`, take the same
+  `--driver` flag as `coverage_to_tex.py`.
 
 The **diagram** (system diagram in §1) is not yet in the tex tree. If the
 user asks you to draft it, sketch it as a Mermaid or TikZ block that
@@ -633,7 +734,19 @@ One commit per `(bench, target)` port. Message form (from `git log`):
 ```
 <bench>-<target>: <one-line description>
 
-Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+Generated-By: OpenAI Codex
+```
+
+The existing commits on this branch (32 + 33 ports already landed under
+Claude Code) carry a `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
+trailer instead — that is how the paper's per-driver split in §7
+resolves ties when a `manifest.json` is missing. Use the `Generated-By`
+trailer above for every Codex-authored commit so the two are easy to
+partition:
+
+```bash
+git log --grep='Generated-By: OpenAI Codex' --oneline   # Codex-authored
+git log --grep='Co-Authored-By: Claude'   --oneline     # Claude-authored
 ```
 
 Examples that already exist:
@@ -650,10 +763,13 @@ Rules:
   change the port needed. Do **not** stage `build/`, `.stamps/`,
   `target/`, or `__pycache__/` — `.gitignore` already excludes them but
   a stray `git add -A` will pull them in.
-* Do not commit `<scratchpad>/**` — the porting logs and coverage db live
-  in `/tmp/claude-<pid>/...` and are session-scoped by design.
+* Do not commit `${STATE}/**` — the porting logs and coverage db live
+  under `.porting-state/` (gitignored) by design.
 * Never `--amend` a published commit. If a port has to be revised, make
-  a new commit `<bench>-<target>: fix <what>` on top.
+  a new commit `<bench>-<target>: fix <what>` on top. Never touch a
+  commit produced under the other driver — the paper's cost columns
+  depend on those commits being stable, and rewriting one loses the
+  `Co-Authored-By` / `Generated-By` provenance.
 
 ---
 
@@ -661,7 +777,7 @@ Rules:
 
 ### 9a. Serial from `-omp` (mechanical route)
 
-Take the first entry of `<scratchpad>/serial_from_omp.txt` — say
+Take the first entry of `${STATE}/serial_from_omp.txt` — say
 `hotspot3D` (illustrative). `src/hotspot3D-cuda/` and
 `src/hotspot3D-omp/` exist, `src/hotspot3D-serial/` doesn't.
 
@@ -707,7 +823,7 @@ Same benchmark, but assume no `-omp` exists.
 
 ### 9c. Julia — porting one missing Julia benchmark end-to-end
 
-Take the first entry of `<scratchpad>/batch_A.txt` — say it is `xsbench`
+Take the first entry of `${STATE}/batch_A.txt` — say it is `xsbench`
 (illustrative). `src/xsbench-cuda/` exists, `src/xsbench-julia/` doesn't.
 
 1. `ls src/xsbench-cuda/` — inspect the source layout, note `.cu`,
@@ -730,7 +846,7 @@ Take the first entry of `<scratchpad>/batch_A.txt` — say it is `xsbench`
    `CUDA.jl` API name (`B3`), off-by-one in the 1-based/0-based
    translation (`N1` or `N2`).
 6. Save each `(prompt, response, error, tag)` under
-   `<scratchpad>/porting_logs/xsbench-julia/` per §6.
+   `${STATE}/porting_logs/xsbench-julia/` per §6.
 7. When `make run` prints `PASS`, run:
    ```
    python3 tools/verify_coverage.py xsbench \
@@ -745,9 +861,9 @@ Take the first entry of `<scratchpad>/batch_A.txt` — say it is `xsbench`
    ```
 9. Update the worklist:
    ```
-   grep -v '^xsbench$' <scratchpad>/julia_missing.txt \
-     > <scratchpad>/julia_missing.txt.tmp && \
-     mv <scratchpad>/julia_missing.txt{.tmp,}
+   grep -v '^xsbench$' ${STATE}/julia_missing.txt \
+     > ${STATE}/julia_missing.txt.tmp && \
+     mv ${STATE}/julia_missing.txt{.tmp,}
    ```
 10. Move on to the next entry of Batch A.
 
@@ -763,31 +879,31 @@ distribution of cost, not chasing every long-tail case.
 
 ```bash
 # 1. Regenerate the worklists (do this every session)
-ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > <scratchpad>/cuda.txt
-ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > <scratchpad>/omp.txt
-ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > <scratchpad>/julia.txt
-ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > <scratchpad>/serial.txt
-comm -23 <scratchpad>/cuda.txt <scratchpad>/julia.txt  > <scratchpad>/julia_missing.txt
-comm -23 <scratchpad>/cuda.txt <scratchpad>/serial.txt > <scratchpad>/serial_missing.txt
-comm -12 <scratchpad>/serial_missing.txt <scratchpad>/omp.txt > <scratchpad>/serial_from_omp.txt
-comm -23 <scratchpad>/serial_missing.txt <scratchpad>/omp.txt > <scratchpad>/serial_from_cuda.txt
-wc -l <scratchpad>/{julia,serial}_missing.txt \
-      <scratchpad>/serial_from_{omp,cuda}.txt
+ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > ${STATE}/cuda.txt
+ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > ${STATE}/omp.txt
+ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > ${STATE}/julia.txt
+ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > ${STATE}/serial.txt
+comm -23 ${STATE}/cuda.txt ${STATE}/julia.txt  > ${STATE}/julia_missing.txt
+comm -23 ${STATE}/cuda.txt ${STATE}/serial.txt > ${STATE}/serial_missing.txt
+comm -12 ${STATE}/serial_missing.txt ${STATE}/omp.txt > ${STATE}/serial_from_omp.txt
+comm -23 ${STATE}/serial_missing.txt ${STATE}/omp.txt > ${STATE}/serial_from_cuda.txt
+wc -l ${STATE}/{julia,serial}_missing.txt \
+      ${STATE}/serial_from_{omp,cuda}.txt
 
 # 2. Serial Batch M — mechanical conversion from -omp for everything eligible
-for b in $(cat <scratchpad>/serial_from_omp.txt); do
+for b in $(cat ${STATE}/serial_from_omp.txt); do
   python3 tools/omp_to_serial.py "$b" -v \
-    2>&1 | tee -a <scratchpad>/logs/serial_from_omp.log
+    2>&1 | tee -a ${STATE}/logs/serial_from_omp.log
 done
 
 # 3. Build Julia Batch A (single-file, <400 LoC, no external libs)
-for b in $(cat <scratchpad>/julia_missing.txt); do
+for b in $(cat ${STATE}/julia_missing.txt); do
   files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
   loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
   ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl' src/${b}-cuda/*.{cu,h} 2>/dev/null | wc -l)
   [ "$files" = 1 ] && [ "$loc" -lt 400 ] && [ "$ext" = 0 ] && echo "$b"
-done > <scratchpad>/batch_A.txt
-wc -l <scratchpad>/batch_A.txt
+done > ${STATE}/batch_A.txt
+wc -l ${STATE}/batch_A.txt
 
 # 4. Build + run one port (works for both julia and serial)
 make -C src/<bench>-<target> clean && make -C src/<bench>-<target> && \
@@ -801,7 +917,7 @@ python3 tools/verify_coverage.py <bench> \
 for b in $(ls src/*-julia -d | xargs -n1 basename | sed 's/-julia$//'); do
   python3 tools/verify_coverage.py "$b" \
     --models cuda,omp,serial,julia --only-existing 2>&1 \
-    | tee -a <scratchpad>/logs/julia_sweep.log
+    | tee -a ${STATE}/logs/julia_sweep.log
 done
 # ...and the Serial set (same shape, s/julia/serial/)
 
@@ -813,7 +929,7 @@ python3 tools/perf_sweep.py --benches <bench1> <bench2> ... \
 python3 tools/perf_sweep_to_tex.py
 
 # 9. Query verification history from a prior session (filter per target)
-sqlite3 <scratchpad>/coverage.db \
+sqlite3 ${STATE}/coverage.db \
   "SELECT bench, model, status, detail FROM verify_status
    WHERE model IN ('julia','serial') ORDER BY bench, model;"
 ```
@@ -827,7 +943,7 @@ sqlite3 <scratchpad>/coverage.db \
   stay at the 32-benchmark subset until the Julia + Serial sweep is done.
 * Do not port benchmarks the user hasn't asked for — if the CUDA source
   hits any §3.3 deferral condition, add it to
-  `<scratchpad>/julia_deferred.txt` (and/or `serial_deferred.txt`) with
+  `${STATE}/julia_deferred.txt` (and/or `serial_deferred.txt`) with
   a one-word reason and move on.
 * Do not multi-thread the Serial port. `omp_to_serial.py` strips
   OpenMP; do not add TBB, `std::thread`, `std::execution::par`, or any
@@ -842,10 +958,21 @@ sqlite3 <scratchpad>/coverage.db \
 * Do not silently downgrade a `FAIL` to a `PASS` by loosening a
   tolerance. Any tolerance change goes in the port's docstring and is
   tagged `N3` in the log.
-* Do not commit the scratchpad, the `build/` tree, the `.stamps/`
+* Do not commit `.porting-state/`, the `build/` tree, the `.stamps/`
   directories, `target/`, or `__pycache__/`.
 * Do not run destructive git operations (`reset --hard`,
-  `push --force`, `checkout .`) without confirming with the user first.
+  `push --force`, `checkout .`) without confirming with the user
+  first — even in Codex's `--dangerously-bypass-approvals-and-sandbox`
+  mode. Auto-approve does not remove the need to think before
+  destroying local work.
+* Do not touch existing `src/*-julia/` or `src/*-serial/` ports that
+  were authored under Claude Code (see §0). Editing them would corrupt
+  the paper's per-driver cost split. Add new ports on top; leave the
+  old ones alone unless the user explicitly re-scopes them to you.
+* Do not rewrite git history on this branch. The 186 commits already
+  on `monil/refactor_coverage` carry the `Co-Authored-By: Claude`
+  provenance that §7's per-driver tables key on — rewriting them would
+  break the paper's data.
 * Do not open a second port while a previous port is still failing
   verification — batching drops signal about which iteration cost went
   where and pollutes the `manifest.json` records.
