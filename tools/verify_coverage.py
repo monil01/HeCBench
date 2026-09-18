@@ -19,8 +19,8 @@ from datetime import datetime, timezone
 
 REPO = Path(__file__).resolve().parents[1]
 SRC  = REPO / "src"
-DB_PATH = Path("/tmp/claude-10384/-home-imo-HeCBench/"
-               "471e31c0-3c23-4cc0-bd9c-b68cd31894f3/scratchpad/coverage.db")
+STATE = Path(os.environ.get("STATE", REPO / ".porting-state"))
+DB_PATH = STATE / "coverage.db"
 
 # --- toolchain paths on this box ------------------------------------------------
 HPC_SDK = "/opt/nvidia/hpc_sdk/Linux_x86_64/26.3"
@@ -271,9 +271,8 @@ def discover_models(bench: str) -> dict[str, Path]:
 
 def record(bench: str, model: str, status: str, detail: str = "",
            log_path: str = "") -> None:
-    if not DB_PATH.exists():
-        return
     try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(DB_PATH)
         conn.execute("""CREATE TABLE IF NOT EXISTS verify_status (
             bench TEXT NOT NULL, model TEXT NOT NULL, status TEXT NOT NULL,
@@ -290,9 +289,8 @@ def record(bench: str, model: str, status: str, detail: str = "",
         print(f"# (record failed: {e})", file=sys.stderr)
 
 def record_summary(bench: str, overall: str) -> None:
-    if not DB_PATH.exists():
-        return
     try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(DB_PATH)
         conn.execute("""CREATE TABLE IF NOT EXISTS verify_summary (
             bench TEXT PRIMARY KEY, overall TEXT NOT NULL, last_run_at TEXT)""")
@@ -332,8 +330,7 @@ def main():
     outputs: dict[str, str] = {}
     status: dict[str, str] = {}
 
-    log_dir = Path("/tmp/claude-10384/-home-imo-HeCBench/"
-                   "471e31c0-3c23-4cc0-bd9c-b68cd31894f3/scratchpad/logs")
+    log_dir = STATE / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     for model in want:
