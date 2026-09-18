@@ -18,8 +18,8 @@ from pathlib import Path
 
 REPO = Path("/home/imo/HeCBench")
 SRC  = REPO / "src"
-OUT_CSV = Path("/tmp/claude-10384/-home-imo-HeCBench/"
-               "471e31c0-3c23-4cc0-bd9c-b68cd31894f3/scratchpad/perf.csv")
+STATE = Path(os.environ.get("STATE", REPO / ".porting-state"))
+OUT_CSV = STATE / "perf.csv"
 
 HPC_SDK = "/opt/nvidia/hpc_sdk/Linux_x86_64/26.3"
 CUDA_ARCH = "sm_120"
