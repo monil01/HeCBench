@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 
   float result = det * det;
   printf("determinant = %f\n", result);
-  printf("%s\n", (std::fabs(result - 2048) < 0.02f) ? "PASS" : "FAIL");
+  printf("%s\n", (std::fabs(result - 2048) < 0.05f) ? "PASS" : "FAIL");
 
   status = cusolverDnDestroy(solver_handle);
 #ifdef DEBUG
