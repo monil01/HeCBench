@@ -26,6 +26,10 @@ DB_PATH = STATE / "coverage.db"
 HPC_SDK = "/opt/nvidia/hpc_sdk/Linux_x86_64/26.3"
 ENV = os.environ.copy()
 ENV["PATH"] = f"{HPC_SDK}/compilers/bin:{HPC_SDK}/cuda/bin:" + ENV.get("PATH", "")
+ENV["LD_LIBRARY_PATH"] = (
+    f"{HPC_SDK}/compilers/lib:{HPC_SDK}/cuda/lib64:"
+    f"{HPC_SDK}/cuda/13.1/targets/x86_64-linux/lib:"
+    + ENV.get("LD_LIBRARY_PATH", ""))
 CUDA_ARCH = "sm_120"   # RTX 5090 / Blackwell
 NVC_SM    = "cc120"
 
