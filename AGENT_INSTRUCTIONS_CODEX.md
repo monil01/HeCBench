@@ -1,29 +1,60 @@
-# HeCBench Multi-Language Porting — Agent Instructions (Codex)
+# HeCBench Julia Porting — Agent Instructions (Codex)
 
 > **Which file to read.** Two run-books live at the repo root:
 > * `AGENT_INSTRUCTIONS_CODEX.md` — this file. Follow it when the
 >   driver is OpenAI Codex (CLI or API).
 > * `AGENT_INSTRUCTIONS_CLAUDE.md` — companion for Claude Code.
 >
-> The technical guidance (§3–§5, §9, most of §10) is identical between
-> the two files. The differences are the driver-specific bits: commit
-> attribution, scratchpad convention, token-accounting field names, and
-> the porting-log directory. Cost-study data from each driver flows
-> into **separate** columns of the paper (see §7) — do not mix them.
+> This Codex run-book is intentionally scoped to **Julia (`CUDA.jl`) ports
+> only**. Do not create, repair, or extend Serial, Triton, Mojo, Rust, HIP,
+> SYCL, or OpenMP ports unless the user explicitly changes the scope.
 
 This document is the run-book for the **next Codex-driven agent** that
-continues the HeCBench cross-language porting effort. Read it
+continues the HeCBench Julia porting effort. Read it
 end-to-end before doing anything else — the "why" for every step is
 captured, so you can make judgement calls when reality diverges from
-the recipe.
+the recipe. After each completed Julia port, write a local context
+checkpoint under `${STATE}/porting_logs/<bench>-julia/` before starting
+another port. Do **not** ask the user to run a remote/platform context
+compression task.
+
+## Codex context hygiene — avoid remote compaction
+
+Codex remote context compaction has been observed to fail with
+`404 Not Found` from `/backend-api/codex/responses/compact`. Treat remote
+compaction as unavailable for this project. The run-book must be executable
+from local files plus git history, not from a long chat transcript.
+
+Operational rules:
+
+* Default to one Julia port per agent, but when the user explicitly asks for
+  parallel agent work, split the verified short-list (§3.2.2) across
+  sub-agents. Each sub-agent must own disjoint `src/<bench>-julia/`
+  directories and must still finish, verify, log, and checkpoint each port
+  before marking it complete. The current batch objective is to finish the
+  113 verified short-list ports before moving to broader Batch C work.
+* Before reading or pasting large outputs, write them to
+  `${STATE}/logs/*.log` and summarize only the decisive lines in the chat.
+* Do not paste full source files, full build logs, or full verification logs
+  into the conversation unless a specific short excerpt is needed.
+* After every successful port commit, write the local checkpoint described in
+  §6. In a parallel batch, the coordinator may keep the session open while
+  sub-agents work, but each completed benchmark still needs its own checkpoint
+  before another benchmark is assigned to that same worker.
+* If context is getting long before the port is done, pause implementation
+  long enough to write
+  `${STATE}/porting_logs/<bench>-julia/context_checkpoint_inflight.md` with
+  current files changed, commands run, failing error, and the next concrete
+  step. Continue from that file instead of requesting remote compaction.
+* If a Codex UI or CLI offers remote compaction, do not trigger it manually
+  for this workflow. Use local checkpoints and fresh sessions.
 
 ## 0. Codex restart scope — keep the existing ports
 
-Every `src/*-julia/` and `src/*-serial/` directory that already exists
-on this branch was produced under Claude Code. **Do not re-do them,
-do not delete them, and do not overwrite their manifests.** Your job
-starts at the *worklist gap* — the CUDA benchmarks that still have no
-Julia or Serial sibling.
+Every `src/*-julia/` directory that already exists on this branch may have
+been produced by another agent. **Do not re-do it, do not delete it, and do
+not overwrite its manifest.** Your job starts at the *worklist gap* — the
+CUDA benchmarks that still have no Julia sibling.
 
 Concretely:
 
@@ -31,25 +62,25 @@ Concretely:
   benchmarks unless the user explicitly asks for a re-port.
 * If you re-run the verification on an existing Claude-authored port
   (fine, encouraged as a checkpoint) and it fails, record the failure
-  under `${STATE}/porting_logs/<bench>-<target>/reverify_YYYY-MM-DD.md`
+  under `${STATE}/porting_logs/<bench>-julia/reverify_YYYY-MM-DD.md`
   and flag it — don't rewrite the port until the user says so.
 * Every port you *do* produce gets `"driver": "codex"` in its
   `manifest.json` (§6). This is what lets §7's cost-study tables
   keep the two drivers in separate columns.
+* After each completed Julia port, write a local checkpoint before starting
+  the next port. Use
+  `${STATE}/porting_logs/<bench>-julia/context_checkpoint_NN.md`.
+  Summarize the commit, files changed, verification commands/results,
+  manifest path, worklist updates, remaining unrelated worktree changes, and
+  any pitfalls the next agent needs. Do not request remote context
+  compression from the user.
 
-**Current focus (this pass): extend two back-ends to every CUDA
-benchmark in `src/*-cuda/`:**
+**Current focus (this pass): extend Julia (`CUDA.jl`) coverage to CUDA
+benchmarks in `src/*-cuda/` that do not already have a Julia sibling.**
 
-1. **Julia (`CUDA.jl`)** — every port hand-written from the CUDA source
-   (or vendor-lib call), following §4.3.
-2. **Serial (single-threaded C++)** — mostly generated mechanically from
-   the `-omp` sibling via `tools/omp_to_serial.py`; the remaining
-   ~184 CUDA benchmarks without an OMP sibling are hand-written from
-   the CUDA host loops.
-
-The other three back-ends (Triton, Mojo, Rust) stay at the 32-benchmark
-subset until this pass is complete. Read §3 before starting — most of
-your work lives there.
+Existing non-Julia implementations may be used as reference material or
+verification inputs when they already exist, but they are not targets for new
+work in this pass.
 
 The paper that consumes these ports is being written in
 `Hecbench-agent-paper/IEEEtran/` (sections currently empty scaffolding); the
@@ -60,15 +91,14 @@ token count, error taxonomy — is produced by the workflow described below.
 
 ## 1. Goal in one paragraph
 
-HeCBench ships ~2100 kernels in CUDA / HIP / SYCL / OpenMP-target. We are
-porting a **32-benchmark subset** (see §3) into **5 additional back-ends**:
-Triton (Python), Julia (`CUDA.jl`), Mojo (`std.gpu.host`), Rust (`cudarc` +
-NVRTC), and single-threaded CPU **Serial** (C++). For each `(benchmark,
-target)` pair the agent (a) produces a working port that matches the CUDA
-reference *numerically* (or by a documented ULP-tolerant rule), (b) records
-the porting cost (LLM iterations, tokens, error taxonomy hits) and (c)
-records runtime performance. The paper's tables and figures are built from
-those records.
+HeCBench ships kernels in CUDA / HIP / SYCL / OpenMP-target. For this pass,
+Codex produces **Julia (`CUDA.jl`) ports only**. For each selected benchmark,
+the agent (a) produces a working Julia port that matches the CUDA reference
+numerically (or by a documented tolerance), (b) records the porting cost
+(LLM iterations, tokens, error taxonomy hits), (c) records runtime
+performance when requested, and (d) records a local context checkpoint before
+starting the next port. The paper's tables and figures are built from those
+records.
 
 ---
 
@@ -94,9 +124,14 @@ commit); do not stage anything under it. Contents you write there:
 * `${STATE}/coverage.db` — SQLite from `verify_coverage.py`.
 * `${STATE}/perf.csv` — CSV from `perf_sweep.py`.
 * `${STATE}/logs/*.log` — build/run stdout+stderr.
-* `${STATE}/porting_logs/<bench>-<target>/` — per-port prompt +
+* `${STATE}/porting_logs/<bench>-julia/` — per-port prompt +
   response + error + manifest (§6).
-* `${STATE}/{cuda,omp,julia,serial}.txt` — worklist snapshots (§3.1).
+* `${STATE}/porting_logs/<bench>-julia/context_checkpoint_NN.md` —
+  local handoff summary written after each completed port instead of asking
+  the user for remote/platform context compression.
+* `${STATE}/{cuda,omp,julia}.txt` — worklist snapshots (§3.1).
+* `${STATE}/julia_missing.txt`, `${STATE}/batch_A.txt`,
+  `${STATE}/batch_B.txt`, `${STATE}/julia_deferred.txt` — Julia worklists.
 
 Two tools currently hard-code an old Claude-session scratchpad path:
 `tools/verify_coverage.py` (`DB_PATH`, `log_dir`) and
@@ -107,9 +142,10 @@ to read `${STATE}` from the environment — a two-line change per tool.
 
 Ground truth is the file tree, not this document; verify before trusting.
 
-* **32 benchmarks × 5 targets are done**: list is in
-  `src/*-triton/` (the Triton set is the reference for "which subset").
-  Same 32 have `-julia`, `-mojo`, `-rust`, `-serial` siblings.
+* Existing Julia ports live in `src/*-julia/`. Treat those directories as
+  already done unless the user explicitly asks for rework.
+* Other target-language siblings may exist and can be read for reference, but
+  they are not part of this Codex pass.
 * **Reference sources** for every benchmark live in `src/<bench>-cuda/`,
   `-hip`, `-sycl`, `-omp` — the CUDA one is authoritative for the port.
 * **Tooling** (all in `tools/`):
@@ -124,26 +160,13 @@ Ground truth is the file tree, not this document; verify before trusting.
   * `perf_sweep_to_tex.py` — turns `perf.csv` into LaTeX rows for
     `Hecbench-agent-paper/IEEEtran/4.perfomrance_comparison.tex`.
   * `perf_plot.py`, `perf_plot_scaling.py` — matplotlib plots.
-  * `omp_to_serial.py` — the OMP→Serial fallback pathway.
   * `hecbench` (CLI) — repo-wide list/build/run wrapper on the CMake tree.
 * **Language environments** already set up:
-  * Triton: `PYTHON=/noback/imo/miniconda3/bin/python3`, `torch` + `triton`
-    installed, `torch.cuda.is_available()` is asserted in each `-triton`
-    Makefile via a stamp file.
   * Julia: shared project at `src/_julia_env/` with `CUDA.jl` +
     `StaticArrays`. Every `-julia/Makefile` passes
     `--project=/home/imo/HeCBench/src/_julia_env`.
-  * Mojo: pixi env at `src/_mojo_env/`, `modular >=26.4.0`. Some Mojo ports
-    use a **synthetic input** instead of the CUDA benchmark's file input
-    because the Mojo 1.0.0b2 string API was too rough for the file
-    parsers — that's an accepted compromise (called out in the port's
-    docstring).
-  * Rust: cargo binary crate per bench, `cudarc = "0.13"` with
-    `cuda-12080` + `nvrtc` + `driver` + `runtime` features. The CUDA
-    kernel source is embedded verbatim as a `&str` and compiled by NVRTC.
-  * Serial: g++ 17, `-O3`, generated from the `-omp` sibling by
-    `tools/omp_to_serial.py`. `Makefile` uses `../<bench>-sycl` as an
-    include path so shared `util.h`/`reference.h` still resolve.
+  * Existing non-Julia environments may be present, but they are reference
+    material only during this pass.
 * **Toolchain paths on this box** (Blackwell RTX 5090):
   * NVIDIA HPC SDK: `/opt/nvidia/hpc_sdk/Linux_x86_64/26.3` → `nvcc`,
     `nvc++`. Use `ARCH=sm_120` for CUDA and `SM=cc120` for OMP nvc++.
@@ -155,67 +178,36 @@ Ground truth is the file tree, not this document; verify before trusting.
 
 ---
 
-## 3. Scope — Julia + Serial coverage for the full CUDA catalogue
+## 3. Scope — Julia coverage for the full CUDA catalogue
 
-**Primary objective for this pass**: for every directory
-`src/<bench>-cuda/`, create *both* a working `src/<bench>-julia/` port
-and a working `src/<bench>-serial/` port. Each must (a) build cleanly,
-(b) emit a bench-native `PASS`, and (c) cross-verify against the CUDA
-sibling under `tools/verify_coverage.py`. Nothing else gets promoted
-until this pass is done.
+**Primary objective for this pass**: for each selected
+`src/<bench>-cuda/`, create a working `src/<bench>-julia/` port. Each port
+must (a) run cleanly, (b) emit a bench-native `PASS` when the CUDA benchmark
+does, (c) cross-verify against the CUDA sibling under
+`tools/verify_coverage.py`, (d) be logged and committed, and (e) end with a
+local context checkpoint before that worker starts another port. In the
+explicit 113-port push, sub-agents may work on different benchmarks at the
+same time as long as their write sets are disjoint and the coordinator
+serializes final review, commits, and worklist updates.
 
-Sizing: `ls src/*-cuda | wc -l` currently reports **537** benchmarks.
-Coverage today (as of this Codex handoff):
+Regenerate the exact missing count with the §3.1 commands — it drifts as
+ports land. Outside the explicit parallel workflow in §3.2.2 and §4.0, do not
+open a second port while one is still failing verification.
 
-* **Julia**: 32 done under Claude Code (keep them; see §0),
-  ≈**505 remaining** for Codex to fill.
-* **Serial**: 33 done under Claude Code (keep them; see §0),
-  ≈**504 remaining** for Codex — of which **320** have an OMP sibling
-  (mechanical `omp_to_serial.py` route) and **184** do not
-  (hand-written from the CUDA host loops).
+### 3.1 The Julia worklist
 
-Regenerate the exact numbers with the §3.1 commands — they drift as
-ports land.
-
-That is far too many to port in one session; the workflow below is
-designed around batching and prioritization.
-
-### 3.0 Serial-first heuristic
-
-Do Serial before Julia for the same benchmark whenever an OMP sibling
-exists. Two reasons:
-
-* `tools/omp_to_serial.py` produces a working Serial port in seconds,
-  giving you a **CPU reference** you can call from the Julia port
-  without inventing one.
-* The bench-native verifier the CUDA source used usually assumed a CPU
-  path exists. A working `-serial` sibling is the cheapest way to keep
-  that verifier honest.
-
-When no OMP sibling exists (184 benchmarks), do Julia and Serial in
-either order — the Serial port will be hand-written from the CUDA
-host-code path anyway.
-
-### 3.1 The missing-cells worklists
-
-Regenerate both worklists every time you sit down — some ports may have
+Regenerate the Julia worklist every time you sit down — some ports may have
 landed since the last pass:
 
 ```bash
 ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > ${STATE}/cuda.txt
 ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > ${STATE}/omp.txt
 ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > ${STATE}/julia.txt
-ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > ${STATE}/serial.txt
 
 # Julia gap
 comm -23 ${STATE}/cuda.txt ${STATE}/julia.txt  > ${STATE}/julia_missing.txt
-# Serial gap, split by whether OMP fallback exists
-comm -23 ${STATE}/cuda.txt ${STATE}/serial.txt > ${STATE}/serial_missing.txt
-comm -12 ${STATE}/serial_missing.txt ${STATE}/omp.txt  > ${STATE}/serial_from_omp.txt
-comm -23 ${STATE}/serial_missing.txt ${STATE}/omp.txt  > ${STATE}/serial_from_cuda.txt
 
-wc -l ${STATE}/{julia,serial}_missing.txt \
-      ${STATE}/serial_from_{omp,cuda}.txt
+wc -l ${STATE}/julia_missing.txt
 ```
 
 Persist these lists; the `manifest.json` per port (§6) is what tells you
@@ -227,28 +219,7 @@ don't restart from zero on the next session.
 Do **not** walk the lists alphabetically. Rank benchmarks so you spend
 LLM tokens where they pay off:
 
-#### 3.2.1 Serial prioritization
-
-1. **Serial Batch M (Mechanical)** — everything on
-   `${STATE}/serial_from_omp.txt`. Convert with:
-   ```bash
-   for b in $(cat ${STATE}/serial_from_omp.txt); do
-     python3 tools/omp_to_serial.py "$b" -v \
-       2>&1 | tee -a ${STATE}/logs/serial_from_omp.log
-   done
-   ```
-   Then loop the verification: `for b in ...; do make -C
-   src/${b}-serial run; done`, and for anything that fails record the
-   failure taxonomy tag and fix or defer. Realistically ≥80% of these
-   will build and verify on the first try — the tool is well-worn.
-2. **Serial Batch H (Hand-written)** — the 184 benchmarks on
-   `${STATE}/serial_from_cuda.txt`. Rank these using the same
-   Batch A/B rules as Julia (see 3.2.2). The Serial version is written
-   by stripping `__global__`/`__device__` off the CUDA kernel bodies
-   and wrapping them in the equivalent for-loop over the launch grid
-   dimensions — you do not need a full re-derivation from the algorithm.
-
-#### 3.2.2 Julia prioritization
+#### 3.2.1 Julia prioritization
 
 Apply to `${STATE}/julia_missing.txt`.
 
@@ -259,7 +230,7 @@ Apply to `${STATE}/julia_missing.txt`.
    for b in $(cat ${STATE}/julia_missing.txt); do
      files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
      loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
-     ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl' src/${b}-cuda/*.cu src/${b}-cuda/*.h 2>/dev/null | wc -l)
+     ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl|ccl|bz2' src/${b}-cuda/*.cu src/${b}-cuda/*.h 2>/dev/null | wc -l)
      [ "$files" = 1 ] && [ "$loc" -lt 400 ] && [ "$ext" = 0 ] && echo "$b"
    done > ${STATE}/batch_A.txt
    ```
@@ -276,181 +247,177 @@ Apply to `${STATE}/julia_missing.txt`.
    anything on the deferred list (§3.3).
 4. **Batch D — deferred**. Do not attempt in this pass; see §3.3.
 
-Order the day: Serial Batch M first (mechanical, cheap), then interleave
-Serial Batch H and Julia Batch A/B/C. Do the Serial port of a given
-benchmark *before* its Julia port when both are missing — Serial
-becomes the CPU reference the Julia verifier calls.
+Work Batch A first, then Batch B, then Batch C. Outside the explicit
+sub-agent workflow below, do not open a new port while one is still failing
+verification.
 
-Do not open a new port while one is still failing verification.
+#### 3.2.2 Current 113-port verified short-list
+
+For the current user-requested push, first finish the self-verifying
+single-file CUDA benchmarks under 400 LoC. Regenerate this list after every
+batch because completed ports disappear from `${STATE}/julia_missing.txt`:
+
+```bash
+for b in $(cat ${STATE}/julia_missing.txt); do
+  files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
+  loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
+  ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl|ccl|bz2' \
+        src/${b}-cuda/*.cu src/${b}-cuda/*.h 2>/dev/null | wc -l)
+  ver=$(grep -lE 'PASS|FAIL|compare_results|\bverify\b' \
+        src/${b}-cuda/*.{cu,h,cpp} 2>/dev/null | wc -l)
+  [ "$files" = 1 ] && [ "$loc" -lt 400 ] && \
+    [ "$ext" = 0 ] && [ "$ver" -gt 0 ] && printf '%04d %s\n' "$loc" "$b"
+done | sort -n > ${STATE}/batch_verified_lt400.txt
+wc -l ${STATE}/batch_verified_lt400.txt
+```
+
+This list had 113 entries when the user requested parallel work. Treat it as
+the current tranche. If the regenerated count differs, trust the file tree and
+record the new count in `${STATE}/logs/worklist_YYYY-MM-DD.log`.
+
+Parallel execution rules for this tranche:
+
+* The coordinator assigns each sub-agent a small disjoint slice, preferably
+  3-5 benchmarks at a time from `${STATE}/batch_verified_lt400.txt`.
+* Each sub-agent owns only its assigned `src/<bench>-julia/` directories and
+  matching `${STATE}/porting_logs/<bench>-julia/` paths. It must not edit
+  unrelated benchmarks, shared tools, existing Julia ports, or non-Julia
+  targets unless the coordinator explicitly reassigns ownership.
+* Sub-agents may implement and run native `make run` checks independently.
+  The coordinator performs or re-runs final
+  `tools/verify_coverage.py <bench> --models cuda,julia --only-existing`
+  checks before committing.
+* GPU verification can be resource-bound. If parallel CUDA/JIT runs become
+  unstable, serialize the final verifier commands while keeping code
+  implementation parallel.
+* If a sub-agent hits a failing port that needs more than two repair
+  iterations, it writes an in-flight checkpoint, records the current error
+  tag, and returns that benchmark to the coordinator instead of blocking the
+  whole tranche.
 
 ### 3.3 Deferred / out-of-scope benchmarks
 
-Skip (and record in **`${STATE}/julia_deferred.txt`** and/or
-**`${STATE}/serial_deferred.txt`** with a reason) anything that
-hits:
+Skip and record in **`${STATE}/julia_deferred.txt`** with a one-word reason
+anything that hits:
 
 * **External native libs we don't have on this box**: Boost, GSL, GDAL,
   MPI/NCCL, CCL, BZip2. `README.md` at the repo root lists which
   benchmarks pull each of those in. The corresponding Julia bindings
-  either don't exist or aren't worth the yak-shave. Serial can still be
-  attempted if the lib is CPU-side and installable (Boost, GSL) — flag
-  as `needs-lib` rather than `deferred` in that case.
+  either don't exist or aren't worth the yak-shave.
 * **cuBLAS / cuFFT / cuRAND / cuSPARSE / cuDNN calls in the CUDA source**
   — CUDA.jl has `CUBLAS`, `CUFFT`, `CURAND`, `CUSPARSE`, `CUDNN`
   submodules that mirror these. **Prefer them** to hand-rolled kernels
   for the Julia port. Only defer if the CUDA source uses a library API
   that CUDA.jl doesn't expose (grep the CUDA.jl source under
-  `~/.julia/packages/CUDA/` if in doubt). The Serial port of the same
-  benchmark can call the CPU-side equivalent (`cblas_*`, FFTW, `<random>`)
-  or fall back to a naive triple loop — pick whichever keeps the paper's
-  cross-model numeric comparison meaningful.
+  `~/.julia/packages/CUDA/` if in doubt).
 * **Multi-file kernel sources with heavy `__device__` inlining
   (>1500 LoC across `.cu` + `.cuh`)** — port cost dwarfs the paper's
-  value from that data point. Note them and move on. This applies to
-  both targets; Serial is not automatically cheaper when the CUDA source
-  is genuinely large.
+  value from that data point. Note them and move on.
 * **Benchmarks whose input data isn't checked in and isn't pullable
-  through `dvc`** — you can't verify. Skip both targets.
-* **Serial only — benchmark's timed region is inherently multi-GPU** or
-  is a communication microbenchmark (`pingpong`, `allreduce`, `ccl`,
-  `halo-finder`). A single-threaded C++ port has no meaningful analogue;
-  defer with reason `single-node-only`.
+  through `dvc`** — you can't verify. Skip the Julia port.
+* **Work that requires creating or repairing another target language** —
+  defer with reason `not-julia-scope`.
 
 The deferred lists *are* data points for the paper: they quantify which
 CUDA idioms don't translate cheaply, and belong in the paper's §2
 taxonomy.
 
-### 3.4 Extending scope beyond Julia + Serial (not this pass)
+### 3.4 Extending scope beyond Julia (not this pass)
 
-Only if the user asks you to. When they do, the same worklist idea
-applies per target language, and the three remaining back-ends
-(Triton, Mojo, Rust) have their own gotchas in §4.3 that you'll re-read
-at that point.
+Only if the user asks you to. Until then, non-Julia targets are frozen.
 
 ---
 
-## 4. The porting loop — one benchmark, one target
+## 4. The Julia porting loop
 
-Work **one benchmark at a time**. For this pass the target is always
-`julia` or `serial`; the framing below is generic so it stays useful
-when the scope widens later. Do not open a second port until the
-current one is verified and committed.
+### 4.0 Parallel coordinator mode for the 113-port push
 
-When the same benchmark needs both a Serial and a Julia port, do
-**Serial first** (mechanical if `-omp` exists; hand-written from the
-CUDA host loops otherwise). The Serial binary — or its CPU function —
-is what the Julia port calls back to for its numerical reference,
-which is much cheaper than the alternative of hand-writing a reference
-inside `main.jl`.
+Use this mode only when the user has explicitly requested sub-agents or
+parallel benchmark work. The coordinator remains responsible for global
+correctness:
+
+1. Regenerate `${STATE}/batch_verified_lt400.txt` (§3.2.2).
+2. Remove entries that already have `src/<bench>-julia/` or a passing
+   manifest in `${STATE}/porting_logs/<bench>-julia/manifest.json`.
+3. Spawn workers with disjoint ownership, for example:
+   ```
+   Worker A owns: mcpr, bscan, zoom
+   Worker B owns: channelShuffle, addBiasResidualLayerNorm, bilateral
+   Worker C owns: lif, mrc, dp4a
+   ```
+   Workers must be told they are not alone in the codebase and must not
+   revert or overwrite edits outside their assigned paths.
+4. Each worker implements only its assigned ports, runs native Julia checks,
+   writes manifests/checkpoints, and reports changed files plus verification
+   evidence.
+5. The coordinator reviews returned changes, reruns or performs final
+   cross-model verification, commits passing ports in coherent batches, and
+   updates local checkpoints with commit SHAs.
+6. Failed or oversized ports are not allowed to stall the tranche. Record
+   their taxonomy tag and move them to `${STATE}/julia_deferred.txt` or an
+   in-flight checkpoint, then continue assigning remaining verified-list
+   entries.
+
+Even in parallel mode, do not accept a port as complete without native
+`PASS` and cross-model `MATCH` evidence unless it is explicitly marked
+deferred or in-flight.
+
+Work **one benchmark at a time**. For this pass the only target is
+`julia`. In single-agent mode, do not open a second port until the current
+Julia port is verified, logged, committed, and followed by a local context
+checkpoint. In parallel coordinator mode, this rule applies per worker and
+per assigned benchmark directory rather than globally.
+Follow the context hygiene section during the loop: store verbose evidence in
+local log files and keep the active conversation short enough that no remote
+compaction is needed.
 
 ### 4.1 Bootstrap the port directory
 
 ```
-src/<bench>-<target>/
-  Makefile           # `main`, `clean`, `run` targets (see §4.2)
-  main.<ext>         # or main.py / main.jl / main.mojo / main.rs / <bench>.cpp
-  # Rust adds: Cargo.toml, src/main.rs, target/ (build product, gitignored)
+src/<bench>-julia/
+  Makefile
+  main.jl
 ```
 
 * **Read the CUDA source first** (`src/<bench>-cuda/*.cu` + any `.h`) —
   that is the semantic spec.
-* **Also skim the OpenMP sibling** if it exists (`src/<bench>-omp/`) — its
-  host loops are usually the cleanest reference for the CPU verifier and
-  are what `omp_to_serial.py` operates on.
+* **Optionally skim existing siblings** (`-omp`, `-serial`, etc.) if they
+  already exist; they can be useful references. Do not create or modify
+  non-Julia siblings during this pass.
 * **Preserve the timed region**. The CUDA source has an explicit
   `chrono::steady_clock` around `cudaDeviceSynchronize` → kernels →
-  `cudaDeviceSynchronize`. Every port must reproduce the same timed
-  region (see §4.5 for the exact rule per target).
+  `cudaDeviceSynchronize`. The Julia port must reproduce the same timed
+  region (see §4.5).
 * **Preserve the verification**. If the CUDA source runs a CPU reference
   and calls `compare_results<T>` from `include/util.h`, do the same — call
-  the CPU reference from your port and emit a single `PASS`/`FAIL` line.
+  the CPU reference from the Julia port and emit a single `PASS`/`FAIL` line.
   Do not silently downgrade the check.
 
 ### 4.2 Makefile skeleton
 
-The verify + perf tools drive **`make run`** with `../data/<bench>/...` as
-input (or `LAUNCHER=` for numactl/nsys wrappers). Standard shapes:
+The verify + perf tools drive **`make run`** with the CUDA benchmark's
+canonical arguments. Use every run line the CUDA Makefile exercises.
 
-* **Triton** (`Makefile`):
-  ```
-  PYTHON ?= /noback/imo/miniconda3/bin/python3
-  LAUNCHER ?=
-  $(shell mkdir -p .stamps)
-  .stamps/build:
-  	$(PYTHON) -c "import triton, torch; assert torch.cuda.is_available()"
-  	@touch $@
-  main: .stamps/build
-  clean:
-  	rm -rf .stamps __pycache__
-  run: main
-  	$(LAUNCHER) $(PYTHON) main.py <args>
-  ```
-* **Julia** (`Makefile`):
-  ```
-  JULIA ?= julia
-  PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-  main: ; @true
-  clean: ; @true
-  run: main
-  	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl <args>
-  ```
-* **Mojo**: same shape as Julia, `mojo main.mojo <args>`.
-* **Rust** (`Makefile`):
-  ```
-  main: ; cargo build --release
-  clean: ; cargo clean
-  run: main
-  	$(LAUNCHER) ./target/release/<bench>-rust <args>
-  ```
-* **Serial** (`Makefile`): copy the `-omp` Makefile shape, drop OpenMP
-  flags, keep `-I../<bench>-sycl` so shared headers resolve.
+```make
+JULIA ?= julia
+PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+LAUNCHER ?=
 
-### 4.3 Language-specific gotchas (learned the hard way)
+main:
+	@true
 
-These aren't optional taste — they're the failure modes previous ports hit.
-Julia and Serial are listed **first** because they are this pass's
-targets; scan the others only when scope widens.
+clean:
+	rm -rf __pycache__
 
-* **Serial — READ FIRST FOR THIS PASS**
-  * The mechanical path is `tools/omp_to_serial.py <bench>` (or `--all`
-    for the whole batch). It copies `src/<bench>-omp/` → `-serial/`,
-    strips `#include <omp.h>`, drops every `#pragma omp ...` (including
-    backslash-continued blocks), rewrites the Makefile as plain
-    `g++ -std=c++17 -O3`, and deletes `Makefile.aomp` / `Makefile.nvc`.
-    Read the tool once before trusting it — it's short.
-  * **Verify every mechanical conversion**, don't just trust it. The
-    common failures after `omp_to_serial.py`:
-    * The `-omp` sibling was OpenMP-target-offload style (`#pragma omp
-      target teams ...`), and stripping the pragmas left a bare loop
-      that still assumes a device buffer view — usually shows up as a
-      wrong-answer, not a build error.
-    * `omp_get_wtime()` still appears after stripping (`OMP_RT_RE`
-      catches this and the tool prints a warning). Replace with
-      `std::chrono::steady_clock` and match the CUDA sibling's units.
-    * The OMP Makefile had `-Iomp_stub` or similar; the auto-generated
-      Makefile drops that but the source still `#include`s it. Point
-      `-I../<bench>-sycl` at the shared headers, or add
-      `-I<bench>-serial/` as needed.
-  * When there is **no `-omp` sibling** you hand-write from the CUDA
-    host loops. The `run_bfs_cpu` / `verify` function inside the CUDA
-    file is your template — copy it verbatim, then wire up `main.cpp`
-    so the same input load and result print happens as in the CUDA
-    port. Do **not** invent a new algorithm.
-  * Timing must be `std::chrono::steady_clock` around the same
-    "expensive" region the CUDA port timed, and it must print in the
-    same unit (`us`/`ms`/`s`) with the same wording so
-    `perf_sweep.py`'s regex matches. Grep the CUDA sibling for
-    `Average execution time` and match its format exactly.
-  * Keep the OMP Makefile's `-I../<bench>-sycl` include path (the tool
-    already does this) — HeCBench convention keeps shared headers like
-    `util.h`, `reference.h`, `common.h` under one variant, and the
-    others include across.
-  * Never introduce OpenMP, TBB, or any threading library in the
-    Serial port. It is single-threaded by definition — the paper uses
-    it as the sequential baseline.
-  * The Serial port's `PASS`/`FAIL` line **is** the reference truth for
-    other back-ends' cross-model verifier. Keep it strict; don't let a
-    stripped pragma silently disable a comparison.
+run: main
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl <args>
+```
+
+### 4.3 Julia (`CUDA.jl`) gotchas
+
+These aren't optional taste — they're the failure modes previous Julia ports
+hit.
+
 * **Julia (`CUDA.jl`) — READ FIRST FOR THIS PASS**
   * All indices in kernels are 1-based on the Julia side but the CUDA
     source is 0-based. Do the conversion once at the array-access site
@@ -490,58 +457,35 @@ targets; scan the others only when scope widens.
     promote registers to 64-bit and hurt occupancy. Cast: `Int32(N)`.
   * Debugging: `CUDA.@device_code_warntype @cuda ...` shows
     type-instability that would otherwise silently produce slow code.
-* **Triton**
-  * (not this pass — kept as reference for later scope extensions.)
-  * `tl.static_range` is compile-time; if the CUDA loop iterates a
-    data-dependent number of times, you have to bound it with a
-    `MAX_DEGREE`-style clamp (see `bfs-triton/main.py`) and document it.
-  * Randomness must match the CUDA seed *effect*, not the byte stream —
-    C `srand(123)` and `torch.Generator.manual_seed(123)` give different
-    sequences. That's fine as long as the CPU reference sees the same
-    generated array.
-  * Cast `int8` masks explicitly; Triton does not coerce `bool ↔ int8` the
-    way CUDA does.
-* **Mojo**
-  * `std.gpu.host` is the current path. `DeviceContext.enqueue_function`
-    launches; `map_to_host()` gives you a host-side view of a device
-    buffer. No `cudaMemcpy` calls.
-  * Mojo 1.0.0b2 has a fragile string API. If the benchmark reads a text
-    input file and parsing is hairy, generate a **deterministic synthetic
-    input** in the same shape and note this in the port's docstring — the
-    verifier compares against a host BFS/reduction on the same synthetic
-    input, so it's still self-consistent.
-* **Rust (`cudarc`)**
-  * Keep the CUDA kernel source verbatim as a `&str` and compile with
-    `compile_ptx`. Do **not** rewrite the kernel in Rust — that defeats
-    the point of measuring port cost.
-  * Grid/block go through `LaunchConfig`; use `LaunchAsync` and a single
-    `dev.synchronize()` around the timed region.
-  * `char` in CUDA is `i8` in cudarc; `bool` doesn't cross.
+
 ### 4.4 Iteration protocol (LLM-in-the-loop)
 
 You are expected to iterate — most ports **do not compile on the first
 try**. The loop is:
 
 1. Draft the port.
-2. `make -C src/<bench>-<target> clean && make -C src/<bench>-<target>`
-   (Rust: `cargo build --release` inside the dir).
+2. `make -C src/<bench>-julia clean && make -C src/<bench>-julia`.
 3. If build fails → classify the error (§5), fix, save the prompt and
    diff (§6), goto 2.
-4. `make -C src/<bench>-<target> run` with the standard input.
+4. `make -C src/<bench>-julia run` with the standard input.
 5. If run fails or emits `FAIL` → classify, fix, save, goto 2.
 6. If run emits `PASS` → cross-check against another target with
-   `tools/verify_coverage.py <bench> --models cuda,<target>` (§4.6).
+   `tools/verify_coverage.py <bench> --models cuda,julia --only-existing`
+   (§4.6).
 7. If cross-check MISMATCH → classify, fix, save, goto 2.
 
-Stop when 4–6 all pass. Record the iteration count.
+Stop when 4–6 all pass. Record the iteration count, write the manifest,
+commit the port, update the Julia worklist, and write a local context
+checkpoint before starting another port in the same worker. In parallel
+coordinator mode, the coordinator may batch several passing ports into one
+commit if each port has independent verification evidence and a checkpoint.
 
 ### 4.5 Where the timing goes
 
 For the perf sweep to pick up your port's number, print **one** line
 whose shape is `Average [...] time [...] N.NN (us|ms|s)`. `parse_time_us`
 in `perf_sweep.py` walks all matches and keeps the last one, so print it
-after the last timed region, not in the middle. Serial ports must print
-in `us` to match the CUDA sibling.
+after the last timed region, not in the middle.
 
 ### 4.6 Verification (semantic + numerical accuracy)
 
@@ -554,19 +498,16 @@ Two mandatory levels:
   1e-3 * max(1, abs(b))` and note the choice in the port's docstring.
 * **Cross-model** — run:
   ```
-  python3 tools/verify_coverage.py <bench> \
-    --models cuda,omp,serial,triton,julia,rust --only-existing
+  python3 tools/verify_coverage.py <bench> --models cuda,julia --only-existing
   ```
+  You may include additional already-existing models, such as `omp` or
+  `serial`, as verification references when useful. Do not create missing
+  non-Julia models for that purpose.
   This canonicalizes stdout: drops timing lines, keeps `PASS`/`FAIL`,
   compares numeric-stripped data lines as a multiset. A `MATCH` result
   means the ports agree structurally *and* every one of them said `PASS`.
   Coverage rows land in `${STATE}/coverage.db` — commit them to
   memory of the run, they are what feeds §7's paper tables.
-
-**Mojo is exempt from cross-model when it uses a synthetic input** — the
-input data differs from the CUDA sibling by design. Mark those runs as
-`ok` in coverage but skip them in the MATCH computation (that's what
-`--only-existing` + omitting the Mojo dir buys you).
 
 ---
 
@@ -578,19 +519,19 @@ fixed:
 
 | Code | Bucket | Meaning |
 |------|--------|---------|
-| **B1** | Build: missing toolchain | Compiler / SDK not on `PATH`, wrong version pinned in Cargo/pixi. |
-| **B2** | Build: syntax / type mismatch | Language-level compile error the LLM produced. |
-| **B3** | Build: unresolved symbol / API drift | Function renamed, module moved, feature flag missing (e.g. `cudarc` feature list). |
-| **B4** | Build: kernel compile failure | NVRTC / Triton JIT error inside a device kernel body. |
+| **B1** | Build: missing toolchain | Julia, CUDA, or package environment missing or wrong version. |
+| **B2** | Build: syntax / type mismatch | Julia compile error or host/device type mismatch. |
+| **B3** | Build: unresolved symbol / API drift | CUDA.jl function/module renamed, moved, or missing. |
+| **B4** | Build: kernel compile failure | CUDA.jl/NVRTC/PTX failure inside a device kernel body. |
 | **R1** | Runtime: crash / abort | Segfault, panic, `illegal memory access`, `CUDA_ERROR_*`. |
 | **R2** | Runtime: silent wrong shape | Ran to completion, but printed lines differ in count/labels from CUDA. |
 | **R3** | Runtime: hang / timeout | Killed by the `perf_sweep.py` per-cell timeout. |
 | **N1** | Numerical: FAIL emitted | The port's own verifier said `FAIL`. |
-| **N2** | Numerical: cross-model mismatch | `PASS` locally but disagrees with CUDA/OMP under `verify_coverage.py`. |
+| **N2** | Numerical: cross-model mismatch | `PASS` locally but disagrees with CUDA under `verify_coverage.py`. |
 | **N3** | Numerical: tolerated drift | Elements differ but within the documented tolerance. Not a failure — recorded because it's part of the port's story. |
 | **S1** | Semantic: wrong algorithm | The port implements a related but non-equivalent computation (e.g. dropped an inner term of the update rule). |
 | **S2** | Semantic: wrong timed region | Compiles + verifies but the timed region is not the CUDA-equivalent one (missing sync, timer around wrong block). |
-| **P1** | Portability compromise | Deliberate deviation (e.g. Mojo synthetic input). Not a failure — recorded so the paper can name it. |
+| **P1** | Portability compromise | Deliberate documented Julia deviation. Not a failure — recorded so the paper can name it. |
 | **T1** | Tooling: verifier bug | The failure was in `verify_coverage.py`/perf tools, not the port. Fix the tool, re-run. |
 
 When you fix an error, tag the commit / prompt log with the code so §7's
@@ -600,11 +541,11 @@ taxonomy table can be built by a simple `grep` later.
 
 ## 6. What to record — prompts, tokens, iterations, timings
 
-For every `(bench, target)` port, create one directory in the session
+For every Julia port, create one directory in the session
 scratchpad:
 
 ```
-${STATE}/porting_logs/<bench>-<target>/
+${STATE}/porting_logs/<bench>-julia/
     prompt_01.md        # verbatim prompt sent to the LLM
     response_01.md      # verbatim reply (code diff or full file)
     error_01.md         # build/run/verify output that motivated the next iter
@@ -612,6 +553,7 @@ ${STATE}/porting_logs/<bench>-<target>/
     prompt_02.md
     ...
     manifest.json       # summary — see below
+    context_checkpoint_01.md
 ```
 
 `manifest.json` shape (write it *once* at the end of the port; update
@@ -630,9 +572,32 @@ it if you re-open the port later):
   "wall_time_s": 812,
   "error_tags": ["B2", "B4", "N2"],
   "final_status": "pass",
-  "notes": "MAX_DEGREE clamp of 32 documented in main.py header."
+  "notes": "Any tolerance, vendor-library mapping, or portability caveat."
 }
 ```
+
+After the port is committed, write
+`${STATE}/porting_logs/<bench>-julia/context_checkpoint_NN.md`. This is
+the local replacement for remote/platform context compression. It should be
+short but complete enough for the next Codex agent to continue without the
+full conversation:
+
+* completed benchmark and target;
+* commit SHA and commit subject;
+* files added or changed;
+* implementation notes and any semantic deviations;
+* build/run/verify commands and final results;
+* manifest path and error tags;
+* worklist updates;
+* unrelated dirty worktree files that were intentionally left alone;
+* next workflow note if the user has changed the run-book expectations.
+
+Do not ask the user to compress context remotely, and do not wait for a
+remote compact task before starting the next port once the local checkpoint is
+written.
+For long or troublesome ports, also write an in-flight checkpoint before the
+conversation becomes large; include the active failure and the next command to
+run so the task can resume from disk in a fresh session.
 
 Token counting under Codex:
 
@@ -663,7 +628,7 @@ port* and the CSV about *cost of executing it*.
 ## 7. Feeding the paper
 
 The paper skeleton is `Hecbench-agent-paper/IEEEtran/` — sections 1, 2,
-and 4 are currently empty. Two tables are wired up:
+and 4 are currently empty.
 
 **Per-driver cost-study separation.** Every port produced by Codex is
 recorded with `"driver": "codex"` in its `manifest.json` (§6). The
@@ -679,7 +644,7 @@ alone.
   ```
   python3 tools/perf_sweep.py \
     --benches accuracy adam adjacent atan2 aidw \
-    --models cuda omp serial triton julia rust \
+    --models cuda julia \
     --out ${STATE}/perf.csv
   python3 tools/perf_sweep_to_tex.py
   # → ${STATE}/perf_rows.tex, paste into 4.perfomrance_comparison.tex
@@ -692,33 +657,26 @@ alone.
   linear-algebra/image/crypto categories per `benchmarks.yaml`) once
   the coverage sweep is done.
 * **§2 taxonomy of porting errors** — one row per `error_tags` bucket
-  from §5, one column per target language, cell = count of ports that
-  hit that bucket at least once. No script exists yet; a five-line
-  Python over `${STATE}/porting_logs/*/manifest.json` produces it.
+  from §5 for Julia ports, cell = count of ports that hit that bucket
+  at least once. No script exists yet; a small Python script over
+  `${STATE}/porting_logs/*-julia/manifest.json` produces it.
   Write that script the first time the paper asks for the table, name it
   `tools/taxonomy_to_tex.py`, and commit it.
-* **§1/§2 Julia + Serial coverage table** — new for this pass. Four
-  columns (Julia-Claude, Julia-Codex, Serial-Claude, Serial-Codex),
+* **§1/§2 Julia coverage table** — new for this pass. Two columns
+  (Julia-Claude, Julia-Codex),
   rows are: "successfully ported" (target `PASS` + cross-model
   `MATCH`), "in flight" (built, not verified), and "deferred /
   out-of-scope" broken down by reason from §3.3 (`external-lib`,
-  `vendor-lib-unmapped`, `oversized`, `no-input`, `single-node-only`).
+  `vendor-lib-unmapped`, `oversized`, `no-input`, `not-julia-scope`).
   Source of truth is `${STATE}/coverage.db` (`verify_status` table)
   plus the deferred lists plus the `driver` field in each
   `manifest.json`. Build the table with a small Python script — commit
   it as `tools/coverage_to_tex.py` and let it take
-  `--target julia|serial|all` and `--driver claude|codex|all` flags so
-  the same script serves every column.
-* **Serial-specific data point for §2** — split the Serial results by
-  whether the port came from `omp_to_serial.py` (mechanical) or was
-  hand-written from the LLM. The distribution of "first-try passes"
-  vs "required iteration" between those two lanes is one of the
-  paper's narratives about automation vs. LLM cost, and it should be
-  reported per-driver as well.
+  `--target julia` and `--driver claude|codex|all` flags.
 * **§2 taxonomy per driver** — the error-taxonomy table
-  (§5 buckets × target languages) is also **duplicated per driver** in
-  the paper. When you extend `tools/taxonomy_to_tex.py`, take the same
-  `--driver` flag as `coverage_to_tex.py`.
+  (§5 buckets for Julia) is also **duplicated per driver** in the paper.
+  When you extend `tools/taxonomy_to_tex.py`, take the same `--driver`
+  flag as `coverage_to_tex.py`.
 
 The **diagram** (system diagram in §1) is not yet in the tex tree. If the
 user asks you to draft it, sketch it as a Mermaid or TikZ block that
@@ -729,16 +687,16 @@ verify_coverage / perf_sweep → paper tables`.
 
 ## 8. Commit convention
 
-One commit per `(bench, target)` port. Message form (from `git log`):
+One commit per Julia port. Message form (from `git log`):
 
 ```
-<bench>-<target>: <one-line description>
+<bench>-julia: Julia port (CUDA.jl)
 
 Generated-By: OpenAI Codex
 ```
 
-The existing commits on this branch (32 + 33 ports already landed under
-Claude Code) carry a `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
+Existing commits on this branch may carry a
+`Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
 trailer instead — that is how the paper's per-driver split in §7
 resolves ties when a `manifest.json` is missing. Use the `Generated-By`
 trailer above for every Codex-authored commit so the two are easy to
@@ -752,76 +710,31 @@ git log --grep='Co-Authored-By: Claude'   --oneline     # Claude-authored
 Examples that already exist:
 
 ```
-bfs-triton: Triton port (PyTorch + Triton)
 softmax-julia: Julia port (CUDA.jl)
-saxpy-ompt-omp: OpenMP port
 ```
 
 Rules:
 
-* Stage only the files under `src/<bench>-<target>/` plus any tooling
-  change the port needed. Do **not** stage `build/`, `.stamps/`,
+* Stage only the files under `src/<bench>-julia/` plus any tooling
+  change the Julia port needed. Do **not** stage `build/`, `.stamps/`,
   `target/`, or `__pycache__/` — `.gitignore` already excludes them but
   a stray `git add -A` will pull them in.
 * Do not commit `${STATE}/**` — the porting logs and coverage db live
   under `.porting-state/` (gitignored) by design.
 * Never `--amend` a published commit. If a port has to be revised, make
-  a new commit `<bench>-<target>: fix <what>` on top. Never touch a
+  a new commit `<bench>-julia: fix <what>` on top. Never touch a
   commit produced under the other driver — the paper's cost columns
   depend on those commits being stable, and rewriting one loses the
   `Co-Authored-By` / `Generated-By` provenance.
+* After committing, write
+  `${STATE}/porting_logs/<bench>-julia/context_checkpoint_NN.md` before
+  continuing to the next port.
 
 ---
 
 ## 9. Worked examples
 
-### 9a. Serial from `-omp` (mechanical route)
-
-Take the first entry of `${STATE}/serial_from_omp.txt` — say
-`hotspot3D` (illustrative). `src/hotspot3D-cuda/` and
-`src/hotspot3D-omp/` exist, `src/hotspot3D-serial/` doesn't.
-
-1. `python3 tools/omp_to_serial.py hotspot3D -v` — creates
-   `src/hotspot3D-serial/` from the OMP source. Read the tool's stderr
-   for any warnings about surviving `omp_get_wtime` / continuation-line
-   pragmas.
-2. `make -C src/hotspot3D-serial clean && make -C src/hotspot3D-serial`
-   — expect it to build clean; if not, classify (`B2`/`B3`) and fix.
-3. `make -C src/hotspot3D-serial run` — expect `PASS`. If it prints a
-   numeric result but no `PASS`/`FAIL`, that's `S1` in most cases (the
-   OMP sibling had target-offload semantics that got mangled by pragma
-   stripping) — either fix in place or defer.
-4. Cross-verify:
-   ```
-   python3 tools/verify_coverage.py hotspot3D \
-     --models cuda,omp,serial --only-existing
-   ```
-5. Write `manifest.json` — for mechanical Serial ports, expect
-   `iterations: 1`, `error_tags: []`. That's the signal for the paper.
-6. Commit:
-   ```
-   hotspot3D-serial: Serial port (from -omp)
-   ```
-
-### 9b. Serial hand-written from CUDA (no OMP sibling)
-
-Same benchmark, but assume no `-omp` exists.
-
-1. `mkdir src/hotspot3D-serial && cp src/hotspot3D-cuda/*.h
-   src/hotspot3D-serial/` — start from the CUDA headers.
-2. Copy the CUDA host loops (the CPU verifier + main function) into a
-   new `hotspot3D.cpp`. Delete every `__global__`/`__device__` from the
-   kernel; turn the CUDA kernel body into a plain `for` over the launch
-   grid dimensions (product of `gridDim` × `blockDim`).
-3. Replace CUDA memory management with host `malloc`/`new` (or drop
-   entirely — you're operating on host arrays now).
-4. Write a plain `Makefile` mirroring the shape produced by
-   `omp_to_serial.py` (see §4.2 Serial template).
-5. Then the same build/run/verify/commit loop as 9a. Expect more
-   iterations than the mechanical case — realistic bucket is 2–3
-   iterations, dominated by `B2` / `B3` fixes.
-
-### 9c. Julia — porting one missing Julia benchmark end-to-end
+### 9a. Julia — porting one missing benchmark end-to-end
 
 Take the first entry of `${STATE}/batch_A.txt` — say it is `xsbench`
 (illustrative). `src/xsbench-cuda/` exists, `src/xsbench-julia/` doesn't.
@@ -829,13 +742,14 @@ Take the first entry of `${STATE}/batch_A.txt` — say it is `xsbench`
 1. `ls src/xsbench-cuda/` — inspect the source layout, note `.cu`,
    headers, any `data/xsbench/*` input file, and the `run:` target in
    its Makefile (that's the canonical input args). Confirm no external
-   libs are pulled in (grep for `boost|gsl|gdal|mpi|nccl|cublas|cufft`).
+   libs are pulled in (grep for
+   `boost|gsl|gdal|mpi|nccl|ccl|bz2|cublas|cufft`).
    If cuBLAS/cuFFT/cuRAND/cuSPARSE/cuDNN show up, plan to use the
    matching CUDA.jl submodule (§3.3) instead of hand-rolling.
 2. Read the CUDA source fully. Identify: (a) the kernel(s), (b) the
    timed region, (c) the CPU verifier + tolerance.
-3. Read `src/xsbench-omp/` — its host loops usually translate to Julia
-   more cleanly than the CUDA host code.
+3. Optionally read existing siblings for verifier and host-loop context. Do
+   not create or modify non-Julia siblings.
 4. Create `src/xsbench-julia/{main.jl, Makefile}` from the templates in
    §4.2. Write kernels as `@cuda` functions returning `nothing`; keep
    the CUDA kernel structure line-for-line so the two are easy to diff.
@@ -850,7 +764,7 @@ Take the first entry of `${STATE}/batch_A.txt` — say it is `xsbench`
 7. When `make run` prints `PASS`, run:
    ```
    python3 tools/verify_coverage.py xsbench \
-     --models cuda,omp,serial,julia --only-existing
+     --models cuda,julia --only-existing
    ```
    Expect `MATCH`. If `MISMATCH` and the mismatch is float noise, either
    (i) tighten `compare_outputs`'s canonicalizer (that's a `T1`), or
@@ -865,7 +779,14 @@ Take the first entry of `${STATE}/batch_A.txt` — say it is `xsbench`
      > ${STATE}/julia_missing.txt.tmp && \
      mv ${STATE}/julia_missing.txt{.tmp,}
    ```
-10. Move on to the next entry of Batch A.
+10. Write a local checkpoint:
+    ```
+    ${STATE}/porting_logs/xsbench-julia/context_checkpoint_01.md
+    ```
+    Include commit SHA, files changed, final verification output, manifest
+    path, worklist updates, and remaining unrelated worktree changes.
+11. Start the next entry of Batch A only after that local checkpoint exists.
+    Do not ask the user to run a remote/platform context compression task.
 
 Mass-cadence expectation: a Batch A benchmark should take under an hour
 of wall-clock and under ~30k tokens per port when it's genuinely
@@ -878,83 +799,74 @@ distribution of cost, not chasing every long-tail case.
 ## 10. Fast reference — the commands you'll use most
 
 ```bash
-# 1. Regenerate the worklists (do this every session)
+# 1. Regenerate the Julia worklist (do this every session)
 ls src/*-cuda   -d | xargs -n1 basename | sed 's/-cuda$//'   | sort > ${STATE}/cuda.txt
 ls src/*-omp    -d | xargs -n1 basename | sed 's/-omp$//'    | sort > ${STATE}/omp.txt
 ls src/*-julia  -d 2>/dev/null | xargs -n1 basename | sed 's/-julia$//'  | sort > ${STATE}/julia.txt
-ls src/*-serial -d 2>/dev/null | xargs -n1 basename | sed 's/-serial$//' | sort > ${STATE}/serial.txt
 comm -23 ${STATE}/cuda.txt ${STATE}/julia.txt  > ${STATE}/julia_missing.txt
-comm -23 ${STATE}/cuda.txt ${STATE}/serial.txt > ${STATE}/serial_missing.txt
-comm -12 ${STATE}/serial_missing.txt ${STATE}/omp.txt > ${STATE}/serial_from_omp.txt
-comm -23 ${STATE}/serial_missing.txt ${STATE}/omp.txt > ${STATE}/serial_from_cuda.txt
-wc -l ${STATE}/{julia,serial}_missing.txt \
-      ${STATE}/serial_from_{omp,cuda}.txt
+wc -l ${STATE}/julia_missing.txt
 
-# 2. Serial Batch M — mechanical conversion from -omp for everything eligible
-for b in $(cat ${STATE}/serial_from_omp.txt); do
-  python3 tools/omp_to_serial.py "$b" -v \
-    2>&1 | tee -a ${STATE}/logs/serial_from_omp.log
-done
-
-# 3. Build Julia Batch A (single-file, <400 LoC, no external libs)
+# 2. Build Julia Batch A (single-file, <400 LoC, no external libs)
 for b in $(cat ${STATE}/julia_missing.txt); do
   files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
   loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
-  ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl' src/${b}-cuda/*.{cu,h} 2>/dev/null | wc -l)
+  ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl|ccl|bz2' src/${b}-cuda/*.{cu,h} 2>/dev/null | wc -l)
   [ "$files" = 1 ] && [ "$loc" -lt 400 ] && [ "$ext" = 0 ] && echo "$b"
 done > ${STATE}/batch_A.txt
 wc -l ${STATE}/batch_A.txt
 
-# 4. Build + run one port (works for both julia and serial)
-make -C src/<bench>-<target> clean && make -C src/<bench>-<target> && \
-make -C src/<bench>-<target> run
+# 2b. Current parallel tranche: verified single-file, <400 LoC candidates
+for b in $(cat ${STATE}/julia_missing.txt); do
+  files=$(ls src/${b}-cuda/*.cu 2>/dev/null | wc -l)
+  loc=$(wc -l src/${b}-cuda/*.cu 2>/dev/null | awk 'END{print $1}')
+  ext=$(grep -lE 'boost|gsl|gdal|mpi|nccl|ccl|bz2' src/${b}-cuda/*.{cu,h} 2>/dev/null | wc -l)
+  ver=$(grep -lE 'PASS|FAIL|compare_results|\bverify\b' src/${b}-cuda/*.{cu,h,cpp} 2>/dev/null | wc -l)
+  [ "$files" = 1 ] && [ "$loc" -lt 400 ] && [ "$ext" = 0 ] && [ "$ver" -gt 0 ] && printf '%04d %s\n' "$loc" "$b"
+done | sort -n > ${STATE}/batch_verified_lt400.txt
+wc -l ${STATE}/batch_verified_lt400.txt
 
-# 5. Cross-verify one benchmark across every model that exists locally
+# 3. Build + run one Julia port
+make -C src/<bench>-julia clean && make -C src/<bench>-julia
+make -C src/<bench>-julia run
+
+# 4. Cross-verify one Julia port against CUDA
 python3 tools/verify_coverage.py <bench> \
-  --models cuda,omp,serial,julia --only-existing
+  --models cuda,julia --only-existing
 
-# 6. Bulk-verify the whole existing Julia set (or Serial set)
+# 5. Bulk-verify the whole existing Julia set
 for b in $(ls src/*-julia -d | xargs -n1 basename | sed 's/-julia$//'); do
   python3 tools/verify_coverage.py "$b" \
-    --models cuda,omp,serial,julia --only-existing 2>&1 \
+    --models cuda,julia --only-existing 2>&1 \
     | tee -a ${STATE}/logs/julia_sweep.log
 done
-# ...and the Serial set (same shape, s/julia/serial/)
 
-# 7. Perf sweep for a hand-picked subset (representative, not all 537)
+# 6. Perf sweep for a hand-picked subset
 python3 tools/perf_sweep.py --benches <bench1> <bench2> ... \
-  --models cuda omp serial julia
+  --models cuda julia
 
-# 8. Regenerate the LaTeX perf rows for the paper
+# 7. Regenerate the LaTeX perf rows for the paper
 python3 tools/perf_sweep_to_tex.py
 
-# 9. Query verification history from a prior session (filter per target)
+# 8. Query Julia verification history from a prior session
 sqlite3 ${STATE}/coverage.db \
   "SELECT bench, model, status, detail FROM verify_status
-   WHERE model IN ('julia','serial') ORDER BY bench, model;"
+   WHERE model = 'julia' ORDER BY bench, model;"
 ```
 
 ---
 
 ## 11. What NOT to do
 
-* Do not open ports for target languages other than Julia or Serial
-  during this pass. The three remaining back-ends (Triton, Mojo, Rust)
-  stay at the 32-benchmark subset until the Julia + Serial sweep is done.
+* Do not open ports for target languages other than Julia during this pass.
 * Do not port benchmarks the user hasn't asked for — if the CUDA source
   hits any §3.3 deferral condition, add it to
-  `${STATE}/julia_deferred.txt` (and/or `serial_deferred.txt`) with
-  a one-word reason and move on.
-* Do not multi-thread the Serial port. `omp_to_serial.py` strips
-  OpenMP; do not add TBB, `std::thread`, `std::execution::par`, or any
-  other parallelism. Serial is the sequential baseline the paper
-  measures against.
+  `${STATE}/julia_deferred.txt` with a one-word reason and move on.
+* Do not generate Serial ports as a prerequisite for Julia. Existing
+  non-Julia siblings may be read or included in verification only if they are
+  already present.
 * Do not "improve" the CUDA reference — even if you spot a bug, treat the
   CUDA port as the spec. File the observation in the port's docstring
   and move on.
-* Do not rewrite the Rust `KERNEL_SRC` in Rust. It's meant to be the
-  same CUDA source, compiled by NVRTC through cudarc. (Relevant only
-  when scope widens back to Rust.)
 * Do not silently downgrade a `FAIL` to a `PASS` by loosening a
   tolerance. Any tolerance change goes in the port's docstring and is
   tagged `N3` in the log.
@@ -965,14 +877,24 @@ sqlite3 ${STATE}/coverage.db \
   first — even in Codex's `--dangerously-bypass-approvals-and-sandbox`
   mode. Auto-approve does not remove the need to think before
   destroying local work.
-* Do not touch existing `src/*-julia/` or `src/*-serial/` ports that
-  were authored under Claude Code (see §0). Editing them would corrupt
-  the paper's per-driver cost split. Add new ports on top; leave the
-  old ones alone unless the user explicitly re-scopes them to you.
+* Do not touch existing `src/*-julia/` ports that were authored by another
+  driver (see §0). Editing them would corrupt the paper's per-driver cost
+  split. Add new Julia ports on top; leave existing ones alone unless the user
+  explicitly re-scopes them to you.
 * Do not rewrite git history on this branch. The 186 commits already
   on `monil/refactor_coverage` carry the `Co-Authored-By: Claude`
   provenance that §7's per-driver tables key on — rewriting them would
   break the paper's data.
-* Do not open a second port while a previous port is still failing
-  verification — batching drops signal about which iteration cost went
-  where and pollutes the `manifest.json` records.
+* In single-agent mode, do not open a second port while a previous port is
+  still failing verification — batching drops signal about which iteration
+  cost went where and pollutes the `manifest.json` records. In explicit
+  parallel coordinator mode (§4.0), multiple sub-agents may work
+  concurrently only on disjoint assigned benchmark directories.
+* Do not continue to the next Julia port in the same worker after a
+  successful commit until you have written the local context checkpoint under
+  `${STATE}/porting_logs/<bench>-julia/`. In parallel mode, the coordinator
+  may integrate other workers' completed ports while one worker writes its
+  next checkpoint.
+* Do not ask the user to run a remote/platform context compression task as
+  part of the normal Julia-port cadence; local checkpoints are the handoff
+  mechanism.
