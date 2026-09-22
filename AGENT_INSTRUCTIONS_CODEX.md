@@ -28,11 +28,14 @@ from local files plus git history, not from a long chat transcript.
 Operational rules:
 
 * Default to one Julia port per agent, but when the user explicitly asks for
-  parallel agent work, split the verified short-list (§3.2.2) across
-  sub-agents. Each sub-agent must own disjoint `src/<bench>-julia/`
-  directories and must still finish, verify, log, and checkpoint each port
-  before marking it complete. The current batch objective is to finish the
-  113 verified short-list ports before moving to broader Batch C work.
+  parallel agent work, split the remaining worklist across sub-agents. Start
+  with the verified short-list (§3.2.2), then continue into Batch A/B/C
+  candidates when that list is exhausted so the run can reach 50 more Julia
+  ports. Each sub-agent must own disjoint `src/<bench>-julia/` directories
+  and must still finish, verify, test, log, track, and checkpoint each port
+  before moving to its next assigned port. The current batch objective is
+  for each agent run to port at least 50 remaining benchmarks and at most 200
+  benchmarks before moving to broader Batch C work.
 * Before reading or pasting large outputs, write them to
   `${STATE}/logs/*.log` and summarize only the decisive lines in the chat.
 * Do not paste full source files, full build logs, or full verification logs
@@ -186,8 +189,8 @@ must (a) run cleanly, (b) emit a bench-native `PASS` when the CUDA benchmark
 does, (c) cross-verify against the CUDA sibling under
 `tools/verify_coverage.py`, (d) be logged and committed, and (e) end with a
 local context checkpoint before that worker starts another port. In the
-explicit 113-port push, sub-agents may work on different benchmarks at the
-same time as long as their write sets are disjoint and the coordinator
+explicit 20-to-50 benchmark push, sub-agents may work on different benchmarks
+at the same time as long as their write sets are disjoint and the coordinator
 serializes final review, commits, and worklist updates.
 
 Regenerate the exact missing count with the §3.1 commands — it drifts as
@@ -251,7 +254,7 @@ Work Batch A first, then Batch B, then Batch C. Outside the explicit
 sub-agent workflow below, do not open a new port while one is still failing
 verification.
 
-#### 3.2.2 Current 113-port verified short-list
+#### 3.2.2 Current 20-to-50 benchmark verified short-list
 
 For the current user-requested push, first finish the self-verifying
 single-file CUDA benchmarks under 400 LoC. Regenerate this list after every
@@ -271,14 +274,20 @@ done | sort -n > ${STATE}/batch_verified_lt400.txt
 wc -l ${STATE}/batch_verified_lt400.txt
 ```
 
-This list had 113 entries when the user requested parallel work. Treat it as
-the current tranche. If the regenerated count differs, trust the file tree and
-record the new count in `${STATE}/logs/worklist_YYYY-MM-DD.log`.
+Treat the regenerated list as the first candidate pool for the current
+tranche. Each agent run should complete at least 50 additional Julia ports
+when enough feasible CUDA benchmarks remain. If fewer than 50 candidates are
+available in this verified-under-400-LoC pool, continue into Batch A, then
+Batch B, then Batch C, skipping only benchmarks that meet the deferred rules
+in §3.3. If regenerated counts differ from previous runs, trust the file
+tree and record the new counts in `${STATE}/logs/worklist_YYYY-MM-DD.log`.
 
 Parallel execution rules for this tranche:
 
 * The coordinator assigns each sub-agent a small disjoint slice, preferably
-  3-5 benchmarks at a time from `${STATE}/batch_verified_lt400.txt`.
+  3-5 benchmarks at a time. Assign from
+  `${STATE}/batch_verified_lt400.txt` first, then refill workers from
+  Batch A/B/C worklists as needed to reach the 50-port objective.
 * Each sub-agent owns only its assigned `src/<bench>-julia/` directories and
   matching `${STATE}/porting_logs/<bench>-julia/` paths. It must not edit
   unrelated benchmarks, shared tools, existing Julia ports, or non-Julia
@@ -330,13 +339,14 @@ Only if the user asks you to. Until then, non-Julia targets are frozen.
 
 ## 4. The Julia porting loop
 
-### 4.0 Parallel coordinator mode for the 113-port push
+### 4.0 Parallel coordinator mode for the 50-benchmark push
 
 Use this mode only when the user has explicitly requested sub-agents or
 parallel benchmark work. The coordinator remains responsible for global
 correctness:
 
-1. Regenerate `${STATE}/batch_verified_lt400.txt` (§3.2.2).
+1. Regenerate `${STATE}/batch_verified_lt400.txt` (§3.2.2) plus Batch A/B/C
+   worklists.
 2. Remove entries that already have `src/<bench>-julia/` or a passing
    manifest in `${STATE}/porting_logs/<bench>-julia/manifest.json`.
 3. Spawn workers with disjoint ownership, for example:
@@ -355,8 +365,8 @@ correctness:
    updates local checkpoints with commit SHAs.
 6. Failed or oversized ports are not allowed to stall the tranche. Record
    their taxonomy tag and move them to `${STATE}/julia_deferred.txt` or an
-   in-flight checkpoint, then continue assigning remaining verified-list
-   entries.
+   in-flight checkpoint, then continue assigning remaining feasible entries
+   until 50 more ports are complete or the feasible worklist is exhausted.
 
 Even in parallel mode, do not accept a port as complete without native
 `PASS` and cross-model `MATCH` evidence unless it is explicitly marked
