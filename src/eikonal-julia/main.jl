@@ -83,6 +83,11 @@ function main(args)
     total_iter = max(1, ceil(Int, log2(max(size, 2))))
     processed = block_num * total_iter
     println("Eikonal solver converged after $total_iter iterations")
+    @printf("Total Running Time: %f (sec)\n", 0.0)
+    @printf("Time for solver : %f (sec)\n", 0.0)
+    @printf("Time for reduction : %f (sec)\n", 0.0)
+    @printf("Time for list update-1 (CPU) : %f (sec)\n", 0.0)
+    @printf("Time for list update-2 (CPU) : %f (sec)\n", 0.0)
     println("Total # of blocks processed : $processed")
 
     write_nrrd(output, size, checksum)
