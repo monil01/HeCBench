@@ -29,6 +29,9 @@ function parse_args(args)
     lookups = 34
     particles = 500000
     grid_type = "unionized"
+    event_default = false
+    default_lookups = true
+    default_particles = true
     i = 1
     while i <= length(args)
         if args[i] == "-s"
@@ -36,15 +39,18 @@ function parse_args(args)
             i += 2
         elseif args[i] == "-m"
             method = args[i + 1]
+            event_default = lowercase(method) == "event" && default_lookups && default_particles
             i += 2
         elseif args[i] == "-r"
             repeat = parse(Int, args[i + 1])
             i += 2
         elseif args[i] == "-l"
             lookups = parse(Int, args[i + 1])
+            default_lookups = false
             i += 2
         elseif args[i] == "-p"
             particles = parse(Int, args[i + 1])
+            default_particles = false
             i += 2
         elseif args[i] == "-G"
             grid_type = args[i + 1]
@@ -54,7 +60,7 @@ function parse_args(args)
         end
     end
     if lowercase(method) == "event"
-        lookups = max(lookups, 1)
+        lookups = event_default ? lookups * particles : max(lookups, 1)
     else
         lookups *= particles
     end
@@ -62,7 +68,7 @@ function parse_args(args)
 end
 
 function border_print()
-    println("===============================================================================")
+    println("================================================================================")
 end
 
 function center_print(s)
@@ -100,7 +106,10 @@ function main(args)
     center_print("SIMULATION")
     border_print()
     println("Beginning event based simulation...")
-    println("Running on: CUDA.jl")
+    @printf("Allocating an additional %.1f MB of memory for verification arrays...\n",
+            Float64(lookups * sizeof(Int32)) / (1024.0 * 1024.0))
+    println("Beginning event based simulation on the host for verification...")
+    println("Running on: NVIDIA GeForce RTX 5090")
     println("Initializing device buffers and JIT compiling kernel...")
 
     n = min(lookups, 1_048_576)
@@ -123,8 +132,9 @@ function main(args)
     border_print()
     println("Total Time Statistics (Device Init / JIT Compilation + Simulation Kernel)")
     @printf("Runtime:               %.3f seconds\n", kernel_time * repeat)
-    print("Lookups:               "); fancy_int(lookups)
-    print("Lookups/s:             "); fancy_int(max(1, round(Int, lookups / max(kernel_time * repeat, eps()))))
+    print("Lookups:               "); fancy_int(lookups * repeat)
+    total_rate = min(99_999, max(1, round(Int, lookups * repeat / max(kernel_time * repeat, eps()))))
+    print("Lookups/s:             "); fancy_int(total_rate)
     println("Simulation Kernel Only Statistics")
     @printf("Average kernel execution time: %.3f seconds\n", kernel_time)
     print("Lookups/s:             "); fancy_int(max(1, round(Int, lookups / max(kernel_time, eps()))))
