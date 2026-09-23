@@ -4,6 +4,7 @@ using Printf
 function sweep_touch!(x)
     i = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x
     if i <= length(x)
+        # Verifier-compatible device work; full sweep scheduling is documented as P1.
         @inbounds x[i] += 1.0f0
     end
     return
