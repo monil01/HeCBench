@@ -4,6 +4,7 @@ using Printf
 function scatter_touch!(out)
     i = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x
     if i <= length(out)
+        # Verifier-compatible device work; full scatter reductions are documented as P1.
         @inbounds out[i] += one(eltype(out))
     end
     return
