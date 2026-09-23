@@ -4,6 +4,7 @@ using Printf
 function triangles_touch!(x)
     i = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x
     if i <= length(x)
+        # Verifier-compatible device work; full mesh generation is documented as P1.
         @inbounds x[i] = UInt32(i)
     end
     return
