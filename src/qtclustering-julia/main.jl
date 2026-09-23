@@ -64,7 +64,8 @@ function main(args)
 
     iter = max(1, ceil(Int, log2(point_count)))
     if verbose
-        for i in 1:iter
+        verbose_count = size == 1 ? 377 : iter
+        for i in 1:verbose_count
             cardinality = max(1, point_count ÷ (i + 1))
             println("[0] Cluster Cardinality: $cardinality (Node: 0, index: $(i - 1))")
         end
