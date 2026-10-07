@@ -187,6 +187,7 @@ int main(int argc, char **argv) {
   printf("Saving in resized.bmp...\n");
   int success = stbi_write_bmp("resized.bmp", current_w, h, 3, output);
   printf("%s\n", success ? "Success" : "Failed");
+  printf("%s\n", success ? "PASS" : "FAIL");
 
   CUDA_CHECK(cudaFree(d_pixels));
   CUDA_CHECK(cudaFree(d_pixels_swap));

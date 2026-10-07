@@ -84,8 +84,10 @@ function main()
     end
     if correct
         println("dense2sparse_csr_example test PASSED")
+        println("PASS")
     else
         println("dense2sparse_csr_example test FAILED: wrong result")
+        println("FAIL")
     end
     return 0
 end

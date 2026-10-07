@@ -11,14 +11,10 @@
 #include <chrono>
 #include <string>
 
-#include <boost/program_options.hpp>
-
 #include "mmio.hpp"
 // #include "graphblas/types.hpp"
 
 // Utility functions
-
-namespace po = boost::program_options;
 
 // void parseArgs( int argc, char**argv, po::variables_map& vm ) {
 //   // Declare the supported options

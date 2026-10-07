@@ -78,8 +78,19 @@ Concretely:
   any pitfalls the next agent needs. Do not request remote context
   compression from the user.
 
-**Current focus (this pass): extend Julia (`CUDA.jl`) coverage to CUDA
-benchmarks in `src/*-cuda/` that do not already have a Julia sibling.**
+**Current focus (this pass): make the Julia (`CUDA.jl`) ports numerically
+correct against the CUDA references.** The broad translation tranche is
+finished/triaged:
+the live tree has 537 CUDA benchmark directories, 448 Julia benchmark
+directories, 89 CUDA benchmarks without Julia directories, 91 local
+deferred records, and 0 actionable non-deferred missing benchmarks. The
+coverage database currently records 441 Julia `ok` results and 5 Julia
+`run_fail` results (`aobench`, `kalman`, `lrn`, `mis`, `tsp`). Do not
+continue broad translation work unless the user explicitly reopens a
+specific deferred or failing benchmark. The active project objective is to
+correct the failed numerical checks and close the gaps from the numerical
+accuracy sweep in §11.
+
 
 Existing non-Julia implementations may be used as reference material or
 verification inputs when they already exist, but they are not targets for new
@@ -94,14 +105,15 @@ token count, error taxonomy — is produced by the workflow described below.
 
 ## 1. Goal in one paragraph
 
-HeCBench ships kernels in CUDA / HIP / SYCL / OpenMP-target. For this pass,
-Codex produces **Julia (`CUDA.jl`) ports only**. For each selected benchmark,
-the agent (a) produces a working Julia port that matches the CUDA reference
-numerically (or by a documented tolerance), (b) records the porting cost
-(LLM iterations, tokens, error taxonomy hits), (c) records runtime
-performance when requested, and (d) records a local context checkpoint before
-starting the next port. The paper's tables and figures are built from those
-records.
+HeCBench ships kernels in CUDA / HIP / SYCL / OpenMP-target. The broad
+Codex Julia (`CUDA.jl`) translation tranche is complete for this pass:
+passing ports were committed, infeasible remaining CUDA benchmarks were
+recorded as deferred, and no actionable non-deferred missing Julia
+benchmarks remain. The active goal is now to audit numerical accuracy for
+the existing Julia ports by comparing CUDA and Julia outputs more strongly
+than the current structural `tools/verify_coverage.py` fallback. The paper's
+tables and figures should consume both the existing coverage/porting records
+and the new numerical-accuracy records described in §11.
 
 ---
 
@@ -183,15 +195,20 @@ Ground truth is the file tree, not this document; verify before trusting.
 
 ## 3. Scope — Julia coverage for the full CUDA catalogue
 
-**Primary objective for this pass**: for each selected
-`src/<bench>-cuda/`, create a working `src/<bench>-julia/` port. Each port
-must (a) run cleanly, (b) emit a bench-native `PASS` when the CUDA benchmark
-does, (c) cross-verify against the CUDA sibling under
-`tools/verify_coverage.py`, (d) be logged and committed, and (e) end with a
-local context checkpoint before that worker starts another port. In the
-explicit 20-to-50 benchmark push, sub-agents may work on different benchmarks
-at the same time as long as their write sets are disjoint and the coordinator
-serializes final review, commits, and worklist updates.
+**Status: translation tranche complete/triaged.** The previous primary
+objective was to create working `src/<bench>-julia/` ports for CUDA
+benchmarks without Julia siblings. That objective is finished for the current
+pass: the tree has 448 Julia directories, the coverage database records 441
+Julia `ok` rows, five existing Julia ports still have `run_fail` rows, and
+all 89 CUDA benchmarks still lacking a Julia directory have been recorded as
+deferred or out of scope in local state. Future agents should not continue
+walking the missing-port list by default.
+
+Only create or repair Julia ports now when the user explicitly asks to reopen
+a specific failing or deferred benchmark. Otherwise, use the worklist and
+verification commands in this section only as historical context and for
+targeted rechecks while the active work proceeds through the numerical
+accuracy audit in §11.
 
 Regenerate the exact missing count with the §3.1 commands — it drifts as
 ports land. Outside the explicit parallel workflow in §3.2.2 and §4.0, do not
@@ -865,7 +882,187 @@ sqlite3 ${STATE}/coverage.db \
 
 ---
 
-## 11. What NOT to do
+## 11. Active work: numerical correctness fixes
+
+The Julia porting push has now completed the broad coverage tranche:
+`${STATE}/coverage.db` currently records **441 Julia ports with verified
+`ok` results** under `tools/verify_coverage.py`. That result means the
+ports build/run and the existing cross-model verifier accepts the CUDA and
+Julia outputs. It does **not** guarantee strict numerical equivalence for
+benchmarks that lack a native `PASS`/`FAIL` verifier, because
+`verify_coverage.py` falls back to structural stdout comparison after
+normalizing numeric literals.
+
+The numerical-audit tooling is now in place; the next pass is therefore a
+**numerical correctness correction pass**. Treat CUDA as the reference output.
+Do not replace the existing coverage verifier; use the stronger numerical
+layer alongside it and fix or document every failed/gap row.
+
+To-do for the next agent:
+
+1. **Classify every Julia port by verification strength.**
+   Split `src/*-julia/` into: (a) ports with native `PASS`/`FAIL`, (b)
+   ports that only print numeric stdout summaries, (c) ports that write
+   output files/images/arrays, and (d) ports that cannot be numerically
+   checked until missing inputs or external dependencies are available.
+   Persist the classification under `${STATE}/numeric_accuracy/` and
+   summarize counts in `${STATE}/logs/numeric_accuracy_classification.log`.
+
+2. **Add a dedicated numeric verifier.**
+   Create `tools/verify_numeric.py` to build/run CUDA and Julia, capture
+   stdout/stderr, compare non-timing numeric values with tolerances, compare
+   configured output artifacts, and write results to
+   `${STATE}/numeric_accuracy.db`. The tool should accept at least:
+   ```
+   python3 tools/verify_numeric.py <bench> \
+     --models cuda,julia --only-existing
+   ```
+   and a bulk mode or shell-friendly loop should work across all existing
+   Julia ports.
+
+3. **Extend benchmark metadata for numeric checks.**
+   Add `numeric_check:` entries to `benchmarks.yaml` as needed. Supported
+   metadata should cover stdout regexes, relative/absolute tolerances, and
+   output files. Example shape:
+   ```yaml
+   minimod:
+     numeric_check:
+       stdout_regex:
+         - 'Checksum: min_u,  max_u = ([0-9eE+.-]+), ([0-9eE+.-]+)'
+       rtol: 1.0e-5
+       atol: 1.0e-7
+
+   dxtc2:
+     numeric_check:
+       files:
+         - path: data/lena_std.dds
+           kind: binary
+           tolerance:
+             rms: 1.0e-2
+   ```
+   Start with the recently added/known weak-verification ports
+   (`bm3d`, `dxtc2`, `memtest`, `merkle`, `minimod`, `miniWeather`) and
+   then sweep the rest.
+
+4. **Add deterministic comparable summaries when needed.**
+   If CUDA and Julia do not currently print comparable numeric results,
+   add a small deterministic checksum or summary only when it can be added
+   consistently to both sides or is already present in the CUDA output.
+   Do not silently invent a Julia-only correctness criterion and call it
+   equivalent to CUDA. Any deliberate tolerance or summary choice must be
+   documented in the port log and tagged `N3` or `P1` as appropriate.
+
+5. **Run artifact-producing benchmarks in isolated directories.**
+   Some benchmarks overwrite tracked or shared output files. The numeric
+   verifier must run CUDA and Julia in temporary per-model work directories
+   under `/tmp` or `${STATE}/numeric_accuracy/runs/`, then compare outputs
+   there. Do not allow a numeric sweep to dirty tracked source directories
+   with generated images, binary outputs, `.dat` files, or solver dumps.
+
+The first numerical sweep has been run for all 441 coverage-`ok` Julia
+ports. The baseline is recorded in `JULIA_CORRECTNESS_CHECK.md`,
+`${STATE}/numeric_accuracy.db`, and
+`${STATE}/logs/numeric_accuracy_summary_2026-09-24.md`:
+
+```text
+pass|native_pass_trusted|251
+pass|numeric_stdout|37
+mismatch|numeric_stdout|76
+mismatch|native_verdict|1
+unverified|no_numeric_data|56
+not_run|run_status|19
+not_run|timeout|1
+```
+
+Current correction target:
+
+* Investigate and fix or reclassify the `77` mismatch rows.
+* Add benchmark-specific numeric evidence for the `56`
+  `unverified|no_numeric_data` rows.
+* Repair or retest the `20` `not_run` rows.
+* Keep `JULIA_CORRECTNESS_CHECK.md` synchronized with each completed batch.
+
+### 11.1 Plan for correcting failed numerical testing
+
+1. **Freeze the baseline.**
+   Keep `JULIA_CORRECTNESS_CHECK.md` as the top-level status. Treat
+   `${STATE}/numeric_accuracy.db` as the source of truth for current
+   numerical status. Export and maintain three working lists under
+   `${STATE}/numeric_accuracy/reports/`: mismatches, unverified/no-data, and
+   not-run.
+
+2. **Separate false positives from real failures.**
+   Inspect `mismatch|numeric_stdout` rows first. Many may be timing,
+   performance numbers, nondeterministic summaries, IDs, or metadata that
+   `tools/verify_numeric.py` is incorrectly treating as numerical results.
+   Fix verifier filtering before touching ports. Reclassify false mismatches
+   as `unverified|no_numeric_data` when no real result exists, or as
+   `pass|numeric_stdout` when only harmless formatting/noise caused the
+   mismatch.
+
+3. **Add benchmark-specific `numeric_check` metadata.**
+   For benchmarks with real numeric summaries, add regex/tolerance rules in
+   `benchmarks.yaml`. Prioritize recently added or known weak ports:
+   `bm3d`, `dxtc2`, `memtest`, `merkle`, `minimod`, and `miniWeather`, then
+   work through mismatch rows alphabetically or by category.
+
+4. **Handle artifact-producing benchmarks safely.**
+   Extend `tools/verify_numeric.py` to run CUDA and Julia in isolated
+   temporary directories. Add artifact comparison support: binary exact
+   compare, numeric text/table compare, and image RMS/MAE comparison. Use this
+   for ports that write `.png`, `.dds`, `.dat`, `.nrrd`, `.pgm`, or similar
+   artifacts.
+
+5. **Repair true Julia numerical bugs.**
+   For each confirmed mismatch, read the CUDA source as the spec, compare the
+   Julia implementation, and fix indexing, type width, launch geometry,
+   memory layout, tolerance, RNG, or algorithmic differences. Then run native
+   `make run`, `tools/verify_coverage.py`, and `tools/verify_numeric.py`.
+   Write a local checkpoint and commit one benchmark fix at a time.
+
+6. **Fix not-run rows.**
+   Split not-run rows by cause: CUDA build failure, CUDA run failure, Julia
+   run failure, and timeout. Do not mark numerical failure until the CUDA and
+   Julia pair runs. Repair Julia run failures first; record CUDA-reference
+   failures separately.
+
+7. **Resolve unverified rows.**
+   For `unverified|no_numeric_data`, add comparable checksums when CUDA
+   already exposes equivalent output, add artifact metadata when files are
+   generated, or leave the row explicitly documented as unverified. Do not
+   claim numerical correctness without comparable evidence.
+
+8. **Use multi-agent batches.**
+   Assign workers disjoint chunks by category: verifier false-positive
+   cleanup, artifact-comparison support, not-run repair, confirmed Julia bug
+   fixes, and metadata/checksum additions. Each worker writes local
+   checkpoints under `${STATE}/numeric_accuracy/fixes/<bench>/`. Each
+   committed source fix should be one benchmark per commit and must not stage
+   `.porting-state/`.
+
+9. **Regenerate the final report.**
+   After each correction batch, rerun:
+   ```
+   python3 tools/verify_numeric.py \
+     --bench-list ${STATE}/numeric_accuracy/julia_verified_ok.txt
+   python3 tools/verify_numeric.py --summary
+   ```
+   Update `JULIA_CORRECTNESS_CHECK.md` and
+   `${STATE}/logs/numeric_accuracy_summary_YYYY-MM-DD.md`. The target is to
+   maximize `pass|native_pass_trusted`, `pass|numeric_stdout`, and
+   artifact-pass rows, minimize true mismatches, and explicitly document
+   unavoidable unverified cases.
+
+Record final numerical-correction status in `${STATE}/numeric_accuracy.db` and
+write a concise checkpoint under
+`${STATE}/logs/numeric_accuracy_summary_YYYY-MM-DD.md` with counts for:
+native verifier trusted, numeric stdout matched, artifact matched,
+numeric mismatch, missing inputs, external dependency, and not yet
+classified.
+
+---
+
+## 12. What NOT to do
 
 * Do not open ports for target languages other than Julia during this pass.
 * Do not port benchmarks the user hasn't asked for — if the CUDA source

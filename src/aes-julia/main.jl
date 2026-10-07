@@ -63,6 +63,8 @@ function main()
     W, H = 512, 512
     N = W * H
     println("Image width and height: $W $H")
+    println("Executing kernel for $iterations iterations")
+    println("-------------------------------------------")
 
     s = UInt64(20260721)
     inp = zeros(UInt8, N)

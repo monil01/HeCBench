@@ -96,6 +96,9 @@ function parse_args()
     iter = MAX_ITER
     thresh = THRESHOLD
     divisor = 2
+    if length(ARGS) == 2 && !startswith(ARGS[1], "-") && !startswith(ARGS[2], "-")
+        return parse(Int, ARGS[1]), parse(Int, ARGS[2]), thresh, divisor
+    end
     i = 1
     while i <= length(ARGS)
         if ARGS[i] == "-n"

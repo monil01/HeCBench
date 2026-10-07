@@ -26,7 +26,7 @@ CFLAGS := $(EXTRA_CFLAGS) -std=c++17 -Xcompiler -Wall -arch=$(ARCH) \
           -Ddfloat=float -Ddlong=int 
 
 # Linker Flags
-LDFLAGS = BlasLapack/libBlasLapack.a -lgfortran
+LDFLAGS = -L/opt/nvidia/hpc_sdk/Linux_x86_64/26.3/compilers/lib -llapack -lblas
 
 # Debug Flags
 ifeq ($(DEBUG),yes)
@@ -43,7 +43,7 @@ endif
 # Targets to Build
 #===============================================================================
 
-$(program): $(obj) BlasLapack/libBlasLapack.a 
+$(program): $(obj)
 	$(CC) $(CFLAGS) $+ -o $@ $(LDFLAGS)
 
 main.o : main.cu axhelmKernel.cpp axhelmReference.cpp
@@ -52,11 +52,7 @@ main.o : main.cu axhelmKernel.cpp axhelmReference.cpp
 meshBasis.o : meshBasis.cpp meshBasis.hpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
-BlasLapack/libBlasLapack.a: 
-	cd BlasLapack && make -j8 && cd ..
-
 clean:
-	cd BlasLapack && make clean && cd ..
 	rm -rf $(program) $(obj)
 
 # run one- and three-dimensional kernels
