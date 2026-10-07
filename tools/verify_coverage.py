@@ -73,7 +73,7 @@ def run_binary(path: Path, args: list[str], timeout: int = 300,
     """
     if model in _MAKE_RUN_MODELS and model != "rust":
         # triton, julia — Makefile has the interpreter + args
-        cmd = ["make", "run"]
+        cmd = ["make", "-s", "run"]
         if args:
             # Override args via LAUNCHER-style pass-through? Most Makefiles hard-
             # code args in the `run:` target. To respect --args, prefer running
@@ -103,6 +103,14 @@ def run_binary(path: Path, args: list[str], timeout: int = 300,
 
     binary = path / "main"
     if not binary.exists():
+        if not args and (path / "Makefile").exists():
+            try:
+                r = subprocess.run(["make", "-s", "run"], cwd=path, env=ENV,
+                                   capture_output=True, text=True,
+                                   timeout=timeout)
+                return (r.returncode, r.stdout, r.stderr)
+            except subprocess.TimeoutExpired:
+                return (-2, "", f"timeout after {timeout}s")
         return (-1, "", f"binary not found: {binary}")
     try:
         r = subprocess.run([str(binary), *args], cwd=path, env=ENV,

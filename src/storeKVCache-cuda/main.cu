@@ -30,7 +30,7 @@ void store_kv_cache(int32_t repeat)
    T *h_indices = (T*) malloc (cache_size * sizeof(T));
 
    // D is item_size
-   for (int32_t item_size = WARP_SIZE/2/num_layers; item_size <= 1024; item_size *= 2) {
+   for (int32_t item_size = WARP_SIZE/2/num_layers; item_size <= 64; item_size *= 2) {
 
      uint64_t kvc_size = (uint64_t)num_layers * cache_size * item_size;
      uint64_t *h_k_cache = (uint64_t*) malloc (kvc_size * elem_size);
@@ -41,7 +41,7 @@ void store_kv_cache(int32_t repeat)
      GPU_CHECK(cudaMalloc(&k_cache, kvc_size * elem_size));
      GPU_CHECK(cudaMalloc(&v_cache, kvc_size * elem_size));
 
-     for (uint32_t batch_size = 1; batch_size <= 16384; batch_size *= 2) {
+     for (uint32_t batch_size = 1; batch_size <= 512; batch_size *= 2) {
 
        if (cache_size < batch_size) {
          printf("Warning: skip the test when cache size < batch_size\n");

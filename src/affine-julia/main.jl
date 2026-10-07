@@ -123,6 +123,12 @@ function main()
         return 1
     end
     input_path = ARGS[1]
+    if !isfile(input_path)
+        alt = joinpath(@__DIR__, "..", "affine-cuda", input_path)
+        if isfile(alt)
+            input_path = alt
+        end
+    end
     output_path = ARGS[2]
     iterations = parse(Int, ARGS[3])
 

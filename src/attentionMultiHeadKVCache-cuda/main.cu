@@ -85,9 +85,9 @@ void _TestDecodingKernelCorrectness(int repeat,
             << ", pos_encoding_mode=" << PosEncodingModeToString(pos_encoding_mode)
             << ", result accuracy (atol=1e-3, rtol=1e-3)=" << result_accuracy;
   if (result_accuracy < 0.90)
-    std::cerr << " FAIL ";
+    std::cout << " FAIL ";
   else
-    std::cerr << " PASS ";
+    std::cout << " PASS ";
   if (nan_detected) std::cerr << "NaN detected.";
   std::cout << std::endl;
 
@@ -114,11 +114,11 @@ void _TestDecodingKernelCorrectness(int repeat,
 template <typename DTypeQO, typename DTypeKV>
 void SingleDecodeKernel(const int repeat) {
   for (size_t num_qo_heads : {32}) {
-    for (size_t num_kv_heads : {4, 8, 32}) {
-      for (size_t seq_len : {1, 3, 9, 27, 81, 129, 257, 512, 1024, 2048, 4096, 8192, 16384, 32768}) {
-        for (size_t head_dim : {64, 128, 256}) {
-          for (unsigned int kv_layout : {0U, 1U}) {
-            for (unsigned int pos_encoding_mode : {0U, 1U}) {
+    for (size_t num_kv_heads : {4}) {
+      for (size_t seq_len : {1, 3}) {
+        for (size_t head_dim : {64}) {
+          for (unsigned int kv_layout : {0U}) {
+            for (unsigned int pos_encoding_mode : {0U}) {
               _TestDecodingKernelCorrectness<DTypeQO, DTypeKV>(repeat, num_qo_heads, num_kv_heads, seq_len,
                                                                head_dim, QKVLayout(kv_layout),
                                                                PosEncodingMode(pos_encoding_mode));

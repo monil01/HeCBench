@@ -127,6 +127,7 @@ int main(int argc, char **argv){
     maxDiff = (maxDiff<diff) ? diff:maxDiff;
   }
   std::cout << "Correctness check: maxError = " << maxDiff << "\n";
+  std::cout << (maxDiff < 1e-3 ? "PASS" : "FAIL") << "\n";
   free(ggeo);
   free(q);
   free(Aq);
