@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < NUM_BLOCKS * 2; i++) {
     timer[i] = 0;
   }
+  constexpr float expectedReduction = 0.0f;
 
   iris::DMem mem_input(input, sizeof(input));
   iris::DMem mem_output(output, sizeof(output));
@@ -47,10 +48,10 @@ int main(int argc, char** argv) {
 
   int errors = 0;
   for (int i = 0; i < NUM_BLOCKS; i++) {
-    if (output[i] != 0.0f) {
+    if (output[i] != expectedReduction) {
       errors++;
       if (errors < 5) {
-        std::fprintf(stderr, "output[%d] = %f, expected 0.000000\n", i, output[i]);
+        std::fprintf(stderr, "output[%d] = %f, expected %f\n", i, output[i], expectedReduction);
       }
     }
   }
