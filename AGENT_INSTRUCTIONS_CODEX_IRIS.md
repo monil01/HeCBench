@@ -7,7 +7,9 @@
 >
 > Do not create, repair, or extend Julia, Serial, Triton, Mojo, Rust, SYCL,
 > OpenMP, or native HIP ports while following this file unless the user
-> explicitly changes the scope.
+> explicitly changes the scope. Native HIP is used only as the local
+> correctness/performance baseline when this machine has AMD GPUs but no CUDA
+> GPU/toolchain.
 
 This document is the run-book for the next Codex-driven agent that starts the
 HeCBench IRIS porting effort. Read it end-to-end before translating a
@@ -55,8 +57,8 @@ Operational rules:
 
 ## 0. Current scope
 
-Current pass: **bootstrap the IRIS workflow with exactly three CUDA-baseline
-benchmarks**.
+Current pass: **bootstrap the IRIS workflow with exactly three CUDA-source
+benchmarks**, validating against native HIP baselines on AMD machines.
 
 Initial recommended benchmarks:
 
@@ -72,7 +74,8 @@ single-node CUDA benchmark only after documenting the reason.
 
 The full objective after the bootstrap pass is to translate every CUDA
 benchmark that can be represented in IRIS `dmem` form, using the CUDA
-implementation as the numerical and behavioral baseline.
+implementation as the source of semantics and using the native HIP sibling as
+the local numerical and behavioral baseline whenever `src/<bench>-hip/` exists.
 
 ## 1. Goal
 
@@ -81,17 +84,21 @@ For each selected `src/<bench>-cuda/`, create a working
 
 * uses the IRIS programming model with `dmem`/`iris::DMem` only;
 * launches IRIS tasks against HIP kernels on AMD GPUs with `IRIS_ARCHS=HIP`;
-* preserves CUDA baseline inputs, outputs, argument semantics, and correctness
+* preserves CUDA-source inputs, outputs, argument semantics, and correctness
   checks;
-* records compile time, runtime, and numerical accuracy against the CUDA
-  baseline;
+* records compile time, runtime, and numerical accuracy against the native HIP
+  baseline on AMD systems without a CUDA GPU/toolchain;
 * can also carry CUDA kernel source (`kernel.cu`) for IRIS where practical,
   while AMD validation always uses the HIP backend;
 * writes a local manifest, checkpoint, and git commit before the agent moves on.
 
-CUDA is the reference. IRIS ports are not considered correct just because they
-run. They must match CUDA-native PASS/FAIL verdicts or benchmark-specific
-numeric/artifact checks.
+CUDA source is the semantic reference, but local verification on this machine
+must compare against native HIP, not native CUDA. IRIS ports are not considered
+correct just because they run. They must match native HIP PASS/FAIL verdicts or
+benchmark-specific numeric/artifact checks when a `src/<bench>-hip/` baseline
+exists. If no HIP sibling exists, preserve the CUDA-derived correctness logic
+inside the IRIS port and clearly record that the external native baseline is
+unavailable.
 
 ## 2. State directory
 
@@ -108,7 +115,8 @@ mkdir -p "$STATE"/{logs,porting_logs,iris}
 * `${STATE}/iris/iris.txt` — existing IRIS benchmark names.
 * `${STATE}/iris/iris_missing.txt` — CUDA benchmarks without an IRIS sibling.
 * `${STATE}/iris/iris_deferred.txt` — blocked/out-of-scope benchmarks.
-* `${STATE}/logs/<bench>-iris-*.log` — build/run/verify output.
+* `${STATE}/logs/<bench>-hip-*.log` — native HIP baseline build/run output.
+* `${STATE}/logs/<bench>-iris-*.log` — IRIS build/run/verify output.
 * `${STATE}/porting_logs/<bench>-iris/manifest.json` — per-port result
   metadata.
 * `${STATE}/porting_logs/<bench>-iris/context_checkpoint_NN.md` — local
@@ -194,7 +202,8 @@ int main(int argc, char** argv) {
   iris::Platform platform;
   platform.init(&argc, &argv, 1);
 
-  // Allocate and initialize host arrays with the same data as CUDA baseline.
+  // Allocate and initialize host arrays with the same data as the CUDA source
+  // and native HIP baseline.
   iris::DMem mem_in(input_ptr, bytes);
   iris::DMem mem_out(output_ptr, bytes);
 
@@ -251,7 +260,7 @@ errors and the fixes that resolved them.
 
 Loop:
 
-1. **Snapshot CUDA baseline.**
+1. **Snapshot source and native baseline.**
    Copy the CUDA source files that guided the translation into:
 
    ```text
@@ -259,7 +268,14 @@ Loop:
    ```
 
    Include `main.cu`, local headers, Makefiles, and any source file containing
-   kernels or correctness checks. Also record the exact git commit hash.
+   kernels or correctness checks. If `src/<bench>-hip/` exists, also snapshot
+   the HIP baseline files under:
+
+   ```text
+   ${STATE}/porting_logs/<bench>-iris/hip_baseline/
+   ```
+
+   Also record the exact git commit hash.
 
 2. **Generate attempt `NN`.**
    Before building, copy the generated IRIS files into:
@@ -274,16 +290,22 @@ Loop:
    running the compiler.
 
 3. **Build and run attempt `NN`.**
-   Capture complete stdout/stderr for CUDA baseline build/run, IRIS build,
-   IRIS HIP run, and numerical verification under the same attempt directory:
+   Capture complete stdout/stderr for native HIP baseline build/run, IRIS
+   build, IRIS HIP run, and numerical verification under the same attempt
+   directory:
 
    ```text
-   attempt_NN/logs/cuda_build.log
-   attempt_NN/logs/cuda_run.log
+   attempt_NN/logs/hip_build.log
+   attempt_NN/logs/hip_run.log
    attempt_NN/logs/iris_build.log
    attempt_NN/logs/iris_run.log
    attempt_NN/logs/verify.log
    ```
+
+   Do not use native CUDA build/run as the comparison baseline on AMD-only
+   machines. If a HIP sibling is missing, record that explicitly and use
+   CUDA-derived in-program reference checks only as documented fallback
+   evidence.
 
 4. **Classify the failure or pass.**
    If the attempt fails, write:
@@ -387,13 +409,21 @@ Record `blocked: no-hip-runtime` or `blocked: no-amd-gpu` in the manifest.
 
 For each benchmark:
 
-1. Build and run CUDA baseline:
+1. Build and run the native HIP baseline when available:
 
    ```bash
-   make -C src/<bench>-cuda clean
-   /usr/bin/time -f "compile_seconds %e" make -C src/<bench>-cuda
-   /usr/bin/time -f "runtime_seconds %e" make -C src/<bench>-cuda run
+   make -C src/<bench>-hip clean
+   /usr/bin/time -f "compile_seconds %e" make -C src/<bench>-hip
+   /usr/bin/time -f "runtime_seconds %e" make -C src/<bench>-hip run
    ```
+
+   This machine does not have a CUDA GPU/toolchain, so do not spend effort
+   trying to build native CUDA for the comparison path. Native CUDA may be
+   syntax-checked only when explicitly useful and available, but it is not the
+   local correctness baseline. If `src/<bench>-hip/` is missing, record
+   `blocked: no-native-hip-baseline` for the external baseline and use the
+   benchmark's CUDA-derived host/reference correctness logic as fallback
+   evidence.
 
 2. Build and run IRIS HIP:
 
@@ -403,17 +433,20 @@ For each benchmark:
    IRIS_ARCHS=HIP /usr/bin/time -f "runtime_seconds %e" make -C src/<bench>-iris run
    ```
 
-3. Compare CUDA and IRIS output.
+3. Compare native HIP and IRIS output.
 
-   Prefer a native `PASS`/`FAIL` verdict if the CUDA benchmark already emits
-   one. Otherwise add benchmark-specific numeric summaries that both CUDA and
-   IRIS print, or compare output artifacts in isolated run directories.
+   Prefer a native `PASS`/`FAIL` verdict if the HIP benchmark already emits
+   one. Otherwise add benchmark-specific numeric summaries that both HIP and
+   IRIS print, or compare output artifacts in isolated run directories. If no
+   HIP sibling exists, compare IRIS against the same deterministic reference
+   calculation that the CUDA source uses and mark the native HIP baseline as
+   unavailable in the manifest/checkpoint.
 
 4. Record all commands and decisive output under:
 
    ```text
-   ${STATE}/logs/<bench>-cuda-build.log
-   ${STATE}/logs/<bench>-cuda-run.log
+   ${STATE}/logs/<bench>-hip-build.log
+   ${STATE}/logs/<bench>-hip-run.log
    ${STATE}/logs/<bench>-iris-build.log
    ${STATE}/logs/<bench>-iris-run.log
    ${STATE}/logs/<bench>-iris-verify.log
@@ -516,27 +549,31 @@ secondary observed risks. The next attempt can expose and log the next failure.
 
 Accuracy standard:
 
-* CUDA is the reference model.
-* If CUDA prints `PASS`, IRIS must print `PASS` or match the same underlying
-  check.
-* If CUDA prints numeric summaries, IRIS must match them within documented
+* CUDA source is the semantic reference; native HIP is the local executable
+  baseline on this AMD machine.
+* If native HIP prints `PASS`, IRIS must print `PASS` or match the same
+  underlying check.
+* If native HIP prints numeric summaries, IRIS must match them within documented
   `rtol`/`atol`.
-* If the benchmark writes files, run CUDA and IRIS in separate temporary
+* If the benchmark writes files, run HIP and IRIS in separate temporary
   directories and compare the generated artifacts.
+* If no native HIP sibling exists, preserve and run the CUDA-derived reference
+  check inside IRIS, but classify the external native comparison as
+  `blocked: no-native-hip-baseline`.
 * If no comparable numeric evidence exists, classify the port as
   `unverified|no_numeric_data`; do not call it correct.
 
 For each bootstrap benchmark, add or update `numeric_check:` metadata in
 `benchmarks.yaml` only when it is needed and when the same rule applies to
-CUDA and IRIS. Do not invent an IRIS-only correctness criterion.
+HIP and IRIS. Do not invent an IRIS-only correctness criterion.
 
 ## 12. Performance and timing
 
 Record three timing dimensions separately:
 
-* `cuda_compile_seconds`
+* `hip_compile_seconds`
 * `iris_compile_seconds`
-* `cuda_runtime_seconds`
+* `hip_runtime_seconds`
 * `iris_runtime_seconds`
 * optional: kernel-only timing printed by each benchmark, if both models expose
   comparable values.
@@ -560,6 +597,7 @@ Shape:
   "target": "iris",
   "driver": "codex",
   "source_baseline": "src/<bench>-cuda",
+  "native_baseline": "src/<bench>-hip",
   "port_dir": "src/<bench>-iris",
   "memory_model": "dmem",
   "runtime_backend": "HIP",
@@ -567,14 +605,15 @@ Shape:
   "kernel_files": ["kernel.hip.cpp", "kernel.cu"],
   "status": "ok|build_fail|run_fail|numeric_fail|unverified|deferred",
   "accuracy_method": "native_pass|numeric_stdout|artifact|none",
-  "cuda_compile_seconds": null,
+  "hip_compile_seconds": null,
   "iris_compile_seconds": null,
-  "cuda_runtime_seconds": null,
+  "hip_runtime_seconds": null,
   "iris_runtime_seconds": null,
   "attempt_count": 0,
   "passing_attempt": null,
   "attempts_dir": "${STATE}/porting_logs/<bench>-iris/attempts",
   "source_baseline_snapshot": "${STATE}/porting_logs/<bench>-iris/source_baseline",
+  "hip_baseline_snapshot": "${STATE}/porting_logs/<bench>-iris/hip_baseline",
   "final_correct_snapshot": "${STATE}/porting_logs/<bench>-iris/final_correct",
   "error_corpus": "${STATE}/iris/error_corpus.jsonl",
   "commands": [],
@@ -598,7 +637,8 @@ Include:
 
 * benchmark name and commit hash if committed;
 * files created or changed;
-* CUDA baseline command/result;
+* native HIP baseline command/result, or explicit `no-native-hip-baseline`
+  status if no HIP sibling exists;
 * IRIS build command/result;
 * `IRIS_ARCHS=HIP` run command/result;
 * numeric verification method and result;
@@ -612,12 +652,13 @@ Include:
 
 Use these tags in manifests and checkpoints:
 
-* `B1` — missing IRIS/HIP/CUDA toolchain or wrong environment.
+* `B1` — missing IRIS/HIP toolchain, native HIP baseline, AMD GPU, or wrong
+  environment.
 * `B2` — IRIS host compile error.
 * `B3` — HIP kernel compile/code-object error.
 * `R1` — IRIS runtime cannot find the HIP backend or kernel symbol.
 * `R2` — task launch, memory, or flush failure.
-* `N1` — native PASS/FAIL mismatch against CUDA.
+* `N1` — native PASS/FAIL mismatch against HIP baseline.
 * `N2` — numeric stdout mismatch.
 * `N3` — artifact mismatch.
 * `N4` — no comparable numeric evidence.
@@ -654,7 +695,8 @@ For each:
    cleanly.
 7. Add a Makefile with `IRIS_ARCHS=HIP` in the `run` target.
 8. Snapshot attempt 1 under `attempts/attempt_01/generated/`.
-9. Build and run CUDA baseline.
+9. Build and run native HIP baseline, or record `no-native-hip-baseline` if
+   `src/<bench>-hip/` does not exist.
 10. Build and run IRIS with `IRIS_ARCHS=HIP`.
 11. Compare outputs numerically.
 12. If build/run/verification fails, write `attempt_01/error.md`,
@@ -680,7 +722,8 @@ Only after the bootstrap pass:
 * add `iris` support to `tools/verify_coverage.py` and `tools/perf_sweep.py`;
 * add a dedicated IRIS numeric verifier if the existing numeric verifier is not
   model-agnostic;
-* regenerate the full CUDA-vs-IRIS worklist;
+* regenerate the full CUDA-source-vs-IRIS worklist and prefer benchmarks with
+  native HIP siblings for executable comparison;
 * rank benchmarks by simple, single-file CUDA sources first;
 * defer benchmarks that require vendor libraries, unsupported CUDA runtime
   APIs, missing input datasets, or device features that IRIS/HIP cannot expose
@@ -716,9 +759,12 @@ When parallel work is allowed:
 
 * Do not use native HIP allocation/copy/launch as the host programming model
   and call it an IRIS port.
+* Do not compare against native CUDA on this AMD-only machine when a native HIP
+  baseline exists.
 * Do not rely on OpenMP/CPU fallback for the pass result.
-* Do not modify CUDA baseline behavior unless the same change is required to
-  expose a comparable deterministic correctness summary and is documented.
+* Do not modify CUDA-source or native HIP baseline behavior unless the same
+  change is required to expose a comparable deterministic correctness summary
+  and is documented.
 * Do not commit generated device binaries or benchmark output artifacts.
 * Do not skip numerical comparison because stdout "looks similar".
 * Do not move to another benchmark in the same worker before the current one
