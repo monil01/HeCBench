@@ -1,33 +1,23 @@
 IRIS_ROOT ?= /tmp/iris
-IRIS_BUILD ?= $(IRIS_ROOT)/build
 CXX ?= g++
 HIPCC ?= hipcc
-OPTIMIZE ?= yes
-LAUNCHER ?=
-RUN_ARGS ?= 1024 32 128 1000
+CXXFLAGS ?= -O3 -std=c++17 -I$(IRIS_ROOT)/include
+LDFLAGS ?= -L$(IRIS_ROOT)/build/src/runtime -Wl,-rpath,$(IRIS_ROOT)/build/src/runtime -liris
 
-CXXFLAGS := -std=c++17 -I$(IRIS_ROOT)/include -I$(IRIS_BUILD)/include -Wall
-HIPFLAGS :=
-LDFLAGS := -L$(IRIS_BUILD)/src/runtime -Wl,-rpath,$(IRIS_BUILD)/src/runtime -liris -ldl -lpthread
-
-ifeq ($(OPTIMIZE),yes)
-  CXXFLAGS += -O3
-  HIPFLAGS += -O3
-endif
-
+.PHONY: all run clean
 all: main kernel.hip
 
-main: main.cpp Makefile
-	$(CXX) $(CXXFLAGS) -o $@ main.cpp $(LDFLAGS)
+main: main.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
-kernel.hip: kernel.hip.cpp Makefile
-	$(HIPCC) $(HIPFLAGS) --genco -o $@ kernel.hip.cpp
-
-kernel.ptx: kernel.cu Makefile
-	nvcc -ptx -o $@ kernel.cu
+kernel.hip: kernel.hip.cpp
+	$(HIPCC) --genco -o $@ $<
 
 run: all
-	IRIS_ARCHS=HIP $(LAUNCHER) ./main $(RUN_ARGS)
+	IRIS_ARCHS=HIP ./main 1024 32 128 1000
+	IRIS_ARCHS=HIP ./main 1024 64 128 1000
+	IRIS_ARCHS=HIP ./main 1024 128 128 1000
+	IRIS_ARCHS=HIP ./main 1024 256 128 1000
 
 clean:
-	rm -f main kernel.hip kernel.ptx *.o
+	rm -f main kernel.hip

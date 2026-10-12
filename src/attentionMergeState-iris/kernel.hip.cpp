@@ -1,101 +1,88 @@
-#include <cmath>
 #include <hip/hip_bf16.h>
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <limits>
+#include <math.h>
+#include <stdint.h>
 
-inline __device__ float to_float(float u) { return u; }
-inline __device__ float to_float(half u) { return __half2float(u); }
-inline __device__ float to_float(__hip_bfloat16 u) { return __bfloat162float(u); }
-inline __device__ void from_float(float& d, float s) { d = s; }
-inline __device__ void from_float(half& d, float s) { d = __float2half(s); }
-inline __device__ void from_float(__hip_bfloat16& d, float s) { d = __float2bfloat16(s); }
+__device__ __forceinline__ float merge_lse(const float p, const float s,
+                                           float* p_scale, float* s_scale) {
+  const float pp = isinf(p) ? -INFINITY : p;
+  const float ss = isinf(s) ? -INFINITY : s;
+  const float m = fmaxf(pp, ss);
+  const float pe = expf(pp - m);
+  const float se = expf(ss - m);
+  const float sum = pe + se;
+  *p_scale = pe / sum;
+  *s_scale = se / sum;
+  return logf(sum) + m;
+}
 
-template <typename scalar_t, const uint32_t NUM_THREADS>
-__device__ void merge_impl(
-    scalar_t* __restrict__ output,
-    const scalar_t* __restrict__ prefix_output,
-    const scalar_t* __restrict__ suffix_output,
-    float* __restrict__ lse,
-    const float* __restrict__ prefix_lse,
-    const float* __restrict__ suffix_lse,
-    const uint64_t num_tokens,
-    const uint32_t num_heads,
-    const uint32_t head_size)
-{
-  using pack_128b_t = uint4;
-  const uint32_t pack_size = 16 / sizeof(scalar_t);
+template <typename T>
+__device__ __forceinline__ float as_float(T value) { return value; }
+template <>
+__device__ __forceinline__ float as_float<half>(half value) {
+  return __half2float(value);
+}
+template <>
+__device__ __forceinline__ float as_float<__hip_bfloat16>(__hip_bfloat16 value) {
+  return __bfloat162float(value);
+}
+template <typename T>
+__device__ __forceinline__ T from_float(float value) { return value; }
+template <>
+__device__ __forceinline__ half from_float<half>(float value) {
+  return __float2half(value);
+}
+template <>
+__device__ __forceinline__ __hip_bfloat16 from_float<__hip_bfloat16>(float value) {
+  return __float2bfloat16(value);
+}
+
+template <typename T>
+__device__ void merge_attn_states_impl(
+    T* output, const T* prefix_output, const T* suffix_output,
+    float* lse, const float* prefix_lse, const float* suffix_lse,
+    uint64_t num_tokens, uint32_t num_heads, uint32_t head_size) {
+  constexpr uint32_t kThreads = 128;
+  const uint32_t pack_size = 16 / sizeof(T);
   const uint32_t threads_per_head = head_size / pack_size;
-  const uint64_t global_idx = static_cast<uint64_t>(blockIdx.x) * NUM_THREADS + threadIdx.x;
-  const uint64_t token_head_threads = num_tokens * num_heads * threads_per_head;
-  if (global_idx >= token_head_threads) return;
+  const uint64_t global_idx = static_cast<uint64_t>(blockIdx.x) * kThreads + threadIdx.x;
+  const uint64_t total = num_tokens * num_heads * threads_per_head;
+  if (global_idx >= total) return;
 
-  const uint64_t token_head_idx = global_idx / threads_per_head;
+  const uint64_t token_head = global_idx / threads_per_head;
   const uint32_t pack_idx = global_idx % threads_per_head;
-  const uint64_t token_idx = token_head_idx / num_heads;
-  const uint32_t head_idx = token_head_idx % num_heads;
+  const uint64_t token = token_head / num_heads;
+  const uint32_t head = token_head % num_heads;
+  const uint64_t lse_idx = token * num_heads + head;
+  const uint64_t head_offset = lse_idx * head_size;
   const uint32_t pack_offset = pack_idx * pack_size;
-  const uint64_t lse_offset = token_idx * num_heads + head_idx;
-  const uint64_t head_offset = lse_offset * head_size;
 
-  const scalar_t* prefix_head_ptr = prefix_output + head_offset;
-  const scalar_t* suffix_head_ptr = suffix_output + head_offset;
-  scalar_t* output_head_ptr = output + head_offset;
-
-  float p_lse = prefix_lse[lse_offset];
-  float s_lse = suffix_lse[lse_offset];
-  p_lse = std::isinf(p_lse) ? -std::numeric_limits<float>::infinity() : p_lse;
-  s_lse = std::isinf(s_lse) ? -std::numeric_limits<float>::infinity() : s_lse;
-  const float max_lse = fmaxf(p_lse, s_lse);
-  p_lse = p_lse - max_lse;
-  s_lse = s_lse - max_lse;
-  const float p_se = expf(p_lse);
-  const float s_se = expf(s_lse);
-  const float out_se = p_se + s_se;
-  const float p_scale = p_se / out_se;
-  const float s_scale = s_se / out_se;
-
-  if (pack_offset < head_size) {
-    pack_128b_t p_out_pack = reinterpret_cast<const pack_128b_t*>(prefix_head_ptr)[pack_idx];
-    pack_128b_t s_out_pack = reinterpret_cast<const pack_128b_t*>(suffix_head_ptr)[pack_idx];
-    pack_128b_t o_out_pack;
-#pragma unroll
-    for (uint32_t i = 0; i < pack_size; ++i) {
-      const float p_out_f = to_float(reinterpret_cast<const scalar_t*>(&p_out_pack)[i]);
-      const float s_out_f = to_float(reinterpret_cast<const scalar_t*>(&s_out_pack)[i]);
-      from_float(reinterpret_cast<scalar_t*>(&o_out_pack)[i],
-                 p_out_f * p_scale + (s_out_f * s_scale));
-    }
-    reinterpret_cast<pack_128b_t*>(output_head_ptr)[pack_idx] = o_out_pack;
+  float p_scale, s_scale;
+  const float out_lse = merge_lse(prefix_lse[lse_idx], suffix_lse[lse_idx],
+                                  &p_scale, &s_scale);
+  for (uint32_t i = 0; i < pack_size && pack_offset + i < head_size; ++i) {
+    const uint64_t index = head_offset + pack_offset + i;
+    output[index] = from_float<T>(as_float(prefix_output[index]) * p_scale +
+                                  as_float(suffix_output[index]) * s_scale);
   }
-  if (pack_idx == 0) lse[lse_offset] = logf(out_se) + max_lse;
+  if (pack_idx == 0) lse[lse_idx] = out_lse;
 }
 
-extern "C" __global__ void merge_attn_states_float(
-    float* output, const float* prefix_output, const float* suffix_output,
-    float* lse, const float* prefix_lse, const float* suffix_lse,
-    const uint64_t num_tokens, const uint32_t num_heads, const uint32_t head_size)
-{
-  merge_impl<float, 128>(output, prefix_output, suffix_output, lse, prefix_lse,
-                         suffix_lse, num_tokens, num_heads, head_size);
+extern "C" __global__ void merge_attn_states_fp32(
+    float* o, const float* p, const float* s, float* l,
+    const float* pl, const float* sl, uint64_t n, uint32_t h, uint32_t d) {
+  merge_attn_states_impl<float>(o, p, s, l, pl, sl, n, h, d);
 }
 
-extern "C" __global__ void merge_attn_states_half(
-    half* output, const half* prefix_output, const half* suffix_output,
-    float* lse, const float* prefix_lse, const float* suffix_lse,
-    const uint64_t num_tokens, const uint32_t num_heads, const uint32_t head_size)
-{
-  merge_impl<half, 128>(output, prefix_output, suffix_output, lse, prefix_lse,
-                        suffix_lse, num_tokens, num_heads, head_size);
+extern "C" __global__ void merge_attn_states_fp16(
+    half* o, const half* p, const half* s, float* l,
+    const float* pl, const float* sl, uint64_t n, uint32_t h, uint32_t d) {
+  merge_attn_states_impl<half>(o, p, s, l, pl, sl, n, h, d);
 }
 
-extern "C" __global__ void merge_attn_states_bfloat16(
-    __hip_bfloat16* output, const __hip_bfloat16* prefix_output,
-    const __hip_bfloat16* suffix_output, float* lse, const float* prefix_lse,
-    const float* suffix_lse, const uint64_t num_tokens, const uint32_t num_heads,
-    const uint32_t head_size)
-{
-  merge_impl<__hip_bfloat16, 128>(output, prefix_output, suffix_output, lse,
-                                  prefix_lse, suffix_lse, num_tokens,
-                                  num_heads, head_size);
+extern "C" __global__ void merge_attn_states_bf16(
+    __hip_bfloat16* o, const __hip_bfloat16* p, const __hip_bfloat16* s, float* l,
+    const float* pl, const float* sl, uint64_t n, uint32_t h, uint32_t d) {
+  merge_attn_states_impl<__hip_bfloat16>(o, p, s, l, pl, sl, n, h, d);
 }
