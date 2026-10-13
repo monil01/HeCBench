@@ -1,0 +1,21 @@
+#define B ((int)32)
+#define T ((int)32)
+#define THREADS ((int)B*T)
+#define CLIMBINGS 150000
+#define ALPHABET 26
+#define totalBigrams ((int)ALPHABET*ALPHABET)
+#define CAP ((float)999999.0)
+
+#define ENCRYPTED_T "tteohtedanisroudesereguwocubsoitoabbofeiaiutsdheeisatsarsturesuaastniersrotnesctrctxdiwmhcusyenorndasmhaipnnptmaeecspegdeislwoheoiymreeotbsspiatoanihrelhwctftrhpuunhoianunreetrioettatlsnehtbaecpvgtltcirottonesnobeeeireaymrtohaawnwtesssvassirsrhabapnsynntitsittchitoosbtelmlaouitrehhwfeiaandeitciegfreoridhdcsheucrnoihdeoswobaceeaorgndlstigeearsotoetduedininttpedststntefoeaheoesuetvmmiorftuuhsurof"
+#define ENCRYPTEDLEN ((int)sizeof(ENCRYPTED_T)-1)
+
+#define DECRYPTED_T "thedistinctionbetweentherouteciphertranspositionandthesubstitutioncipherwherewholewordsaresubstitutedforlettersoftheoriginaltextmustbemadeonthebasisofthewordsactuallyuseditisbettertoconsidersuchamessageasaroutecipherwhenthewordsusedappeartohavesomeconsecutivemeaningbearingonthesituationathandasubstitutioncipherofthisvarietywouldonlybeusedfortransmissionofashortmessageofgreatimportanceandsecrecy"
+
+#define KEY_LENGTH 30
+#define SECTION_CONSTANT ENCRYPTEDLEN/KEY_LENGTH
+
+#define HEUR_THRESHOLD_OP1 50
+#define HEUR_THRESHOLD_OP2 70
+
+#define OP1_HOP 4
+#define OP2_HOP 2
