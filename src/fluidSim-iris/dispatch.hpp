@@ -1,0 +1,2 @@
+#pragma once
+inline void dispatch_lbm(dim3 grid, dim3 block, const double *__restrict__ if0, double *__restrict__ of0, const double4 *__restrict__ if1234, double4 *__restrict__ of1234, const double4 *__restrict__ if5678, double4 *__restrict__ of5678, const bool *__restrict__ type, const double8 dirX, const double8 dirY, const double *__restrict__ weight, double omega) { iris_launch("lbm", grid, block, if0, of0, if1234, of1234, if5678, of5678, type, dirX, dirY, weight, omega); }
