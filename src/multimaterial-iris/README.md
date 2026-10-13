@@ -1,0 +1,6 @@
+Multi-material IRIS dmem port
+============================
+
+Preserves all source variants: unfused CSR multimat, fused CSR multimat_F, fused linked-list multimat_FL. Full dense CPU routines remain the native reference. Kernel algorithms, 32x4 workgroups, int dimensions, double fields, file/random initialization, defaults and six Makefile run commands are retained. Random initialization explicitly seeds srand(0) in the original initializer after IRIS init. Dmem host copies call update/flush; partial writes use rw. Variant kernel names are suffixed in one code object.
+
+Validation uses existing CLI 32 32 0.3 0.05 0.05 for all three variants with identical native input. All source checks and every output density/pressure/neighborhood density value (pure and mixed cells) are compared. Native snapshot adapter adds only the same optional HECBENCH_DUMP binary capture, leaving algorithm/defaults and native siblings unchanged. Source neighborhood self-distance is zero, so paired infinities/nonfinite classes are compared explicitly rather than treating NaNs as finite successes. Finite atol=rtol=1e-12. Default file mode requires volfrac.dat (archive in CUDA sibling); use random CLI as in source Makefile when dataset is not extracted.
