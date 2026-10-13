@@ -1,0 +1,87 @@
+template<typename divisor_type>
+__device__ void throughput_test(
+    divisor_type d1,
+    divisor_type d2,
+    divisor_type d3,
+    int dummy,
+    int * buf)
+{
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int x1 = x / d1;
+  int x2 = x / d2;
+  int x3 = x / d3;
+  int aggregate = x1 + x2 + x3;  
+  if (aggregate && dummy) buf[0] = aggregate;
+}
+
+template<typename divisor_type>
+__device__ void latency_test(
+    divisor_type d1,
+    divisor_type d2,
+    divisor_type d3,
+    divisor_type d4,
+    divisor_type d5,
+    divisor_type d6,
+    divisor_type d7,
+    divisor_type d8,
+    divisor_type d9,
+    divisor_type d10,
+    int dummy,
+    int * buf)
+{
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  x /= d1;
+  x /= d2;
+  x /= d3;
+  x /= d4;
+  x /= d5;
+  x /= d6;
+  x /= d7;
+  x /= d8;
+  x /= d9;
+  x /= d10;
+  if (x && dummy) buf[0] = x;
+}
+
+extern "C" __global__ void check(int d, int * results)
+{
+  int_fastdiv divisor(d);
+  int divident = blockIdx.x * blockDim.x + threadIdx.x;
+
+  int quotient = divident / (int)divisor;
+  int fast_quotient = divident / divisor;
+
+  if (quotient != fast_quotient)
+  {
+    int error_id = atomicAdd(&results[0], 1);
+    if (error_id == 0)
+    {
+      results[1] = divident;
+      results[2] = quotient;
+      results[3] = fast_quotient;
+    }
+  }
+
+  divident = -divident;
+  quotient = divident / (int)divisor;
+  fast_quotient = divident / divisor;
+
+  if (quotient != fast_quotient)
+  {
+    int error_id = atomicAdd(&results[0], 1);
+    if (error_id == 0)
+    {
+      results[1] = divident;
+      results[2] = quotient;
+      results[3] = fast_quotient;
+    }
+  }
+}
+
+extern "C" __global__ void throughput_plain(int d1, int d2, int d3, int dummy, int* buf) { throughput_test<int>(d1,d2,d3,dummy,buf); }
+
+extern "C" __global__ void latency_plain(int dummy, int* buf) { latency_test<int>(1,2,3,4,5,6,7,8,9,10,dummy,buf); }
+
+extern "C" __global__ void throughput_fast(int d1, int d2, int d3, int dummy, int* buf) { throughput_test<int_fastdiv>(d1,d2,d3,dummy,buf); }
+
+extern "C" __global__ void latency_fast(int dummy, int* buf) { latency_test<int_fastdiv>(1,2,3,4,5,6,7,8,9,10,dummy,buf); }
