@@ -1,0 +1,2 @@
+#pragma once
+inline void dispatch_toneMapping(dim3 grid, dim3 block, const float *__restrict__ const input, float *__restrict__ const output, const float averageLuminance, const float gamma, const float c, const float delta, const uint width, const uint numChannels, const uint height) { iris_launch("toneMapping", grid, block, input, output, averageLuminance, gamma, c, delta, width, numChannels, height); }
