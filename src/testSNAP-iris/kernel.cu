@@ -1,0 +1,10 @@
+#include <cuda_runtime.h>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include "snap.h"
+#include "utils_device.h"
+#include "kernels.h"
