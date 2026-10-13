@@ -1,0 +1,3 @@
+#pragma once
+inline void dispatch_k_findPeak(dim3 grid, dim3 block, const float *__restrict__ image, const size_t size, Peak *__restrict__ absPeak) { iris_launch("k_findPeak", grid, block, image, size, absPeak); }
+inline void dispatch_k_subtractPSF(dim3 grid, dim3 block, const float *__restrict__ d_psf, const int psfWidth, float *__restrict__ d_residual, const int residualWidth, const int startx, const int starty, const int stopx, const int stopy, const int diffx, const int diffy, const float absPeakVal, const float gain) { iris_launch("k_subtractPSF", grid, block, d_psf, psfWidth, d_residual, residualWidth, startx, starty, stopx, stopy, diffx, diffy, absPeakVal, gain); }
