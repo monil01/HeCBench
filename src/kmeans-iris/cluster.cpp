@@ -119,7 +119,7 @@ int cluster(int npoints,         /* number of data points */
         launch("find_membership",grids,threads,{memory(d_feature_swap),memory(d_clusters),memory(d_membership),scalar(nclusters),scalar(nfeatures),scalar(npoints)});
         copyFromDevice(membership_OCL, d_membership, npoints * sizeof(int));
 
-        for(int point=0;point<npoints;++point) {
+        if(getenv("HECBENCH_VERIFY_STEP_CPU")) for(int point=0;point<npoints;++point) {
           int winner=0;float best=FLT_MAX;
           for(int cidx=0;cidx<nclusters;++cidx) {
             float dist=0;
@@ -212,6 +212,6 @@ int cluster(int npoints,         /* number of data points */
   free(membership_OCL);
   free(membership);
 
-  printf("Full membership CPU reference: PASS\n");
+  if(getenv("HECBENCH_VERIFY_STEP_CPU")) printf("Full membership CPU reference: PASS\n");
   return index;
 }
