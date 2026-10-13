@@ -8,7 +8,8 @@ Usage:
 
 Design goals:
   - Local models on this box: cuda (nvcc), omp (nvc++ -mp=gpu), serial (g++)
-  - HIP and SYCL are recognized but marked SKIP (no toolchain here)
+  - HIP and IRIS use local Makefiles; IRIS execution is restricted to HIP
+  - SYCL is recognized but marked SKIP
   - Result comparison = canonicalized stdout diff (strip timings, keep PASS/FAIL
     and numeric outputs) with a numeric tolerance
 """
@@ -43,7 +44,7 @@ def build_cmd(model: str, path: Path) -> list[list[str]] | None:
             return [["make", "-f", "Makefile.nvc", "clean"],
                     ["make", "-f", "Makefile.nvc", f"SM={NVC_SM}"]]
         return [["make", "clean"], ["make"]]
-    if model == "serial":
+    if model in ("serial", "hip", "iris"):
         return [["make", "clean"], ["make"]]
     if model == "triton":
         # No compile step — main.py is source. `make main` is a no-op.
@@ -55,7 +56,7 @@ def build_cmd(model: str, path: Path) -> list[list[str]] | None:
         return [["make", "main"]]
     if model == "rust":
         return [["make", "clean"], ["make"]]  # `make` invokes `cargo build --release`
-    if model in ("hip", "sycl"):
+    if model == "sycl":
         return None  # deferred: no local toolchain (ROCm / oneAPI)
     if model == "mojo":
         return None  # deferred: Mojo 1.0.0b2 stdlib not accessible from plain scripts
@@ -71,6 +72,15 @@ def run_binary(path: Path, args: list[str], timeout: int = 300,
     invoke ./main directly with args. For interpreted models (triton/julia),
     delegate to `make run` since the Makefile knows the interpreter.
     """
+    if model == "iris":
+        run_env = dict(ENV, IRIS_ARCHS="HIP")
+        cmd = [str(path / "main"), *args] if args else ["make", "-s", "run"]
+        try:
+            r = subprocess.run(cmd, cwd=path, env=run_env, capture_output=True,
+                               text=True, timeout=timeout)
+            return (r.returncode, r.stdout, r.stderr)
+        except subprocess.TimeoutExpired:
+            return (-2, "", f"timeout after {timeout}s")
     if model in _MAKE_RUN_MODELS and model != "rust":
         # triton, julia — Makefile has the interpreter + args
         cmd = ["make", "-s", "run"]
@@ -183,7 +193,7 @@ def resolve_args(bench: str, per_dir: dict[str, Path], override: list[str] | Non
     args = parse_yaml_args(bench)
     if args:
         return args
-    for model in ("cuda", "omp", "serial"):
+    for model in ("hip", "cuda", "omp", "serial"):
         d = per_dir.get(model)
         if d:
             for mf in ("Makefile", "Makefile.nvc", "Makefile.aomp"):
@@ -275,7 +285,7 @@ def compare_outputs(outputs: dict[str, str]) -> tuple[bool, list[str]]:
 # --- main ----------------------------------------------------------------------
 def discover_models(bench: str) -> dict[str, Path]:
     out = {}
-    for m in ("cuda", "hip", "sycl", "omp", "serial", "triton", "julia", "rust", "mojo"):
+    for m in ("cuda", "hip", "iris", "sycl", "omp", "serial", "triton", "julia", "rust", "mojo"):
         p = SRC / f"{bench}-{m}"
         if p.is_dir():
             out[m] = p

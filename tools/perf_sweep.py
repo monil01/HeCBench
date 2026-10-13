@@ -10,7 +10,8 @@ For each (benchmark, model, input_size) triple:
 Output columns: bench, model, size_label, first_arg, wall_seconds,
                 exec_time_us, exit_code, notes.
 
-Only runs benchmarks/models we know work on this box. Skips HIP, SYCL, Mojo.
+HIP and IRIS can be selected with --models; IRIS runs use IRIS_ARCHS=HIP.
+The default sweep retains the original model selection.
 """
 from __future__ import annotations
 import argparse, csv, os, re, subprocess, sys, time
@@ -91,14 +92,14 @@ def build_cmd(model: str, path: Path):
             return [["make", "-f", "Makefile.nvc", "clean"],
                     ["make", "-f", "Makefile.nvc", f"SM={NVC_SM}"]]
         return [["make", "clean"], ["make"]]
-    if model == "serial":
+    if model in ("serial", "hip", "iris"):
         return [["make", "clean"], ["make"]]
     if model == "rust":
         return [["cargo", "build", "--release", "--quiet"]]
     return None  # triton, julia don't need pre-build
 
 def run_binary_cmd(model: str, path: Path, args: list[str]):
-    if model in ("cuda", "omp", "serial"):
+    if model in ("cuda", "hip", "iris", "omp", "serial"):
         return [str(path / "main"), *args]
     if model == "rust":
         # Discover binary name in target/release
@@ -156,8 +157,10 @@ def run_cell(bench: str, model: str, size: str, args: list[str], writer):
     if cmds:
         # Check if we've already built
         need_build = False
-        if model in ("cuda", "omp", "serial"):
+        if model in ("cuda", "hip", "iris", "omp", "serial"):
             need_build = not (path / "main").exists()
+            if model == "iris":
+                need_build = need_build or not (path / "kernel.hip").exists()
         elif model == "rust":
             d = path / "target" / "release"
             need_build = not d.is_dir() or not any(
@@ -184,7 +187,8 @@ def run_cell(bench: str, model: str, size: str, args: list[str], writer):
     to = timeout_for(model, size)
     t0 = time.time()
     try:
-        r = subprocess.run(cmd, cwd=path, env=ENV, capture_output=True,
+        run_env = dict(ENV, IRIS_ARCHS="HIP") if model == "iris" else ENV
+        r = subprocess.run(cmd, cwd=path, env=run_env, capture_output=True,
                            text=True, timeout=to)
         wall = time.time() - t0
         us = parse_time_us(r.stdout)
