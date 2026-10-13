@@ -1,0 +1,3 @@
+# Groupnorm IRIS DMem
+
+Original CUDA forward, vector forward and backward algorithms, CLI shapes and seed0 retained. HIP uses original sibling's device cooperative-groups XOR reduction/64-lane lowering; CUDA kernels keep original 32 lanes. Initialization precedes IRIS init, which reseeds rand. Gradient DMems are read/write for atomic accumulation. Full original CPU reference checks made finite-aware, no early truncation. Optional GROUPNORM_DUMP writes every forward output, dbias, dweight, dx before timing loops. Isolated native adapter only strengthens checks/adds identical dumps, not math/defaults. Both original Makefile shapes tested at CUDA repeat100 and native repeat1000.
