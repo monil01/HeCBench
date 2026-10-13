@@ -1,0 +1,3 @@
+#pragma once
+inline void dispatch_kernel1(dim3 grid, dim3 block, int*__restrict__ d_input_itemsets, const int*__restrict__ d_reference, const int offset_r, const int offset_c, const int max_cols, const int blk, const int penalty) { iris_launch("kernel1", grid, block, d_input_itemsets, d_reference, offset_r, offset_c, max_cols, blk, penalty); }
+inline void dispatch_kernel2(dim3 grid, dim3 block, int*__restrict__ d_input_itemsets, const int*__restrict__ d_reference, const int block_width, const int offset_r, const int offset_c, const int max_cols, const int blk, const int penalty) { iris_launch("kernel2", grid, block, d_input_itemsets, d_reference, block_width, offset_r, offset_c, max_cols, blk, penalty); }
