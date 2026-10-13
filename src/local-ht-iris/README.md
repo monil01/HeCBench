@@ -1,0 +1,6 @@
+Local assembly hash table IRIS dmem port
+=======================================
+
+Retains original sequence/read/quality input, local hash and walk algorithm, kmer controls, memory-based slice selection, result artifact and native HIP wave64 specialization. CUDA backend retains source wave32 kernels. Host POD layout is asserted identical to GPU hash structs. All device storage is iris::DMem; partial copies call update, outputs flush, and partial kernel writes use rw. Explicit scalar casts match uint32/int32/int64 kernel ABI, particularly max_walk_len (int64). HIP memory availability is queried read-only via runtime metadata; no native allocation, copy or kernel launch occurs in the host. AMD uses the same native HIP64 wave specialization and 64 threads per extension.
+
+Validation runs unchanged isolated native HIP sources against all four original test datasets (kmer21/33/55/77), compares complete sorted assembly artifacts between HIP, IRIS and checked-in expected results. No native siblings changed. The shell reference sorts artifact lines because row order is not part of its correctness criterion. Native and IRIS run timing per fixture captured under the GPU lock. Host defaults preserve source CLI; make run accepts RUN_ARGS and otherwise runs all four original fixtures with complete sorted artifact checks.
