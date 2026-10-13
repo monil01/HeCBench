@@ -1,0 +1,164 @@
+// Copyright (c) 2019-2020, NVIDIA CORPORATION.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <chrono>
+#include "iris_dmem.hpp"
+#include "reference.h"
+
+#define cudaCheck(err) iris_require(err)
+///////////////////////////////////////////////////////////////////////////////
+//                                SOSFILT                                    //
+///////////////////////////////////////////////////////////////////////////////
+#define MAX_THREADS 256
+#define THREADS 64
+
+template <typename T>
+void filtering (const int repeat,
+                const int n_signals, const int n_samples,
+                const int n_sections, const int zi_width)
+{
+  // the number of second-order sections must be less than max threads per block
+  assert(MAX_THREADS >= n_sections);
+
+  // The number of samples must be greater than or equal to the number of sections
+  assert(n_samples >= n_sections);
+
+  // randomize input data
+  srand(2);
+
+  dim3 blocksPerGrid (n_signals);
+  dim3 threadsPerBlock (THREADS);
+
+  // Second-order section digital filter
+  const int sos_size = n_sections * sos_width ;
+
+  T* sos = (T*) malloc (sizeof(T) * sos_size);
+  for (int i = 0; i < n_sections; i++)
+    for (int j = 0; j < sos_width; j++)
+      sos[i*sos_width+j] = (T)1 ; // for test
+
+  T* d_sos;
+  cudaCheck(iris_alloc((void**)&d_sos, sizeof(T) * sos_size));
+  cudaCheck(iris_copy(d_sos, sos, sizeof(T) * sos_size, IRISHostToDevice));
+
+  // initial  conditions
+  const int z_size = n_sections * n_signals * zi_width;
+  T* zi = (T*) malloc (sizeof(T) * z_size);
+  for (int i = 0; i < z_size; i++) zi[i] = (T)1; // for test
+
+  T* d_zi;
+  cudaCheck(iris_alloc((void**)&d_zi, sizeof(T) * z_size));
+  cudaCheck(iris_copy(d_zi, zi, sizeof(T) * z_size, IRISHostToDevice));
+
+  // input signals
+  const int x_size = n_signals * n_samples;
+  T* x = (T*) malloc (sizeof(T) * x_size);
+  T* x_ref = (T*) malloc (sizeof(T) * x_size);
+  for (int i = 0; i < n_signals; i++)
+    for (int j = 0; j < n_samples; j++)
+      x_ref[i*n_samples+j] = x[i*n_samples+j] = (T)std::sin(2*3.14*(i+1+j));
+
+  T* d_x;
+  cudaCheck(iris_alloc((void**)&d_x, sizeof(T) * x_size));
+  cudaCheck(iris_copy(d_x, x, sizeof(T) * x_size, IRISHostToDevice));
+
+  const int out_size = n_sections;
+  const int shared_mem = (out_size + z_size + sos_size) * sizeof(T);
+
+  // warmup and validate
+  for (int n = 0; n < 30; n++) {
+    iris_launch(std::is_same_v<T,float> ? "sosfilt_float" : "sosfilt_double", blocksPerGrid, threadsPerBlock, 
+      n_signals,
+      n_samples,
+      n_sections,
+      zi_width,
+      d_sos,
+      d_zi,
+      d_x);
+
+    reference<T>(
+        n_signals,
+        n_samples,
+        n_sections,
+        zi_width,
+        sos,
+        zi,
+        x_ref);
+  }
+
+  cudaCheck(iris_copy(x, d_x, sizeof(T) * x_size, IRISDeviceToHost));
+
+  bool ok = compare_results<T>(x_ref, x, n_signals * n_samples, 1e-4, 1e-4);
+  printf("%s\n", ok ? "PASS" : "FAIL");
+
+  cudaCheck(iris_sync());
+  auto start = std::chrono::steady_clock::now();
+
+  for (int n = 0; n < repeat; n++) {
+    iris_launch(std::is_same_v<T,float> ? "sosfilt_float" : "sosfilt_double", blocksPerGrid, threadsPerBlock, 
+      n_signals,
+      n_samples,
+      n_sections,
+      zi_width,
+      d_sos,
+      d_zi,
+      d_x);
+  }
+
+  cudaCheck(iris_sync());
+  auto end = std::chrono::steady_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  printf("Average kernel execution time %lf (s)\n", time * 1e-9 / repeat);
+
+  free(x);
+  free(x_ref);
+  free(sos);
+  free(zi);
+  cudaCheck(iris_free(d_x));
+  cudaCheck(iris_free(d_sos));
+  cudaCheck(iris_free(d_zi));
+}
+
+int main(int argc, char** argv)
+{
+  if (argc != 2)
+  {
+    printf("Usage: %s <repeat>\n", argv[0]);
+    return 1;
+  }
+  IRISSession session(&argc,&argv);
+  const int repeat = atoi(argv[1]);
+  const int numSections = THREADS;
+
+#ifdef DEBUG
+  const int numSignals = 2;
+  const int numSamples = THREADS+1;
+#else
+  // shared memory size depends on numSignals, so it may cause kernel launch failure
+  const int numSignals = 8;
+  const int numSamples = 1000000;
+#endif
+
+  const int zi_width = 2;
+
+  printf("Single-precision second-order-section filtering of digital signals\n");
+  filtering<float> (repeat, numSignals, numSamples, numSections, zi_width);
+
+  printf("Double-precision second-order-section filtering of digital signals\n");
+  filtering<double> (repeat, numSignals, numSamples, numSections, zi_width);
+  return 0;
+}
