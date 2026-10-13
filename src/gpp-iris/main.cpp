@@ -1,0 +1,248 @@
+#include <string.h>
+#include <chrono>
+#include <iris/iris.hpp>
+#include <stdexcept>
+
+#ifndef dataType
+#define dataType double
+#endif
+
+#include "CustomComplex.h"
+#include "utils.h"
+static void check(int rc) { if(rc != IRIS_SUCCESS) throw std::runtime_error("IRIS API failure"); }
+static int hip_device() {
+  int count=0; check(iris_device_count(&count));
+  for(int i=0;i<count;++i) { int backend=0,type=0; char name[256]={};
+    check(iris_device_info(i,iris_backend,&backend,nullptr));
+    check(iris_device_info(i,iris_type,&type,nullptr));
+    check(iris_device_info(i,iris_name,name,nullptr));
+    printf("IRIS device %d: %s backend=%d type=%d\n",i,name,backend,type);
+    if(backend==iris_hip && (type&iris_gpu)) return i;
+  }
+  throw std::runtime_error("no IRIS HIP GPU");
+}
+
+int main(int argc, char **argv) {
+
+  int number_bands = 0, nvband = 0, ncouls = 0, nodes_per_group = 0;
+  if (argc == 1) {
+    number_bands = 512;
+    nvband = 2;
+    ncouls = 512;
+    nodes_per_group = 20;
+  } else if (argc == 2) {
+    if (strcmp(argv[1], "benchmark") == 0) {
+      number_bands = 512;
+      nvband = 2;
+      ncouls = 32768;
+      nodes_per_group = 20;
+    } else if (strcmp(argv[1], "test") == 0) {
+      number_bands = 512;
+      nvband = 2;
+      ncouls = 512;
+      nodes_per_group = 20;
+    } else {
+      std::cout
+          << "Usage: ./main <test or benchmark>\n"
+          << "Problem unrecognized, use 'test' or 'benchmark'"
+          << std::endl;
+      exit(0);
+    }
+  } else if (argc == 5) {
+    number_bands = atoi(argv[1]);
+    nvband = atoi(argv[2]);
+    ncouls = atoi(argv[3]);
+    nodes_per_group = atoi(argv[4]);
+  } else {
+    std::cout << "The correct form of input is : " << std::endl;
+    std::cout << " ./main <number_bands> <number_valence_bands> "
+                 "<number_plane_waves> <nodes_per_mpi_group> "
+              << std::endl;
+    exit(0);
+  }
+  int ngpown = ncouls / nodes_per_group;
+
+  // Constants that will be used later
+  const dataType e_lk = 10;
+  const dataType dw = 1;
+  const dataType to1 = 1e-6;
+  const dataType e_n1kq = 6.0;
+
+  // Printing out the params passed.
+  std::cout << "Sizeof(CustomComplex<dataType> = "
+            << sizeof(CustomComplex<dataType>) << " bytes" << std::endl;
+  std::cout << "number_bands = " << number_bands << "\t nvband = " << nvband
+            << "\t ncouls = " << ncouls
+            << "\t nodes_per_group  = " << nodes_per_group
+            << "\t ngpown = " << ngpown << "\t nend = " << nend
+            << "\t nstart = " << nstart << std::endl;
+
+  CustomComplex<dataType> expr0(0.0, 0.0);
+  CustomComplex<dataType> expr(0.025, 0.025);
+  size_t memFootPrint = 0;
+
+  // Start the timer before the work begins.
+  auto start = std::chrono::steady_clock::now();
+
+  CustomComplex<dataType> *achtemp;
+  achtemp = (CustomComplex<dataType> *)safe_malloc(
+      achtemp_size * sizeof(CustomComplex<dataType>));
+
+  memFootPrint += achtemp_size * sizeof(CustomComplex<dataType>);
+
+  CustomComplex<dataType> *aqsmtemp, *aqsntemp;
+  aqsmtemp = (CustomComplex<dataType> *)safe_malloc(
+      aqsmtemp_size * sizeof(CustomComplex<dataType>));
+
+  aqsntemp = (CustomComplex<dataType> *)safe_malloc(
+      aqsntemp_size * sizeof(CustomComplex<dataType>));
+
+  memFootPrint += 2 * aqsmtemp_size * sizeof(CustomComplex<dataType>);
+
+  CustomComplex<dataType> *I_eps_array, *wtilde_array;
+  I_eps_array = (CustomComplex<dataType> *)safe_malloc(
+      I_eps_array_size * sizeof(CustomComplex<dataType>));
+
+  wtilde_array = (CustomComplex<dataType> *)safe_malloc(
+      I_eps_array_size * sizeof(CustomComplex<dataType>));
+
+  memFootPrint += 2 * I_eps_array_size * sizeof(CustomComplex<dataType>);
+
+  dataType *vcoul;
+  vcoul = (dataType *)safe_malloc(vcoul_size * sizeof(dataType));
+
+  memFootPrint += vcoul_size * sizeof(dataType);
+
+  int *inv_igp_index, *indinv;
+  inv_igp_index = (int *)safe_malloc(inv_igp_index_size * sizeof(int));
+  indinv = (int *)safe_malloc(indinv_size * sizeof(int));
+
+  // Real and imaginary parts of achtemp calculated separately
+  dataType *achtemp_re, *achtemp_im, *wx_array;
+  achtemp_re = (dataType *)safe_malloc(achtemp_re_size * sizeof(dataType));
+  achtemp_im = (dataType *)safe_malloc(achtemp_im_size * sizeof(dataType));
+  wx_array = (dataType *)safe_malloc(wx_array_size * sizeof(dataType));
+
+  memFootPrint += 3 * wx_array_size * sizeof(double);
+
+  // Memory footprint
+  std::cout << "Memory Foot Print = " << memFootPrint / pow(1024, 3) << " GBs"
+            << std::endl;
+
+  for (int n1 = 0; n1 < number_bands; n1++)
+    for (int ig = 0; ig < ncouls; ig++) {
+      aqsmtemp(n1, ig) = expr;
+      aqsntemp(n1, ig) = expr;
+    }
+
+  for (int my_igp = 0; my_igp < ngpown; my_igp++)
+    for (int ig = 0; ig < ncouls; ig++) {
+      I_eps_array(my_igp, ig) = expr;
+      wtilde_array(my_igp, ig) = expr;
+    }
+
+  for (int i = 0; i < ncouls; i++)
+    vcoul[i] = i * 0.025;
+
+  for (int ig = 0; ig < ngpown; ++ig)
+    inv_igp_index[ig] = (ig + 1) * ncouls / ngpown;
+
+  for (int ig = 0; ig < ncouls; ++ig)
+    indinv[ig] = ig;
+  indinv[ncouls] = ncouls - 1;
+
+  for (int iw = nstart; iw < nend; ++iw) {
+    achtemp_re[iw] = 0.0;
+    achtemp_im[iw] = 0.0;
+  }
+
+  for (int iw = nstart; iw < nend; ++iw) {
+    wx_array[iw] = e_lk - e_n1kq + dw * ((iw + 1) - 2);
+    if (wx_array[iw] < to1)
+      wx_array[iw] = to1;
+  }
+
+  iris::Platform platform;
+  check(platform.init(&argc,&argv,true));
+  int device=hip_device();
+  iris::DMem d_aqsmtemp(aqsmtemp, aqsmtemp_size * sizeof(CustomComplex<dataType>));
+  iris::DMem d_aqsntemp(aqsntemp, aqsntemp_size * sizeof(CustomComplex<dataType>));
+  iris::DMem d_I_eps_array(I_eps_array, I_eps_array_size * sizeof(CustomComplex<dataType>));
+  iris::DMem d_wtilde_array(wtilde_array, wtilde_array_size * sizeof(CustomComplex<dataType>));
+  iris::DMem d_vcoul(vcoul, vcoul_size * sizeof(dataType));
+  iris::DMem d_wx_array(wx_array, wx_array_size * sizeof(dataType));
+  iris::DMem d_inv_igp_index(inv_igp_index, inv_igp_index_size * sizeof(int));
+  iris::DMem d_indinv(indinv, indinv_size * sizeof(int));
+  iris::DMem d_achtemp_re(achtemp_re, achtemp_re_size * sizeof(dataType));
+  iris::DMem d_achtemp_im(achtemp_im, achtemp_im_size * sizeof(dataType));
+  size_t gws[]={size_t(number_bands)*32,size_t(ngpown)}, lws[]={32,1};
+  printf("Launching a kernel with grid = "
+         "(%d,%d,%d), and threads = (%d,%d,%d) \n",
+         number_bands, ngpown, 1, 32, 1, 1);
+
+  long total_ktime = 0;
+
+  for (int i = 0; i < 10; i++) {
+    // Reset the atomic sums
+    check(d_achtemp_re.update(achtemp_re));
+    check(d_achtemp_im.update(achtemp_im));
+
+    auto kstart = std::chrono::steady_clock::now();
+
+    void* args[]={&number_bands,&ngpown,&ncouls,&d_inv_igp_index,&d_indinv,&d_wx_array,
+                  &d_wtilde_array,&d_aqsmtemp,&d_aqsntemp,&d_I_eps_array,&d_vcoul,
+                  &d_achtemp_re,&d_achtemp_im};
+    int info[]={sizeof(number_bands),sizeof(ngpown),sizeof(ncouls),
+                iris_r,iris_r,iris_r,iris_r,iris_r,iris_r,iris_r,iris_r,iris_rw,iris_rw};
+    iris::Task task;
+    check(task.kernel("solver",2,nullptr,gws,lws,13,args,info));
+    check(task.submit(device,nullptr,true));
+
+    auto kend = std::chrono::steady_clock::now();
+    total_ktime += std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();
+  }
+
+  printf("Average kernel execution time %f (s)\n", (total_ktime * 1e-9) / 10);
+
+  iris::Task flush;
+  check(flush.flush_out(d_achtemp_re));
+
+  check(flush.flush_out(d_achtemp_im));
+  check(flush.submit(device,nullptr,true));
+
+  for (int iw = nstart; iw < nend; ++iw)
+    achtemp[iw] = CustomComplex<dataType>(achtemp_re[iw], achtemp_im[iw]);
+
+  // Check for correctness
+  if (argc == 2) {
+    if (strcmp(argv[1], "benchmark") == 0)
+      correctness(0, achtemp[0]);
+    else if (strcmp(argv[1], "test") == 0)
+      correctness(1, achtemp[0]);
+  } else
+    correctness(1, achtemp[0]);
+
+  printf("\n Final achtemp\n");
+  achtemp[0].print();
+
+  // Free the allocated memory
+  free(achtemp);
+  free(aqsmtemp);
+  free(aqsntemp);
+  free(I_eps_array);
+  free(wtilde_array);
+  free(vcoul);
+  free(inv_igp_index);
+  free(indinv);
+  free(achtemp_re);
+  free(achtemp_im);
+  free(wx_array);
+
+
+  auto end = std::chrono::steady_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  std::cout << "********** Total Time Taken **********= " << time * 1e-9 << " secs"
+            << std::endl;
+  check(platform.finalize());
+  return 0;
+}
