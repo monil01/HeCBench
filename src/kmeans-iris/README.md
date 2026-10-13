@@ -1,0 +1,6 @@
+Kmeans IRIS dmem port
+====================
+
+Retains original feature transpose/membership kernels, serial host center accumulation, initial-center sequence, cluster sweep/trial/convergence rules, srand7, RMSE selection behavior (including original integer RMSE truncation), CLI options and default kdd_cup invocation. All device arrays dmem; host centers reupload with update each iteration; membership results flush each step. Kernel dimensions/counts int, source block geometry preserved. Every GPU membership is independently checked against the source nearest-center calculation on CPU before centers update.
+
+Validation uses an existing binary-input CLI: deterministic257 points/5 features, cluster sweep3..7,2 trials, threshold source default. Native adapter adds only optional HECBENCH_DUMP of every converged membership vector and full float center array with record headers; IRIS uses identical output. Compare every integer membership and finite center float in all ten records; original score/stdout verdicts match too. Missing external default kdd_cup data is not replaced in source defaults. Native originals untouched.
