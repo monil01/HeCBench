@@ -52,11 +52,32 @@ def main():
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--baseline", type=int)
     parser.add_argument("--additional", type=int, default=100)
+    parser.add_argument("--batch-plan", type=Path,
+                        help="include worker progress from a coordinator plan JSON")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     state = Path(os.environ.get("PORTING_STATE_DIR",
                                os.environ.get("STATE", str(repo / ".porting-state"))))
     result = inventory(repo, state)
+    if args.batch_plan:
+        plan = json.loads(args.batch_plan.read_text())
+        handled = {}
+        workers = []
+        for worker in plan["workers"]:
+            checkpoint = state / "porting_logs" / (worker["bench"] + "-iris") / "progress.json"
+            progress = json.loads(checkpoint.read_text()) if checkpoint.exists() else {}
+            workers.append({"worker": worker["bench"],
+                            "current": progress.get("current"),
+                            "remaining": len(progress.get("remaining", []))})
+            for row in progress.get("completed", []):
+                handled[row["bench"]] = row
+        inventory_rows = {row["bench"]: row for row in result["ports"]}
+        verified = [bench for bench, row in handled.items()
+                    if row.get("commit") and bench in inventory_rows
+                    and inventory_rows[bench]["committed_layout"]
+                    and inventory_rows[bench]["status"] == "ok"]
+        result["batch"] = {"handled": len(handled), "verified_committed": len(verified),
+                           "verified_benchmarks": sorted(verified), "workers": workers}
     if args.baseline is not None:
         result["batch_directory_additions"] = result["covered_cuda"] - args.baseline
         result["batch_directory_target"] = args.baseline + args.additional
@@ -71,6 +92,13 @@ def main():
         if args.baseline is not None:
             print(f"Directory additions: {result['batch_directory_additions']}/"
                   f"{args.additional}; target: {result['batch_directory_target']}")
+        if "batch" in result:
+            batch = result["batch"]
+            print(f"Worker batch: {batch['verified_committed']} verified committed ports; "
+                  f"{batch['handled']} handled assignments")
+            for worker in batch["workers"]:
+                print(f"  {worker['worker']}: current={worker['current']}, "
+                      f"remaining={worker['remaining']}")
         print("Directory coverage does not imply successful HIP validation.")
 
 
