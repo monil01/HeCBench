@@ -1,0 +1,1 @@
+CUDA-derived Keccak integer permutation and original default dimensions retained (64 blocks, 64 threads, 1024 input blocks, eight CPU/GPU iterations). Host GPU ownership uses only IRIS DMem. Source CPU reference and complete state equality verdict remain intact. HIP validation compares the native PASS verdict and printed CPU/GPU hash words; no native adaptations or size changes.
