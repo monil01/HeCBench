@@ -1,15 +1,21 @@
-SSS is deferred because its required GNU Scientific Library dependency is
-unavailable. The original native HIP build fails with
-`fatal error: 'gsl/gsl_integration.h' file not found`. System pkg-config,
-loader library cache, and checked system/local/Conda include and library paths
-do not provide GSL. The original DATA files are present and preserved.
+Recovered using actual GNU GSL 2.8, not a replacement library. Build with
+make GSL=/tmp/hecbench-gsl-t1kQwR/install (GSL prefix is configurable).
+Original host graph/search/scoring/integration/RNG routines and both device
+kernels retained. Source RANDOMSEED=314159265 and run GSL_RNG_SEED=123,
+full f9_n150_p50 data and all search defaults unchanged. IRIS initialization
+occurs before GSL initialization; IRIS srand(time) does not alter the GSL RNG.
 
-The search uses GSL integration, special functions, and random distributions
-throughout its CPU model/scoring logic. Replacing these with different
-numerical algorithms would change the benchmark. A usable GSL installation
-and native numerical baseline are required before validating an IRIS port.
+All device storage is DMem, updated after host packed-input changes. Tasks
+preserve logical delete-before-add input dependency and flush integer results;
+partial outputs use rw. No native host allocation/copy/launch.
 
-No executable IRIS translation or GPU correctness claim is supplied. Original
-CUDA/HIP files, tuning defaults, float/short scalar types, RANDOMSEED=314159265,
-and the Makefile's GSL_RNG_SEED=123 invocation remain unchanged. This is an
-external dependency deferral, not a HIP runtime or shell infrastructure error.
+P1: CanAddEdge shared workspace is static 16383 short elements, covering every
+nonnegative original signed-short dynamic shared byte count (<=32766). Original
+overflowing negative byte count is rejected rather than silently repaired.
+Actual default p=50 remains unchanged. No graph/search algorithm replacement.
+Prior missing-GSL deferral and all attempt history remain in local state.
+
+DATA is read-only from the original sibling. The run target creates a DATA
+symlink only when no DATA file/directory/link exists and never overwrites
+inputs. DATA_DIR is configurable. Output stays in this port's RES directory.
+Validation uses isolated run directories with the same DATA/RES convention.
