@@ -257,6 +257,13 @@ int main(int argc, char **argv)
     time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("Average execution time of vllm-style kernel %f (ms)\n", (time * 1e-6f) / repeat);
 
+    if (const char* prefix=std::getenv("SSM_VERIFY_PREFIX")) {
+      buffer_output(h_y_v,d_y,N_y*SZ);
+      buffer_output(h_s_v,d_states,N_st*SZ);
+      dump(prefix,"final_y",h_y_v,N_y);
+      dump(prefix,"final_s",h_s_v,N_st);
+    }
+
     free(h_u); free(h_delta); free(h_A); free(h_B); free(h_C);
     free(h_D); free(h_dbias); free(h_z); free(h_states0);
     free(h_s_ref); free(h_s_n); free(h_s_v);

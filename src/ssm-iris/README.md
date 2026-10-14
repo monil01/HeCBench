@@ -19,7 +19,8 @@ SSM implementation does not synchronize separate chunk blocks. That original
 behavior is preserved, not repaired or replaced by serialized chunk execution.
 
 Validation on HIP covers single even/odd chunks, two repetitions and two-chunk
-B2,D2048,L1024. All8,584,812 output/state float values matched native HIP
-byte-for-byte; original independent CPU reference checks passed in both models.
+B2,D2048,L1024. All12,877,218 output/state float values matched native HIP
+byte-for-byte, including final output/state after the benchmark repeat loops;
+original independent CPU reference checks passed in both models.
 Full production defaults and NVIDIA execution are not claimed validated.
 SSM_VERIFY_PREFIX optionally writes full output/state arrays for validation.
