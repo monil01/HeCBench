@@ -1,4 +1,5 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -45,12 +46,12 @@ static double run_kernel(const char* kernel_name,
   for (int i = 0; i < repeat; i++) {
     iris::Task task;
     void* params[5] = { &mem_input, &mem_dense, &mem_output, &ncols, &mem_offset };
-    int pinfo[5] = { iris_r, iris_r, iris_w, sizeof(ncols), iris_r };
+    int pinfo[5] = { iris_r, iris_r, iris_rw, sizeof(ncols), iris_r };
     task.kernel(kernel_name, 1, nullptr, const_cast<size_t*>(gws), const_cast<size_t*>(lws), 5, params, pinfo);
     if (i == repeat - 1) {
       task.flush_out(mem_output);
     }
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), "dense embedding task");
   }
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
@@ -65,7 +66,8 @@ int main(int argc, char* argv[])
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
 
   const int nrows = std::atoi(argv[1]);
   const int batch_size = std::atoi(argv[2]);
@@ -128,25 +130,26 @@ int main(int argc, char* argv[])
       double us = run_kernel("dense_esuhm", batch_size, block_size, repeat, ncols,
                              mem_input, mem_dense, mem_output, mem_offset);
       std::printf("Average execution time of dense embedding kernel (k1): %f (us)\n", us);
-      mem_output.fetch(output_k1.data());
+      // The final task flushed output_k1 through its updated DMem host pointer.
 
       std::fill(output_k2.begin(), output_k2.end(), 0.0f);
       mem_output.update(output_k2.data());
       us = run_kernel("dense_esuhm2", batch_size, block_size, repeat, ncols,
                       mem_input, mem_dense, mem_output, mem_offset);
       std::printf("Average execution time of dense embedding kernel (k2): %f (us)\n", us);
-      mem_output.fetch(output_k2.data());
+      // The final task flushed output_k2 through its updated DMem host pointer.
 
       std::fill(output_k3.begin(), output_k3.end(), 0.0f);
       mem_output.update(output_k3.data());
       us = run_kernel("dense_esuhm3", batch_size, block_size, repeat, ncols,
                       mem_input, mem_dense, mem_output, mem_offset);
       std::printf("Average execution time of dense embedding kernel (k3): %f (us)\n", us);
-      mem_output.fetch(output_k3.data());
+      // The final task flushed output_k3 through its updated DMem host pointer.
 
       bool ok = true;
       for (int i = 0; i < input_size; i++) {
-        if (std::fabs(output_k1[i] - output_ref[i]) > 1e-3f ||
+        if (!std::isfinite(output_k1[i]) || !std::isfinite(output_k2[i]) ||
+            !std::isfinite(output_k3[i]) || std::fabs(output_k1[i] - output_ref[i]) > 1e-3f ||
             std::fabs(output_k2[i] - output_ref[i]) > 1e-3f ||
             std::fabs(output_k3[i] - output_ref[i]) > 1e-3f) {
           ok = false;
