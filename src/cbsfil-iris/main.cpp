@@ -145,7 +145,8 @@ int main(int argc, char* argv[])
 
   bool ok = true;
   for (size_t i = 0; i < num_pix; i++) {
-    if (std::fabs(image_ref[i] - image[i]) > 1e-3f) {
+    if (!std::isfinite(image_ref[i]) || !std::isfinite(image[i]) ||
+        std::fabs(image_ref[i] - image[i]) > 1e-3f) {
       ok = false;
       break;
     }
