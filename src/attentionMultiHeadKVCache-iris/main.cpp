@@ -1,4 +1,5 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -30,7 +31,7 @@ const char* kernel_name<__hip_bfloat16>() {
 }
 
 template <typename DTypeQO, typename DTypeKV>
-void test_decoding_kernel(iris::Platform& platform, int repeat, size_t num_qo_heads,
+bool test_decoding_kernel(iris::Platform& platform, int repeat, size_t num_qo_heads,
                           size_t num_kv_heads, size_t seq_len, size_t head_dim) {
   const size_t qo_elements = num_qo_heads * head_dim;
   const size_t kv_elements = seq_len * num_kv_heads * head_dim;
@@ -58,15 +59,15 @@ void test_decoding_kernel(iris::Platform& platform, int repeat, size_t num_qo_he
   unsigned int dimension = static_cast<unsigned int>(head_dim);
   size_t gws[] = {qo_elements};
   size_t lws[] = {256};
-  void* params[] = {&o_mem, &q_mem, &k_mem, &v_mem, &heads_q, &heads_kv, &length, &dimension};
-  int pinfo[] = {iris_w, iris_r, iris_r, iris_r, sizeof(heads_q), sizeof(heads_kv),
+  void* params[] = {&q_mem, &k_mem, &v_mem, &o_mem, &heads_q, &heads_kv, &length, &dimension};
+  int pinfo[] = {iris_r, iris_r, iris_r, iris_w, sizeof(heads_q), sizeof(heads_kv),
                  sizeof(length), sizeof(dimension)};
 
   iris::Task task;
   task.kernel(kernel_name<DTypeQO>(), 1, nullptr, gws, lws, 8, params, pinfo);
   task.flush_out(o_mem);
-  const int submit_status = task.submit(iris_gpu, nullptr, true);
-  const int fetch_status = o_mem.fetch(o_host.data());
+  const int submit_status = task.submit(hip_device, nullptr, true);
+  const int fetch_status = 0; // task flush already copied the output to its host buffer.
   if (submit_status != 0 || fetch_status != 0) {
     std::cerr << "IRIS submit_status=" << submit_status
               << " fetch_status=" << fetch_status << std::endl;
@@ -77,7 +78,7 @@ void test_decoding_kernel(iris::Platform& platform, int repeat, size_t num_qo_he
   for (size_t i = 0; i < qo_elements; ++i) {
     const float actual = static_cast<float>(o_host[i]);
     const float expected = static_cast<float>(reference[i]);
-    nan_detected |= std::isnan(actual);
+    nan_detected |= !std::isfinite(actual);
     errors += !utils::isclose(actual, expected, 1e-2f, 1e-2f);
   }
   const float accuracy = 1.f - static_cast<float>(errors) / static_cast<float>(qo_elements);
@@ -86,25 +87,28 @@ void test_decoding_kernel(iris::Platform& platform, int repeat, size_t num_qo_he
             << ", kv_layout=NHD, pos_encoding_mode=None"
             << ", result accuracy (atol=1e-2, rtol=1e-2)=" << accuracy
             << (accuracy < 0.90f ? " FAIL " : " PASS ") << std::endl;
-  if (nan_detected) std::cerr << "NaN detected." << std::endl;
+  if (nan_detected) std::cerr << "Nonfinite output detected." << std::endl;
 
   const auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < repeat; ++i) {
     iris::Task repeat_task;
     repeat_task.kernel(kernel_name<DTypeQO>(), 1, nullptr, gws, lws, 8, params, pinfo);
-    repeat_task.submit(iris_gpu, nullptr, true);
+    repeat_task.submit(hip_device, nullptr, true);
   }
   const auto end = std::chrono::steady_clock::now();
   const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   std::printf("Average execution time of SingleDecodeWithKVCache: %f (us)\n",
               (elapsed * 1e-3) / repeat);
+  return accuracy >= 0.90f && !nan_detected && submit_status == IRIS_SUCCESS;
 }
 
 template <typename DTypeQO, typename DTypeKV>
-void single_decode_kernel(iris::Platform& platform, int repeat) {
+bool single_decode_kernel(iris::Platform& platform, int repeat) {
+  bool ok = true;
   for (size_t seq_len : {size_t(1), size_t(3)}) {
-    test_decoding_kernel<DTypeQO, DTypeKV>(platform, repeat, 32, 4, seq_len, 64);
+    ok = test_decoding_kernel<DTypeQO, DTypeKV>(platform, repeat, 32, 4, seq_len, 64) && ok;
   }
+  return ok;
 }
 
 int main(int argc, char* argv[]) {
@@ -114,11 +118,13 @@ int main(int argc, char* argv[]) {
   }
   const int repeat = std::atoi(argv[1]);
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
+  if (repeat <= 0) return 1;
   std::cout << "FlashInfer: SingleDecodeKernel (FP16)" << std::endl;
-  single_decode_kernel<half, half>(platform, repeat);
+  bool ok = single_decode_kernel<half, half>(platform, repeat);
   std::cout << "\nFlashInfer: SingleDecodeKernel (BF16)" << std::endl;
-  single_decode_kernel<__hip_bfloat16, __hip_bfloat16>(platform, repeat);
+  ok = single_decode_kernel<__hip_bfloat16, __hip_bfloat16>(platform, repeat) && ok;
   platform.finalize();
-  return 0;
+  return ok ? 0 : 1;
 }
