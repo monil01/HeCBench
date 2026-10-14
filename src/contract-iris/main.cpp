@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -70,7 +71,20 @@ static int contract(const char* kernel_name, const int max_N, const int max_C, c
               checksum,
               static_cast<double>(*minmax.first),
               static_cast<double>(*minmax.second));
-  return 0;
+  double max_error = 0.0;
+  bool ok = true;
+  for (int i = 0; i < output_size; ++i) {
+    const int contraction_case = (i % (max_C * nContractions)) / max_C + 1;
+    const double expected = contraction_case <= 5 ?
+      static_cast<double>(max_N) * max_N * max_N :
+      (contraction_case <= 15 ? static_cast<double>(max_N) * max_N : max_N);
+    const double actual = static_cast<double>(value[i]);
+    const double error = std::fabs(actual - expected);
+    max_error = std::max(max_error, error);
+    ok &= std::isfinite(actual) && error <= 1e-6 * std::max(1.0, expected);
+  }
+  std::printf("Elementwise max error: %.9g %s\n", max_error, ok ? "PASS" : "FAIL");
+  return ok ? 0 : 1;
 }
 
 int main(int argc, char* argv[])
@@ -87,9 +101,9 @@ int main(int argc, char* argv[])
   const int max_C = nContractions;
   const int repeat = std::atoi(argv[2]);
 
-  contract<float>("contraction_float", max_N, max_C, repeat);
-  contract<double>("contraction_double", max_N, max_C, repeat);
+  const int errors = contract<float>("contraction_float", max_N, max_C, repeat) +
+    contract<double>("contraction_double", max_N, max_C, repeat);
 
   platform.finalize();
-  return 0;
+  return errors == 0 ? 0 : 1;
 }
