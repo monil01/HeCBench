@@ -1,4 +1,5 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -40,7 +41,7 @@ static double morphology(iris::DMem& img,
     int pinfo[2] = {iris_w, sizeof(pixels)};
     task.kernel("clear_u8", 1, nullptr, const_cast<size_t*>(clear_gws),
                 const_cast<size_t*>(clear_lws), 2, params, pinfo);
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), "morphology stage");
   }
   {
     iris::Task task;
@@ -49,7 +50,7 @@ static double morphology(iris::DMem& img,
     int pinfo[5] = {iris_w, iris_r, sizeof(width), sizeof(height), sizeof(hsize)};
     task.kernel(horiz_kernel, 2, nullptr, const_cast<size_t*>(gws_h),
                 const_cast<size_t*>(lws_h), 5, params, pinfo);
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), "morphology stage");
   }
   {
     iris::Task task;
@@ -58,7 +59,7 @@ static double morphology(iris::DMem& img,
     int pinfo[5] = {iris_w, iris_r, sizeof(width), sizeof(height), sizeof(vsize)};
     task.kernel(vert_kernel, 2, nullptr, const_cast<size_t*>(gws_v),
                 const_cast<size_t*>(lws_v), 5, params, pinfo);
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), "morphology stage");
   }
 
   auto end = std::chrono::steady_clock::now();
@@ -74,7 +75,8 @@ int main(int argc, char* argv[])
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
 
   const int hsize = std::atoi(argv[1]);
   const int vsize = std::atoi(argv[2]);
@@ -114,8 +116,7 @@ int main(int argc, char* argv[])
 
   iris::Task flush;
   flush.flush_out(img);
-  flush.submit(iris_gpu, nullptr, 1);
-  img.fetch(src_img);
+  iris_check(flush.submit(hip_device, nullptr, 1), "output flush");
 
   std::printf("Average kernel execution time (dilate): %f (s)\n",
               (dilate_time * 1e-9f) / repeat);
@@ -128,6 +129,13 @@ int main(int argc, char* argv[])
   }
   std::printf("%s\n", s == WHITE ? "PASS" : "FAIL");
 
+  if (const char* path=std::getenv("HECBENCH_VALIDATE_DUMP")) {
+    FILE* fp=std::fopen(path,"wb");
+    if(!fp) return 2;
+    size_t count=std::fwrite(src_img,1,mem_size,fp);
+    std::fclose(fp);
+    if(count!=mem_size) return 2;
+  }
   std::free(src_img);
   std::free(tmp_img);
   platform.finalize();
