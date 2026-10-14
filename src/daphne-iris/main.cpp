@@ -1,4 +1,5 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -60,7 +61,9 @@ int main(int argc, char** argv)
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
+  if (n_batches <= 0) return 1;
 
   const int n_points = 100000;
   std::printf("[note] synthetic %d points x %d batches\n", n_points, n_batches);
@@ -122,14 +125,11 @@ int main(int argc, char** argv)
     task.flush_out(mem_y);
     task.flush_out(mem_z);
     task.flush_out(mem_v);
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), "projection task");
     auto t1 = std::chrono::high_resolution_clock::now();
     total_us += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
-    mem_x.fetch(h_x);
-    mem_y.fetch(h_y);
-    mem_z.fetch(h_z);
-    mem_v.fetch(h_v);
+    // Output buffers were explicitly flushed by the submitted task.
 
     int kept = 0;
     for (int i = 0; i < n_points; ++i) {
@@ -141,6 +141,10 @@ int main(int argc, char** argv)
     float max_err = 0.0f;
     int mismatch = 0;
     for (int i = 0; i < n_points; ++i) {
+      if (!std::isfinite(h_x[i]) || !std::isfinite(h_y[i]) || !std::isfinite(h_z[i])) {
+        mismatch++;
+        continue;
+      }
       if (h_v[i] != ref_v[i]) {
         mismatch++;
         continue;
