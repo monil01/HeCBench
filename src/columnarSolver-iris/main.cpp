@@ -123,5 +123,5 @@ int main(int argc, char* argv[]) {
   delete[] scoreHistory;
   int errors=platform.error_count();
   check_iris(platform.finalize());
-  return errors ? 1 : 0;
+  return (errors || !pass) ? 1 : 0;
 }

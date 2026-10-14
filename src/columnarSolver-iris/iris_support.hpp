@@ -10,11 +10,12 @@ inline int init_iris(iris::Platform& platform, int& argc, char**& argv) {
   int count = 0, selected = -1;
   check_iris(iris_device_count(&count));
   for (int i = 0; i < count; ++i) {
-    int type = 0; char name[256] = {};
+    int type = 0, backend = -1; char name[256] = {};
     check_iris(iris_device_info(i, iris_type, &type, nullptr));
     check_iris(iris_device_info(i, iris_name, name, nullptr));
-    std::cout << "IRIS device " << i << ": " << name << " type=" << type << '\n';
-    if ((type & iris_amd) && selected < 0) selected = i;
+    check_iris(iris_device_info(i, iris_backend, &backend, nullptr));
+    std::cout << "IRIS device " << i << ": " << name << " type=" << type << " backend=" << backend << '\n';
+    if ((type & iris_amd) && backend == iris_hip && selected < 0) selected = i;
   }
   if (selected < 0) throw std::runtime_error("No IRIS AMD GPU");
   std::cout << "Selected IRIS AMD device " << selected << '\n';
