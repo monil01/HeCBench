@@ -1,4 +1,6 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
+#include <vector>
 
 #include <algorithm>
 #include <chrono>
@@ -33,6 +35,7 @@ static int run_dimension(iris::Platform& platform, int ndim, int elements, int r
   const size_t q_bytes = static_cast<size_t>(ndim) * np * elements * sizeof(dfloat);
   const size_t drv_bytes = static_cast<size_t>(nq) * nq * sizeof(dfloat);
   const size_t lambda_bytes = static_cast<size_t>(2) * offset * sizeof(dfloat);
+  const std::vector<dfloat> expected(aq, aq + ndim * offset);
   iris::DMem mem_ggeo(ggeo, ggeo_bytes);
   iris::DMem mem_q(q, q_bytes);
   iris::DMem mem_aq(aq, q_bytes);
@@ -53,15 +56,16 @@ static int run_dimension(iris::Platform& platform, int ndim, int elements, int r
     task.kernel(kernel, 1, nullptr, const_cast<size_t*>(gws),
                 const_cast<size_t*>(lws), 7, launch_params, launch_pinfo);
     task.flush_out(mem_aq);
-    task.submit(iris_gpu, nullptr, 1);
+    iris_check(task.submit(hip_device, nullptr, 1), kernel);
   }
   const auto end = std::chrono::steady_clock::now();
-  mem_aq.fetch(aq);
+  // Each submitted task explicitly flushed the output buffer.
   const double elapsed = std::chrono::duration<double>(end - start).count() / repeats;
 
   dfloat max_diff = 0;
   for (int i = 0; i < ndim * offset; ++i) {
-    max_diff = std::max(max_diff, static_cast<dfloat>(std::fabs(aq[i] - q[i])));
+    if (!std::isfinite(aq[i])) return 1;
+    max_diff = std::max(max_diff, static_cast<dfloat>(std::fabs(aq[i] - expected[i])));
   }
   std::cout << "Correctness check: maxError = " << max_diff << "\n";
   std::cout << (max_diff < 1e-3 ? "PASS" : "FAIL") << "\n";
@@ -85,7 +89,9 @@ int main(int argc, char** argv) {
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
+  if (elements <= 0 || repeats <= 0) return 1;
   const int nq = POLYNOMIAL_DEGREE + 1;
   const int np = nq * nq * nq;
   const int offset = elements * np;
