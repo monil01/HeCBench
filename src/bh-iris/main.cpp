@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
     check(iris_device_info(dev, iris_backend, &backend, nullptr), "backend");
     check(iris_device_info(dev, iris_name, name, nullptr), "device name");
     fprintf(stderr, "IRIS device %d: %s type=%d backend=%d\n", dev, name, type, backend);
-    if ((type & iris_amd) && gpu_device < 0) gpu_device = dev;
+    if ((type & iris_amd) && backend == iris_hip && gpu_device < 0) gpu_device = dev;
   }
   if (gpu_device < 0) { fprintf(stderr, "No AMD GPU available\n"); return 2; }
   platform.overview();
