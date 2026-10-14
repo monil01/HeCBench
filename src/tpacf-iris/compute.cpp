@@ -1,0 +1,357 @@
+/*
+   Illinois Open Source License
+
+   University of Illinois/NCSA
+   Open Source License
+
+   Copyright © 2009,    University of Illinois.  All rights reserved.
+
+   Developed by:
+   Innovative Systems Lab
+   National Center for Supercomputing Applications
+http://www.ncsa.uiuc.edu/AboutUs/Directorates/ISL.html
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal with the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+ * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimers.
+
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimers in the documentation and/or other materials provided with the distribution.
+
+ * Neither the names of Innovative Systems Lab and National Center for Supercomputing Applications, nor the names of its contributors may be used to endorse or promote products derived from this Software without specific prior written permission.
+
+ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+ */
+
+#ifndef _GPU_COMPUTE_H_
+#define _GPU_COMPUTE_H_
+
+#include <string.h>
+#include <chrono>
+#include "kernel.h"
+#include "backend.h"
+#include "model_io.h"
+#include "args.h"
+
+#define GRID_SIZE  (1 << LOG2_GRID_SIZE)
+
+
+
+// Device-side data storage
+device_cartesian d_idata1;
+device_cartesian d_idata2;
+iris::DMem* d_odata1;
+
+// Host-side data storage
+cartesian h_idata1;
+cartesian h_idata2;
+
+// Performance
+long t_Compute = 0;
+
+// Writes bin boundaries to GPU constant memory.
+void writeBoundaries(double *binbs) {
+  memcpy(boundary_values.data(), binbs, 31*sizeof(double));
+  boundary_mem = new iris::DMem(boundary_values.data(), boundary_values.size()*sizeof(double));
+}
+
+// Used to compute DD or RR, takes advantage of symmetry to reduce number of dot products and waterfall searches
+// required by half. Unfortunately, due to the limitations of the histogram kernel, every element of d_odata still
+// represents a histogram bin assignment; consequently the histogram kernel does just as much work in tileComputeSymm
+// as it does in tileCompute.
+
+// type: type = 0 corresponds to DD, type = 1 corresponds to RR.
+// size: Number of elements in data or random set (dependent upon type)
+// njk: Number of jackknives
+// jkSizes: List of jackknife sizes, in order
+// nBins: Number of histogram bins
+// histo: The function outputs by adding on to this histogram
+// stream: CUDA stream
+void tileComputeSymm(int type, int size, int njk, int* jkSizes, int nBins, long long* histo) {
+  // Storage for GPUHistogram output
+  unsigned int* subHistoTemp = (unsigned int*)malloc(njk*nBins*sizeof(unsigned int));
+
+  // Find number of kernels necessary on each 'axis'
+  int nkernels = iDivUp(size, GRID_SIZE);
+
+  // Stores location in d_odata; used in GPUHistogram calls
+  int index;
+
+  for(int i=0; i<nkernels; i++) {
+    if(type == 0) {
+      d_idata1.x->update(&h_idata1.x[i*GRID_SIZE]);
+      d_idata1.y->update(&h_idata1.y[i*GRID_SIZE]);
+      d_idata1.z->update(&h_idata1.z[i*GRID_SIZE]);
+    }
+    else {
+      d_idata1.x->update(&h_idata2.x[i*GRID_SIZE]);
+      d_idata1.y->update(&h_idata2.y[i*GRID_SIZE]);
+      d_idata1.z->update(&h_idata2.z[i*GRID_SIZE]);
+    }
+    launchSymm(d_idata1, *d_odata1);
+    index = 0;
+    memset(subHistoTemp, 0, njk*nBins*sizeof(unsigned int));
+    for(int k=0; k<njk; k++) {
+      if(jkSizes[i*njk + k] != 0) {
+        GPUHistogram(&subHistoTemp[nBins*k], d_odata1, index, jkSizes[i*njk + k]*GRID_SIZE);
+        index += jkSizes[i*njk + k] * (GRID_SIZE >> 2);
+      }
+    }
+    for(int k=0; k<njk*nBins; k++) {
+      histo[k] += subHistoTemp[k];
+    }
+
+    for(int j=i+1; j<nkernels; j++) {
+      if(type == 0) {
+        d_idata2.x->update(&h_idata1.x[j*GRID_SIZE]);
+        d_idata2.y->update(&h_idata1.y[j*GRID_SIZE]);
+        d_idata2.z->update(&h_idata1.z[j*GRID_SIZE]);
+      }
+      else {
+        d_idata2.x->update(&h_idata2.x[j*GRID_SIZE]);
+        d_idata2.y->update(&h_idata2.y[j*GRID_SIZE]);
+        d_idata2.z->update(&h_idata2.z[j*GRID_SIZE]);
+      }
+      launchPair(d_idata1, d_idata2, *d_odata1);
+      index = 0;
+      memset(subHistoTemp, 0, njk*nBins*sizeof(unsigned int));
+      for(int k=0; k<njk; k++) {
+        if(jkSizes[i*njk + k] != 0) {
+          GPUHistogram(&subHistoTemp[nBins*k], d_odata1, index, jkSizes[i*njk + k]*GRID_SIZE);
+          index += jkSizes[i*njk + k] * (GRID_SIZE >> 2);
+        }
+      }
+      for(int k=0; k<njk*nBins; k++) {
+        histo[k] += subHistoTemp[k];
+      }
+    }
+  }
+}
+
+// Used to compute DR.
+// dataSize: Size of data set
+// randomSize: Size of random set
+// All else: See descriptions in tileComputeSymm
+void tileCompute(int dataSize, int randomSize, int njk, int* jkSizes, int nBins, long long* histo) {
+  unsigned int* subHistoTemp = (unsigned int*)malloc(njk*nBins*sizeof(unsigned int));
+
+  int ndkernels = iDivUp(dataSize, GRID_SIZE);
+  int nrkernels = iDivUp(randomSize, GRID_SIZE);
+
+  int index;
+
+  for(int i=0; i<ndkernels; i++) {
+    d_idata1.x->update(&h_idata1.x[i*GRID_SIZE]);
+    d_idata1.y->update(&h_idata1.y[i*GRID_SIZE]);
+    d_idata1.z->update(&h_idata1.z[i*GRID_SIZE]);
+    for(int j=0; j<nrkernels; j++) {
+      d_idata2.x->update(&h_idata2.x[j*GRID_SIZE]);
+      d_idata2.y->update(&h_idata2.y[j*GRID_SIZE]);
+      d_idata2.z->update(&h_idata2.z[j*GRID_SIZE]);
+      launchPair(d_idata1, d_idata2, *d_odata1);
+      index = 0;
+      memset(subHistoTemp, 0, njk*nBins*sizeof(unsigned int));
+      for(int k=0; k<njk; k++) {
+        if(jkSizes[i*njk + k] != 0) {
+          GPUHistogram(&subHistoTemp[nBins*k], d_odata1, index, jkSizes[i*njk + k]*GRID_SIZE);
+          index += jkSizes[i*njk + k] * (GRID_SIZE >> 2);
+        }
+      }
+      for(int k=0; k<njk*nBins; k++) {
+        histo[k] += subHistoTemp[k];
+      }
+    }
+  }
+}
+
+
+// Computes histograms and writes to DDs, DRs, RRs. These must be compiled by the host program;
+// the function outputs njk sub-histograms for each, the sum of which is the full histogram.
+// Note that data should be sorted according to jackknife; otherwise results will be meaningless.
+
+// dataName: File name of data points file.
+// randomNames: File name stem of random points file.
+// nr: Number of random files. Random files are assumed to be of the form randomNames.i where 1 <= i <= nr.
+// dataSize: Number of elements to read from data points file.
+// randomSize: Number of elements to read from each random points file.
+// njk: Number of jackknives.
+// jkSizes: Ordered list of jackknife sizes. Each size must be a multiple of 4 currently.
+// nBins: Number of histogram bins.
+// zeroBin: Index of bin which contains 0.0f: Necessary to correct for padding
+// DDs, DRs, RRs: Output subhistogram lists.
+void doComputeGPU(char* dataName, char* randomNames, int nr, int dataSize, int randomSize, int njk, int* jkSizes,
+    int nBins, int zeroBin, long long** DDs, long long** DRs, long long** RRs) {
+  // DDs, DRs, RRs are not assumed to be allocated or cleared.
+  *DDs = (long long*)malloc(nBins*njk*sizeof(long long));
+  *DRs = (long long*)malloc(nBins*njk*nr*sizeof(long long));
+  *RRs = (long long*)malloc(nBins*nr*sizeof(long long));
+  memset(*DDs, 0, nBins*njk*sizeof(long long));
+  memset(*DRs, 0, nBins*njk*nr*sizeof(long long));
+  memset(*RRs, 0, nBins*nr*sizeof(long long));
+
+  int ndkernels = iDivUp(dataSize, GRID_SIZE);
+  int nrkernels = iDivUp(randomSize, GRID_SIZE);
+  int* dkerneljkSizes = (int*)malloc(njk*ndkernels*sizeof(int));
+  int* rkerneljkSizes = (int*)malloc(njk*nrkernels*sizeof(int));
+  memset(dkerneljkSizes, 0, njk*ndkernels*sizeof(int));
+  memset(rkerneljkSizes, 0, njk*nrkernels*sizeof(int));
+
+  int currentjk = 0;
+  int numwrittencurrentjk = 0;
+  for(int i=0; i<ndkernels; i++) {
+    int remainder = GRID_SIZE;
+    while(remainder > 0 && currentjk < njk) {
+      if(remainder < jkSizes[currentjk] - numwrittencurrentjk) {
+        dkerneljkSizes[i*njk + currentjk] += remainder;
+        numwrittencurrentjk += remainder;
+        remainder = 0;
+      }
+      else {
+        remainder = remainder - (jkSizes[currentjk] - numwrittencurrentjk);
+        dkerneljkSizes[i*njk + currentjk] += (jkSizes[currentjk] - numwrittencurrentjk);
+        currentjk++;
+        numwrittencurrentjk = 0;
+      }
+    }
+  }
+
+  for(int i=0; i<nrkernels-1; i++) {
+    rkerneljkSizes[i*njk] += GRID_SIZE;
+  }
+  rkerneljkSizes[(nrkernels-1)*njk] += (randomSize % GRID_SIZE == 0) ? GRID_SIZE : randomSize % GRID_SIZE;
+
+  // Kernel invocations require that the input data have 16384 elements, so pad the data to a multiple of 16384.
+  int dataSizePadded = dataSize + ((GRID_SIZE - (dataSize % GRID_SIZE)) % GRID_SIZE);
+  int randomSizePadded = randomSize + ((GRID_SIZE - (randomSize % GRID_SIZE)) % GRID_SIZE);
+
+  h_idata1.x = (double*)calloc(dataSizePadded,sizeof(double));
+  h_idata1.y = (double*)calloc(dataSizePadded,sizeof(double));
+  h_idata1.z = (double*)calloc(dataSizePadded,sizeof(double));
+  h_idata1.jk = (int*)malloc(dataSize*sizeof(int));
+  h_idata2.x = (double*)calloc(randomSizePadded,sizeof(double));
+  h_idata2.y = (double*)calloc(randomSizePadded,sizeof(double));
+  h_idata2.z = (double*)calloc(randomSizePadded,sizeof(double));
+  h_idata2.jk = (int*)malloc(randomSize*sizeof(int));
+  d_idata1.x = new iris::DMem(h_idata1.x, GRID_SIZE*sizeof(double));
+  d_idata1.y = new iris::DMem(h_idata1.y, GRID_SIZE*sizeof(double));
+  d_idata1.z = new iris::DMem(h_idata1.z, GRID_SIZE*sizeof(double));
+  d_idata2.x = new iris::DMem(h_idata2.x, GRID_SIZE*sizeof(double));
+  d_idata2.y = new iris::DMem(h_idata2.y, GRID_SIZE*sizeof(double));
+  d_idata2.z = new iris::DMem(h_idata2.z, GRID_SIZE*sizeof(double));
+  std::vector<unsigned int> packed(static_cast<size_t>(GRID_SIZE)*GRID_SIZE/4);
+  d_odata1 = new iris::DMem(packed.data(), packed.size()*sizeof(unsigned int));
+  histoInit();
+
+  long t_computeDD = 0, t_computeRRS = 0, t_computeDRS = 0, t_fileIO = 0;
+
+  auto t0 = std::chrono::steady_clock::now();
+
+  char fname[256];
+  readdatafile(dataName, h_idata1, dataSize);
+
+  auto t1 = std::chrono::steady_clock::now();
+
+  // Compute DD
+  tileComputeSymm(0, dataSize, njk, dkerneljkSizes, nBins, *DDs);
+
+  auto t2 = std::chrono::steady_clock::now();
+
+  t_fileIO += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
+  t_computeDD = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+
+  for(int i=0; i<nr; i++) {
+    sprintf(fname, "%s.%i", randomNames, i+1);
+    t0 = std::chrono::steady_clock::now();
+
+    readdatafile(fname, h_idata2, randomSize);
+    t1 = std::chrono::steady_clock::now();
+
+    // Compute DR_i
+    tileCompute(dataSize, randomSize, njk, dkerneljkSizes, nBins, &(*DRs)[njk*nBins*i]);
+    t2 = std::chrono::steady_clock::now();
+
+    // Compute RR_i
+    tileComputeSymm(1, randomSize, njk, rkerneljkSizes, nBins, &(*RRs)[nBins*i]);
+    auto t3 = std::chrono::steady_clock::now();
+
+    t_fileIO += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
+    t_computeDRS += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+    t_computeRRS += std::chrono::duration_cast<std::chrono::nanoseconds>(t3 - t2).count();
+  }
+
+  // Correct for error introduced by padding vectors.
+  int padfactor = randomSizePadded - randomSize;
+  for(int i=0; i<nr; i++) {
+    (*RRs)[nBins*i + zeroBin] -= padfactor*randomSize;
+    for(int j=0; j<njk; j++) {
+      (*DRs)[nBins*njk*i + nBins*j + zeroBin] -= padfactor*jkSizes[j];
+    }
+  }
+  for(int i=0; i<njk; i++) {
+    (*DDs)[nBins*i + zeroBin] -= padfactor*jkSizes[i];
+  }
+
+  histoClose();
+  delete d_odata1;
+  delete boundary_mem;
+  delete d_idata1.x;
+  delete d_idata1.y;
+  delete d_idata1.z;
+  delete d_idata2.x;
+  delete d_idata2.y;
+  delete d_idata2.z;
+  free(h_idata1.x);
+  free(h_idata1.y);
+  free(h_idata1.z);
+  free(h_idata1.jk);
+  free(h_idata2.x);
+  free(h_idata2.y);
+  free(h_idata2.z);
+  free(h_idata2.jk);
+  printf("================================================\n");
+  printf("Time to compute DD: %.4f sec\n", t_computeDD * 1e-9);
+  printf("Time to compute RRS: %.4f sec\n", t_computeRRS * 1e-9);
+  printf("Time to compute DRS: %.4f sec\n", t_computeDRS * 1e-9);
+  printf("Time to load data files: %.4f sec\n", t_fileIO * 1e-9);
+  printf("Time to compute DD, RRS, & DRS: %.4f sec\n", (t_computeDD+t_computeRRS+t_computeDRS) * 1e-9);
+  printf("TOTAL time (DD+RRS+DRS+IO): %.4f sec\n", (t_computeDD+t_computeRRS+t_computeDRS+t_fileIO) * 1e-9);
+  printf("================================================\n");
+}
+
+void compileHistograms(long long* DDs, long long* DRs, long long* RRs, long long*** DD, long long*** DR,
+    long long*** RR, options *args) {
+  *DD = (long long**)malloc(((*args).njk+1)*sizeof(long long*));
+  *DR = (long long**)malloc(((*args).njk+1)*sizeof(long long*));
+  *RR = (long long**)malloc(1*sizeof(long long*));
+  for(int i=0; i<=(*args).njk; i++) {
+    (*DD)[i] = (long long*)malloc(NUMBINS*sizeof(long long));
+    (*DR)[i] = (long long*)malloc(NUMBINS*sizeof(long long));
+    memset((*DD)[i], 0, NUMBINS*sizeof(long long));
+    memset((*DR)[i], 0, NUMBINS*sizeof(long long));
+  }
+  (*RR)[0] = (long long*)malloc(NUMBINS*sizeof(long long));
+  memset((*RR)[0], 0, NUMBINS*sizeof(long long));
+
+  for(int i=0; i<NUMBINS; i++) {
+    for(int k=0; k<(*args).njk; k++) {
+      (*DD)[0][i] += DDs[NUMBINS*k + i];
+    }
+    for(int j=0; j<(*args).random_count; j++) {
+      for(int k=0; k<(*args).njk; k++) {
+        (*DR)[0][i] += DRs[(j*(*args).njk + k)*NUMBINS + i];
+      }
+      (*RR)[0][i] += RRs[j*NUMBINS + i];
+    }
+  }
+
+  for(int k=1; k<=(*args).njk; k++) {
+    for(int i=0; i<NUMBINS; i++) {
+      (*DD)[k][i] = (*DD)[0][i] - DDs[(k-1)*NUMBINS + i];
+      (*DR)[k][i] = (*DR)[0][i];
+      for(int j=0; j<(*args).random_count; j++) {
+        (*DR)[k][i] -= DRs[(j*(*args).njk + k - 1)*NUMBINS + i];
+      }
+    }
+  }
+}
+
+#endif
