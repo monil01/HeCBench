@@ -1,18 +1,22 @@
 IRIS_ROOT ?= /tmp/iris
 IRIS_LIB_DIR ?= $(IRIS_ROOT)/build/src/runtime
-CXX ?= g++
+CXX = hipcc
 HIPCC ?= hipcc
 CXXFLAGS ?= -O3 -std=c++17 -Iinclude -I$(IRIS_ROOT)/include
-LDFLAGS ?= -L$(IRIS_LIB_DIR) -liris
-RUN_ARGS ?= 1
+LDFLAGS ?= -L$(IRIS_LIB_DIR) -Wl,-rpath,$(IRIS_LIB_DIR) -liris
+RUN_ARGS ?= 10
 
 SRC_FILES := $(filter-out src/main.cu src/multians_gpu_decoder.cu,$(wildcard src/*.cc))
 OBJ_FILES := $(patsubst src/%.cc,build/%.o,$(SRC_FILES))
 
 all: main kernel.hip
 
-main: main.cpp $(OBJ_FILES) Makefile
-	$(CXX) $(CXXFLAGS) -o $@ main.cpp $(OBJ_FILES) $(LDFLAGS)
+main: build/main.o $(OBJ_FILES) Makefile
+	$(CXX) -o $@ build/main.o $(OBJ_FILES) $(LDFLAGS)
+
+build/main.o: main.cpp hip_backend.hpp $(wildcard include/*.h) Makefile
+	mkdir -p build
+	$(CXX) $(CXXFLAGS) -c -o $@ main.cpp
 
 build/%.o: src/%.cc $(wildcard include/*.h) Makefile
 	mkdir -p build
