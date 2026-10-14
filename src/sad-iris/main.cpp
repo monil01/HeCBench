@@ -1,4 +1,5 @@
 #include <iris/iris.hpp>
+#include "gpu_lock.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -165,7 +166,8 @@ int main(int argc, char* argv[])
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  {GpuLock lock;platform.init(&argc, &argv, 1);}
+  int devices=0;iris_device_count(&devices);for(int d=0;d<devices;d++){int b=0;size_t z=0;iris_device_info(d,iris_backend,&b,&z);printf("IRIS backend=%d HIP=%d\n",b,iris_hip);}
 
   Image main_image;
   Image template_image;
@@ -200,6 +202,8 @@ int main(int argc, char* argv[])
 
   double kernel_time = 0.0;
   auto begin = std::chrono::steady_clock::now();
+  {
+  GpuLock lock;
   for (int i = 0; i < repeat; i++) {
     min_mse = THRESHOLD;
     num_occurrences = 0;
@@ -218,6 +222,9 @@ int main(int argc, char* argv[])
     mem_occurrences.fetch(&num_occurrences);
   }
 
+  if(getenv("SAD_DUMP_FILE")){iris::Task flush;flush.flush_out(mem_sad);flush.submit(iris_gpu,nullptr,1);}
+  }
+  if(const char*file=getenv("SAD_DUMP_FILE")){FILE*fp=fopen(file,"wb");if(!fp)return 2;fwrite(sad_array.data(),sizeof(int),sad_array.size(),fp);fclose(fp);}
   auto end = std::chrono::steady_clock::now();
   float elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
