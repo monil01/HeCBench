@@ -140,11 +140,13 @@ int main(int argc, char** argv)
 
   const int repeat = std::atoi(argv[1]);
   int errors = 0;
+  const char* bound = std::getenv("HECBENCH_BITPERMUTE_MAX_LOG");
+  const int max_log = bound ? std::atoi(bound) : MAX_LG_DOMAIN_SIZE;
   errors += bit_permute(10, repeat);
   errors += bit_permute(11, repeat);
   errors += bit_permute(15, repeat);
-  errors += bit_permute(27, repeat);
-  errors += bit_permute(28, repeat);
+  if (max_log >= 27) errors += bit_permute(27, repeat);
+  if (max_log >= 28) errors += bit_permute(28, repeat);
 
   platform.finalize();
   return errors == 0 ? 0 : 1;
