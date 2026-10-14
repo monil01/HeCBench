@@ -1,0 +1,6 @@
+#ifndef CLINK_BATCHES
+#define CLINK_BATCHES 8192
+#endif
+#define N CLINK_BATCHES
+#define WGS 256
+#define SAMPLE_TEST_LEN 20000
