@@ -11,9 +11,9 @@ RUN_ARGS ?= 10000
 all: main kernel.hip
 
 main: main.cpp reference.h
-	$(CXX) $(IRIS_CXXFLAGS) -o $@ main.cpp $(IRIS_LDFLAGS)
+	$(HIPCC) $(IRIS_CXXFLAGS) -o $@ main.cpp $(IRIS_LDFLAGS)
 
-kernel.hip: kernel.hip.cpp
+kernel.hip: kernel.hip.cpp kernels.h
 	$(HIPCC) --genco -O3 -o $@ $<
 
 run: all

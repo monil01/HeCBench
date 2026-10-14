@@ -9,38 +9,18 @@
 
 #include <iris/iris.hpp>
 
-using HostHalf = _Float16;
-
-struct HostBFloat16 {
-  uint16_t bits;
-};
-
-static_assert(sizeof(HostHalf) == 2, "host half must match HIP half");
-static_assert(sizeof(HostBFloat16) == 2, "host bfloat16 must match HIP bfloat16");
-
+#include <hip/hip_runtime.h>
+#include <hip/hip_fp16.h>
+#include <hip/hip_bf16.h>
+using HostHalf = __half;
+using HostBFloat16 = __hip_bfloat16;
 #include "reference.h"
 
 template <typename T> static float to_float(T value) {
   return static_cast<float>(value);
 }
 
-template <> float to_float<HostBFloat16>(HostBFloat16 value) {
-  uint32_t bits = static_cast<uint32_t>(value.bits) << 16;
-  float result;
-  std::memcpy(&result, &bits, sizeof(result));
-  return result;
-}
-
-template <typename T> static T from_float(float value) {
-  return static_cast<T>(value);
-}
-
-template <> HostBFloat16 from_float<HostBFloat16>(float value) {
-  uint32_t bits;
-  std::memcpy(&bits, &value, sizeof(bits));
-  bits += 0x7fffU + ((bits >> 16) & 1U);
-  return HostBFloat16{static_cast<uint16_t>(bits >> 16)};
-}
+template <typename T> static T from_float(float value) { return static_cast<T>(value); }
 
 static const char* kernel_for_float() { return "addBiasResidualLayerNorm_float"; }
 static const char* kernel_for_half() { return "addBiasResidualLayerNorm_half"; }
@@ -49,20 +29,22 @@ static const char* kernel_for_bfloat16() { return "addBiasResidualLayerNorm_bflo
 template <typename T>
 static void invoke(iris::DMem& output, iris::DMem& input, iris::DMem& bias,
                    iris::DMem& gamma, iris::DMem& beta, float epsilon, int m,
-                   int n, const char* kernel_name) {
-  constexpr size_t threads = 256;
+                   int n, const char* kernel_name, int version) {
+  const size_t threads = version == 2 ? n / 8 : 256;
+  char symbol[128];
+  std::snprintf(symbol, sizeof(symbol), "%s_v%d", kernel_name, version);
   size_t global[] = {static_cast<size_t>(m) * threads};
   size_t local[] = {threads};
   void* params[] = {&output, &input, &bias, &gamma, &beta, &epsilon, &n};
   int pinfo[] = {iris_rw, iris_r, iris_r, iris_r, iris_r, sizeof(epsilon), sizeof(n)};
 
   iris::Task task;
-  task.kernel(kernel_name, 1, nullptr, global, local, 7, params, pinfo);
-  task.submit(iris_gpu, nullptr, true);
+  task.kernel(symbol, 1, nullptr, global, local, 7, params, pinfo);
+  if (task.submit(iris_gpu, nullptr, true) != IRIS_SUCCESS) std::exit(2);
 }
 
 template <typename T>
-static void layer(int m, int n, int repeat, const char* kernel_name) {
+static bool layer(int m, int n, int repeat, const char* kernel_name, int version) {
   std::mt19937 gen(19937);
   std::uniform_real_distribution<float> dis(0.f, 1.f);
   const int elements = m * n;
@@ -89,15 +71,17 @@ static void layer(int m, int n, int repeat, const char* kernel_name) {
   T* reference_output = static_cast<T*>(calloc(static_cast<size_t>(elements), sizeof(T)));
   for (int i = 0; i < 100; ++i) {
     invoke<T>(mem_output, mem_input, mem_bias, mem_gamma, mem_beta, epsilon, m, n,
-              kernel_name);
+              kernel_name, version);
     reference<T>(reference_output, h_input, h_bias, h_gamma, h_beta, epsilon, m, n);
   }
-  mem_output.fetch(h_output);
+  iris::Task flush;
+  flush.flush_out(mem_output);
+  if (flush.submit(iris_gpu, nullptr, true) != IRIS_SUCCESS) std::exit(2);
 
   bool ok = true;
   const float error_bound = sizeof(T) >= 4 ? 1e-4f : 0.5f;
   for (int i = 0; i < elements; ++i) {
-    if (std::fabs(to_float(h_output[i]) - to_float(reference_output[i])) > error_bound) {
+    if (!std::isfinite(to_float(h_output[i])) || std::fabs(to_float(h_output[i]) - to_float(reference_output[i])) > error_bound) {
       std::printf("i=%d %f != %f (ref)\n", i, to_float(h_output[i]),
                   to_float(reference_output[i]));
       ok = false;
@@ -110,7 +94,7 @@ static void layer(int m, int n, int repeat, const char* kernel_name) {
   auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < repeat; ++i)
     invoke<T>(mem_output, mem_input, mem_bias, mem_gamma, mem_beta, epsilon, m, n,
-              kernel_name);
+              kernel_name, version);
   auto end = std::chrono::steady_clock::now();
   const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   std::printf("Average execution time of AddBiasResidualLayerNorm (%d x %d): %f (us)\n",
@@ -121,6 +105,7 @@ static void layer(int m, int n, int repeat, const char* kernel_name) {
   free(h_bias);
   free(h_gamma);
   free(h_beta);
+  return ok;
 }
 
 int main(int argc, char** argv) {
@@ -132,21 +117,24 @@ int main(int argc, char** argv) {
   iris::Platform platform;
   platform.init(&argc, &argv, 1);
 
-  const int m = 4096;
+  const char* rows = std::getenv("HECBENCH_VALIDATE_ROWS");
+  const int m = rows ? std::atoi(rows) : 4096;
+  if (m <= 0 || repeat <= 0) return 1;
+  bool ok = true;
   for (int n = 256; n <= 8192; n *= 2) {
     std::printf("---------------- float32 (version 1) -------------\n");
-    layer<float>(m, n, repeat, kernel_for_float());
+    ok = layer<float>(m, n, repeat, kernel_for_float(), 1) && ok;
     std::printf("---------------- float32 (version 2) -------------\n");
-    layer<float>(m, n, repeat, kernel_for_float());
+    ok = layer<float>(m, n, repeat, kernel_for_float(), 2) && ok;
     std::printf("---------------- float16 (version 1) -------------\n");
-    layer<HostHalf>(m, n, repeat, kernel_for_half());
+    ok = layer<HostHalf>(m, n, repeat, kernel_for_half(), 1) && ok;
     std::printf("---------------- float16 (version 2) -------------\n");
-    layer<HostHalf>(m, n, repeat, kernel_for_half());
+    ok = layer<HostHalf>(m, n, repeat, kernel_for_half(), 2) && ok;
     std::printf("---------------- bfloat16 (version 1) -------------\n");
-    layer<HostBFloat16>(m, n, repeat, kernel_for_bfloat16());
+    ok = layer<HostBFloat16>(m, n, repeat, kernel_for_bfloat16(), 1) && ok;
     std::printf("---------------- bfloat16 (version 2) -------------\n");
-    layer<HostBFloat16>(m, n, repeat, kernel_for_bfloat16());
+    ok = layer<HostBFloat16>(m, n, repeat, kernel_for_bfloat16(), 2) && ok;
   }
   platform.finalize();
-  return 0;
+  return ok ? 0 : 1;
 }
