@@ -1,4 +1,6 @@
 #include <iris/iris.hpp>
+#include "gpu_lock.hpp"
+#include <string>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -91,17 +93,10 @@ static bool run_dtype(const char* label, const char* kernel_name, int num_seqs, 
   std::vector<T> key(cache_elems), value(cache_elems);
   std::vector<int> seq_lens(num_seqs), tables(static_cast<int64_t>(num_seqs) * max_blocks);
   std::vector<float> slopes(num_heads);
-  for (int64_t i = 0; i < query_elems; ++i) query[i] = from_float<T>(uniform(i, -scale, scale));
-  for (int64_t i = 0; i < cache_elems; ++i) {
-    key[i] = from_float<T>(uniform(i, -scale, scale, 1234));
-    value[i] = from_float<T>(uniform(i, -scale, scale, 1234));
-  }
-  for (int i = 0; i < num_heads; ++i) slopes[i] = normal(i);
   std::srand(1234);
   for (int i = 0; i < num_seqs; ++i) seq_lens[i] = std::rand() % max_seq_len + 1;
   for (int64_t i = 0; i < static_cast<int64_t>(tables.size()); ++i) tables[i] = std::rand() % num_blocks;
-  reference(reference_output.data(), query.data(), key.data(), value.data(), tables.data(), seq_lens.data(), slopes.data(),
-            num_seqs, num_heads, num_heads, head_size, block_size, max_blocks, scale);
+
 
   iris::DMem mem_out(output.data(), query_bytes), mem_query(query.data(), query_bytes);
   iris::DMem mem_key(key.data(), key_bytes), mem_value(value.data(), cache_bytes);
@@ -109,7 +104,7 @@ static bool run_dtype(const char* label, const char* kernel_name, int num_seqs, 
   iris::DMem mem_lens(seq_lens.data(), seq_lens.size() * sizeof(int));
   iris::DMem mem_slopes(slopes.data(), slopes.size() * sizeof(float));
   const int zero = 0;
-  const size_t gws[2] = {static_cast<size_t>(num_heads) * 64, static_cast<size_t>(num_seqs)}, lws[2] = {64, 1};
+  const size_t gws[2] = {static_cast<size_t>(num_heads) * 128, static_cast<size_t>(num_seqs)}, lws[2] = {128, 1};
   int q_stride = num_heads * head_size;
   int kv_block_stride = num_heads * head_size * block_size;
   int kv_head_stride = head_size * block_size;
@@ -123,15 +118,32 @@ static bool run_dtype(const char* label, const char* kernel_name, int num_seqs, 
                  sizeof(zero), sizeof(zero), sizeof(zero), sizeof(zero), sizeof(zero)};
   auto submit = [&]() {
     iris::Task task;
-    task.kernel(kernel_name, 2, nullptr, const_cast<size_t*>(gws), const_cast<size_t*>(lws), 18, params, pinfo);
+    task.kernel((std::string(kernel_name)+"_h"+std::to_string(head_size)).c_str(), 2, nullptr, const_cast<size_t*>(gws), const_cast<size_t*>(lws), 18, params, pinfo);
     task.flush_out(mem_out); task.submit(iris_gpu, nullptr, 1);
   };
+
+  {
+  GpuLock lock;
+  uint32_t seed=1234;
+  auto fill=[&](iris::DMem& mem,int64_t count,float low,float high){
+   void* p[]={&mem,&count,&low,&high,&seed};int info[]={iris_w,sizeof(count),sizeof(low),sizeof(high),sizeof(seed)};
+   size_t global=(size_t(count)+255)/256*256,local=256;
+   iris::Task task;task.kernel(sizeof(T)==4?"uniform_fp32":"uniform_bf16",1,nullptr,&global,&local,5,p,info);task.flush_out(mem);if(task.submit(iris_gpu,nullptr,1)!=IRIS_SUCCESS)throw std::runtime_error("input fill");
+  };
+  fill(mem_query,query_elems,-scale,scale);
+  float cache_scale=std::pow(float(head_size),-0.5f);
+  fill(mem_key,cache_elems,-cache_scale,cache_scale);fill(mem_value,cache_elems,-cache_scale,cache_scale);
+  {void*p[]={&mem_slopes,&num_heads,&seed};int info[]={iris_w,sizeof(num_heads),sizeof(seed)};size_t global=(size_t(num_heads)+255)/256*256,local=256;iris::Task task;task.kernel("normal_slopes",1,nullptr,&global,&local,3,p,info);task.flush_out(mem_slopes);task.submit(iris_gpu,nullptr,1);}
   for (int i = 0; i < repeat; ++i) submit();
+  }
+  reference(reference_output.data(),query.data(),key.data(),value.data(),tables.data(),seq_lens.data(),slopes.data(),num_seqs,num_heads,num_heads,head_size,block_size,max_blocks,scale);
+  if(const char* dir=getenv("ATTENTION_DUMP_DIR")){std::string file=std::string(dir)+(sizeof(T)==4?"/fp32.bin":"/bf16.bin");FILE*fp=fopen(file.c_str(),"wb");if(!fp)throw std::runtime_error("dump open");fwrite(output.data(),sizeof(T),output.size(),fp);fclose(fp);}
+
   bool ok = true; float max_error = 0.0f;
   for (int64_t i = 0; i < query_elems; ++i) {
     const float got = decode(output[i]), want = decode(reference_output[i]);
     max_error = std::max(max_error, std::fabs(got - want));
-    if (std::fabs(got - want) > 1e-3f + 1e-5f * std::fabs(want)) ok = false;
+    if (!std::isfinite(got)||!std::isfinite(want)||std::fabs(got - want) > 1e-3f + 1e-5f * std::fabs(want)) ok = false;
   }
   std::printf("%s: %s max_abs_error=%g\n", label, ok ? "PASS" : "FAIL", max_error);
   return ok;
@@ -143,8 +155,11 @@ int main(int argc, char** argv) {
   if (argc != 7) { std::printf("Usage: %s <batch size> <number of query heads> <head size> <max_seq_len> <number of cache blocks> <repeat>\n", argv[0]); return 1; }
   const int num_seqs = std::atoi(argv[1]), num_heads = std::atoi(argv[2]), head_size = std::atoi(argv[3]);
   const int max_seq_len = std::atoi(argv[4]), num_blocks = std::atoi(argv[5]), repeat = std::atoi(argv[6]);
-  if (num_heads <= 0 || head_size != 128 || num_seqs <= 0 || max_seq_len <= 0 || num_blocks <= 0 || repeat <= 0) return 1;
-  iris::Platform platform; platform.init(&argc, &argv, 1);
+  const int allowed[]={32,64,80,96,112,120,128,192,256};
+  if (max_seq_len>ATTENTION_MAX_SEQ_LEN)return 1;
+  if (num_heads <= 0 || std::find(std::begin(allowed),std::end(allowed),head_size)==std::end(allowed) || num_seqs <= 0 || max_seq_len <= 0 || num_blocks <= 0 || repeat <= 0) return 1;
+  iris::Platform platform;{GpuLock lock;platform.init(&argc,&argv,1);}
+  int devices=0;iris_device_count(&devices);for(int d=0;d<devices;d++){int b=0;size_t z=0;iris_device_info(d,iris_backend,&b,&z);printf("IRIS backend=%d HIP=%d\n",b,iris_hip);}
   std::printf("query shape = [%d (num_seqs), %d (num_query_heads), %d (head_size)]\n", num_seqs, num_heads, head_size);
   bool ok = run_dtype<float>("FP32 PageAttention v1", "paged_attention_fp32", num_seqs, num_heads, head_size, max_seq_len, num_blocks, repeat,
                              static_cast<uint64_t>(num_seqs) * num_heads * head_size * sizeof(float),
@@ -154,5 +169,5 @@ int main(int argc, char** argv) {
                            static_cast<uint64_t>(num_seqs) * num_heads * head_size * sizeof(uint16_t),
                            static_cast<uint64_t>(num_blocks) * num_heads * head_size * 32 * sizeof(uint16_t),
                            static_cast<uint64_t>(num_blocks) * num_heads * head_size * 32 * sizeof(uint16_t), 32, decode_bf16) && ok;
-  platform.finalize(); return ok ? 0 : 2;
+  {GpuLock lock;platform.finalize();} return ok ? 0 : 2;
 }

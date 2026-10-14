@@ -1,56 +1,25 @@
-#include <hip/hip_bf16.h>
-#include <hip/hip_runtime.h>
-#include <cmath>
-#include <cstdint>
-
-template <typename T> __device__ float to_float(T value) { return value; }
-template <> __device__ float to_float<__hip_bfloat16>(__hip_bfloat16 value) { return __bfloat162float(value); }
-template <typename T> __device__ T from_float(float value) { return value; }
-template <> __device__ __hip_bfloat16 from_float<__hip_bfloat16>(float value) { return __float2bfloat16(value); }
-
-template <typename T, int BLOCK_SIZE>
-__device__ void paged_attention_simple(
-    T* out, const T* query, const T* key, const T* value, int num_kv_heads, float scale,
-    const int* tables, const int* seq_lens, int max_blocks, const float* slopes,
-    int q_stride, int kv_block_stride, int kv_head_stride, int num_heads, int head_size) {
-  if (threadIdx.x != 0) return;
-  const int seq = blockIdx.y, head = blockIdx.x;
-  const int seq_len = seq_lens[seq], kv_head = head / (num_heads / num_kv_heads);
-  float logits[4096];
-  for (int t = 0; t < seq_len; ++t) {
-    const int block = tables[seq * max_blocks + t / BLOCK_SIZE], offset = t % BLOCK_SIZE;
-    float score = 0.0f;
-    for (int d = 0; d < head_size; ++d) {
-      const int qi = seq * q_stride + head * head_size + d;
-      const int ki = block * kv_block_stride + kv_head * kv_head_stride + d * BLOCK_SIZE + offset;
-      score += to_float(query[qi]) * to_float(key[ki]);
-    }
-    logits[t] = score * scale + (slopes ? slopes[head] * (t - seq_len + 1) : 0.0f);
-  }
-  float max_value = -INFINITY, sum = 0.0f;
-  for (int t = 0; t < seq_len; ++t) max_value = fmaxf(max_value, logits[t]);
-  for (int t = 0; t < seq_len; ++t) { logits[t] = expf(logits[t] - max_value); sum += logits[t]; }
-  for (int d = 0; d < head_size; ++d) {
-    float result = 0.0f;
-    for (int t = 0; t < seq_len; ++t) {
-      const int block = tables[seq * max_blocks + t / BLOCK_SIZE], offset = t % BLOCK_SIZE;
-      const int vi = block * kv_block_stride + kv_head * kv_head_stride + d * BLOCK_SIZE + offset;
-      result += (logits[t] / sum) * to_float(value[vi]);
-    }
-    out[seq * q_stride + head * head_size + d] = from_float<T>(result);
-  }
-}
-
-extern "C" __global__ void paged_attention_fp32(float* out, const float* query, const float* key, const float* value,
-    int num_kv_heads, float scale, const int* tables, const int* seq_lens, int max_blocks, const float* slopes,
-    int q_stride, int kv_block_stride, int kv_head_stride, int tp_rank, int local_blocks, int vert_stride, int block_size, int sliding_step) {
-  (void)tp_rank; (void)local_blocks; (void)vert_stride; (void)sliding_step;
-  paged_attention_simple<float, 16>(out, query, key, value, num_kv_heads, scale, tables, seq_lens, max_blocks, slopes, q_stride, kv_block_stride, kv_head_stride, gridDim.x, 128);
-}
-
-extern "C" __global__ void paged_attention_bf16(__hip_bfloat16* out, const __hip_bfloat16* query, const __hip_bfloat16* key, const __hip_bfloat16* value,
-    int num_kv_heads, float scale, const int* tables, const int* seq_lens, int max_blocks, const float* slopes,
-    int q_stride, int kv_block_stride, int kv_head_stride, int tp_rank, int local_blocks, int vert_stride, int block_size, int sliding_step) {
-  (void)tp_rank; (void)local_blocks; (void)vert_stride; (void)sliding_step;
-  paged_attention_simple<__hip_bfloat16, 32>(out, query, key, value, num_kv_heads, scale, tables, seq_lens, max_blocks, slopes, q_stride, kv_block_stride, kv_head_stride, gridDim.x, 128);
-}
+#define USE_ROCM
+#include "device/attention_kernels.cuh"
+#include "device/cuda_compat.h"
+#include "device/input_kernels.hpp"
+extern "C" __global__ void uniform_fp32(float*data,int64_t n,float low,float high,uint32_t seed){uniform_fill_kernel(data,n,low,high,seed);}
+extern "C" __global__ void paged_attention_fp32_h32(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,32,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h64(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,64,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h80(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,80,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h96(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,96,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h112(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,112,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h120(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,120,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h128(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,128,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h192(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,192,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_fp32_h256(float*out,const float*query,const float*key,const float*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<float,float,256,16,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void uniform_bf16(__nv_bfloat16*data,int64_t n,float low,float high,uint32_t seed){uniform_fill_kernel(data,n,low,high,seed);}
+extern "C" __global__ void paged_attention_bf16_h32(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,32,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h64(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,64,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h80(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,80,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h96(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,96,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h112(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,112,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h120(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,120,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h128(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,128,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h192(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,192,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void paged_attention_bf16_h256(__nv_bfloat16*out,const __nv_bfloat16*query,const __nv_bfloat16*key,const __nv_bfloat16*value,int heads,float scale,const int*tables,const int*lens,int blocks,const float*slopes,int qstride,int kvstride,int headstride,int rank,int local,int vertical,int sparseblock,int sliding){paged_attention_v1_kernel<__nv_bfloat16,__nv_bfloat16,256,32,128,false>(out,query,key,value,heads,scale,tables,lens,blocks,slopes,qstride,kvstride,headstride,rank,local,vertical,sparseblock,sliding);}
+extern "C" __global__ void normal_slopes(float*data,int n,uint32_t seed){norm_fill_kernel(data,n,seed);}
