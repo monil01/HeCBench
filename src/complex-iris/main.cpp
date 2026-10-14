@@ -60,12 +60,20 @@ int main(int argc, char* argv[])
   std::printf("Average kernel execution time %f (s)\n", time);
   mem_cs.fetch(cs);
   bool complex_float_check = check(cs, n);
+  time = run_kernel("ref_complex_float", mem_cs, n, repeat);
+  std::printf("Average kernel execution time (reference) %f (s)\n", time);
+  mem_cs.fetch(cs);
+  complex_float_check &= check(cs, n);
 
   std::printf("\nDouble-precision complex data type\n");
   time = run_kernel("complex_double", mem_cs, n, repeat);
   std::printf("Average kernel execution time %f (s)\n", time);
   mem_cs.fetch(cs);
   bool complex_double_check = check(cs, n);
+  time = run_kernel("ref_complex_double", mem_cs, n, repeat);
+  std::printf("Average kernel execution time (reference) %f (s)\n", time);
+  mem_cs.fetch(cs);
+  complex_double_check &= check(cs, n);
 
   std::printf("%s\n", (complex_float_check && complex_double_check) ? "PASS" : "FAIL");
   std::free(cs);

@@ -2,6 +2,9 @@
 #include <stdint.h>
 
 #include "complex.h"
+__device__ double LCG_random_double(uint64_t* seed);
+__device__ uint64_t fast_forward_LCG(uint64_t seed, uint64_t n);
+#include "reference.h"
 
 __device__ double LCG_random_double(uint64_t* seed)
 {

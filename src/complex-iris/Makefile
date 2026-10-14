@@ -20,10 +20,10 @@ all: main kernel.hip
 main: main.cpp Makefile
 	$(CXX) $(CXXFLAGS) -o $@ main.cpp $(LDFLAGS)
 
-kernel.hip: kernel.hip.cpp complex.h Makefile
+kernel.hip: kernel.hip.cpp complex.h reference.h Makefile
 	$(HIPCC) $(HIPFLAGS) --genco -o $@ kernel.hip.cpp
 
-kernel.ptx: kernel.cu complex.h Makefile
+kernel.ptx: kernel.cu complex.h reference.h Makefile
 	nvcc -ptx -I. -o $@ kernel.cu
 
 run: all
