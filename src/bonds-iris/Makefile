@@ -5,7 +5,7 @@ HIPCC ?= hipcc
 RUN_ARGS ?= 100
 CXXFLAGS ?= -O3 -std=c++17
 all: main kernel.hip
-main: main.cpp bondsStructs.h Makefile
+main: main.cpp bondsStructs.h diagnostics.h Makefile
 	$(CXX) $(CXXFLAGS) -I../bonds-cuda -I$(IRIS_ROOT)/include -I$(IRIS_BUILD)/include main.cpp -L$(IRIS_BUILD)/src/runtime -Wl,-rpath,$(IRIS_BUILD)/src/runtime -liris -ldl -lpthread -o $@
 kernel.hip: kernel.hip.cpp bondsKernelsGpu.h bondsStructs.h
 	$(HIPCC) -O3 --genco kernel.hip.cpp -o $@

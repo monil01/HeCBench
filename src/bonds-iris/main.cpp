@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include "bondsStructs.h"
+#include "diagnostics.h"
 #include <iris/iris.hpp>
 #include <stdexcept>
 long getBondsResultsGpu(inArgsStruct inArgsHost, resultsStruct resultsFromGpu, int numBonds) {
@@ -345,6 +346,7 @@ void runBoundsEngine(const int repeat)
     auto end = std::chrono::steady_clock::now();
     timeGpu = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
+    diagnostic_dump_results(resultsFromGpu,numBonds);
     printf("Run on GPU\n");
     printf("Average kernel execution time on GPU: %lf (ms)  \n\n", ktimeGpu * 1e-6 / repeat);
     printf("Average processing time on GPU: %f (ms)  \n\n", timeGpu * 1e-6 / repeat);
