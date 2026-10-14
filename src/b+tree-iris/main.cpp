@@ -45,6 +45,7 @@
 #include <math.h>                  // (in directory known to compiler)      needed by log, pow
 #include <string.h>                  // (in directory known to compiler)      needed by memset
 #include <iris/iris.hpp>
+#include "gpu_lock.hpp"
 
 //======================================================================================================================================================150
 //  COMMON
@@ -1842,7 +1843,8 @@ main( int argc, char** argv )
   // ------------------------------------------------------------60
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  {GpuLock lock;platform.init(&argc, &argv, 1);}
+  int devices=0;iris_device_count(&devices);for(int d=0;d<devices;d++){int b=0;size_t z=0;iris_device_info(d,iris_backend,&b,&z);printf("IRIS backend=%d HIP=%d\n",b,iris_hip);}
   g_iris_platform = &platform;
   int device = 0;
   printf("Selecting device %d\n", device);

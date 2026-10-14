@@ -1,3 +1,4 @@
+#include "gpu_lock.hpp"
 #include <stdio.h>
 #include <iris/iris.hpp>
 #include "./iris_wrappers.h"
@@ -25,6 +26,7 @@ void kernel_wrapper(record *records,
                     long *offset,
                     int *keys,
                     record *ans) {
+  GpuLock lock;
   printf("# of blocks = %d, # of threads/block = %zu (IRIS dmem HIP)\n",
          count, local_size(order));
   iris::DMem mem_records(records, static_cast<size_t>(records_mem));
@@ -38,7 +40,7 @@ void kernel_wrapper(record *records,
   void *params[] = { &maxheight, &mem_knodes, &knodes_elem, &mem_records,
                      &mem_curr, &mem_offset, &mem_keys, &mem_ans };
   int pinfo[] = { sizeof(maxheight), iris_r, sizeof(knodes_elem), iris_r,
-                  iris_rw, iris_rw, iris_r, iris_w };
+                  iris_rw, iris_rw, iris_r, iris_rw };
   size_t gws[] = { work_size(count, order) };
   size_t lws[] = { local_size(order) };
   task.kernel("findK", 1, NULL, gws, lws, 8, params, pinfo);
@@ -62,6 +64,7 @@ void kernel2_wrapper(knode *knodes,
                      int *end,
                      int *recstart,
                      int *reclength) {
+  GpuLock lock;
   printf("# of blocks = %d, # of threads/block = %zu (IRIS dmem HIP)\n",
          count, local_size(order));
   iris::DMem mem_knodes(knodes, static_cast<size_t>(knodes_mem));
@@ -79,7 +82,7 @@ void kernel2_wrapper(knode *knodes,
                      &mem_offset, &mem_last, &mem_offset2, &mem_start,
                      &mem_end, &mem_recstart, &mem_reclength };
   int pinfo[] = { sizeof(maxheight), iris_r, sizeof(knodes_elem), iris_rw,
-                  iris_rw, iris_rw, iris_rw, iris_r, iris_r, iris_w, iris_w };
+                  iris_rw, iris_rw, iris_rw, iris_r, iris_r, iris_rw, iris_rw };
   size_t gws[] = { work_size(count, order) };
   size_t lws[] = { local_size(order) };
   task.kernel("findRangeK", 1, NULL, gws, lws, 11, params, pinfo);
