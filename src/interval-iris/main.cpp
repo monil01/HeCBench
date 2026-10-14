@@ -42,6 +42,7 @@
 #include "interval.h"
 
 #include "cpu_interval.h"
+#include "diagnostics.h"
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
@@ -112,6 +113,7 @@ int main(int argc, char *argv[]) {
             << (time * 1e-3f) / repeat << " us\n";
 
   platform.finalize();
+  diagnostic_dump_intervals(h_result,h_nresults);
 
   // Compute the results using a CPU implementation based on the Boost library
   I_CPU i_cpu(0.01f, 4.0f);
