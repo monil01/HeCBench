@@ -17,13 +17,13 @@ endif
 
 all: main kernel.hip
 
-main: main.cpp Makefile
+main: main.cpp hip_backend.hpp Makefile
 	$(CXX) $(CXXFLAGS) -o $@ main.cpp $(LDFLAGS)
 
-kernel.hip: kernel.hip.cpp Makefile
+kernel.hip: kernel.hip.cpp original_kernels.hpp Makefile
 	$(HIPCC) $(HIPFLAGS) --genco -o $@ kernel.hip.cpp
 
-kernel.ptx: kernel.cu Makefile
+kernel.ptx: kernel.cu original_kernels.hpp Makefile
 	nvcc -ptx -o $@ kernel.cu
 
 run: all

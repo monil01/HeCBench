@@ -1,4 +1,6 @@
 #include <iris/iris.hpp>
+#include "hip_backend.hpp"
+#include <string>
 
 #include <chrono>
 #include <cmath>
@@ -8,6 +10,17 @@
 
 #define MAX_THREADS_PER_BLOCK 512
 #define WORK_SIZE 8192
+
+static void dump_values(const char* suffix, const float* output, size_t bytes) {
+  const char* path=std::getenv("HECBENCH_VALIDATE_DUMP");
+  if (!path) return;
+  std::string filename=std::string(path)+suffix;
+  FILE* fp=std::fopen(filename.c_str(),"wb");
+  if(!fp) std::exit(2);
+  size_t count=std::fwrite(output,1,bytes,fp);
+  std::fclose(fp);
+  if(count!=bytes) std::exit(2);
+}
 
 static void scatter_add_reference(
     int batch_size,
@@ -64,14 +77,18 @@ static void launch_scatter(
     sizeof(output_size),
     sizeof(vector_dim)
   };
-  task.kernel(kernel_name, 2, nullptr, gws, lws, 6, params, pinfo);
+  const size_t words=static_cast<size_t>(output_size)*vector_dim+MAX_THREADS_PER_BLOCK;
+  const int capacity=words<=1024 ? 1024 : (words<=4096 ? 4096 : 16384);
+  char symbol[128];
+  std::snprintf(symbol,sizeof(symbol),"%s_shared%d",kernel_name,capacity);
+  iris_check(task.kernel(symbol, 2, nullptr, gws, lws, 6, params, pinfo), symbol);
   if (fetch_output) {
     task.flush_out(mem_output);
   }
-  task.submit(iris_gpu, nullptr, 1);
+  iris_check(task.submit(hip_device, nullptr, 1), "scatter task");
 }
 
-static void index_accumulate(int batch_size, int output_size, int vector_dim, int repeat)
+static bool index_accumulate(int batch_size, int output_size, int vector_dim, int repeat)
 {
   const size_t source_size_bytes = static_cast<size_t>(batch_size) * static_cast<size_t>(vector_dim) * sizeof(float);
   const size_t output_size_bytes = static_cast<size_t>(output_size) * static_cast<size_t>(vector_dim) * sizeof(float);
@@ -88,7 +105,7 @@ static void index_accumulate(int batch_size, int output_size, int vector_dim, in
     std::free(index);
     std::free(output);
     std::free(output_ref);
-    return;
+    return false;
   }
 
   std::srand(2);
@@ -117,16 +134,17 @@ static void index_accumulate(int batch_size, int output_size, int vector_dim, in
                    warp_size, mem_index, mem_source, mem_output, i == 9);
   }
 
-  mem_output.fetch(output);
+  // The final warmup task flushed output to its host buffer.
   bool ok = true;
   for (int i = 0; i < output_size * vector_dim; i++) {
-    if (std::fabs(output[i] - output_ref[i]) > 1e-3f) {
+    if (!std::isfinite(output[i]) || std::fabs(output[i] - output_ref[i]) > 1e-3f) {
       std::printf("output %d: %f %f\n", i, output[i], output_ref[i]);
       ok = false;
       break;
     }
   }
   std::printf("%s\n", ok ? "PASS" : "FAIL");
+  dump_values(".warmup",output,output_size_bytes);
 
   auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < repeat; i++) {
@@ -136,6 +154,12 @@ static void index_accumulate(int batch_size, int output_size, int vector_dim, in
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   std::printf("Average execution time of kernel1: %f (us)\n", (time * 1e-3f) / repeat);
+  if (std::getenv("HECBENCH_VALIDATE_DUMP")) {
+    iris::Task flush;
+    iris_check(flush.flush_out(mem_output),"phase flush");
+    iris_check(flush.submit(hip_device,nullptr,true),"phase output");
+    dump_values(".k1",output,output_size_bytes);
+  }
 
   start = std::chrono::steady_clock::now();
   for (int i = 0; i < repeat; i++) {
@@ -145,11 +169,18 @@ static void index_accumulate(int batch_size, int output_size, int vector_dim, in
   end = std::chrono::steady_clock::now();
   time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   std::printf("Average execution time of kernel2: %f (us)\n", (time * 1e-3f) / repeat);
+  if (std::getenv("HECBENCH_VALIDATE_DUMP")) {
+    iris::Task flush;
+    iris_check(flush.flush_out(mem_output),"phase flush");
+    iris_check(flush.submit(hip_device,nullptr,true),"phase output");
+    dump_values(".k2",output,output_size_bytes);
+  }
 
   std::free(source);
   std::free(index);
   std::free(output);
   std::free(output_ref);
+  return ok;
 }
 
 int main(int argc, char* argv[])
@@ -160,7 +191,8 @@ int main(int argc, char* argv[])
   }
 
   iris::Platform platform;
-  platform.init(&argc, &argv, 1);
+  iris_check(platform.init(&argc, &argv, 1), "initialize");
+  select_hip_device();
 
   const int batch_size = std::atoi(argv[1]);
   const int output_size = std::atoi(argv[2]);
@@ -171,8 +203,10 @@ int main(int argc, char* argv[])
   std::printf("output_size (range of index values): %d\n", output_size);
   std::printf("vector_dimension: %d\n", vector_dim);
 
-  index_accumulate(batch_size, output_size, vector_dim, repeat);
+  if (batch_size <= 0 || output_size <= 0 || vector_dim <= 0 || repeat <= 0 ||
+      static_cast<size_t>(output_size)*vector_dim+MAX_THREADS_PER_BLOCK>16384) return 1;
+  bool ok = index_accumulate(batch_size, output_size, vector_dim, repeat);
 
   platform.finalize();
-  return 0;
+  return ok ? 0 : 1;
 }
