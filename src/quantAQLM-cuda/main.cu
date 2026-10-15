@@ -140,6 +140,8 @@ void code1x16_matvec(const void* __restrict__ A,
   printf("kernel execution time: %f (us)\n", (time * 1e-3f) / 1);
 }
 
+#include "verify_output.h"
+
 int main() {
 
   const int b = 4;
@@ -148,7 +150,7 @@ int main() {
   size_t input_size = b * 4096;
 
   // weight matrix  X input vectors
-  size_t output_size = b * 12288 / 32;
+  size_t output_size = b * 12288;
 
   // weight matrix
   size_t rows = 512;  // 4096 / sizeof(int4)
@@ -212,18 +214,19 @@ int main() {
 
   for (int i = 0; i < b; ++i) {
     auto d_input_vec = d_input + 4096 * i;
-    auto d_output_vec = d_output + 12288/32 * i;
+    auto d_output_vec = d_output + 12288 * i;
     code1x16_matvec((void*)d_codes, (void*)d_input_vec,
                     (void*)d_output_vec, (void*)d_codebook,
                     prob_m, prob_k, codebook_a_sizes, codebook_stride);
   }
 
   cudaMemcpy(h_output, d_output, output_size_bytes, cudaMemcpyDeviceToHost);
+  verify_output(h_input, h_codes, h_codebook, h_output, b);
 
 #ifdef DEBUG
   for (int i = 0; i < b; ++i) {
-    auto h_output_vec = h_output + 12288/32 * i;
-    for (int j = 0; j < 12288/32; j++) {
+    auto h_output_vec = h_output + 12288 * i;
+    for (int j = 0; j < 12288; j++) {
       printf("row=%d col=%d val=%f\n", i, j, __half2float(h_output_vec[j]));
     }
   }
