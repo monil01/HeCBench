@@ -900,11 +900,12 @@ frna_t frna_new(const char *str, fparam_t par)
   CU(hipMemcpy(v, p->v, n*n*sizeof(int_t), hipMemcpyHostToDevice));
   CU(hipMemcpy(w, p->w, n*n*sizeof(int_t), hipMemcpyHostToDevice));
   CU(hipMemcpy(wm, p->wm, n*n*sizeof(int_t), hipMemcpyHostToDevice));
+  CU(hipMemcpy(wca, p->wca, n*n*sizeof(int_t), hipMemcpyHostToDevice));
 
   hipDeviceSynchronize();
   auto start = std::chrono::steady_clock::now();
 
-  hipLaunchKernelGGL(init_w5_and_w3, dim3(n), dim3(1), 0, 0, n+1,w5-1,w3);
+  hipLaunchKernelGGL(init_w5_and_w3, dim3(n+1), dim3(1), 0, 0, n+1,w5-1,w3);
 
   for (int d = 0; d < n-1; d++) { //for fragment lengths (1 : n)
     hipLaunchKernelGGL(calc_V_hairpin_and_V_stack, dim3(n), dim3(1), 0, 0, d, n, s, v, pm);
@@ -950,7 +951,7 @@ frna_t frna_new(const char *str, fparam_t par)
    */
 
 
-  init_w5_and_w3(n,p->w5,p->w3);
+  init_w5_and_w3(n,p->w5-1,p->w3);
 
   int d;
 

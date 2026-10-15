@@ -894,11 +894,12 @@ frna_t frna_new(const char *str, fparam_t par)
   CU(cudaMemcpy(v, p->v, n*n*sizeof(int_t), cudaMemcpyHostToDevice));
   CU(cudaMemcpy(w, p->w, n*n*sizeof(int_t), cudaMemcpyHostToDevice));
   CU(cudaMemcpy(wm, p->wm, n*n*sizeof(int_t), cudaMemcpyHostToDevice));
+  CU(cudaMemcpy(wca, p->wca, n*n*sizeof(int_t), cudaMemcpyHostToDevice));
 
   cudaDeviceSynchronize();
   auto start = std::chrono::steady_clock::now();
 
-  init_w5_and_w3<<<n,1>>>(n+1,w5-1,w3);
+  init_w5_and_w3<<<n+1,1>>>(n+1,w5-1,w3);
 
   for (int d = 0; d < n-1; d++) { //for fragment lengths (1 : n)
     calc_V_hairpin_and_V_stack<<<n,1>>>(d, n, s, v, pm);
@@ -943,7 +944,7 @@ frna_t frna_new(const char *str, fparam_t par)
       ALLOC(w3,n+1); //best energy of structure from i to numberofbases
    */
 
-  init_w5_and_w3(n,p->w5,p->w3);
+  init_w5_and_w3(n,p->w5-1,p->w3);
 
   int d;
 
