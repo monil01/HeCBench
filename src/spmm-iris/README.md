@@ -1,16 +1,15 @@
-Deferred: vendor-library SpGEMM, not a verified IRIS port.
+IRIS DMem sparse-times-sparse multiplication with complete CSR output.
 
-CUDA calls cuSPARSE workEstimation/compute/copy with library-owned descriptors,
-dynamic scratch/output sizes and CSR pointer binding. Native HIP substitutes
-hipSPARSE. There are no application kernels to launch through IRIS DMem.
-The local IRIS headers/runtime expose no hipSPARSE SpGEMM descriptor adapter.
-A valid port would need a benchmark-local IRIS HIP library adapter that obtains
-DMem device allocations and preserves library descriptor/stream lifetime, or
-an explicitly approved algorithm replacement. A native HIP host allocation
-and direct library call would violate the requested IRIS DMem host model.
+The explicitly authorized equivalent HIP implementation accumulates sparse
+products in row-local dense scratch, then computes prefix sums and emits sorted
+CSR offsets, columns and values entirely on the GPU. All device allocations and
+dispatch use IRIS DMem/tasks. CPU multiplication is an independent oracle only.
+P1: O(M*N) additional scratch and different vendor scheduling, summation order
+and throughput. This is not a vendor-performance replacement.
 
-No main/kernel is supplied and this directory must not be counted as runnable
-coverage. Source/baseline snapshots and command logs are recorded in
-.porting-state/porting_logs/spmm-iris/manifest.json with status deferred (D1).
 Original seven arguments, srand(123)/drand48 initialization, CSR outputs and
-verification tolerance 1e-2 remain in the baseline; they have not been changed.
+verification tolerance 1e-2 are retained. Inputs are generated before IRIS init.
+Both original default run cases remain; bounded tests do not validate defaults.
+HECBENCH_DUMP_PREFIX exports complete CSR output for native HIP comparisons.
+Native sources remain unchanged; observational native adapter only adds dumps.
+The original NVIDIA notice is preserved in NOTICE and applies to adapted helpers.
