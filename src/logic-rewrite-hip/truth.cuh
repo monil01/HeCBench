@@ -176,7 +176,8 @@ __global__ void getCutTruthTableConsecutive(const int * pFanin0, const int * pFa
                                             const int * vIndices, const int * vCuts, const int * vCutRanges,
                                             unsigned * vTruth, const int * vTruthRanges, const unsigned * vTruthElem,
                                             int nIndices, int nPIs, int nMaxCutSize, int * vNode2ConeResynIdx = NULL) {
-    typedef hipcub::WarpScan<int> WarpScan;
+    // Allocation groups and lane indices below are explicitly 32-wide.
+    typedef hipcub::WarpScan<int, 32> WarpScan;
     __shared__ typename WarpScan::TempStorage temp_storage[THREAD_PER_BLOCK / 32];
     __shared__ unsigned * vTruthMemAlloc[THREAD_PER_BLOCK / 32];
     
