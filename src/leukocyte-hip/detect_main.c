@@ -147,6 +147,7 @@ int main(int argc, char ** argv) {
   hipMemcpyAsync(d_grad_y, host_grad_y, sizeof(float)*grad_m*grad_n, hipMemcpyHostToDevice, 0);
 
   hipMalloc((void**)&d_gicov, sizeof(float)*grad_m*grad_n);
+  hipMemset(d_gicov, 0, sizeof(float)*grad_m*grad_n);
 
   hipDeviceSynchronize();
   auto start = std::chrono::steady_clock::now();

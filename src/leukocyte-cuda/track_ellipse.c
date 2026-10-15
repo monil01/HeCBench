@@ -187,6 +187,9 @@ void ellipsetrack(avi_t *video, double *xc0, double *yc0, int Nc, int R, int Np,
       m_free(IMGVF[cell_num]);
     }
 
+#ifdef HECBENCH_LEUKO_VALIDATE
+    leuk_track(frame_num,Nc,Np,xci,yci,ri);
+#endif
 #ifdef OUTPUT
     if (frame_num == Nf)
     {

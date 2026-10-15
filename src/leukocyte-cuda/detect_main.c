@@ -147,6 +147,7 @@ int main(int argc, char ** argv) {
   cudaMemcpyAsync(d_grad_y, host_grad_y, sizeof(float)*grad_m*grad_n, cudaMemcpyHostToDevice, 0);
 
   cudaMalloc((void**)&d_gicov, sizeof(float)*grad_m*grad_n);
+  cudaMemset(d_gicov, 0, sizeof(float)*grad_m*grad_n);
 
   cudaDeviceSynchronize();
   auto start = std::chrono::steady_clock::now();

@@ -126,6 +126,8 @@ void kernel_IMGVF(
         new_val -= ((1.0 / LAMBDA) * vI * (new_val - vI));
 
       }
+      // All warps must finish neighbor reads before any shared tile write.
+      __syncthreads();
       // Save the previous virtual thread block's value (if it exists)
       if (thread_block > 0) {
         offset = (thread_block - 1) * LOCAL_WORK_SIZE;

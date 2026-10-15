@@ -448,6 +448,10 @@ VEC * getfdriv(MAT * m, int ns)
 //Performs bilinear interpolation, getting the values of m specified in the vectors X and Y
 MAT * linear_interp2(MAT * m, VEC * X, VEC * Y)
 {
+	if (!m || !X || !Y || m->m < 2 || m->n < 2 || X->dim != Y->dim) {
+		fprintf(stderr, "Invalid bilinear interpolation shape\n");
+		exit(EXIT_FAILURE);
+	}
 	//Kind of assumes X and Y have same len!
 
 	MAT * retval = m_get(1, X->dim);
@@ -458,6 +462,12 @@ MAT * linear_interp2(MAT * m, VEC * X, VEC * Y)
 	{
 		x_coord = v_get_val(X, i);
 		y_coord = v_get_val(Y, i);
+		// All four bilinear neighbors must exist; reject undefined accesses.
+		if (!isfinite(x_coord) || !isfinite(y_coord) || x_coord < 0 || y_coord < 0 ||
+		    x_coord >= m->n-1 || y_coord >= m->m-1) {
+			fprintf(stderr, "Invalid bilinear coordinate %.17g %.17g in %u x %u\n", x_coord, y_coord, m->m, m->n);
+			exit(EXIT_FAILURE);
+		}
 
 		l = (int)x_coord;
 		k = (int)y_coord;
