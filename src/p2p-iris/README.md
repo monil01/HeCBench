@@ -1,7 +1,7 @@
 # p2p: IRIS-owned peer copies and true remote kernel reads
 
 Build a private IRIS runtime at `ff57e620a92fcf62eff3568d9c6eeaaf078f0340`
-with patches0001–0005 in `tools/iris_runtime_patches`, following their exact
+with patches0001–0007 in `tools/iris_runtime_patches`, following their exact
 application commands. Then:
 
 ```sh
@@ -32,6 +32,15 @@ and odd copy counts. Invalid output/scalar/unallocated/post-submit remote
 bindings are rejected. Every run checks IRIS errors and successful teardown.
 Production repeat2000 is retained but not claimed as fully timed/validated.
 
+`make runtime_test IRIS_ROOT=/path/to/patched/iris` builds an additional
+two-kernel-in-one-task rejection regression. Remote-bound tasks explicitly
+require one kernel: binding, task submission, and both graph submission routes
+reject invalid compositions before enqueueing, including a kernel appended
+after binding. Patch07 also resolves the active command rather than the task's
+first command. This is an API-rejection test; the normal benchmark separately
+checks all33,554,432 valid remote-kernel outputs and forbidden opposite-device
+allocations. Generic multi-kernel remote execution is not supported or claimed.
+
 Optional `HECBENCH_P2P_DUMP=/absolute/prefix` writes complete output artifacts.
 Native CUDA/HIP sources include an opt-in observation helper activated with
 `-DHECBENCH_P2P_VALIDATE`; default computation is unchanged. Run:
@@ -40,8 +49,12 @@ Native CUDA/HIP sources include an opt-in observation helper activated with
 python3 verify.py /absolute/native-prefix /absolute/iris-prefix --elements 16777216
 ```
 
-The verifier checks every finite output against both native and an independent
-source-pattern oracle, not a checksum or timing label. CUDA source receives
+The verifier discovers all dumped pairs, requires matching native/IRIS pair
+sets and both outputs per pair, and checks every finite output against native
+and an independent source-pattern oracle, not a checksum or timing label.
+The two-device host certifies pair0/1, not arbitrary GPU topologies. The harness
+explicitly rejects HIP_DEVICE_FACTOR other than1 rather than treating logical
+IRIS indices as physical HIP ordinals. CUDA source receives
 the matching optional hook and bounds guard; no CUDA build/run is claimed.
 Historical failed candidates and the original native sources remain in
 `.porting-state/porting_logs/p2p-iris`.

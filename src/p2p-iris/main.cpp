@@ -87,6 +87,14 @@ static bool pair_access(int first, int second, int repeat) {
   return true;
 }
 int main(int argc, char** argv) {
+  // The source enumerates physical HIP devices. This harness intentionally
+  // supports identity logical mapping rather than misusing virtual ordinals.
+  if (const char* factor = std::getenv("HIP_DEVICE_FACTOR")) {
+    char* end = nullptr;
+    if (std::strtol(factor, &end, 10) != 1 || !end || *end) {
+      std::fprintf(stderr, "HIP_DEVICE_FACTOR must be 1 for physical peer enumeration\n"); return 2;
+    }
+  }
   if (argc != 2 || std::atoi(argv[1]) <= 0 || HECBENCH_P2P_ELEMENTS <= 0) {
     std::printf("Usage: %s <repeat>\n", argv[0]); return 1;
   }

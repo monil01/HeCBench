@@ -18,8 +18,10 @@ main: main.cpp Makefile
 	$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) -o $@ $< $(LDFLAGS)
 kernel.hip: kernel.hip.cpp Makefile
 	$(HIPCC) $(HIPFLAGS) --genco -o $@ $<
+runtime_test: runtime_test.cpp Makefile
+	$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) -o $@ $< $(LDFLAGS)
 run: all
 	HSA_FORCE_FINE_GRAIN_PCIE=1 IRIS_ARCHS=HIP $(LAUNCHER) ./main $(RUN_ARGS)
 clean:
-	rm -f main kernel.hip *.o
+	rm -f main kernel.hip runtime_test *.o
 .PHONY: all run clean
