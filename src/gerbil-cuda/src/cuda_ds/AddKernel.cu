@@ -63,13 +63,13 @@ __global__ void addKernel(
 	const uint32_t subBlock = threadID / intsPerEntry;
 
 	// shared variables and pointers to it
-	__shared__ uint32_t sharedData[2 + 2 * entriesPerBlock
+	__shared__ volatile uint32_t sharedData[2 + 2 * entriesPerBlock
 			+ intsPerKey * keysPerBlock];
 	volatile uint32_t* success = &sharedData[0];
-	uint32_t* matchOffset = &sharedData[1];
-	uint32_t* matchStatus = &sharedData[2];
-	uint32_t* lockStatus = &sharedData[2 + entriesPerBlock];
-	uint32_t* keyInts = &sharedData[2 + 2 * entriesPerBlock];
+	volatile uint32_t* matchOffset = &sharedData[1];
+	volatile uint32_t* matchStatus = &sharedData[2];
+	volatile uint32_t* lockStatus = &sharedData[2 + entriesPerBlock];
+	volatile uint32_t* keyInts = &sharedData[2 + 2 * entriesPerBlock];
 
 	// Local Variables
 	uint32_t x;
