@@ -21,9 +21,12 @@
 #include <cstdlib>
 #include <chrono>
 #include <cuda_runtime.h>
+#include "../mallocFree-iris/native_validation.h"
 
 #define NUM_SIZE 19  //size up to 16M
+#ifndef NUM_ITER
 #define NUM_ITER 500 //Total GPU memory up to 16M*500=8G
+#endif
 
 #define Clock() std::chrono::steady_clock::now()
 
@@ -96,6 +99,7 @@ int main(int argc, char* argv[])
   }
    
   const size_t totalGlobalMem = atol(argv[1]);
+  if (totalGlobalMem < static_cast<size_t>(NUM_ITER+1)*64) return 1;
 
   size_t size[NUM_SIZE] = { 0 };
   int *Ad[NUM_ITER] = { nullptr };
@@ -115,6 +119,8 @@ int main(int argc, char* argv[])
     auto end = Clock();
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("cudaMallocManaged(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
+
+    native_validate_allocations(Ad, size[i], NUM_ITER, 1);
 
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {
@@ -138,6 +144,8 @@ int main(int argc, char* argv[])
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("cudaMalloc(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
 
+    native_validate_allocations(Ad, size[i], NUM_ITER, 0);
+
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {
       cudaFree(Ad[j]);
@@ -159,6 +167,8 @@ int main(int argc, char* argv[])
     auto end = Clock();
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("cudaHostAlloc(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
+
+    native_validate_allocations(Ad, size[i], NUM_ITER, 2);
 
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {

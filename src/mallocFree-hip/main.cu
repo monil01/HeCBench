@@ -21,9 +21,12 @@
 #include <cstdlib>
 #include <chrono>
 #include <hip/hip_runtime.h>
+#include "../mallocFree-iris/native_validation.h"
 
 #define NUM_SIZE 19  //size up to 16M
+#ifndef NUM_ITER
 #define NUM_ITER 500 //Total GPU memory up to 16M*500=8G
+#endif
 
 #define Clock() std::chrono::steady_clock::now()
 
@@ -71,7 +74,7 @@ void testInit(size_t size, int type) {
     printf("hipHostMalloc(%zu) takes %lf us\n", size, time * 1e-3);
 
   start = Clock();
-  hipFree(Ad);
+  native_release(Ad, type);
   end = Clock();
   time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   printf("hipFree(%zu) takes %lf us\n", size, time * 1e-3);
@@ -86,6 +89,7 @@ int main(int argc, char* argv[])
   }
    
   const size_t totalGlobalMem = atol(argv[1]);
+  if (totalGlobalMem < static_cast<size_t>(NUM_ITER+1)*64) return 1;
 
   size_t size[NUM_SIZE] = { 0 };
   int *Ad[NUM_ITER] = { nullptr };
@@ -105,6 +109,8 @@ int main(int argc, char* argv[])
     auto end = Clock();
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("hipMallocManaged(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
+
+    native_validate_allocations(Ad, size[i], NUM_ITER, 1);
 
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {
@@ -128,6 +134,8 @@ int main(int argc, char* argv[])
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("hipMalloc(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
 
+    native_validate_allocations(Ad, size[i], NUM_ITER, 0);
+
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {
       hipFree(Ad[j]);
@@ -150,9 +158,11 @@ int main(int argc, char* argv[])
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     printf("hipHostMalloc(%zu) takes %lf us\n", size[i], time * 1e-3  / NUM_ITER);
 
+    native_validate_allocations(Ad, size[i], NUM_ITER, 2);
+
     start = Clock();
     for (int j = 0; j < NUM_ITER; j++) {
-      hipFree(Ad[j]);
+      native_release(Ad[j], 2);
       Ad[j] = nullptr;
     }
     end = Clock();
