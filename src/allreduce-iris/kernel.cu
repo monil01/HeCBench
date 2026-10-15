@@ -2,6 +2,8 @@
 
 extern "C" __global__ void kernel_add_segment(const float* src, float* dst,
                                                size_t offset, size_t length) {
-  const size_t i = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (i < length) dst[offset + i] += src[i];
+  for(size_t i=size_t(blockIdx.x)*blockDim.x+threadIdx.x;i<length;i+=size_t(blockDim.x)*gridDim.x)dst[offset+i]+=src[i];
+}
+extern "C" __global__ void copy_data(const float* src,float* dst,size_t n){
+ for(size_t i=size_t(blockIdx.x)*blockDim.x+threadIdx.x;i<n;i+=size_t(blockDim.x)*gridDim.x)dst[i]=src[i];
 }

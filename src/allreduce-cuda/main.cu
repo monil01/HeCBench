@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 
 void TestCollectivesGPU(std::vector<size_t>& sizes, std::vector<size_t>& iterations) {
     // Get the local rank, which gets us the GPU we should be using.
@@ -14,7 +17,7 @@ void TestCollectivesGPU(std::vector<size_t>& sizes, std::vector<size_t>& iterati
     // We must do this before initializing MPI, because initializing MPI requires having the right
     // GPU context, so we use environment variables from our MPI implementation to determine the
     // local rank.
-    // 
+    //
     // OpenMPI usually provides OMPI_COMM_WORLD_LOCAL_RANK, which we read. If you use SLURM with
     // OpenMPI, then SLURM instead provides SLURM_LOCALID. In this case, make sure to use `srun` or
     // `sbatch` and not `mpirun` to run your application.
@@ -59,7 +62,7 @@ void TestCollectivesGPU(std::vector<size_t>& sizes, std::vector<size_t>& iterati
         for(size_t iter = 0; iter < iters; iter++) {
             // Initialize data as a block of ones, which makes it easy to check for correctness.
             for(size_t j = 0; j < size; j++) {
-                cpu_data[j] = 1.0f;
+                cpu_data[j] = std::getenv("HECBENCH_ALLREDUCE_PATTERNED") ? float(int(j%97)-48+11*mpi_rank) : 1.0f;
             }
 
             err = cudaMemcpy(data, cpu_data, sizeof(float) * size, cudaMemcpyHostToDevice);
@@ -75,14 +78,21 @@ void TestCollectivesGPU(std::vector<size_t>& sizes, std::vector<size_t>& iterati
 
             // Check that we get the expected result.
             for(size_t j = 0; j < size; j++) {
-                if(cpu_data[j] != (float) mpi_size) {
+                float expected = std::getenv("HECBENCH_ALLREDUCE_PATTERNED") ? float(mpi_size*(int(j%97)-48)+11*mpi_size*(mpi_size-1)/2) : float(mpi_size);
+                if(cpu_data[j] != expected) {
                     std::cerr << "Unexpected result from allreduce: " << cpu_data[j] << std::endl;
                     return;
                 }
             }
+            if(const char* prefix=std::getenv("HECBENCH_DUMP_PREFIX")) {
+                char path[4096];std::snprintf(path,sizeof(path),"%s.rank%d.n%zu.iter%zu.bin",prefix,mpi_rank,size,iter);
+                FILE* f=std::fopen(path,"wb");if(!f)throw std::runtime_error("dump open");
+                if(std::fwrite(cpu_data,sizeof(float),size,f)!=size)throw std::runtime_error("dump write");std::fclose(f);
+            }
             err = cudaFree(output);
             if(err != cudaSuccess) { throw std::runtime_error("cudaFree failed with an error"); }
         }
+        std::printf("Rank %d PASS all %zu outputs x %zu iterations, patterned=%d\n",mpi_rank,size,iters,int(std::getenv("HECBENCH_ALLREDUCE_PATTERNED")!=nullptr));
         if(mpi_rank == 0) {
             std::cout << "Verified allreduce for size "
                 << size
@@ -112,6 +122,12 @@ int main(int argc, char** argv) {
         100, 50, 10, 1
     };
 
+    // Opt-in bounded/parity hooks; original default lists remain unchanged.
+    if(const char* p=std::getenv("HECBENCH_ALLREDUCE_TEST_LENGTH")) {buffer_sizes={std::strtoull(p,nullptr,10)};iterations={100000};}
+    if(const char* p=std::getenv("HECBENCH_ALLREDUCE_MAX_ITERATIONS"))
+        for(auto& count:iterations)count=std::min(count,size_t(std::strtoull(p,nullptr,10)));
+    if(const char* p=std::getenv("HECBENCH_ALLREDUCE_MAX_ELEMENTS"))
+        for(size_t i=buffer_sizes.size();i-- >0;)if(buffer_sizes[i]>std::strtoull(p,nullptr,10)){buffer_sizes.erase(buffer_sizes.begin()+i);iterations.erase(iterations.begin()+i);}
     TestCollectivesGPU(buffer_sizes, iterations);
 
     // Finalize to avoid any MPI errors on shutdown.
