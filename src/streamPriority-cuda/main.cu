@@ -18,8 +18,10 @@
 //   high priority  - forward + backward (blocks training loop)
 //   low  priority  - data prefetch for next batch (background)
 //----------------------------------------------------------------
+#include "../streamPriority-iris/native_validation.h"
+
 void use_case_ml_training(int batches, int lo_pri, int hi_pri) {
-  const int N       = 1 << 24;
+  const int N       = HECBENCH_STREAM_PRIORITY_N;
   const int threads = 256;
   const int blocks  = (N + threads - 1) / threads;
 
@@ -88,6 +90,7 @@ void use_case_ml_training(int batches, int lo_pri, int hi_pri) {
     }
   }
   printf("%s\n", ok ? "PASS" : "FAIL");
+  native_priority_dump("baseline", N, d_act, d_grad_out, d_weights, d_prefetch_buf);
 
   //------------------------------------------------------------
   printf("Priority stream\n");
@@ -124,6 +127,7 @@ void use_case_ml_training(int batches, int lo_pri, int hi_pri) {
     }
   }
   printf("%s\n", ok ? "PASS" : "FAIL");
+  native_priority_dump("priority", N, d_act, d_grad_out, d_weights, d_prefetch_buf);
 
   printf("  Default  streams: %.2f ms\n", time_default * 1e-6);
   printf("  Priority streams: %.2f ms\n", time_pri * 1e-6);
