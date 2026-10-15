@@ -90,6 +90,8 @@ void run(long int input_size) {
     size_t output_buffer_bytes = sizeof(SYMBOL_TYPE) * output_buffer->get_uncompressed_size();
     SYMBOL_TYPE* d_output_buffer;
     cudaMalloc((void**)&d_output_buffer, output_buffer_bytes);
+    if (std::getenv("HECBENCH_VALIDATE_SENTINEL"))
+      cudaMemset(d_output_buffer, 165, output_buffer_bytes);
 
     size_t num_subseq = SDIV(compressed_size, SUBSEQUENCE_SIZE);
     size_t num_blocks = SDIV(num_subseq, THREADS_PER_BLOCK);
@@ -134,6 +136,11 @@ void run(long int input_size) {
 
     // reverse all bytes
     output_buffer->reverse();
+
+    if (const char* path = std::getenv("HECBENCH_DUMP")) {
+      FILE* f = fopen(path, "ab");
+      if (!f || fwrite(output_buffer->get_decompressed_data().get(), 1, input_size, f) != (size_t)input_size || fclose(f)) exit(3);
+    }
 
     // check for errors in decompressed data
     if(cuhd::CUHDUtil::equals(random_data->data(),

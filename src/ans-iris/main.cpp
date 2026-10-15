@@ -173,6 +173,10 @@ static bool run(long int input_size) {
 
     std::memcpy(output_buffer->get_decompressed_data().get(), output_data.data(), output_buffer_bytes);
     output_buffer->reverse();
+    if (const char* path = std::getenv("HECBENCH_DUMP")) {
+      FILE* f = fopen(path, "ab");
+      if (!f || fwrite(output_buffer->get_decompressed_data().get(), 1, input_size, f) != (size_t)input_size || fclose(f)) exit(3);
+    }
     if (std::getenv("HECBENCH_VALIDATE_SENTINEL"))
       std::cout << " expected_first=" << int((*random_data)[0])
                 << " decoded_first=" << int(output_buffer->get_decompressed_data()[0]) << " ";

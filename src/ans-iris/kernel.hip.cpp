@@ -569,6 +569,34 @@ extern "C" __global__ void phase4_decode_write_output(
         last_word_unit, last_word_bit, num_symbols, out_pos, out_ptr,
         next_out_pos, table, bits_in_unit, number_of_states,
         last_at, last_state, true, true);
+
+    // A terminal symbol may consume zero bits. Exhausting the last compressed
+    // subsequence is therefore not sufficient to terminate output decoding.
+    // Finish the final subsequence by its declared output count, using the
+    // decoder state and padded compressed window, never host/input symbols.
+    if (gid == total_num_subsequences - 1) {
+      while (out_pos < next_out_pos) {
+        const uint hit = table[state - number_of_states];
+        out_ptr[out_pos++] = (hit >> 16) & 255u;
+        unsigned taken = hit >> 24;
+        state = (STATE_TYPE(hit & 65535u) << taken) |
+                (window & ~(mask << taken));
+        while (state < number_of_states) {
+          state = (state << 1) | ((window >> taken) & 1u);
+          ++taken;
+        }
+        for (unsigned bit = 0; bit < taken; ++bit) {
+          window = (window >> 1) | (next << (bits_in_unit - 1));
+          next >>= 1;
+          if (++last_at == bits_in_unit) {
+            ++in_pos;
+            window = in_ptr[in_pos];
+            next = in_ptr[in_pos + 1];
+            last_at = 0;
+          }
+        }
+      }
+    }
   }
 }
 
