@@ -22,7 +22,8 @@
 #include <chrono>
 #include <hip/hip_runtime.h>
 
-#define BufSize 0x1000
+#include "validation.hpp"
+static size_t BufSize = 0x1000;
 #define Iterations 0x100
 #define TotalStreams 4
 #define TotalBufs 4
@@ -47,9 +48,11 @@ class PerfStreamCreateCopyDestroy {
 void PerfStreamCreateCopyDestroy::run_stream(unsigned int testNumber) {
   numStreams_ = totalStreams_[testNumber % TotalStreams];
   size_t iter = Iterations / (numStreams_ * ((size_t)1 << (testNumber / TotalBufs + 1)));
+  iter = validation_cap("HECBENCH_SCCD_ITER_CAP", iter);
   hipStream_t streams[numStreams_];
 
   numBuffers_ = totalBuffers_[testNumber / TotalBufs];
+  numBuffers_ = validation_cap("HECBENCH_SCCD_BUFFER_CAP", numBuffers_);
   float* dSrc[numBuffers_];
   size_t nBytes = BufSize * sizeof(float);
 
@@ -92,6 +95,7 @@ void PerfStreamCreateCopyDestroy::run_stream(unsigned int testNumber) {
        << std::setw(4) << numBuffers_ << " buffers " << " and " << std::setw(4)
        << iter << " iterations " << time << " (ms) " << std::endl;
 
+  validate_native(dSrc, numBuffers_, BufSize, hSrc, "Stream");
   delete [] hSrc;
   for (size_t b = 0; b < numBuffers_; ++b) {
     hipFree(dSrc[b]);
@@ -102,8 +106,10 @@ void PerfStreamCreateCopyDestroy::run_stream(unsigned int testNumber) {
 void PerfStreamCreateCopyDestroy::run_baseline(unsigned int testNumber) {
   numStreams_ = totalStreams_[testNumber % TotalStreams];
   size_t iter = Iterations / (numStreams_ * ((size_t)1 << (testNumber / TotalBufs + 1)));
+  iter = validation_cap("HECBENCH_SCCD_ITER_CAP", iter);
 
   numBuffers_ = totalBuffers_[testNumber / TotalBufs];
+  numBuffers_ = validation_cap("HECBENCH_SCCD_BUFFER_CAP", numBuffers_);
   float* dSrc[numBuffers_];
   size_t nBytes = BufSize * sizeof(float);
 
@@ -137,6 +143,7 @@ void PerfStreamCreateCopyDestroy::run_baseline(unsigned int testNumber) {
        << std::setw(4) << numBuffers_ << " buffers " << " and " << std::setw(4)
        << iter << " iterations " << time << " (ms) " << std::endl;
 
+  validate_native(dSrc, numBuffers_, BufSize, hSrc, "Baseline");
   delete [] hSrc;
   for (size_t b = 0; b < numBuffers_; ++b) {
     hipFree(dSrc[b]);
@@ -144,6 +151,9 @@ void PerfStreamCreateCopyDestroy::run_baseline(unsigned int testNumber) {
 }
 
 int main(int argc, char* argv[]) {
+  if (const char* v = getenv("HECBENCH_SCCD_VALUES")) {
+    BufSize = strtoul(v, nullptr, 10); if (!BufSize) return 2;
+  }
   PerfStreamCreateCopyDestroy streamCCD;
 
   streamCCD.run_baseline(0); // warmup
