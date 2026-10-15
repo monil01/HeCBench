@@ -148,8 +148,9 @@ int main(int argc, char* argv[])
   long long int *input2 = (long long int*) malloc (input2_size_bytes);
   long long int *output2 = (long long int*) malloc (output2_size_bytes);
 
-  for (int i = 1; i <= n; i++) {
-    input1[i] = 22.44 / i;
+  // Preserve the intended 1..n reciprocal sequence without an out-of-bounds write.
+  for (int i = 0; i < n; i++) {
+    input1[i] = 22.44 / (i + 1);
     input2[i] = 0x403670A3D70A3D71;
   }
 
@@ -211,6 +212,12 @@ int main(int argc, char* argv[])
     checksum2 ^= output2[i];
   }
   printf("Checksum = %llx\n", checksum2);
+
+  if (const char* path = getenv("HECBENCH_DUMP")) {
+    FILE* f = fopen(path, "wb");
+    if (!f || fwrite(output1, sizeof(*output1), n, f) != (size_t)n ||
+        fwrite(output2, sizeof(*output2), n, f) != (size_t)n || fclose(f)) return 2;
+  }
 
   hipFree(d_input1);
   hipFree(d_output1);
