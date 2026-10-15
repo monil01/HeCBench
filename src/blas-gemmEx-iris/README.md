@@ -1,13 +1,21 @@
-# blas-gemmEx IRIS status
+# IRIS DMem GEMM suite
 
-This benchmark is deferred for the IRIS dmem-only pass.
+The four CLI arguments, deterministic inputs, row-major A*B, alpha=1,
+beta=0, nine cases, and two default make-run sizes follow the CUDA/HIP
+source. The source compute-mode switch falls through to ordinary FP32;
+the four float labels therefore use the same FP32 operation here too.
 
-The CUDA/HIP source exercises `cublasGemmEx` / `hipblasGemmEx` across fp64,
-fp32 compute modes, fp16, bfloat16, and int8. That behavior is library dispatch
-rather than a benchmark-owned CUDA kernel body. The current porting rule for
-this worker is IRIS dmem only, with no native HIP allocation/copy/launch or
-vendor-library dispatch in the IRIS host path.
+Portability compromise P1: vendor dispatch is replaced by one-output-per-thread
+HIP kernels submitted through IRIS DMem. Half storage uses FP32 accumulation
+in both cases, including the native compute-16 case; that case is numerically
+equivalent within the documented storage-precision tolerance, not bitwise
+identical. There is no vendor algorithm-selection or tensor-core performance
+equivalence claim. Timings include IRIS task overhead and are not hipBLAS
+kernel performance. No CPU fallback computes the benchmark output.
 
-A faithful IRIS implementation would require either an IRIS-supported BLAS task
-binding or a separately scoped benchmark-owned GEMM kernel suite for every
-tested type and compute mode. Neither exists in this repository.
+Every output is checked against a separate long-double host dot product using
+the actual quantized input values, with FP64 1e-10, integer exact, other
+storage types atol=rtol=0.008. IRIS_GEMM_DUMP=1 prints every value for
+verify.py; local evidence compares all nine native modes, not only the ten
+samples printed by the original program. Bounded 32x32x32 and 32x48x64
+cases are validation cases, not claims of default 4096/8192-size completion.
