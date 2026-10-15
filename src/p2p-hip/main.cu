@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <hip/hip_runtime.h>
+#include "../p2p-iris/native_validation.h"
 
 #define GPU_CHECK(x) do {                                   \
     hipError_t err = x;                                     \
@@ -27,12 +28,12 @@
     }                                                       \
 } while (0)
 
-__global__ void SimpleKernel(const float *src, float *dst)
+__global__ void SimpleKernel(const float *src, float *dst, const size_t n)
 {
   // Just a dummy kernel, doing enough for us to verify that everything
   // worked
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  dst[idx] = src[idx] * 2.0f;
+  if (static_cast<size_t>(idx) < n) dst[idx] = src[idx] * 2.0f;
 }
 
 inline bool IsAppBuiltAs64()
@@ -56,7 +57,7 @@ void pair_access(int i, int j, int repeat)
   GPU_CHECK(hipDeviceEnablePeerAccess(gpuid[0], 0));
 
   // Allocate buffers
-  const size_t buf_size = 1024 * 1024 * 16 * sizeof(float);
+  const size_t buf_size = static_cast<size_t>(HECBENCH_P2P_ELEMENTS) * sizeof(float);
   printf("Allocating buffers (%iMB on GPU%d, GPU%d and CPU Host)...\n",
          int(buf_size / 1024 / 1024), gpuid[0], gpuid[1]);
 
@@ -114,7 +115,7 @@ void pair_access(int i, int j, int repeat)
 
   // Kernel launch configuration
   const dim3 threads(256);
-  const dim3 blocks(buf_len / 256);
+  const dim3 blocks((buf_len + 255) / 256);
 
   // Run kernel on GPU 1, reading input from the GPU 0 buffer, writing
   // output to the GPU 1 buffer
@@ -124,7 +125,7 @@ void pair_access(int i, int j, int repeat)
 #endif
 
   GPU_CHECK(hipSetDevice(gpuid[1]));
-  SimpleKernel<<<blocks, threads>>>(g0, g1);
+  SimpleKernel<<<blocks, threads>>>(g0, g1, buf_len);
 
   GPU_CHECK(hipDeviceSynchronize());
 
@@ -136,7 +137,7 @@ void pair_access(int i, int j, int repeat)
 #endif
 
   GPU_CHECK(hipSetDevice(gpuid[0]));
-  SimpleKernel<<<blocks, threads>>>(g1, g0);
+  SimpleKernel<<<blocks, threads>>>(g1, g0, buf_len);
 
   GPU_CHECK(hipDeviceSynchronize());
 
@@ -162,6 +163,8 @@ void pair_access(int i, int j, int repeat)
       }
     }
   }
+
+  native_p2p_dump(g0, g1, buf_len, gpuid[0], gpuid[1]);
 
   // Disable peer access (also unregisters memory for non-UVA cases)
 #ifdef DEBUG
