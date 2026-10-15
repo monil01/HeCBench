@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
+#include <cmath>
 #include <cuda.h>
 #include <mpi.h>
 #include <nccl.h>
@@ -34,11 +36,25 @@ void test(double *d, const long int n) {
 }
 
 
+static void observe_gpu(double* device,long n,int rank,const char* stage) {
+  const char* prefix=getenv("HECBENCH_DUMP_PREFIX");if(!prefix)return;
+  double* host=(double*)malloc(n*sizeof(double));if(!host)exit(1);
+  cudaErrorCheck(cudaMemcpy(host,device,n*sizeof(double),cudaMemcpyDeviceToHost));
+  const bool pattern=getenv("HECBENCH_PINGPONG_PATTERNED")!=nullptr;
+  for(long j=0;j<n;++j)if(!std::isfinite(host[j])||host[j]!=double((pattern?int(j%97)-48:0)+5)){printf("ERROR: whole-output nccl verification failed at %ld\n",j);exit(1);}
+  char path[4096];snprintf(path,sizeof(path),"%s.rank%d.n%ld.%s.bin",prefix,rank,n,stage);FILE* f=fopen(path,"wb");if(!f)exit(1);
+  if(fwrite(host,sizeof(double),n,f)!=size_t(n))exit(1);fclose(f);free(host);
+  printf("NCCL Rank %d PASS all %ld %s outputs\n",rank,n,stage);
+}
+
 int main(int argc, char *argv[])
 {
   /* -------------------------------------------------------------------------------------------
-     MPI Initialization 
+     MPI Initialization
      --------------------------------------------------------------------------------------------*/
+  // GPU-aware MPI must see the intended local device during initialization.
+  const char* local=getenv("OMPI_COMM_WORLD_LOCAL_RANK");if(!local)local=getenv("SLURM_LOCALID");
+  if(local)cudaErrorCheck(cudaSetDevice(atoi(local)));
   MPI_Init(&argc, &argv);
 
   int size;
@@ -73,17 +89,25 @@ int main(int argc, char *argv[])
   cudaErrorCheck(cudaStreamCreate(&stream));
 
   //   Loop from 65536 B to 1 GB
-  for(int i=16; i<=27; i++){
+  int maximum=27;if(const char* cap=getenv("HECBENCH_PINGPONG_MAX_EXP"))maximum=std::min(maximum,atoi(cap));
+  const char* custom=getenv("HECBENCH_PINGPONG_TEST_LENGTH");
+  for(int i=16; i<=maximum; i++){
+    if(custom&&i>16)break;
 
-    long int N = 1 << i;
+    long int N = custom ? strtol(custom,nullptr,10) : (1L << i);
 
     double *h_A, *d_A;
-    h_A = (double*) malloc (N*sizeof(double)); 
+    h_A = (double*) malloc (N*sizeof(double));
     cudaErrorCheck( cudaMalloc((void**)&d_A, N*sizeof(double)) );
     cudaErrorCheck( cudaMemset(d_A, 0, N*sizeof(double)) );
+    if(getenv("HECBENCH_PINGPONG_PATTERNED")) {
+      for(long j=0;j<N;++j)h_A[j]=double(int(j%97)-48+7*rank);
+      cudaErrorCheck(cudaMemcpy(d_A,h_A,N*sizeof(double),cudaMemcpyHostToDevice));
+    }
     cudaErrorCheck( cudaDeviceSynchronize() );
 
     int loop_count = 50;
+    if(const char* cap=getenv("HECBENCH_PINGPONG_MAX_ITERATIONS"))loop_count=std::min(loop_count,atoi(cap));
 
     // Warm-up and validate NCCL pingpong
     for(int i=1; i<=5; i++){
@@ -102,13 +126,14 @@ int main(int argc, char *argv[])
     if(rank == 0) {
       cudaErrorCheck(cudaMemcpy(h_A, d_A, N*sizeof(double), cudaMemcpyDeviceToHost));
       for (long int i = 0; i < N; i++) {
-        if(h_A[i] != 5) {
+        if(h_A[i] != double((getenv("HECBENCH_PINGPONG_PATTERNED")?int(i%97)-48:0)+5)) {
           printf("ERROR: NCCL pingpong test failed: %lf\n", h_A[i]);
           break;
         }
       }
     }
 
+    observe_gpu(d_A,N,rank,"warm");
     free(h_A);
 
     // Time loop_count iterations of data transfer size 8*N bytes
@@ -138,6 +163,7 @@ int main(int argc, char *argv[])
       printf("NCCL: Transfer size (B): %10li, Transfer Time (s): %15.9f, Bandwidth (GB/s): %15.9f\n",
              num_B, avg_time_per_transfer, num_GB/avg_time_per_transfer );
 
+    observe_gpu(d_A,N,rank,"timed");
     cudaErrorCheck( cudaFree(d_A) );
   }
 
