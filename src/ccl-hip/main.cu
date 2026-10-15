@@ -94,10 +94,15 @@ int main(int argc, char* argv[])
   float *h_sendbuff, *h_recvbuff;
   double start_time, stop_time, elapsed_time;
 
-  for (int size = 1024*1024; size <= 1000 * 1024 * 1024; size = size * 10) {
+  // Optional bounded validation; the original production sweep is the default.
+  const char* max_env = getenv("HECBENCH_CCL_MAX_ELEMENTS");
+  const long max_elements = max_env ? atol(max_env) : 1000L * 1024 * 1024;
+  if (max_elements < 1024*1024 || max_elements > 1000L*1024*1024) MPI_Abort(MPI_COMM_WORLD, 1);
+  for (int size = 1024*1024; size <= max_elements; size = size * 10) {
 
     h_sendbuff = (float*) malloc (size * sizeof(float));
-    for (int i = 0; i < size; i++) h_sendbuff[i] = 1;
+    const bool patterned = getenv("HECBENCH_CCL_PATTERNED") != NULL;
+    for (int i = 0; i < size; i++) h_sendbuff[i] = patterned ? float(i % 97 - 48 + mpi_rank) : 1.0f;
 
     h_recvbuff = (float*) malloc (size * sizeof(float));
 
@@ -136,7 +141,8 @@ int main(int argc, char* argv[])
 
     bool ok = true;
     for (int i = 0; i < size; i++) {
-      if (h_recvbuff[i] != float(mpi_size)) {
+      const float expected = patterned ? float(mpi_size * (i % 97 - 48) + mpi_size * (mpi_size - 1) / 2) : float(mpi_size);
+      if (h_recvbuff[i] != expected) {
          ok = false;
          break;
       }
