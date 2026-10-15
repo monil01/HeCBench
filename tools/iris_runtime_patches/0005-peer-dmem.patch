@@ -1,0 +1,174 @@
+--- a/include/iris/iris_runtime.h
++++ b/include/iris/iris_runtime.h
+@@ -717,0 +718,10 @@
++/* Synchronous HIP peer operations. Callers must complete earlier producers.
++ * Remote bindings are read-only root DMem arguments; they suppress migration
++ * and execute synchronously. All storage and kernel dispatch remain in IRIS. */
++extern int iris_hip_enable_peer_access(int device, int peer);
++extern int iris_task_bind_hip_remote_dmem(iris_task task, int argument, int source_device);
++extern int iris_dmem_peer_copy(iris_mem destination, int destination_device,
++                              iris_mem source, int source_device, size_t bytes);
++/* Non-materializing query: 1 allocated, 0 absent, IRIS_ERROR on invalid input. */
++extern int iris_dmem_is_allocated_on_device(iris_mem memory, int device);
++
+--- a/src/runtime/CAPI.cpp
++++ b/src/runtime/CAPI.cpp
+@@ -274,0 +275,48 @@
++int iris_hip_enable_peer_access(int device, int peer) {
++  DeviceHIP *owner = lifecycle_device(device), *other = lifecycle_device(peer);
++  if (!owner || !other || owner == other) return IRIS_ERROR;
++  if (Platform::GetPlatform()->Synchronize() != IRIS_SUCCESS) return IRIS_ERROR;
++  return owner->EnablePeerTo(other);
++}
++
++int iris_task_bind_hip_remote_dmem(iris_task handle, int argument, int source_device) {
++  Platform *platform = Platform::GetPlatform();
++  Task *task = platform->get_task_object(handle);
++  if (!task || task->status() != IRIS_NONE || !lifecycle_device(source_device)) return IRIS_ERROR;
++  Command *cmd = task->cmd_kernel();
++  if (!cmd || argument < 0 || argument >= cmd->kernel_nargs()) return IRIS_ERROR;
++  KernelArg *arg = cmd->kernel_arg(argument);
++  if (!arg->mem || arg->mode != iris_r || arg->mem->GetMemHandlerType() != IRIS_DMEM ||
++      !arg->mem->get_arch(source_device) ||
++      static_cast<DataMem *>(arg->mem)->is_dev_dirty(source_device)) return IRIS_ERROR;
++  cmd->bind_remote_dmem(argument, source_device);
++  task->set_async(false);
++  return IRIS_SUCCESS;
++}
++
++int iris_dmem_peer_copy(iris_mem dst_handle, int dst_device,
++                        iris_mem src_handle, int src_device, size_t bytes) {
++  Platform *platform = Platform::GetPlatform();
++  DeviceHIP *dst = lifecycle_device(dst_device), *src = lifecycle_device(src_device);
++  BaseMem *destination = platform->get_mem_object(dst_handle);
++  BaseMem *source = platform->get_mem_object(src_handle);
++  if (!dst || !src || dst == src || !destination || !source || destination == source ||
++      destination->GetMemHandlerType() != IRIS_DMEM || source->GetMemHandlerType() != IRIS_DMEM ||
++      !bytes || bytes != source->size() || bytes != destination->size()) {
++    fprintf(stderr, "peer arguments invalid: devices=%d,%d bytes=%zu sizes=%zu,%zu\n",
++            src_device, dst_device, bytes, source ? source->size() : 0,
++            destination ? destination->size() : 0);
++    return IRIS_ERROR;
++  }
++  if (platform->Synchronize() != IRIS_SUCCESS) return IRIS_ERROR;
++  return dst->CopyPeer(static_cast<DataMem *>(destination), src, static_cast<DataMem *>(source), bytes);
++}
++
++int iris_dmem_is_allocated_on_device(iris_mem handle, int device) {
++  Platform *platform = Platform::GetPlatform();
++  if (device < 0 || device >= platform->ndevs()) return IRIS_ERROR;
++  BaseMem *memory = platform->get_mem_object(handle);
++  if (!memory || memory->GetMemHandlerType() != IRIS_DMEM) return IRIS_ERROR;
++  return memory->get_arch(device) != NULL ? 1 : 0;
++}
++
+--- a/src/runtime/Command.h
++++ b/src/runtime/Command.h
+@@ -9,0 +10 @@
++#include <map>
+@@ -99,0 +101,6 @@
++  void bind_remote_dmem(int argument, int device) { remote_dmem_devices_[argument] = device; }
++  int remote_dmem_device(int argument) const {
++    auto found = remote_dmem_devices_.find(argument);
++    return found == remote_dmem_devices_.end() ? -1 : found->second;
++  }
++  bool has_remote_dmem() const { return !remote_dmem_devices_.empty(); }
+@@ -129,0 +137 @@
++  std::map<int, int> remote_dmem_devices_;
+--- a/src/runtime/Command.cpp
++++ b/src/runtime/Command.cpp
+@@ -47,0 +48 @@
++  remote_dmem_devices_.clear();
+@@ -275,0 +277,2 @@
++    if (pcmd->remote_dmem_device(i) >= 0)
++      cmd->bind_remote_dmem(i, pcmd->remote_dmem_device(i));
+--- a/src/runtime/LoaderHIP.h
++++ b/src/runtime/LoaderHIP.h
+@@ -62,0 +63 @@
++  hipError_t (*hipMemcpyPeer)(void* dst, int dstDevice, const void* src, int srcDevice, size_t sizeBytes);
+--- a/src/runtime/LoaderHIP.cpp
++++ b/src/runtime/LoaderHIP.cpp
+@@ -62,0 +63 @@
++  LOADFUNC(hipMemcpyPeer);
+--- a/src/runtime/DeviceHIP.h
++++ b/src/runtime/DeviceHIP.h
+@@ -23,0 +24,2 @@
++  int EnablePeerTo(DeviceHIP *peer);
++  int CopyPeer(DataMem *destination, DeviceHIP *source_device, DataMem *source, size_t bytes);
+--- a/src/runtime/DeviceHIP.cpp
++++ b/src/runtime/DeviceHIP.cpp
+@@ -154,0 +155,42 @@
++int DeviceHIP::EnablePeerTo(DeviceHIP *peer) {
++  if (!peer || peer == this || !ctx_ || !peer->ctx_) return IRIS_ERROR;
++  int supported = 0;
++  hipError_t error = ld_->hipDeviceCanAccessPeer(&supported, dev_, peer->dev_);
++  if (error != hipSuccess || !supported) return IRIS_ERROR;
++  error = ld_->hipCtxSetCurrent(ctx_);
++  if (error != hipSuccess) return IRIS_ERROR;
++  error = ld_->hipCtxEnablePeerAccess(peer->ctx_, 0);
++  // HIP ABI: 704 is hipErrorPeerAccessAlreadyEnabled (not in bundled subset).
++  return error == hipSuccess || static_cast<int>(error) == 704 ? IRIS_SUCCESS : IRIS_ERROR;
++}
++
++int DeviceHIP::CopyPeer(DataMem *destination, DeviceHIP *source_device,
++                        DataMem *source, size_t bytes) {
++  void *src = source->get_arch(source_device->devno());
++  if (!src || source->is_dev_dirty(source_device->devno())) {
++    fprintf(stderr, "peer source unavailable: device=%d pointer=%p dirty=%d\n",
++            source_device->devno(), src, source->is_dev_dirty(source_device->devno()));
++    return IRIS_ERROR;
++  }
++  void *dst = destination->arch(this);
++  if (!dst) { fprintf(stderr, "peer destination unavailable\n"); return IRIS_ERROR; }
++  hipError_t context_status = ld_->hipCtxSetCurrent(ctx_);
++  if (context_status != hipSuccess) {
++    fprintf(stderr, "peer context status=%d\n", (int)context_status); return IRIS_ERROR;
++  }
++  hipError_t error = ld_->hipMemcpyPeer(dst, dev_, src, source_device->dev_, bytes);
++  if (error != hipSuccess) {
++    fprintf(stderr, "HIP peer copy status=%d source=%d destination=%d\n", (int)error,
++            source_device->dev_, dev_);
++    return IRIS_ERROR;
++  }
++  hipError_t synchronize_status = ld_->hipDeviceSynchronize();
++  if (synchronize_status != hipSuccess) {
++    fprintf(stderr, "peer synchronize status=%d\n", (int)synchronize_status); return IRIS_ERROR;
++  }
++  destination->set_dirty_except(devno());
++  destination->set_host_dirty();
++  destination->disable_reset();
++  return IRIS_SUCCESS;
++}
++
+@@ -788 +830,7 @@
+-    void **dev_alloc_ptr = mem->arch_ptr(this);
++    Command *command = kernel->task()->cmd_kernel();
++    int remote = command ? command->remote_dmem_device(kindex) : -1;
++    if (remote >= 0 && (remote >= platform_obj_->ndevs() ||
++        mem->GetMemHandlerType() != IRIS_DMEM || !mem->get_arch(remote) ||
++        static_cast<DataMem *>(mem)->is_dev_dirty(remote))) return IRIS_ERROR;
++    void **dev_alloc_ptr = remote >= 0
++        ? mem->arch_ptr(platform_obj_->device(remote)) : mem->arch_ptr(this);
+--- a/src/runtime/Device.cpp
++++ b/src/runtime/Device.cpp
+@@ -827,0 +828,5 @@
++  if (cmd->has_remote_dmem() && model() != iris_hip) {
++    platform_obj_->IncrementErrorCount();
++    _error("Remote DMem binding requires HIP");
++    return;
++  }
+@@ -915 +920,5 @@
+-        KernelSetMem(kernel, arg_idx, idx, bmem, arg->off); arg_idx+=1;
++        if (KernelSetMem(kernel, arg_idx, idx, bmem, arg->off) != IRIS_SUCCESS) {
++          platform_obj_->IncrementErrorCount();
++          return;
++        }
++        arg_idx+=1;
+@@ -1083,0 +1093 @@
++            if (cmd->remote_dmem_device(idx) >= 0) continue;
+@@ -1115,0 +1126 @@
++            if (cmd->remote_dmem_device(idx) >= 0) continue;
+@@ -1123,0 +1135 @@
++            if (cmd->remote_dmem_device(idx) >= 0) continue;
+@@ -1137,0 +1150 @@
++        if (cmd->remote_dmem_device(idx) >= 0) continue;
