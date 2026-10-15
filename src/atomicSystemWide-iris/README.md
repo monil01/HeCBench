@@ -9,9 +9,14 @@ allocation/copy/launch in the IRIS host driver, or sequential substitute.
 ## Build and run
 
 Use a private IRIS checkout at `ff57e620a92fcf62eff3568d9c6eeaaf078f0340` with
-patches0001–0004 and0006 applied, following their documents in
-`tools/iris_runtime_patches`. Patch05 is not needed by this benchmark and was
-not included in this worker's build. Do not overwrite a shared/live runtime.
+patches0001–0006 applied sequentially, following their documents in
+`tools/iris_runtime_patches`. Regenerated06 requires the05 baseline (without
+duplicating or replacing peer changes), even though atomic itself uses no peer
+API. Tested cumulative private root:
+`/tmp/hecbench-iris-atomic-combined-fVJFaA/work`. Do not overwrite a shared/live
+runtime. See06 documentation for the tested05 whitespace-packaging application
+caveat and exact reconstruction evidence; the original01–04+06 tests remain
+preserved separately.
 
 ```sh
 make IRIS_ROOT=/path/to/private/patched/iris
@@ -88,3 +93,10 @@ probes only, not benchmark completion paths.
 Production loop1000 was not fully executed; no production-default performance
 claim. The CUDA companion has matching kernel ABI, but CUDA compilation/run
 was unavailable and is not claimed. Original CUDA baseline source is untouched.
+
+Cumulative01–06 integration additionally passes the unchanged ownership
+regression (80 GPU outputs, eight DMem-owned frees) and loop1 concurrent proof
+(all ten counters,16384 completed GPU producers,16384 updates per processor,
+overlap1, zero IRIS errors). Clean stock+01–06 reconstruction byte-matches the
+entire built source tree. Historical loop10 proof was not repeated for the
+source-identical06 rebase; peer execution regressions are coordinator-owned.

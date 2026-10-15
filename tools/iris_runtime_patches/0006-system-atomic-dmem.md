@@ -1,11 +1,16 @@
 # Patch06: DMem-owned coherent HIP CPU/GPU atomic storage
 
 Reference: ORNL/iris `ff57e620a92fcf62eff3568d9c6eeaaf078f0340`, with committed
-patches0001–0004 applied in order. Tested private root:
-`/tmp/hecbench-iris-system-atomic-yDBNv9/work`. Neither `/tmp/iris`, the live
-coordinator runtime, patch05, nor existing patch files were modified.
+patches0001–0005 applied in order. **06 now requires05 sequentially** and is
+generated against that exact cumulative baseline. Tested, build-complete frozen
+private root: `/tmp/hecbench-iris-atomic-combined-fVJFaA/work`. Neither `/tmp/iris`,
+the canonical/live coordinator runtime, patch05, nor existing patches were
+modified. Old06/README/documentation are preserved in
+`.porting-state/porting_logs/atomicSystemWide-iris/attempts/attempt_18/frozen06`;
+the original tested01–04+06 runtime remains untouched at
+`/tmp/hecbench-iris-system-atomic-yDBNv9/work`.
 
-Apply in a separate source/build tree after04:
+Apply in a separate source/build tree **after05**:
 
 ```sh
 git apply --unidiff-zero --check /path/to/0006-system-atomic-dmem.patch
@@ -15,9 +20,30 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PYTHON=OFF \
 cmake --build build -j8
 ```
 
-Patch04 itself needs the `patch -l -p1` application command documented in its
-own markdown. Patch06 contains no05 changes. The coordinator may need to rebase
-DeviceHIP.cpp hunk locations when applying after05; preserve both changes.
+Full reconstruction order from stock reference source:01 with `git apply`,
+02/03 with `git apply --unidiff-zero`,04 with `patch -l -p1`,05 with
+`patch --dry-run -l -p1` followed by `patch -l -p1`, then06 with
+`git apply --unidiff-zero`. The regenerated06 contains only its original
+five-file delta:05 is a required baseline, **not duplicated or replaced**.
+Header/DeviceHIP hunk coordinates are rebased; all06 added/removed source lines
+are identical to frozen06. Command.h/.cpp, LoaderHIP.h/.cpp, DeviceHIP.h,
+Device.cpp and every other05-only file remain byte-identical to01–05.
+
+05 packaging caveat, explicitly tested: the original05 SHA256
+`929eaaf027c6cf5e0f42b3f29ad320fea6acbde15df771a2f82a5848c582a587`
+applies with `git apply --unidiff-zero`. Its whitespace-only repackaging SHA256
+`17a9e486681f5f0e713202e4559e24536f773bacd15092a6ff9c3978191a3032`
+fails at Device.cpp:915 even with `--ignore-space-change` here: the removed
+upstream line has a trailing space that was stripped from the patch. For that
+packaging, `patch -l -p1 < 0005-peer-dmem.patch` applies all nine files and
+reproduces exactly the original Git-applied01–05 source. No05 file was edited
+to obtain this result. Preserve the command failure, not a false Git-apply pass.
+
+Both reconstruction proofs are preserved: attempt18 independently reconstructs
+stock+01–06 and compares the entire source tree; attempt19 retains the latest05
+Git failure and successful whitespace-tolerant reconstruction. The regenerated
+06 passes `git apply --unidiff-zero --check` and reproduces the entire built
+source tree byte-for-byte in both cases (build directory excluded).
 
 ## API and ownership
 
@@ -95,6 +121,26 @@ is under `.porting-state/porting_logs/atomicSystemWide-iris/attempts`, notably
 10(VRAM/coherence matrix),11(per-operation tests),12(native1/10), and subsequent
 DMem/native proof and ownership regression attempts.
 
+Cumulative01–06 integration validation (unchanged benchmark sources, attempt18):
+
+* Clean cumulative runtime build21.20seconds; atomic main/kernel/runtime_test
+  compilation2.90seconds in an isolated evidence directory.
+* Actual `runtime_test` PASS:80 GPU counter outputs, eight DMem-owned frees,
+  invalid-control checks, iris_errors0; wall1.20seconds.
+* Actual proof loop1 PASS: all ten independent output checks,16384 completed
+  GPU producers,16384 CPU updates,16384 GPU updates, overlap1, iris_errors0;
+  execution interval12.917293seconds, wall14.02seconds.
+* Peer05 and atomic06 exported APIs coexist. Peer execution regressions remain
+  coordinator-owned and are **not** claimed from this worker's atomic tests.
+* No loop10 rerun for this packaging rebase: benchmark sources and06 added/
+  removed source lines are identical to the previously validated version;
+  historical native/IRIS loop10 evidence remains explicitly on01–04+06.
+
+Frozen cumulative libiris.so SHA256:
+`b65d2c6dec82d138ced4c0e9487545b7e32d0789f778fc8df99d5542b5ff2972`.
+Rebased06 SHA256:
+`4e6dd470fefb2768a64745fea0e8876861c280f7dab06869c28e659564e5d4be`.
+
 P1: coherent pinned host DRAM replaces the original conditional malloc/managed
 allocation, and three direct GPU bitwise instructions become atomic CAS loops.
 The same CPU/GPU shared-counter algorithm and original checks are retained;
@@ -112,4 +158,6 @@ Base patch SHA256s:
 0002 8e1ed23958891fcb246e28758ecc4fee3e6bae63bc6f0b4cdab407ce7da4c7c3
 0003 9f680a5044039237381e2e072e2b051132f251ac0ef52c2d87f617944d9276be
 0004 23efaf1c0fe9847c0a50a19ff546c82c60bb90f79abd27192f29cf0f1eaab11f
+0005 original 929eaaf027c6cf5e0f42b3f29ad320fea6acbde15df771a2f82a5848c582a587
+0005 repackaged 17a9e486681f5f0e713202e4559e24536f773bacd15092a6ff9c3978191a3032
 ```
