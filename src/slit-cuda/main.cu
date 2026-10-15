@@ -132,6 +132,14 @@ int main(int argc, char** argv){
     }
   }
 
+  if (const char* path = getenv("HECBENCH_SLIT_DUMP")) {
+    FILE* file = fopen(path, "wb");
+    if (!file) return 2;
+    bool written = fwrite(fftData, sizeof(*fftData), size_t(N)*N, file) == size_t(N)*N &&
+                   fwrite(outputData, sizeof(*outputData), size_t(N)*N, file) == size_t(N)*N;
+    if (fclose(file) || !written) return 2;
+  }
+
   free(inputData);
   free(inputData_ref);
   free(fftData);
