@@ -43,9 +43,9 @@ bool extractBigrams(float *scores, const char* filename) {
     return true;
   }
   while(1){
-    char tempBigram[2];
+    char tempBigram[3];
     float tempBigramScore = 0.0;
-    if (fscanf(bigramsFile, "%s %f", tempBigram, &tempBigramScore) < 2)
+    if (fscanf(bigramsFile, "%2s %f", tempBigram, &tempBigramScore) < 2)
     { break; } 
     scores[(tempBigram[0]-'a')*ALPHABET + tempBigram[1]-'a'] = tempBigramScore; 
   }
@@ -130,9 +130,14 @@ int main(int argc, char* argv[]) {
     }    
   }  
 
-  //printf("Best candidate score: %f\n", bestScore);
+  printf("Best candidate index: %d score: %.9g\n", bestCandidate, bestScore);
   bool pass = verify(&decrypted[ENCRYPTEDLEN*bestCandidate]);
   printf("%s\n", pass ? "PASS" : "FAIL");
+
+  if (const char* path = getenv("COLUMNAR_VALIDATION_DUMP")) {
+    FILE* f = fopen(path, "wb");
+    if (!f || fwrite(decrypted, sizeof(int), ENCRYPTEDLEN*THREADS, f) != size_t(ENCRYPTEDLEN)*THREADS || fclose(f)) return 2;
+  }
 
   hipFree(d_scores);
   hipFree(d_encrypted);

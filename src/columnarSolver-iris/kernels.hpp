@@ -4,7 +4,9 @@ float LCG_random_float(unsigned int * seed) {
   const unsigned int a = 26757677;
   const unsigned int c = 1;
   *seed = (a * (*seed) + c) % m;
-  return (float) (*seed) / (float) m;
+  // Float rounding at the top of the LCG range must not produce index KEY_LENGTH.
+  const float result = (float) (*seed) / (float) m;
+  return result < 1.0f ? result : 0x1.fffffep-1f;
 }
 
 __device__
