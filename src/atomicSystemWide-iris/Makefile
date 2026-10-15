@@ -29,5 +29,16 @@ kernel.ptx: kernel.cu Makefile
 run: all
 	IRIS_ARCHS=HIP $(LAUNCHER) ./main $(RUN_ARGS)
 
+runtime_test: runtime_test.cpp Makefile
+	$(CXX) $(CXXFLAGS) -D__HIP_PLATFORM_AMD__ -o $@ runtime_test.cpp $(LDFLAGS) -L/opt/rocm/lib -Wl,-rpath,/opt/rocm/lib -lamdhip64
+
+diagnostics: finegrain_probe system_ops_probe
+
+finegrain_probe: finegrain_probe.hip.cpp
+	$(HIPCC) -O3 -std=c++17 -o $@ $<
+
+system_ops_probe: system_ops_probe.hip.cpp
+	$(HIPCC) -O3 -std=c++17 -o $@ $< -L/opt/rocm/lib -Wl,-rpath,/opt/rocm/lib -lhsa-runtime64
+
 clean:
-	rm -f main kernel.hip kernel.ptx *.o
+	rm -f main kernel.hip kernel.ptx runtime_test finegrain_probe system_ops_probe *.o

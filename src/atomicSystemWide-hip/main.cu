@@ -17,14 +17,35 @@
 #include <ctime>
 #include <stdint.h>
 #include <chrono>
+#include <climits>
 #include <hip/hip_runtime.h>
+
+#define HIP_CHECK(call) do { hipError_t e = (call); if (e != hipSuccess) { fprintf(stderr, "%s: %s\n", #call, hipGetErrorString(e)); return 2; } } while (0)
 
 #define min(a,b) (a) < (b) ? (a) : (b)
 #define max(a,b) (a) > (b) ? (a) : (b)
 
-__global__ void atomicKernel(int *atom_arr, const int loop_num)
+// MI100 cannot forward bitwise atomics to PCIe host DRAM. Preserve the
+// indivisible operation with genuine SYSTEM-scope compare-and-swap.
+__device__ int system_bitwise(int* address, int value, int operation) {
+  int old = atomicCAS_system(address, 0, 0);
+  for (;;) {
+    const int expected = old;
+    const int next = operation == 0 ? (expected & value) :
+                     operation == 1 ? (expected | value) : (expected ^ value);
+    old = atomicCAS_system(address, expected, next);
+    if (old == expected) return old;
+  }
+}
+
+__global__ void atomicKernel(int *atom_arr, const int loop_num, int* progress)
 {
   int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if (progress) {
+    if (tid == 0) atomicExch_system(progress, 1);
+    while (atomicAdd_system(progress + 32, 0) == 0) {}
+    if (atomicAdd_system(progress + 48, 0) == 0) atomicExch_system(progress + 64, 1);
+  }
 
   for (int i=0; i < loop_num; i++)
   {
@@ -52,14 +73,15 @@ __global__ void atomicKernel(int *atom_arr, const int loop_num)
     // Bitwise atomic instructions
 
     // Atomic AND
-    atomicAnd_system(&atom_arr[7], 2*tid+7);
+    system_bitwise(&atom_arr[7], 2*tid+7, 0);
 
     // Atomic OR
-    atomicOr_system(&atom_arr[8], 1 << tid);
+    system_bitwise(&atom_arr[8], static_cast<int>(1u << (static_cast<unsigned>(tid) & 31u)), 1);
 
     // Atomic XOR
-    atomicXor_system(&atom_arr[9], tid);
+    system_bitwise(&atom_arr[9], tid, 2);
   }
+  if (progress) atomicAdd_system(progress + 16, 1);
 }
 
 void atomicKernel_CPU(int *atom_arr, int no_of_threads, const int loop_num)
@@ -78,13 +100,13 @@ void atomicKernel_CPU(int *atom_arr, int no_of_threads, const int loop_num)
       // Atomic maximum
       int old, expected;
       do {
-        expected = atom_arr[2];
+        expected = __sync_val_compare_and_swap(&atom_arr[2], 0, 0);
         old = __sync_val_compare_and_swap(&atom_arr[2], expected, max(expected, i));
       } while (old != expected);
 
       // Atomic minimum
       do {
-        expected = atom_arr[3];
+        expected = __sync_val_compare_and_swap(&atom_arr[3], 0, 0);
         old = __sync_val_compare_and_swap(&atom_arr[3], expected, min(expected, i));
       } while (old != expected);
 
@@ -111,7 +133,7 @@ void atomicKernel_CPU(int *atom_arr, int no_of_threads, const int loop_num)
       __sync_fetch_and_and(&atom_arr[7] , 2 * i + 7);
 
       // Atomic OR
-      __sync_fetch_and_or(&atom_arr[8], 1 << i);
+      __sync_fetch_and_or(&atom_arr[8], static_cast<int>(1u << (static_cast<unsigned>(i) & 31u)));
 
       // Atomic XOR
       // 11th element should be 0xff
@@ -256,7 +278,7 @@ int verify(int *testData, const int len, const int loop_num)
   for (int i = 0; i < len; ++i)
   {
     // 9th element should be 0xff
-    val |= (1 << i);
+    val |= (static_cast<int>(1u << (static_cast<unsigned>(i) & 31u)));
   }
 
   if (val != testData[8])
@@ -285,15 +307,23 @@ int verify(int *testData, const int len, const int loop_num)
 
 int main(int argc, char **argv)
 {
+  setbuf(stdout, nullptr);
   if (argc != 2) {
     printf("Usage: %s <loop count within the kernel>\n", argv[0]);
     return 1;
   }
   const int loop_num = atoi(argv[1]);
+  if (loop_num <= 0 || loop_num > INT_MAX / 327680) return 2;
+  const bool proof = getenv("HECBENCH_ATOMIC_PROOF") != nullptr;
+  int* progress = nullptr;
+  if (proof) {
+    HIP_CHECK(hipHostMalloc((void**)&progress, 80 * sizeof(int), hipHostMallocMapped | hipHostMallocCoherent));
+    for (int k = 0; k < 80; ++k) progress[k] = 0;
+  }
 
   // set device
   hipDeviceProp_t device_prop;
-  hipGetDeviceProperties(&device_prop, 0);
+  HIP_CHECK(hipGetDeviceProperties(&device_prop, 0));
 
   if (!device_prop.managedMemory) {
     // This samples requires being run on a device that supports Unified Memory
@@ -310,7 +340,7 @@ int main(int argc, char **argv)
 
   // https://github.com/ROCm/HIP/issues/3244
   int pcieAtomic = 0;
-  hipDeviceGetAttribute(&pcieAtomic, hipDeviceAttributeHostNativeAtomicSupported, 0);
+  HIP_CHECK(hipDeviceGetAttribute(&pcieAtomic, hipDeviceAttributeHostNativeAtomicSupported, 0));
   if (!pcieAtomic) {
     fprintf(stderr, "Device doesn't support pcie atomic, Skipped\n");
     exit(1);
@@ -322,16 +352,9 @@ int main(int argc, char **argv)
 
   int *atom_arr;
 
-  if (device_prop.pageableMemoryAccess)
-  {
-    printf("CAN access pageable memory\n");
-    atom_arr = (int *) malloc (sizeof(int)*numData);
-  }
-  else
-  {
-    printf("CANNOT access pageable memory\n");
-    hipMallocManaged((void**)&atom_arr, sizeof(int)*numData);
-  }
+  HIP_CHECK(hipHostMalloc((void**)&atom_arr, sizeof(int)*numData,
+                         hipHostMallocMapped | hipHostMallocCoherent));
+  printf("coherent host memory allocated %p; CPU initialization follows\n", (void*)atom_arr);
 
   // host memory or shared memory
   for (unsigned int i = 0; i < numData; i++)
@@ -340,30 +363,45 @@ int main(int argc, char **argv)
   //To make the AND and XOR tests generate something other than 0...
   atom_arr[7] = atom_arr[9] = 0xff;
 
-  hipDeviceSynchronize();
+  printf("CPU initialization completed\n");
+  HIP_CHECK(hipDeviceSynchronize());
   auto start = std::chrono::steady_clock::now();
 
-  hipLaunchKernelGGL(atomicKernel, numBlocks, numThreads, 0, 0, atom_arr, loop_num);
+  hipLaunchKernelGGL(atomicKernel, numBlocks, numThreads, 0, 0, atom_arr, loop_num, progress);
+  HIP_CHECK(hipGetLastError());
 
+  if (proof) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (__sync_val_compare_and_swap(progress, 0, 0) == 0) {
+      if (std::chrono::steady_clock::now() > deadline) {
+        fprintf(stderr, "GPU proof handshake timed out\n");
+        return 2;
+      }
+    }
+    __sync_lock_test_and_set(progress + 32, 1);
+  }
   atomicKernel_CPU(atom_arr, numBlocks*numThreads, loop_num);
+  if (proof) __sync_lock_test_and_set(progress + 48, 1);
 
-  hipDeviceSynchronize();
+  printf("CPU producer completed %u additions\n", numBlocks*numThreads*loop_num);
+  HIP_CHECK(hipDeviceSynchronize());
 
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   printf("Execution time of atomic kernels on host and device: %f (s)\n", time * 1e-9f);
 
   // Compute & verify reference solution
+  for (unsigned int k=0;k<numData;++k) printf("raw[%u]=%d\n", k, atom_arr[k]);
   int testResult = verify(atom_arr, 2*numThreads*numBlocks, loop_num);
 
-  if (device_prop.pageableMemoryAccess)
-  {
-    free(atom_arr);
+  if (proof) {
+    const int gpu_threads = progress[16], overlap = progress[64];
+    printf("proof cpu_updates=%u gpu_threads=%d gpu_updates=%d overlap=%d\n",
+           numBlocks*numThreads*loop_num, gpu_threads, gpu_threads*loop_num, overlap);
+    testResult = testResult && gpu_threads == int(numBlocks*numThreads) && overlap == 1;
+    HIP_CHECK(hipHostFree(progress));
   }
-  else
-  {
-    hipFree(atom_arr);
-  }
+  HIP_CHECK(hipHostFree(atom_arr));
 
   printf("systemWideAtomics completed, returned %s \n", testResult ? "OK" : "ERROR!");
   exit(testResult ? EXIT_SUCCESS : EXIT_FAILURE);
