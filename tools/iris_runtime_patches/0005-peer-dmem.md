@@ -2,10 +2,12 @@
 
 Reference: ORNL/iris `ff57e620a92fcf62eff3568d9c6eeaaf078f0340`, after
 patches0001–0004 in order, including the final borrowed-default-stream version
-of04. Apply05 with `git apply --unidiff-zero --ignore-space-change --check <patch>`
-then `git apply --unidiff-zero --ignore-space-change <patch>`, in a private
-source/build tree. The whitespace flag accommodates one upstream removed line
-with trailing whitespace without embedding that whitespace in this patch. This
+of04. Apply05 with `patch --dry-run -l -p1 < <patch>` then
+`patch -l -p1 < <patch>`, in a private source/build tree. Whitespace-tolerant
+patch application accommodates one upstream removed line with trailing
+whitespace without embedding that whitespace in this patch. Git application
+with `--ignore-space-change` was tested and still rejects that removed line;
+do not substitute it for the tested command above. This
 zero-context patch is for the exact cumulative baseline, not arbitrary IRIS
 versions. Rebuild the runtime before compiling `src/p2p-iris` against it.
 
