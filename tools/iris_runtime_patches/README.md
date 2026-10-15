@@ -57,3 +57,28 @@ as well as stale contents. The bounded native/IRIS test covers all three kinds,
 11 sizes (64 through 65536 bytes), eight simultaneous allocations per size,
 786048 integer outputs in each model, and error-free release. Production
 repeat/size defaults are retained and are not claimed as fully validated.
+
+## Explicit HIP task streams and priorities
+
+`0003-explicit-hip-stream-control.patch` builds on 0001/0002. Apply with
+`git apply --unidiff-zero`, then rebuild. It provides:
+
+- `iris_task_set_stream_index(task, index)`: bind an unsubmitted task to an
+  existing runtime-owned stream, using same-stream task transfer policy.
+- `iris_hip_set_stream_priority(device, index, priority)`: recreate a runtime
+  HIP stream with a requested nonblocking priority before any work uses it.
+  Call only while quiescent; this is not a concurrent stream migration API.
+- HIP's implementation of the existing `iris_dev_get_stream` query, returning
+  the borrowed stream handle for metadata inspection. IRIS retains ownership.
+
+Invalid devices/indices and post-submission stream binding are rejected.
+Reconfiguration synchronizes/destroys the old stream, maintains the backend's
+stream aliases, and does not alter DMem ownership or task kernel arithmetic.
+
+`streamPriority-iris` validates actual queried priorities on MI100: baseline 0,
+training -1, and prefetch +1. It preserves training-stream order and the
+forward-done/prefetch-done cross-stream graph. Odd 4099-element/3-batch and
+65536-element/5-batch fixtures compare every activation, gradient, updated weight,
+and prefetch value with native HIP, byte-exact in both modes. CPU source-derived
+reference checks also pass. No preemption or production-default speedup claim
+is made; task/data-management overhead differs from literal native stream APIs.

@@ -1,0 +1,70 @@
+--- a/src/runtime/LoaderHIP.h
++++ b/src/runtime/LoaderHIP.h
+@@ -37,0 +38,2 @@
++  hipError_t (*hipStreamCreateWithPriority)(hipStream_t* stream, unsigned int flags, int priority);
++  hipError_t (*hipStreamSynchronize)(hipStream_t stream);
+--- a/src/runtime/LoaderHIP.cpp
++++ b/src/runtime/LoaderHIP.cpp
+@@ -54,0 +55,2 @@
++  LOADFUNC(hipStreamCreateWithPriority);
++  LOADFUNC(hipStreamSynchronize);
+--- a/src/runtime/DeviceHIP.h
++++ b/src/runtime/DeviceHIP.h
+@@ -19,0 +20,4 @@
++  int SetStreamPriority(int index, int priority);
++  void *get_stream(int index) override {
++    return index >= 0 && index < nqueues_ ? (void *)streams_[index] : NULL;
++  }
+--- a/src/runtime/DeviceHIP.cpp
++++ b/src/runtime/DeviceHIP.cpp
+@@ -154,0 +155,19 @@
++int DeviceHIP::SetStreamPriority(int index, int priority) {
++  if (!is_async(false) || index < 0 || index >= nqueues_ || !streams_[index]) return IRIS_ERROR;
++  hipError_t error = ld_->hipCtxSetCurrent(ctx_);
++  if (error != hipSuccess) return IRIS_ERROR;
++  hipStream_t replacement = NULL;
++  error = ld_->hipStreamCreateWithPriority(&replacement, 1 /* nonblocking */, priority);
++  if (error != hipSuccess) return IRIS_ERROR;
++  error = ld_->hipStreamSynchronize(streams_[index]);
++  if (error == hipSuccess) error = ld_->hipStreamDestroy(streams_[index]);
++  if (error != hipSuccess) {
++    ld_->hipStreamDestroy(replacement);
++    return IRIS_ERROR;
++  }
++  streams_[index] = replacement;
++  if (index >= n_copy_engines_)
++    streams_[index+nqueues_-n_copy_engines_] = replacement;
++  return IRIS_SUCCESS;
++}
++
+--- a/src/runtime/CAPI.cpp
++++ b/src/runtime/CAPI.cpp
+@@ -13,0 +14 @@
++#include "DeviceHIP.h"
+@@ -209,0 +211,17 @@
++}
++
++int iris_task_set_stream_index(iris_task handle, int index) {
++ Task *task = Platform::GetPlatform()->get_task_object(handle);
++ if (!task || task->status() != IRIS_NONE || index < 0 ||
++     index >= Platform::GetPlatform()->nstreams()) return IRIS_ERROR;
++ task->set_stream_policy(STREAM_POLICY_SAME_FOR_TASK);
++ task->set_recommended_stream(index);
++ return IRIS_SUCCESS;
++}
++
++int iris_hip_set_stream_priority(int device, int index, int priority) {
++ Platform *platform = Platform::GetPlatform();
++ if (device < 0 || device >= platform->ndevs()) return IRIS_ERROR;
++ Device *dev = platform->device(device);
++ if (!dev || dev->model() != iris_hip) return IRIS_ERROR;
++ return static_cast<DeviceHIP *>(dev)->SetStreamPriority(index, priority);
+--- a/include/iris/iris_runtime.h
++++ b/include/iris/iris_runtime.h
+@@ -698,0 +699,6 @@
++/* Bind an unsubmitted task to an existing runtime-owned stream index. */
++extern int iris_task_set_stream_index(iris_task task, int index);
++/* Reconfigure a HIP stream before submitting any work that uses that stream.
++ * Caller must ensure the runtime is quiescent; this recreates the stream. */
++extern int iris_hip_set_stream_priority(int device, int index, int priority);
++
