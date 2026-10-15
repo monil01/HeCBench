@@ -46,7 +46,7 @@ endif
 $(program): $(obj) Makefile
 	$(CC) $(CFLAGS) $(obj) -o $@ $(LDFLAGS)
 
-%.o: %.cu Makefile
+%.o: %.cu validation.hpp Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

@@ -33,6 +33,7 @@
 #include <vector>
 #include <hip/hip_runtime.h>
 #include <hiprand/hiprand.h>
+#include "validation.hpp"
 
 // HIP API error checking
 #define HIP_CHECK(err)                                                        \
@@ -97,6 +98,7 @@ void run_on_device(const int &n, const unsigned long long &offset,
   HIP_CHECK(hipMemcpy(h_data.data(), d_data,
                         sizeof(data_type) * h_data.size(),
                         hipMemcpyDeviceToHost));
+  mrg_trace(h_data,"device");
 
   /* Cleanup */
   HIP_CHECK(hipFree(d_data));
@@ -121,6 +123,7 @@ void run_on_host(const int &n, const unsigned long long &offset,
 
   /* Generate n floats on host */
   HIPRAND_CHECK(hiprandGenerateUniform(gen, h_data.data(), h_data.size()));
+  mrg_trace(h_data,"host");
 }
 
 int main(int argc, char *argv[]) {
@@ -141,6 +144,8 @@ int main(int argc, char *argv[]) {
   /* Allocate n floats on host */
   std::vector<data_type> h_data(n, 0);
   std::vector<data_type> d_data(n, -1);
+  mrg_trace(h_data,"host",true);
+  mrg_trace(d_data,"device",true);
 
   // warmup
   run_on_host(n, offset, seed, order, rng, gen, h_data);
