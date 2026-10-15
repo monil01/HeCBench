@@ -55,6 +55,7 @@ void lbm_vars_gpu_alloc(lbm_vars* vars, lattice_type nb_dir, int nl, int vnl) {
   HANDLE_ERROR(cudaMalloc(&vars->f1, nl*nb_dir*sizeof(double)));
   HANDLE_ERROR(cudaMalloc(&vars->boundary_flag, nl*sizeof(flag_type)));
   HANDLE_ERROR(cudaMalloc(&vars->boundary_values, nl*sizeof(int)));
+  HANDLE_ERROR(cudaMemset(vars->boundary_values, 0, nl*sizeof(int)));
   HANDLE_ERROR(cudaMalloc(&vars->boundary_dirs, nl*sizeof(flag_type)));
   HANDLE_ERROR(cudaMalloc(&vars->r, sizeof(double)*vnl));
 }
