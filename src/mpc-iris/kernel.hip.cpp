@@ -127,15 +127,17 @@ void prefixsumdimlong(long &val, long sbuf[TPB], const unsigned char dim)
   if ((lane + dim) > (WarpSize - 1)) sbuf[tix] = val;
 
   __syncthreads();
-  if (warp < dim) {
-    const int idx = (lane * dim) + warp;
-    long v = sbuf[idx];
+  // HIP wave64 has only16 warps per block, fewer than the32 dimensions.
+  // Cover every dimension and never read nonexistent warp rows.
+  for (int channel = warp; channel < dim; channel += TPB / WarpSize) {
+    const int idx = (lane * dim) + channel;
+    long v = lane < TPB / WarpSize ? sbuf[idx] : 0;
     for (int d = 1; d < WarpSize; d *= 2) {
       unsigned int tmpl = __shfl_up((int)v, d);
       long tmph = __shfl_up((int)(v >> 32), d);
       if (lane >= d) v += (tmph << 32) + tmpl;
     }
-    sbuf[idx] = v;
+    if (lane < TPB / WarpSize) sbuf[idx] = v;
   }
 
   __syncthreads();
