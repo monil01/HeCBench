@@ -10,7 +10,8 @@ SGDIndex* gen_random_map(SGDIndex size)
   for(SGDIndex i = 0; i < size; i++) map[i] = i;
 
   random_device rd;
-  mt19937 g(rd());
+  const char* validation_seed = getenv("HECBENCH_MF_SEED");
+  mt19937 g(validation_seed ? unsigned(strtoul(validation_seed, nullptr, 10)) : rd());
   shuffle(map.begin(), map.end(), g);
 
   int*map_ptr = new int[size];
@@ -452,7 +453,8 @@ void init_feature(short *feature_vec, int grid, long long seg, int k)
   half *gpu_vec;
   cudaMalloc((void**)&gpu_vec, seg*k*sizeof(half));
 
-  int state_size = (seg/256 + 1)*256;
+  // One RNG state per launched initializer thread (old modulo sharing raced).
+  int state_size = int(((seg*k + 255)/256)*256);
   printf("state_size (a multiple of 256):%d\n", state_size);
   unsigned int* d_state;
   cudaMalloc((void**)&d_state, sizeof(unsigned int)*state_size);
@@ -469,6 +471,23 @@ void init_feature(short *feature_vec, int grid, long long seg, int k)
     printf("grid:%d\n",i);
     random_init<<<blockNum, blockSize>>>(d_state, state_size, gpu_vec, seg*k, k, scale);
     cudaMemcpy(feature_vec + i*seg*k,gpu_vec,sizeof(half)*seg*k, cudaMemcpyDeviceToHost);
+    if(getenv("HECBENCH_MF_VERIFY_INIT")) {
+      for(long long index=0; index<seg*k; ++index) {
+        unsigned state = 5551212u ^ unsigned(index);
+        state = (26757677u*state+1u) & 0x7fffffffu;
+        for(int generation=0; generation<=i; ++generation)
+          state = (26757677u*state+1u) & 0x7fffffffu;
+        float expected_float = (float(state)/2147483648.0f)*scale;
+        // CUDA diagnostic retains CUDA's float-to-half source semantics.
+        half expected = __float2half(expected_float);
+        unsigned short bits; memcpy(&bits,&expected,sizeof(bits));
+        if(static_cast<unsigned short>(feature_vec[i*seg*k+index]) != bits) {
+          fprintf(stderr,"INIT_ORACLE mismatch grid=%d index=%lld state=%u scale=%a expected_float=%a expected_bits=%04x actual_bits=%04x\n",i,index,state,double(scale),double(expected_float),unsigned(bits),unsigned(static_cast<unsigned short>(feature_vec[i*seg*k+index])));
+          throw runtime_error("independent LCG/FP16 initialization oracle mismatch");
+        }
+      }
+      printf("INIT_ORACLE PASS grid=%d values=%lld\n",i,seg*k);
+    }
   }
 
   cudaFree(d_state);
@@ -527,8 +546,10 @@ mf_model* init_model(mf_problem*prob, int k, float ave)
 __global__ void init_rand_state(unsigned int seed, unsigned int *state, int size)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
-  state[i] = seed ^ i;
-  if(i < size) LCG_random_init(state+i);
+  if(i < size) {
+    state[i] = seed ^ i;
+    LCG_random_init(state+i);
+  }
 }
 
 
@@ -662,7 +683,8 @@ void sgd_update_k128(Parameter para, mf_model *model, mf_problem *prob, float sc
 
   // random shuffle
   random_device rd;
-  mt19937 g(rd());
+  const char* validation_seed = getenv("HECBENCH_MF_SEED");
+  mt19937 g(validation_seed ? unsigned(strtoul(validation_seed, nullptr, 10)) : rd());
 
   //run the update kernel
   if(prob->u_grid*prob->v_grid == 1)

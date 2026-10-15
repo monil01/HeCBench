@@ -21,6 +21,12 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
     int u_id,
     int v_id)
 {
+#ifdef HECBENCH_MF_VERIFY_SERIAL_WARPS
+  // Validation-only ordering: all four workers and updates remain present.
+  for(int validation_warp=0; validation_warp<4; ++validation_warp) {
+    if(threadIdx.x/32==validation_warp) {
+#endif
+
   //persistant thread
   for(int ite = current_iter; ite < current_iter + num_iters; ite ++)
   {
@@ -39,7 +45,7 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
         long long origin = (long long)(LCG_random(state+wid)*nnz);
         start_id = origin%nnz;
       }
-      start_id = __shfl(start_id, 0);
+      start_id = __shfl(start_id, 0, 32);
 
       for(int i = 0;i < update_vector_size;i++)
       {
@@ -68,12 +74,12 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
         float tmp_product = tmp_p1*tmp_q1 + tmp_p2*tmp_q2 + tmp_p3*tmp_q3 + tmp_p4*tmp_q4;
 
         //get dot product.
-        tmp_product += __shfl_down(tmp_product, 16);
-        tmp_product += __shfl_down(tmp_product, 8);
-        tmp_product += __shfl_down(tmp_product, 4);
-        tmp_product += __shfl_down(tmp_product, 2);
-        tmp_product += __shfl_down(tmp_product, 1);
-        tmp_product = __shfl(tmp_product,0);
+        tmp_product += __shfl_down(tmp_product, 16, 32);
+        tmp_product += __shfl_down(tmp_product, 8, 32);
+        tmp_product += __shfl_down(tmp_product, 4, 32);
+        tmp_product += __shfl_down(tmp_product, 2, 32);
+        tmp_product += __shfl_down(tmp_product, 1, 32);
+        tmp_product = __shfl(tmp_product,0,32);
 
         float ruv = r - tmp_product;
 
@@ -93,6 +99,12 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
       }    
     }
   }
+
+#ifdef HECBENCH_MF_VERIFY_SERIAL_WARPS
+    }
+    __syncthreads();
+  }
+#endif
 }
 
 

@@ -20,6 +20,12 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
     int u_id,
     int v_id)
 {
+#ifdef HECBENCH_MF_VERIFY_SERIAL_WARPS
+  // Validation-only ordering: all four workers and updates remain present.
+  for(int validation_warp=0; validation_warp<4; ++validation_warp) {
+    if(threadIdx.x/32==validation_warp) {
+#endif
+
   //persistant thread
   for(int ite = current_iter; ite < current_iter + num_iters; ite ++)
   {
@@ -92,6 +98,12 @@ __global__ void sgd_k128_kernel_hogwild_warp32_lrate(
       }    
     }
   }
+
+#ifdef HECBENCH_MF_VERIFY_SERIAL_WARPS
+    }
+    __syncthreads();
+  }
+#endif
 }
 
 

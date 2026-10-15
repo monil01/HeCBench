@@ -196,6 +196,8 @@ Argument parse_argument(int argc, char **argv)
   // these must be positive: they are used as divisors and array sizes
   // (e.g. grid segmentation and gridSize allocation), so a value <= 0
   // would cause a division-by-zero or zero-size allocation later on.
+  if(arg.param.k != 128)
+    throw invalid_argument("this benchmark only supports k=128; pass -k 128");
   if(arg.param.k <= 0)
     throw invalid_argument("number of factors (-k) must be positive");
   if(arg.param.num_iters <= 0)
