@@ -3,6 +3,8 @@
 #include <chrono>
 #include <hip/hip_runtime.h>
 
+#include "diagnostic_dump.h"
+
 __device__
 float sigmoid (float x) {
   return (1.f / (1.f + expf(-x)));
@@ -67,6 +69,7 @@ void malloc2D (int repeat, int width, int height) {
   float* devPtr;
   size_t pitch;
   hipMallocPitch((void**)&devPtr, &pitch, width * sizeof(float), height);
+  hipMemset(devPtr, 0, pitch * height);
 
   parallelPitched2DAccess<<<grid, block>>>(devPtr, pitch, width, height);
   hipDeviceSynchronize();
@@ -80,9 +83,11 @@ void malloc2D (int repeat, int width, int height) {
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
+  diagnostic_dump("pitched2D", devPtr, width, height, 1, pitch);
   hipFree(devPtr);
 
   hipMalloc((void**)&devPtr, width * height * sizeof(float));
+  hipMemset(devPtr, 0, width * height * sizeof(float));
 
   parallelSimple2DAccess<<<grid, block>>>(devPtr, width, height);
   hipDeviceSynchronize();
@@ -98,6 +103,8 @@ void malloc2D (int repeat, int width, int height) {
   printf("Average execution time (pitched vs simple): %f %f (us)\n",
           (time * 1e-3f) / repeat, (time2 * 1e-3f) / repeat);
 
+  diagnostic_dump("simple2D", devPtr, width, height, 1, size_t(width)*sizeof(float));
+
   hipFree(devPtr);
 }
 
@@ -111,6 +118,7 @@ void malloc3D (int repeat, int width, int height, int depth) {
   hipExtent extent = make_hipExtent(width * sizeof(float), height, depth);
   hipPitchedPtr devPitchedPtr;
   hipMalloc3D(&devPitchedPtr, extent);
+  hipMemset(devPitchedPtr.ptr, 0, devPitchedPtr.pitch * height * depth);
 
   parallelPitched3DAccess<<<grid, block>>>(devPitchedPtr, width, height, depth);
   hipDeviceSynchronize();
@@ -124,10 +132,12 @@ void malloc3D (int repeat, int width, int height, int depth) {
   auto end = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
+  diagnostic_dump("pitched3D", devPitchedPtr.ptr, width, height, depth, devPitchedPtr.pitch);
   hipFree(devPitchedPtr.ptr);
 
   float* devPtr;
   hipMalloc(&devPtr, width * height * depth * sizeof(float));
+  hipMemset(devPtr, 0, width * height * depth * sizeof(float));
 
   parallelSimple3DAccess<<<grid, block>>>(devPtr, width, height, depth);
   hipDeviceSynchronize();
@@ -143,6 +153,8 @@ void malloc3D (int repeat, int width, int height, int depth) {
   printf("Average execution time (pitched vs simple): %f %f (us)\n",
           (time * 1e-3f) / repeat, (time2 * 1e-3f) / repeat);
 
+  diagnostic_dump("simple3D", devPtr, width, height, depth, size_t(width)*sizeof(float));
+
   hipFree(devPtr);
 }
 
@@ -155,16 +167,19 @@ int main(int argc, char* argv[])
   }
 
   const int repeat = atoi(argv[1]);
+  const char* shape_env = getenv("HECBENCH_PITCH_SHAPES");
+  const int shape_count = shape_env ? atoi(shape_env) : 11;
+  if (repeat < 1 || shape_count < 1 || shape_count > 11) return 1;
 
   // width, height and depth
   const int w[] = {227, 256, 720, 768, 854, 1280, 1440, 1920, 2048, 3840, 4096};
   const int h[] = {227, 256, 480, 576, 480, 720, 1080, 1080, 1080, 2160, 2160};
   const int d[] = {1, 3};
 
-  for (int i = 0; i < 11; i++)
+  for (int i = 0; i < shape_count; i++)
     malloc2D(repeat, w[i], h[i]);
 
-  for (int i = 0; i < 11; i++)
+  for (int i = 0; i < shape_count; i++)
     for (int j = 0; j < 2; j++)
       malloc3D(repeat, w[i], h[i], d[j]);
 
