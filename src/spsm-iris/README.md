@@ -9,3 +9,8 @@ Original M/N/requested-nnz/repeat/verify argument order, seed123 and srand48(123
 Build make; run IRIS_ARCHS=HIP ./main M N nnz repeat verify. Optional HECBENCH_DUMP_PREFIX writes complete float32 outputs/expected original C for observational validation. CUDA/HIP siblings are untouched. Validation is bounded; the production default is not tested. No CUDA backend or vendor-library throughput parity is claimed.
 
 The original NVIDIA disclaimer and U.S. Government End Users Notice are preserved in main.cpp.
+
+Equivalent vendor-operation lowering was explicitly authorized for the remaining
+IRIS coverage pass. The solver is a numerical port, not a hipSPARSE performance
+replacement; validation compares every output against hipSPARSE and the original
+known solution, rather than accepting timing output as correctness evidence.
