@@ -82,3 +82,51 @@ forward-done/prefetch-done cross-stream graph. Odd 4099-element/3-batch and
 and prefetch value with native HIP, byte-exact in both modes. CPU source-derived
 reference checks also pass. No preemption or production-default speedup claim
 is made; task/data-management overhead differs from literal native stream APIs.
+
+## Stream lifecycle, peers, and concurrent system atomics
+
+The full catalogue includes ports requiring these additional, narrow extensions:
+
+* [0004](0004-stream-lifecycle-allocation.md): real stream create/destroy,
+  borrowed legacy-default stream slots, stream-ordered allocation/free, and
+  physical lifecycle counters. Consumers: streamOrderedAllocation and
+  streamCreateCopyDestroy.
+* [0005](0005-peer-dmem.md): genuine whole-DMem HIP peer copies and read-only
+  remote-GPU kernel bindings, with no silent input migration. Consumer: p2p.
+* [0006](0006-system-atomic-dmem.md): DMem-owned coherent host storage with a
+  borrowed CPU view for real simultaneous CPU/GPU system-scope atomics.
+  Consumer: atomicSystemWide. Coherent host allocation and equivalent atomic
+  CAS operations are explicit platform adaptations, not VRAM atomicity claims.
+
+Use the exact stock reference revision above in a separate private tree. Apply
+the final committed patches in order (substitute absolute paths):
+
+```sh
+git apply /path/to/0001-dmem-region-ownership.patch
+git apply --unidiff-zero /path/to/0002-dmem-hip-allocation-policies.patch
+git apply --unidiff-zero /path/to/0003-explicit-hip-stream-control.patch
+patch -l -p1 < /path/to/0004-stream-lifecycle-allocation.patch
+patch -l -p1 < /path/to/0005-peer-dmem.patch
+git apply --unidiff-zero /path/to/0006-system-atomic-dmem.patch
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PYTHON=OFF \
+  -DUSE_SIGHANDLER=OFF -DIRIS_ASYNC_STREAMING=ON
+cmake --build build -j8
+```
+
+Patches04/05 intentionally use whitespace-tolerant `patch`, not Git's
+whitespace option. Patch06 is rebased against the complete01–05 baseline;
+do not skip05 when applying the current06. Read each patch document for API
+preconditions, environment settings, tests, and qualifications. Caller arrays
+remain DMem-owned. `IRIS_ARCHS=HIP` selects actual AMD GPU execution; no CPU
+backend is a benchmark-completion path. Set `IRIS_ROOT`/`IRIS_BUILD` in each
+benchmark's build, rather than overwriting a runtime used by another process.
+
+Vendor-library workloads use [the host2hip bridge](../iris_vendor_bridge.md)
+to operate on DMem-resolved GPU pointers and the runtime-owned stream; the
+bridge is not a CPU substitute. Hardware-unavailable low-precision operations
+have documented mathematical GPU equivalents, not native low-precision
+performance/parity claims. Per-port documentation and local validation
+manifests retain bounded-workload, baseline-repair, and scientific-reference
+qualifications. Directory or committed-layout counts alone are not proof of
+numerical correctness; inspect `python3 tools/iris_status.py --json` together
+with the corresponding local evidence.
