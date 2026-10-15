@@ -50,10 +50,13 @@ extern "C" __global__ void CompressionKernel(
   for (int i = start + lane; i < term; i += WARPSIZE) {
     // calculate delta between value to compress and prediction
     // and negate if negative
-    if (cbufd[i] >= prev)
+    if (cbufd[i] >= prev) {
+      code = 0;
       diff = cbufd[i] - prev;
-    else
+    } else {
+      code = 8; // high nibble bit encodes a negative delta
       diff = prev - cbufd[i];
+    }
 
     // count leading zeros in positive delta
     bcount = 8 - (__clzll(diff) >> 3);
