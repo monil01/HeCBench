@@ -260,7 +260,7 @@ void computeKernel_ref(
     // Enumerate all tasks.
     for (int task = 0; task < total; task++)
     {
-        int parent[5];
+        int parent[5] = {-1,-1,-1,-1,-1};
         int parN = 0;
 
         H_findComb(parent, task, posN-1);
@@ -347,7 +347,7 @@ float findBestGraph_ref(float* localscore)
         {
             for (int i = 0; i < bestpN; ++i)
             {
-                if (bestParents[i] < node)
+                if (bestParents[i] <= node)
                     graph[node][bestParents[i] - 1] = 1;
                 else
                     graph[node][bestParents[i]] = 1;

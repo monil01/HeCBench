@@ -241,7 +241,7 @@ float findBestGraph(float* D_localscore, int* D_resP, float* D_Score, bool *D_pa
 
         parN = 0;
         for (tmp = 0; tmp < 4; tmp++) {
-          if (parents[i * 4 + tmp] < 0)
+          if (parents[i * 4 + tmp] <= 0)
             break;
 
           bestparent[tmp] = parents[i * 4 + tmp];
@@ -255,7 +255,7 @@ float findBestGraph(float* D_localscore, int* D_resP, float* D_Score, bool *D_pa
     if (bestls > -99999999.f) {
 
       for (i = 0; i < bestpN; i++) {
-        if (bestparent[i] < node)
+        if (bestparent[i] <= node)
           graph[node][bestparent[i] - 1] = 1;
         else
           graph[node][bestparent[i]] = 1;
@@ -402,6 +402,7 @@ void Pre_logGamma() {
 
   LG = (float*) malloc ((DATA_N + 2) * sizeof(float));
 
+  LG[0] = 0.f; // log(0!) = 0, including empty contingency-table cells.
   LG[1] = log(1.0);
   float i;
   for (i = 2; i <= DATA_N + 1; i++) {

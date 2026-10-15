@@ -139,46 +139,22 @@ __global__ void computeKernel(const int taskperthr,
     }
   }
 
+  // Keep scores and winner indices separate: ties are defined and no
+  // negative likelihood is ever converted into a thread index.
+  __shared__ int winner[256];
   lsinblock[tid]=bestls;
-
+  winner[tid]=tid;
   __syncthreads();
-
   for(i=128;i>=1;i/=2){
-
-    if(tid<i){
-      if(lsinblock[tid+i]>lsinblock[tid]&&lsinblock[tid+i]<0){
-        lsinblock[tid]=lsinblock[tid+i];
-        lsinblock[tid+i]=(float)(tid+i);
-      }
-      else if(lsinblock[tid+i]<lsinblock[tid]&&lsinblock[tid]<0){
-        lsinblock[tid+i]=(float)tid;
-      }
-      else if(lsinblock[tid]>0&&lsinblock[tid+i]<0){
-        lsinblock[tid]=lsinblock[tid+i];
-        lsinblock[tid+i]=(float)(tid+i);
-      }
-      else if(lsinblock[tid]<0&&lsinblock[tid+i]>0){
-        lsinblock[tid+i]=(float)tid;
-      }
-
+    if(tid<i && (lsinblock[tid+i]>lsinblock[tid] ||
+       (lsinblock[tid+i]==lsinblock[tid] && winner[tid+i]<winner[tid]))){
+      lsinblock[tid]=lsinblock[tid+i];
+      winner[tid]=winner[tid+i];
     }
     __syncthreads();
   }
-
-  if(tid==0){
-
-    D_Score[bid]=lsinblock[0];
-    t=0;
-    for(i=0;i<7&&t<128&&t>=0;i++){
-      t=(int)lsinblock[(int)powf(2.0,i)+t];
-    }
-
-    lsinblock[0]=(float)t;
-  }
-
-  __syncthreads();
-
-  if(tid==(int)lsinblock[0]){
+  if(tid==0) D_Score[bid]=lsinblock[0];
+  if(tid==winner[0]){
     for(i=0;i<4;i++){
       D_resP[bid*4+i]=bestparent[i];
     }
