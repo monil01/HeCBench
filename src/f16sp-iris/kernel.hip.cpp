@@ -1,0 +1,147 @@
+#include <hip/hip_runtime.h>
+#include <hip/hip_fp16.h>
+#include <hipcub/hipcub.hpp>
+#include "config.h"
+#ifndef NUM_OF_BLOCKS
+#define NUM_OF_BLOCKS (1024 * 1024)
+#endif
+#define NUM_OF_THREADS 128
+
+// fp16 reduction
+__forceinline__ __device__
+void reduceInShared_intrinsics(half2 * const v)
+{
+  int lid = threadIdx.x;
+  #pragma unroll
+  for (int i = NUM_OF_THREADS/2; i >= 1; i = i / 2) {
+    if(lid<i) v[lid] = __hadd2(v[lid], v[lid+i]);
+    __syncthreads();
+  }
+}
+
+// fp32 reduction
+__forceinline__ __device__
+void reduceInShared_native(float2 * const v)
+{
+  int lid = threadIdx.x;
+  #pragma unroll
+  for (int i = NUM_OF_THREADS/2; i >= 1; i = i / 2) {
+    if(lid<i) {
+      v[lid].x += v[lid+i].x;
+      v[lid].y += v[lid+i].y;
+    }
+    __syncthreads();
+  }
+}
+
+
+extern "C" __global__
+void scalarProductKernel_intrinsics(
+    half2 const *__restrict__ const a,
+    half2 const *__restrict__ const b,
+    float *__restrict__ const results,
+    size_t const size)
+{
+  const size_t stride = (size_t)gridDim.x * blockDim.x;
+  __shared__ half2 shArray[NUM_OF_THREADS];
+
+  half2 value = __float2half2_rn(0.f);
+
+  for (size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+              i < size; i+=stride)
+  {
+    value = __hfma2(a[i], b[i], value);
+  }
+
+  shArray[threadIdx.x] = value;
+  __syncthreads();
+  reduceInShared_intrinsics(shArray);
+
+  if (threadIdx.x == 0)
+  {
+    half2 result = shArray[0];
+    float f_result = __low2float(result) + __high2float(result);
+    atomicAdd(results, f_result);
+  }
+}
+
+// compute type is float for high precision
+extern "C" __global__
+void scalarProductKernel_native_fp32(
+    half2 const *__restrict__ const a,
+    half2 const *__restrict__ const b,
+    float *__restrict__ const results,
+    size_t const size)
+{
+  const size_t stride = (size_t)gridDim.x * blockDim.x;
+  __shared__ float2 shArray[NUM_OF_THREADS];
+
+  float2 value = {0.f, 0.f};
+
+  for (size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+              i < size; i+=stride)
+  {
+    value.x += (float)a[i].x * (float)b[i].x;
+    value.y += (float)a[i].y * (float)b[i].y;
+  }
+
+  shArray[threadIdx.x] = value;
+  __syncthreads();
+  reduceInShared_native(shArray);
+
+  if (threadIdx.x == 0)
+  {
+    float2 result = shArray[0];
+    atomicAdd(results, result.x + result.y);
+  }
+}
+
+
+// CUB reduction with float2 seems unsupported
+extern "C" __global__
+void scalarProductKernel_native2_fp32(
+    half2 const *__restrict__ const a,
+    half2 const *__restrict__ const b,
+    float *__restrict__ const results,
+    size_t const size)
+{
+  const size_t stride = (size_t)gridDim.x * blockDim.x;
+
+  typedef hipcub::BlockReduce<float, NUM_OF_THREADS> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
+
+  float2 value = {0.f, 0.f};
+
+  for (size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+              i < size; i+=stride)
+  {
+    value.x += (float)a[i].x * (float)b[i].x;
+    value.y += (float)a[i].y * (float)b[i].y;
+  }
+
+  value.x = BlockReduce(temp_storage).Sum(value.x + value.y);
+
+  if (threadIdx.x == 0)
+  {
+    atomicAdd(results, value.x);
+  }
+}
+
+ // Equivalent BLAS float-accumulation and CUB rounded-half-product reductions.
+extern "C" __global__ void vendor_partial(const half2* a,const half2* b,float* sums,size_t n,int rounded) {
+ __shared__ float local[256];float value=0.f;
+ for(size_t i=(size_t)blockIdx.x*blockDim.x+threadIdx.x;i<n;i+=(size_t)gridDim.x*blockDim.x) {
+  if(rounded){half2 p=__hmul2(a[i],b[i]);value+=__low2float(p)+__high2float(p);}
+  else {value+=(float)a[i].x*(float)b[i].x;value+=(float)a[i].y*(float)b[i].y;}
+ }
+ local[threadIdx.x]=value;__syncthreads();
+ for(int d=128;d;d/=2){if(threadIdx.x<d)local[threadIdx.x]+=local[threadIdx.x+d];__syncthreads();}
+ if(!threadIdx.x)sums[blockIdx.x]=local[0];
+}
+extern "C" __global__ void vendor_finish(const float* sums,float* result,half* half_result,int blocks,int rounded) {
+ __shared__ float local[256];float v=0;
+ for(int j=threadIdx.x;j<blocks;j+=256)v+=sums[j];local[threadIdx.x]=v;__syncthreads();
+ for(int d=128;d;d/=2){if(threadIdx.x<d)local[threadIdx.x]+=local[threadIdx.x+d];__syncthreads();}
+ if(!threadIdx.x){if(rounded)*result=local[0];else *half_result=__float2half(local[0]);}
+}
+extern "C" __global__ void clear_result(float* result){if(!threadIdx.x)*result=0.f;}

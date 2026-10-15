@@ -18,7 +18,10 @@
 #include <hipblas/hipblas.h>
 #include "kernels.h"
 
-const int WARMUP = 1000;
+#ifndef F16SP_WARMUP
+#define F16SP_WARMUP 1000
+#endif
+const int WARMUP = F16SP_WARMUP;
 
 struct Half2Mul {
   const half2* a;
@@ -47,6 +50,7 @@ void generateInput(half2 * a, size_t size)
 
 int main(int argc, char *argv[])
 {
+  setvbuf(stdout, nullptr, _IOLBF, 0);
   if (argc != 2) {
     printf("Usage: %s <repeat>\n", argv[0]);
     return 1;
@@ -105,6 +109,9 @@ int main(int argc, char *argv[])
 
     hipMemcpy(&r, d_r, result_bytes, hipMemcpyDeviceToHost);
     printf("Error rate: %e\n", fabsf(r - 65504.f)/65504.f);
+#ifdef F16SP_VALIDATE
+    printf("RESULT value=%a\n", (double)r);
+#endif
 
     // WARMUP
     for (int i = 0; i < WARMUP; i++)
@@ -125,6 +132,9 @@ int main(int argc, char *argv[])
 
     hipMemcpy(&r, d_r, result_bytes, hipMemcpyDeviceToHost);
     printf("Error rate: %e\n", fabsf(r - 65504.f)/65504.f);
+#ifdef F16SP_VALIDATE
+    printf("RESULT value=%a\n", (double)r);
+#endif
 
     // WARMUP
     for (int i = 0; i < WARMUP; i++)
@@ -145,6 +155,9 @@ int main(int argc, char *argv[])
 
     hipMemcpy(&r, d_r, result_bytes, hipMemcpyDeviceToHost);
     printf("Error rate: %e\n", fabsf(r - 65504.f)/65504.f);
+#ifdef F16SP_VALIDATE
+    printf("RESULT value=%a\n", (double)r);
+#endif
   }
 
   printf("\n");
@@ -175,6 +188,9 @@ int main(int argc, char *argv[])
   printf("Average hipblasDotEx_64 execution time %f (us)\n", (time * 1e-3f) / repeat);
   hipMemcpy(&r2, d_r2, result2_bytes, hipMemcpyDeviceToHost);
   printf("Error rate: %e\n", fabsf((float)r2 - 65504.f)/65504.f);
+#ifdef F16SP_VALIDATE
+    printf("RESULT value=%a\n", (double)(float)r2);
+#endif
 
   printf("\n");
 
@@ -203,6 +219,9 @@ int main(int argc, char *argv[])
 
   hipMemcpy(&r, d_r, result_bytes, hipMemcpyDeviceToHost);
   printf("Error rate: %e\n", fabsf(r - 65504.f)/65504.f);
+#ifdef F16SP_VALIDATE
+    printf("RESULT value=%a\n", (double)r);
+#endif
 
   hipFree(d_a);
   hipFree(d_b);
