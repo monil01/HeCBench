@@ -1,0 +1,59 @@
+--- a/include/iris/iris_runtime.h
++++ b/include/iris/iris_runtime.h
+@@ -721,0 +722,3 @@
++/* Remote-bound tasks require exactly one kernel, including at submission.
++ * Multi-kernel task/graph compositions and nonzero root offsets are rejected.
++ * Complete prior producers before binding; submit synchronously. */
+--- a/src/runtime/CAPI.cpp
++++ b/src/runtime/CAPI.cpp
+@@ -296 +296,2 @@
+-  if (!task || task->status() != IRIS_NONE || !lifecycle_device(source_device)) return IRIS_ERROR;
++  if (!task || task->status() != IRIS_NONE || task->ncmds_kernel() != 1 ||
++      !lifecycle_device(source_device)) return IRIS_ERROR;
+@@ -300 +301 @@
+-  if (!arg->mem || arg->mode != iris_r || arg->mem->GetMemHandlerType() != IRIS_DMEM ||
++  if (!arg->mem || arg->mode != iris_r || arg->off != 0 || arg->mem->GetMemHandlerType() != IRIS_DMEM ||
+--- a/src/runtime/DeviceHIP.h
++++ b/src/runtime/DeviceHIP.h
+@@ -77,0 +78 @@
++  Command* active_kernel_command_ = nullptr;
+--- a/src/runtime/DeviceHIP.cpp
++++ b/src/runtime/DeviceHIP.cpp
+@@ -830 +830 @@
+-    Command *command = kernel->task()->cmd_kernel();
++    Command *command = active_kernel_command_;
+@@ -870,0 +871,3 @@
++    // Device worker serializes argument setup/launch, just like params_. A
++    // task may have several kernels: never reuse its first command's binding.
++    active_kernel_command_ = cmd;
+--- a/src/runtime/Task.h
++++ b/src/runtime/Task.h
+@@ -155,0 +156 @@
++  bool valid_remote_dmem_composition();
+--- a/src/runtime/Task.cpp
++++ b/src/runtime/Task.cpp
+@@ -581,0 +582,9 @@
++bool Task::valid_remote_dmem_composition() {
++  bool remote = false;
++  for (Command* cmd : cmds_) remote = remote || cmd->has_remote_dmem();
++  if (remote && ncmds_kernel() != 1) return false;
++  for (Task* child : subtasks_)
++    if (!child->valid_remote_dmem_composition()) return false;
++  return true;
++}
++
+--- a/src/runtime/Platform.cpp
++++ b/src/runtime/Platform.cpp
+@@ -1637,0 +1638 @@
++  if (!task->valid_remote_dmem_composition()) return IRIS_ERROR;
+@@ -1652,0 +1654 @@
++  if (!task || !task->valid_remote_dmem_composition()) return IRIS_ERROR;
+@@ -2095 +2097 @@
+-  else TaskSubmit(task, brs_policy, opt, 0);
++  else return TaskSubmit(task, brs_policy, opt, 0);
+@@ -2162,0 +2165,2 @@
++  for (Task* task : graph->tasks_list())
++    if (!task->valid_remote_dmem_composition()) return IRIS_ERROR;
+@@ -2206,0 +2211,2 @@
++  for (Task* task : graph->tasks_list())
++    if (!task->valid_remote_dmem_composition()) return IRIS_ERROR;

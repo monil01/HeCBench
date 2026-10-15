@@ -97,6 +97,9 @@ The full catalogue includes ports requiring these additional, narrow extensions:
   borrowed CPU view for real simultaneous CPU/GPU system-scope atomics.
   Consumer: atomicSystemWide. Coherent host allocation and equivalent atomic
   CAS operations are explicit platform adaptations, not VRAM atomicity claims.
+* [0007](0007-command-local-peer-binding.md): use the active kernel command's
+  remote binding map, preventing leakage into subsequent kernels in one task.
+  Includes the p2p multi-command regression and whole-root offset restriction.
 
 Use the exact stock reference revision above in a separate private tree. Apply
 the final committed patches in order (substitute absolute paths):
@@ -108,6 +111,7 @@ git apply --unidiff-zero /path/to/0003-explicit-hip-stream-control.patch
 patch -l -p1 < /path/to/0004-stream-lifecycle-allocation.patch
 patch -l -p1 < /path/to/0005-peer-dmem.patch
 git apply --unidiff-zero /path/to/0006-system-atomic-dmem.patch
+git apply --unidiff-zero /path/to/0007-command-local-peer-binding.patch
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PYTHON=OFF \
   -DUSE_SIGHANDLER=OFF -DIRIS_ASYNC_STREAMING=ON
 cmake --build build -j8
