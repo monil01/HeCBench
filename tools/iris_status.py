@@ -6,17 +6,74 @@ from collections import Counter
 import json
 import os
 from pathlib import Path
+import posixpath
+import re
 import subprocess
+
+
+def vendor_bridge_layout(read_source):
+    """Recognize the built shared bridge, not a file merely named vendor.cpp.
+
+    This is a source-layout check, not proof of numerical validation. The reader
+    is supplied separately for working files and HEAD blobs so uncommitted
+    scaffolding cannot make a committed layout complete.
+    """
+    main = read_source("main.cpp") or ""
+    main = re.sub(r"/\*.*?\*/|//[^\n]*", "", main, flags=re.S)
+    library = re.search(r'"IRIS_KERNEL_HOST2HIP"\s*,\s*"([^"\n]+)"', main)
+    if not (library and "hecbench_vendor_callback" in main and
+            re.search(r'\bkernel\s*\(\s*"hecbench_vendor"\s*,', main)):
+        return False
+    shared = "../../tools/iris_vendor_bridge.cpp"
+    if read_source(shared) is None or read_source("../../tools/iris_vendor_bridge.hpp") is None:
+        return False
+    makefile = (read_source("Makefile") or "").replace("\\\n", " ")
+    # A real shared-library rule must compile the implementation (directly or
+    # through an include wrapper), not merely list it as an unused dependency.
+    rules = re.finditer(r"^([^\t#\n][^:\n]*):([^\n]*)\n((?:\t[^\n]*\n?)+)",
+                        makefile, flags=re.M)
+    for rule in rules:
+        targets, dependencies, recipe = rule.groups()
+        recipe = "\n".join(line.split("#", 1)[0] for line in recipe.splitlines())
+        if library.group(1).removeprefix("./") not in targets.split() or "-shared" not in recipe:
+            continue
+        dependencies = dependencies.split("#", 1)[0].split()
+        for index, source in enumerate(dependencies):
+            if not source.endswith((".cpp", ".cc", ".cxx")):
+                continue
+            text = read_source(source)
+            if text is None:
+                continue
+            text = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+            includes_bridge = re.search(
+                r'^\s*#\s*include\s*"\.\./\.\./tools/iris_vendor_bridge\.cpp"', text, flags=re.M)
+            compiled = source in recipe or "$^" in recipe or (index == 0 and "$<" in recipe)
+            if compiled and (source == shared or includes_bridge):
+                return True
+    return False
 
 
 def inventory(repo, state):
     cuda = {p.name[:-5] for p in (repo / "src").glob("*-cuda") if p.is_dir()}
     iris = {p.name[:-5] for p in (repo / "src").glob("*-iris") if p.is_dir()}
     tracked = subprocess.run(
-        ["git", "ls-tree", "-r", "--name-only", "HEAD", "--", "src"],
+        ["git", "ls-tree", "-r", "--name-only", "HEAD", "--", "src",
+         "tools/iris_vendor_bridge.cpp", "tools/iris_vendor_bridge.hpp"],
         cwd=repo, capture_output=True, text=True, check=True,
     ).stdout.splitlines()
     committed_files = set(tracked)
+    committed_sources = {}
+
+    def read_committed(path):
+        if path not in committed_files:
+            return None
+        if path not in committed_sources:
+            committed_sources[path] = subprocess.run(
+                ["git", "show", f"HEAD:{path}"], cwd=repo,
+                capture_output=True, text=True, check=True,
+            ).stdout
+        return committed_sources[path]
+
     rows = []
     for bench in sorted(cuda & iris):
         port = repo / "src" / (bench + "-iris")
@@ -29,10 +86,19 @@ def inventory(repo, state):
                 status = evidence.get("status", "unknown")
             except (ValueError, OSError):
                 status = "invalid_manifest"
-        required = ["main.cpp", "kernel.hip.cpp", "Makefile"]
+        required = ["main.cpp", "Makefile"]
         missing = [name for name in required if not (port / name).is_file()]
-        committed = all(f"src/{bench}-iris/{name}" in committed_files
-                        for name in required)
+        prefix = f"src/{bench}-iris/"
+
+        def working_source(name):
+            path = port / name
+            return path.read_text() if path.is_file() else None
+
+        if not (port / "kernel.hip.cpp").is_file() and not vendor_bridge_layout(working_source):
+            missing.append("kernel.hip.cpp")
+        committed = all(prefix + name in committed_files for name in required) and (
+            prefix + "kernel.hip.cpp" in committed_files or vendor_bridge_layout(
+                lambda name: read_committed(posixpath.normpath(prefix + name))))
         rows.append({"bench": bench, "status": status,
                      "committed_layout": committed, "missing_files": missing,
                      "runtime_env": evidence.get("runtime_env"),
