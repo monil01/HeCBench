@@ -248,11 +248,12 @@ double tsne::RunTsne(tsne::Options& opt)
         if (!points_file) std::cerr << "Can't open points.txt!";
         if (points_file.is_open()) {
             int i = 0;
-            while (!points_file.eof()) {
-                points_file >> points_host[i++];
+            float coordinate;
+            while (points_file >> coordinate) {
+                if (i >= num_points * 2) throw std::runtime_error("Too many point coordinates");
+                points_host[i++] = coordinate;
             }
             points_file.close();
-            i--;
             if (i != num_points * 2) {
                 std::cout << "Number of data points read: " << i << std::endl;
                 std::cout << "That is incorrect\n";
