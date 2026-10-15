@@ -13,7 +13,23 @@ baseline snapshots remain local. The serial column recurrence in reference.cpp
 is an independent CPU validation oracle, not an execution fallback. CUDA backend
 source is unvalidated.
 
-Whole native HIP/IRIS outputs agree exactly; the serial oracle independently
-checks all five precipitation arrays affected by the repair. Serial th/qc/qs
-thermodynamic values differ from both GPUs and remain a qualification, not a
-passing full CPU comparison. No tolerance was enlarged to hide that mismatch.
+Whole native HIP/IRIS outputs agree exactly. The original CPU validation
+attempts03/04 passed only the five precipitation arrays: th/qc/qs differed
+because unqualified abs(float) resolved to host abs(int). In particular,
+integer-truncated rates prematurely triggered the saturation guard and skipped
+snow deposition. Those original failed-oracle sources and artifacts remain
+preserved; they are not retroactively classified as full-oracle passes.
+
+Follow-up attempt05 adds only `using std::abs` in reference.cpp so the shared
+column equations use floating-point overloads, as in HIP. No GPU/native kernel,
+input, recurrence, tolerance or stopping rule changed. The corrected CPU run
+checks all11 arrays against both existing native HIP/IRIS repeat2 artifacts at
+the original rtol1e-5/atol1e-6. All six volume fields match exactly; maximum
+precipitation difference is4.440892e-16. No new GPU execution was required.
+
+Coverage is original60x46x3, timestep10, uniform0.001 input and two reset
+repetitions; default repeat10 and other physical inputs were not measured.
+This is full CPU/GPU equation-execution agreement on that case, not independent
+physical-model or observational validation: the CPU harness shares kernel.h.
+Build the validation-only CPU oracle with
+`g++ -O3 -std=c++17 -I. reference.cpp -o reference`, then `./reference out.bin`.

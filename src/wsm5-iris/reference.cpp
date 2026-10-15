@@ -2,6 +2,9 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+// Match HIP's floating-point abs overloads in the shared column equations.
+// Without this, global abs(int) truncates rates and changes saturation guards.
+using std::abs;
 static float rsqrtf(float x) {return 1.f/std::sqrt(x);}
 #define __global__
 struct Index {int x=0,y=0,z=0;};
