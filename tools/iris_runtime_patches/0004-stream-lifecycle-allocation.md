@@ -13,7 +13,6 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PYTHON=OFF \
 cmake --build build -j8
 ```
 
-Public C APIs:
 The patch uses zero context to avoid inherited trailing whitespace in source
 comments. Use the shown `patch -l` command: loose whitespace matching is needed
 for one removed upstream comment. Plain `git apply --unidiff-zero` is not the
@@ -30,6 +29,12 @@ Public C APIs:
 * `iris_hip_stream_destroy(device,index)` waits for submitted work and the
   physical stream, destroys it, and clears both slot aliases. It rejects a
   slot with live async allocations. Never submit a task to an empty slot.
+* `iris_hip_stream_use_default(device,index)` binds an empty slot to the
+  borrowed legacy HIP null/default stream. Occupied slots and duplicate binds
+  fail. Destroying that binding synchronizes/unbinds it but never calls
+  hipStreamDestroy(null); borrowed binds/unbinds do not increment physical
+  create/destroy counters. This preserves the real default-stream baseline of
+  streamCreateCopyDestroy instead of silently substituting an explicit stream.
 * `iris_hip_lifecycle_stats(device,uint64_t[8],reset)` reads/resets counters:
   explicit-slot creates, destroys, device async allocations/frees, legacy
   device allocations/frees, successful physical H2D calls and bytes. Initial
@@ -74,6 +79,15 @@ queried pool release thresholds are0 and18446744073709551615 (ULONG_MAX).
 Task synchronization adds IRIS scheduling overhead; no performance equivalence
 to direct HIP enqueue overhead is claimed. Historical/local full evidence is
 under `.porting-state/porting_logs/streamOrderedAllocation-iris/attempts/attempt_02`.
+
+Borrowed-default regression: `streamCreateCopyDestroy-iris/runtime_default_test`
+checks all263 GPU-read values, exactly1 physical H2D/1052bytes on the true null
+stream, no physical default-stream creation/destruction, rejected invalid and
+occupied bindings, and successful restoration of an owned stream. The original
+three-kind policy-off-before-free regression still passes after this addition.
+The streamCreateCopyDestroy34-row bounded matrix also passes all33670 output
+floats byte-exact with native/CPU checks, precise create/destroy/H2D counts and
+zero verifier H2D uploads. No live coordinator runtime was modified.
 
 Base SHA256 fingerprints (after03, before04):
 

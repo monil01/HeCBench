@@ -1,19 +1,22 @@
 --- a/include/iris/iris_runtime.h
 +++ b/include/iris/iris_runtime.h
-@@ -704,0 +705,10 @@
+@@ -704,0 +705,13 @@
 +/* Quiescent controls. These wait for submitted IRIS work before changing state.
 + * A stream slot must be empty before creation; destroy rejects live async
 + * allocations tied to that slot. Destroyed slots must not be submitted to. */
 +extern int iris_set_malloc_async(int enabled);
 +extern int iris_hip_stream_create(int device, int index, int nonblocking);
 +extern int iris_hip_stream_destroy(int device, int index);
++/* Bind an empty slot to the borrowed HIP legacy-default (null) stream.
++ * Destroying this binding synchronizes/unbinds, never destroys the default. */
++extern int iris_hip_stream_use_default(int device, int index);
 +/* Eight uint64 counters: stream creates/destroys, async allocs/frees,
 + * legacy-device allocs/frees, physical H2D calls/bytes. Optional atomic reset. */
 +extern int iris_hip_lifecycle_stats(int device, uint64_t *values, int reset);
 +
 --- a/src/runtime/CAPI.cpp
 +++ b/src/runtime/CAPI.cpp
-@@ -234,0 +235,34 @@
+@@ -234,0 +235,40 @@
 +int iris_set_malloc_async(int enabled) {
 +  if (enabled != 0 && enabled != 1) return IRIS_ERROR;
 +  Platform *platform = Platform::GetPlatform();
@@ -48,22 +51,31 @@
 +  return dev->LifecycleStats(values, reset != 0);
 +}
 +
++int iris_hip_stream_use_default(int device, int index) {
++  DeviceHIP *dev = lifecycle_device(device);
++  if (!dev || Platform::GetPlatform()->Synchronize() != IRIS_SUCCESS) return IRIS_ERROR;
++  return dev->UseDefaultStreamSlot(index);
++}
++
 --- a/src/runtime/DeviceHIP.h
 +++ b/src/runtime/DeviceHIP.h
-@@ -7,0 +8,2 @@
+@@ -7,0 +8,3 @@
 +#include <mutex>
 +#include <atomic>
-@@ -20,0 +23,3 @@
++#include <set>
+@@ -20,0 +24,4 @@
 +  int CreateStreamSlot(int index, int nonblocking);
 +  int DestroyStreamSlot(int index);
++  int UseDefaultStreamSlot(int index);
 +  int LifecycleStats(uint64_t *values, bool reset);
-@@ -68,0 +74,3 @@
+@@ -68,0 +76,4 @@
 +  std::mutex allocation_streams_mutex_;
 +  std::map<void *, int> allocation_streams_;
++  std::set<int> default_stream_slots_;
 +  std::atomic<uint64_t> lifecycle_[8]{};
 --- a/src/runtime/DeviceHIP.cpp
 +++ b/src/runtime/DeviceHIP.cpp
-@@ -173,0 +174,36 @@
+@@ -173,0 +174,47 @@
 +int DeviceHIP::LifecycleStats(uint64_t *values, bool reset) {
 +  for (int i = 0; i < 8; ++i)
 +    values[i] = reset ? lifecycle_[i].exchange(0) : lifecycle_[i].load();
@@ -72,6 +84,7 @@
 +
 +int DeviceHIP::CreateStreamSlot(int index, int nonblocking) {
 +  if (!is_async(false) || index < 0 || index >= nqueues_ || streams_[index] ||
++      default_stream_slots_.count(index) ||
 +      (nonblocking != 0 && nonblocking != 1)) return IRIS_ERROR;
 +  if (ld_->hipCtxSetCurrent(ctx_) != hipSuccess) return IRIS_ERROR;
 +  hipStream_t stream = NULL;
@@ -85,22 +98,32 @@
 +}
 +
 +int DeviceHIP::DestroyStreamSlot(int index) {
-+  if (!is_async(false) || index < 0 || index >= nqueues_ || !streams_[index])
++  if (!is_async(false) || index < 0 || index >= nqueues_ ||
++      (!streams_[index] && !default_stream_slots_.count(index)))
 +    return IRIS_ERROR;
 +  std::lock_guard<std::mutex> lock(allocation_streams_mutex_);
 +  for (const auto &allocation : allocation_streams_)
 +    if (allocation.second == index) return IRIS_ERROR;
 +  if (ld_->hipCtxSetCurrent(ctx_) != hipSuccess) return IRIS_ERROR;
 +  if (ld_->hipStreamSynchronize(streams_[index]) != hipSuccess) return IRIS_ERROR;
-+  if (ld_->hipStreamDestroy(streams_[index]) != hipSuccess) return IRIS_ERROR;
++  bool borrowed_default = default_stream_slots_.count(index) != 0;
++  if (!borrowed_default && ld_->hipStreamDestroy(streams_[index]) != hipSuccess) return IRIS_ERROR;
++  default_stream_slots_.erase(index);
 +  streams_[index] = NULL;
 +  if (index >= n_copy_engines_)
 +    streams_[index+nqueues_-n_copy_engines_] = NULL;
-+  ++lifecycle_[1];
++  if (!borrowed_default) ++lifecycle_[1];
 +  return IRIS_SUCCESS;
 +}
 +
-@@ -366,0 +403,9 @@
++int DeviceHIP::UseDefaultStreamSlot(int index) {
++  if (!is_async(false) || index < 0 || index >= nqueues_ || streams_[index] ||
++      default_stream_slots_.count(index)) return IRIS_ERROR;
++  default_stream_slots_.insert(index);
++  return IRIS_SUCCESS;
++}
++
+@@ -366,0 +414,9 @@
 +  if (mem->hip_allocation_kind() == 0) {
 +      if (l_async) {
 +          std::lock_guard<std::mutex> lock(allocation_streams_mutex_);
@@ -110,14 +133,14 @@
 +          ++lifecycle_[4];
 +      }
 +  }
-@@ -419,2 +464,4 @@
+@@ -419,2 +475,4 @@
 -  int stream = mem->recommended_stream(devno());
 -  bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
 +  int stream = -1;
 +  std::unique_lock<std::mutex> lock(allocation_streams_mutex_);
 +  auto allocation = allocation_streams_.find(hipmem);
 +  if (allocation != allocation_streams_.end()) stream = allocation->second;
-@@ -422,5 +469,11 @@
+@@ -422,5 +480,11 @@
 -  //printf("Addr: %p free async:%d\n", mem_addr, async);
 -  //if (async)
 -      //err = ld_->hipFreeAsync(hipmem, streams_[stream]);
@@ -134,7 +157,7 @@
 +      if (mem->hip_allocation_kind() == 0) ++lifecycle_[stream >= 0 ? 3 : 5];
 +  }
 +  lock.unlock();
-@@ -555,0 +609,4 @@
+@@ -555,0 +620,4 @@
 +  if (!error_occured) {
 +      ++lifecycle_[6];
 +      lifecycle_[7] += size;
