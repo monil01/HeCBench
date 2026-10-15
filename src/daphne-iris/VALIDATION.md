@@ -1,5 +1,35 @@
-Validation on AMD HIP
+AMD HIP validation
+==================
 
-Status: deferred. IRIS actual MI100 HIP backend3 passes current CUDA-derived deterministic projection reference at100000 points for default-p1 and-p3 batches: max errors3.662e-4,3.662e-4,4.883e-4,validity mismatches0,all finite. Existing HIP sibling is incompatible legacy data-driven points2image; build fails missing src/daphne-cuda/src/common/main.cpp (also benchmark.h/datatypes.h and legacy data absent). Native baseline repair/replacement not authorized; no compatible external native verification or native runtime. Current CUDA synthetic inputs,LCG seed,batch/default semantics retained; finite/task-status checks strengthened.
+The semantic reference is the current `../daphne-cuda/main.cu`: 100000
+LCG-generated points, per-batch seed, extrinsics, distortion, projection and
+visibility filtering. Its default one batch and `-p` semantics are unchanged.
+The existing daphne-hip sibling is a different, legacy data-driven points2image
+program missing common sources/headers/data. That legacy workload is NOT
+validated or repaired here, and no legacy native execution is claimed.
 
-Run with IRIS_ARCHS=HIP from this directory. Full source defaults are preserved; bounded cases are validation coverage only. Attempt history and commands: `.porting-state/porting_logs/daphne-iris/attempts/attempt_03` (local, not committed).
+`make native-reference` compiles the **unmodified current CUDA translation
+unit** with hipcc. The validation-only native_hip_compat/cuda_runtime.h maps
+allocation, copy, synchronization and free calls to checked real HIP calls.
+Its original kernel actually executes on the MI100. There is no CPU kernel
+fallback or substituted GPU result. Optional DAPHNE_DUMP captures input/output
+at actual transfers, without changing source math, launch or input data.
+
+The separate IRIS main owns all device data through DMem and launches the
+original projection using an actual IRIS HIP GPU. It checks task/update/flush
+status and destroys DMem before releasing host storage and the runtime.
+Set DAPHNE_DUMP to an existing isolated directory for whole-output artifacts.
+
+Actual tests: default, -p1, -p3, -p7 (twelve batches, 1.2 million points).
+All 14.4 million input/output entries are finite and native/IRIS byte-exact;
+all validity flags are exact. Both programs' original host check prints PASS.
+verify_projection.py independently evaluates every projected coordinate in
+double precision, maximum absolute error3.03e-4 below the unchanged1e-3 bound.
+Original generated data exercises the visible branch; broader input coverage
+is not claimed. No absent dataset is synthesized for the legacy workload.
+
+Native timings are kernel timings plus original harness overhead; IRIS timing
+includes task submission and flushes. Wall times include validation artifact
+I/O and are diagnostic, not an unqualified production performance comparison.
+Builds/runs/failed histories/manifest/checkpoint are retained locally under
+`.porting-state/porting_logs/daphne-iris/attempts/attempt_04`.

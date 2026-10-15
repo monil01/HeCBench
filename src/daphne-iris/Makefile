@@ -17,7 +17,7 @@ endif
 
 all: main kernel.hip
 
-main: main.cpp Makefile
+main: main.cpp hip_backend.hpp validation_dump.h Makefile
 	$(CXX) $(CXXFLAGS) -o $@ main.cpp $(LDFLAGS)
 
 kernel.hip: kernel.hip.cpp Makefile
@@ -29,5 +29,8 @@ kernel.ptx: kernel.cu Makefile
 run: all
 	IRIS_ARCHS=HIP $(LAUNCHER) ./main $(RUN_ARGS)
 
+native-reference: ../daphne-cuda/main.cu native_hip_compat/cuda_runtime.h validation_dump.h
+	$(HIPCC) -O3 -std=c++17 -I./native_hip_compat -x hip $< -o $@
+
 clean:
-	rm -f main kernel.hip kernel.ptx *.o
+	rm -f main kernel.hip kernel.ptx native-reference *.o

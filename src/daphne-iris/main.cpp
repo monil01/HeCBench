@@ -1,5 +1,6 @@
 #include <iris/iris.hpp>
 #include "hip_backend.hpp"
+#include "validation_dump.h"
 
 #include <chrono>
 #include <cmath>
@@ -83,13 +84,14 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  bool ok_all = true;
+  {
   iris::DMem mem_cp(h_cp, sizeof(float) * static_cast<size_t>(n_points) * POINT_STEP);
   iris::DMem mem_x(h_x, sizeof(float) * n_points);
   iris::DMem mem_y(h_y, sizeof(float) * n_points);
   iris::DMem mem_z(h_z, sizeof(float) * n_points);
   iris::DMem mem_v(h_v, sizeof(int) * n_points);
 
-  bool ok_all = true;
   double total_us = 0.0;
   int launch_n_points = n_points;
   const size_t blocks = (static_cast<size_t>(n_points) + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -114,22 +116,27 @@ int main(int argc, char** argv)
       pt[6] = 0.0f;
       pt[7] = 0.0f;
     }
-    mem_cp.update(h_cp);
+    iris_check(mem_cp.update(h_cp), "update input");
 
     auto t0 = std::chrono::high_resolution_clock::now();
     iris::Task task;
     void* params[6] = { &mem_cp, &mem_x, &mem_y, &mem_z, &mem_v, &launch_n_points };
     int pinfo[6] = { iris_r, iris_w, iris_w, iris_w, iris_w, sizeof(launch_n_points) };
-    task.kernel("project_kernel", 1, nullptr, const_cast<size_t*>(gws), const_cast<size_t*>(lws), 6, params, pinfo);
-    task.flush_out(mem_x);
-    task.flush_out(mem_y);
-    task.flush_out(mem_z);
-    task.flush_out(mem_v);
+    iris_check(task.kernel("project_kernel", 1, nullptr, const_cast<size_t*>(gws), const_cast<size_t*>(lws), 6, params, pinfo), "projection kernel");
+    iris_check(task.flush_out(mem_x), "flush x");
+    iris_check(task.flush_out(mem_y), "flush y");
+    iris_check(task.flush_out(mem_z), "flush z");
+    iris_check(task.flush_out(mem_v), "flush valid");
     iris_check(task.submit(hip_device, nullptr, 1), "projection task");
     auto t1 = std::chrono::high_resolution_clock::now();
     total_us += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
     // Output buffers were explicitly flushed by the submitted task.
+    projection_dump(b,"input",h_cp,sizeof(float)*static_cast<size_t>(n_points)*POINT_STEP);
+    projection_dump(b,"x",h_x,sizeof(float)*n_points);
+    projection_dump(b,"y",h_y,sizeof(float)*n_points);
+    projection_dump(b,"z",h_z,sizeof(float)*n_points);
+    projection_dump(b,"valid",h_v,sizeof(int)*n_points);
 
     int kept = 0;
     for (int i = 0; i < n_points; ++i) {
@@ -166,6 +173,7 @@ int main(int argc, char** argv)
 
   std::printf("Average kernel execution time: %.1f (us)\n", total_us / n_batches);
   std::printf("%s\n", ok_all ? "PASS" : "FAIL");
+  } // Release DMem bindings before their host allocations and runtime.
 
   std::free(h_cp);
   std::free(h_x);
