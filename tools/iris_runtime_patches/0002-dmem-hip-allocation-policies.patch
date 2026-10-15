@@ -1,0 +1,60 @@
+--- a/src/runtime/BaseMem.h
++++ b/src/runtime/BaseMem.h
+@@ -41,0 +42 @@
++                hip_allocation_kind_ = 0;
+@@ -163,0 +165,2 @@
++            int hip_allocation_kind() const { return hip_allocation_kind_; }
++            void set_hip_allocation_kind(int kind) { hip_allocation_kind_ = kind; }
+@@ -308,0 +312 @@
++            int hip_allocation_kind_;
+--- a/src/runtime/LoaderHIP.h
++++ b/src/runtime/LoaderHIP.h
+@@ -41,0 +42,3 @@
++  hipError_t (*hipMallocManaged)(void** ptr, size_t size, unsigned int flags);
++  hipError_t (*hipHostMalloc)(void** ptr, size_t size, unsigned int flags);
++  hipError_t (*hipHostFree)(void* ptr);
+--- a/src/runtime/LoaderHIP.cpp
++++ b/src/runtime/LoaderHIP.cpp
+@@ -40,0 +41,3 @@
++  LOADFUNC(hipMallocManaged);
++  LOADFUNC(hipHostMalloc);
++  LOADFUNC(hipHostFree);
+--- a/src/runtime/DeviceHIP.cpp
++++ b/src/runtime/DeviceHIP.cpp
+@@ -334 +334,6 @@
+-  if (l_async)
++  if (mem->hip_allocation_kind() == 1)
++     err = ld_->hipMallocManaged(hipmem, size, 1 /* hipMemAttachGlobal */);
++  else if (mem->hip_allocation_kind() == 2)
++     // hipHostMallocMapped | hipHostMallocCoherent. DMem owns this allocation.
++     err = ld_->hipHostMalloc(hipmem, size, 0x2u | 0x40000000u);
++  else if (l_async)
+@@ -389,0 +395,4 @@
++  if (IsContextChangeRequired()) {
++      hipError_t context_error = ld_->hipCtxSetCurrent(ctx_);
++      if (context_error != hipSuccess) return IRIS_ERROR;
++  }
+@@ -398 +407 @@
+-      err = ld_->hipFree(hipmem);
++      err = mem->hip_allocation_kind() == 2 ? ld_->hipHostFree(hipmem) : ld_->hipFree(hipmem);
+--- a/src/runtime/CAPI.cpp
++++ b/src/runtime/CAPI.cpp
+@@ -202,0 +203,9 @@
++int iris_dmem_set_hip_allocation_kind(iris_mem handle, int kind) {
++ BaseMem *mem = Platform::GetPlatform()->get_mem_object(handle);
++ if (!mem || mem->GetMemHandlerType() != IRIS_DMEM || kind < 0 || kind > 2) return IRIS_ERROR;
++ for (int i = 0; i < Platform::GetPlatform()->ndevs(); ++i)
++   if (mem->get_arch(i) != NULL || mem->is_usm(i)) return IRIS_ERROR;
++ mem->set_hip_allocation_kind(kind);
++ return IRIS_SUCCESS;
++}
++
+--- a/include/iris/iris_runtime.h
++++ b/include/iris/iris_runtime.h
+@@ -1552,0 +1553,6 @@
++/* HIP DMem allocation policy. Set before materializing any device allocation.
++ * 0: device (default), 1: managed, 2: coherent mapped pinned host allocation.
++ * Only DMem roots are accepted; the runtime owns and releases the allocation.
++ */
++extern int iris_dmem_set_hip_allocation_kind(iris_mem mem, int kind);
++
