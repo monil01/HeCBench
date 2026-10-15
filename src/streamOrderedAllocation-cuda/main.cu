@@ -59,7 +59,14 @@ inline void __checkCudaErrors(cudaError_t err, const char *file, const int line)
 #endif
 
 
-#define repeat 100
+static int repeat = 100;
+static void validation_dump(const float* c, size_t bytes, const char* mode, bool timing) {
+  const char* prefix = getenv("HECBENCH_SOA_DUMP");
+  if (!prefix) return;
+  std::string path = std::string(prefix) + "." + mode + (timing ? ".timing" : ".check");
+  FILE* f = fopen(path.c_str(), "wb");
+  if (!f || fwrite(c, 1, bytes, f) != bytes || fclose(f)) exit(2);
+}
 
 /* Add two vectors on the GPU */
 __global__ void vectorAddGPU(const float *a, const float *b, float *c, int N) {
@@ -121,6 +128,7 @@ int basicAllocation(const int nelem, const float *a,
       printf("basicAllocation PASSED\n");
   }
 
+  validation_dump(c, bytes, "basicAllocation", timing);
   return (timing || errorNorm / refNorm < 1.e-6f) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
@@ -194,6 +202,7 @@ int basicStreamOrderedAllocation(const int nelem, const float *a,
 
   checkCudaErrors(cudaStreamDestroy(stream));
 
+  validation_dump(c, bytes, "basicStreamOrderedAllocation", timing);
   return (timing || errorNorm / refNorm < 1.e-6f) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
@@ -273,6 +282,7 @@ int streamOrderedAllocationPostSync(const int nelem,
 
   checkCudaErrors(cudaStreamDestroy(stream));
 
+  validation_dump(c, bytes, "streamOrderedAllocationPostSync", timing);
   return (timing || errorNorm / refNorm < 1.e-6f) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
@@ -292,6 +302,9 @@ int main(int argc, char **argv) {
 
   // Allocate CPU memory.
   nelem = 33554432; //1048576;
+  if (const char* v = getenv("HECBENCH_SOA_ELEMENTS")) nelem = atoi(v);
+  if (const char* v = getenv("HECBENCH_SOA_REPEATS")) repeat = atoi(v);
+  if (nelem < 1 || repeat < 1) return 2;
   bytes = nelem * sizeof(float);
 
   a = (float *)malloc(bytes);
