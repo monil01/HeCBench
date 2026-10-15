@@ -1,15 +1,15 @@
-Myocyte is deferred after an actual native HIP versus IRIS HIP numerical artifact mismatch.
-No validated executable port is supplied here.
+The original adaptive Fehlberg solver and CPU final equation coupling are
+preserved. Each equation evaluation uses an IRIS task with two blocks of 32
+threads running the original ECC and CAM device functions. The device time
+argument remains int, including the original float-to-int conversion.
 
-Original CUDA and HIP CAM kernels write communication values to d_finavalu[com_offset], racing ECC derivative writes 0..2; d_com is never written but copied to host and consumed by kernel_fin. Changing the destination, initialization, or synchronization would change required source semantics.
+All device storage uses DMem. Each evaluation updates the host bindings for
+the current solver stage and flushes both derivative and communication arrays.
+The unchanged solver then performs its original host-side final coupling and
+NaN/Inf compensation. No RNG is used.
 
-The first DMem translation preserved the equation bodies, adaptive solver,
-integer device time conversion and two-block geometry. It built and ran on
-MI100, but returned STATUS -1 and did not match native HIP at interval 1.
-Repeated runs reproduced each implementation's own result, without establishing
-correctness across different uninitialized allocations.
-
-Failed translation sources, logs and trajectories remain in
-.porting-state/porting_logs/myocyte-iris/attempts/attempt_01. No final_correct
-snapshot is claimed. Original source and datasets are untouched. Defaults:
-interval 100, workload 1, original output.txt format; no random number usage.
+`make run` keeps the original interval 100, workload 1, input paths
+../data/myocyte/{y,params}.txt, and output.txt format. Validation runs the
+native HIP sources with the documented BASELINE_FIX.md communication repair,
+in an isolated copy with those same inputs,
+and compares every trajectory entry from separate output directories.
