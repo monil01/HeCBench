@@ -97,6 +97,11 @@ int main(int argc, char* argv[])
   // IRIS initialization can consume process RNG state: retain original inputs.
   iris::Platform platform;
   if (platform.init(nullptr, nullptr, 1) != IRIS_SUCCESS) return 2;
+  int backend=-1; char device_name[256]={};
+  iris_device_info(0,iris_backend,&backend,nullptr);
+  iris_device_info(0,iris_name,device_name,nullptr);
+  if(backend!=iris_hip) return 2;
+  std::printf("IRIS HIP backend=%d device=%s\n",backend,device_name);
 
   const size_t B_value_size_bytes = B_nnz * sizeof(float);
   const size_t B_rowidx_size_bytes = B_nnz * sizeof(int);
