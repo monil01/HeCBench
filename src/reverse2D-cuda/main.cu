@@ -21,6 +21,22 @@ void eval_case(T* d_in, T* h_in, T* d_out, T* h_out,
     time += reverse(d_out, d_in, nrows, ncols, rowMajor, alongRows, 0);
   printf("Average kernel execution time: %f (ms)\n", time * 1e-6f / repeat);
 
+  cudaMemcpy(h_out, d_out, elem_size, cudaMemcpyDeviceToHost);
+  size_t mismatches = 0;
+  for (int r = 0; r < nrows; ++r) for (int c = 0; c < ncols; ++c) {
+    int rr = alongRows ? nrows - 1 - r : r;
+    int cc = alongRows ? c : ncols - 1 - c;
+    size_t src = rowMajor ? (size_t)r*ncols+c : (size_t)c*nrows+r;
+    size_t dst = rowMajor ? (size_t)rr*ncols+cc : (size_t)cc*nrows+rr;
+    mismatches += h_out[dst] != h_in[src];
+  }
+  printf("Whole-output mismatches %zu %s\n", mismatches, mismatches ? "FAIL" : "PASS");
+  if (mismatches) exit(2);
+  if (const char* path = getenv("HECBENCH_DUMP")) {
+    FILE* f = fopen(path, "ab");
+    if (!f || fwrite(h_out, sizeof(T), matrix_size, f) != matrix_size || fclose(f)) exit(3);
+  }
+
 #ifdef DEBUG
   cudaMemcpy(h_out, d_out, elem_size, cudaMemcpyDeviceToHost);
   for (size_t i = 1; i <= matrix_size; i++) {

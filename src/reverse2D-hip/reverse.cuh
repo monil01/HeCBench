@@ -60,7 +60,7 @@ void reverseKernel(data_t* out,
     srcIdx     = idx;
     dstIdx     = dstCol * nrows + dstRow;
   } else if (!rowMajor && alongRows) {
-    int mod    = ceildiv(nrows, 2);
+    int mod    = ceildiv(nrows, 2 * VecType::Ratio) * VecType::Ratio;
     int srcRow = idx % mod;
     int srcCol = idx / mod;
     int dstRow = nrows - srcRow - VecType::Ratio;
@@ -68,7 +68,7 @@ void reverseKernel(data_t* out,
     srcIdx     = srcCol * nrows + srcRow;
     dstIdx     = dstCol * nrows + dstRow;
   } else if (rowMajor && !alongRows) {
-    int mod    = ceildiv(ncols, 2);
+    int mod    = ceildiv(ncols, 2 * VecType::Ratio) * VecType::Ratio;
     int srcRow = idx / mod;
     int srcCol = idx % mod;
     int dstRow = srcRow;
@@ -89,7 +89,7 @@ void reverseKernel(data_t* out,
   // while reversing along coalesced dimension, also reverse the elements
   if ((rowMajor && !alongRows) || (!rowMajor && alongRows)) {
     #pragma unroll
-    for (int i = 0; i < VecType::Ratio; ++i) {
+    for (int i = 0; i < VecType::Ratio / 2; ++i) {
       swapVals(a.val.data[i], a.val.data[VecType::Ratio - i - 1]);
       swapVals(b.val.data[i], b.val.data[VecType::Ratio - i - 1]);
     }
@@ -108,6 +108,9 @@ long reverseImpl(data_t* out,
                  hipStream_t stream)
 {
   int len         = alongRows ? ceildiv(nrows, 2) * ncols : nrows * ceildiv(ncols, 2);
+  constexpr int ratio = TxN_t<data_t, veclen_>::Ratio;
+  if (rowMajor && !alongRows) len = nrows * ceildiv(ncols, 2 * ratio) * ratio;
+  if (!rowMajor && alongRows) len = ncols * ceildiv(nrows, 2 * ratio) * ratio;
   const int nblks = ceildiv(veclen_ ? len / veclen_ : len, TPB);
 
   auto start = std::chrono::steady_clock::now();
