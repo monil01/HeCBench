@@ -1,13 +1,24 @@
-# blas-gemmEx2 IRIS status
+# IRIS DMem Lt-equivalent GEMM
 
-This benchmark is deferred for the IRIS dmem-only pass.
+The seven default cases and optional FP64_GEMM case preserve CLI, input
+quantization, row-major A*B, alpha=1/beta=0, and original default make-run
+sizes. Both source compute-mode switches fall through to ordinary FP32.
+All GPU allocations, data movement and dispatch are IRIS DMem/tasks.
 
-The CUDA/HIP source is a cuBLASLt/hipBLASLt benchmark. It allocates typed
-matrices and asks the vendor BLASLt library to select and run matmul algorithms
-for fp32 compute modes, fp16, bfloat16, and int8. There is no benchmark-owned
-CUDA kernel body to translate into an IRIS task, and using hipBLASLt directly
-from the IRIS host path would violate the current dmem-only porting rule.
+P1: HIP dot-product kernels replace opaque vendor dispatch, not its algorithm
+selection or performance. FP16/BF16 accumulate in float; integer is exact.
+Every output is checked independently with long-double dots from quantized
+inputs (atol=rtol=0.008; optional double 1e-10, integer exact).
 
-A faithful port needs either an IRIS-supported BLASLt task binding or a
-separately scoped benchmark-owned GEMM implementation for each tested type and
-compute mode. Neither is present in this repository.
+Baseline repair: both original Lt sources swap A/B in test_gemm and swap
+again at the actual Matmul call. For unequal M/N, descriptor sizes can exceed
+the pointed allocation. The port implements the advertised A*B. Validation
+uses an isolated native source copy changing only the second swap, plus
+whole-output diagnostics; untouched CUDA/HIP files and snapshots are retained.
+baseline_fix.patch documents the one-line semantic repair. Original square
+native run also succeeded because A and B have identical initialization.
+No claim of agreement with undefined out-of-bounds nonsquare native behavior
+is made. Native library calls are real hipBLASLt on gfx908, not emulation.
+
+Validated 32x48x64 repeat2 and 32x32x32 repeat2; production 4096/8192 defaults
+are retained but not validated. IRIS_GEMM_DUMP=1 emits every output.
