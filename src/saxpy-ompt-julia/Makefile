@@ -1,5 +1,5 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=$(abspath ../_julia_env)
 LAUNCHER ?=
 
 main:
