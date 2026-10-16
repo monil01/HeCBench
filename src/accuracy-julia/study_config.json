@@ -1,0 +1,98 @@
+{
+  "benchmark": "accuracy",
+  "configuration_id": "fp32_n4096_d128_top5_grid1024_reset_plus_kernel_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32 inputs/int32 ranks-count",
+    "shape": [
+      4096,
+      128
+    ],
+    "fixture": "prediction=(17*i+13*div(i,128))%23; label=(7*row)%128, zero-based indices",
+    "internal_repeats": 10,
+    "grid": 1024,
+    "coverage": "accuracy_kernel only; optimizedaccuracy_kernel2 unported/unmeasured, native grid sweeps restricted namedN/4",
+    "timing_operation": "zero_counter_then_accuracy; native cudaMemsetAsync vs Julia-family fill! initialization launches"
+  },
+  "atol": 0.0,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/accuracy-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent exact CPU topK count including tie-break col<=label; both GPU refs and fullscalar Int32 artifacts",
+      "source_dependencies": [
+        "../accuracy-cuda/main.cu",
+        "../accuracy-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/accuracy-julia/accuracy-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent exact CPU topK count including tie-break col<=label; both GPU refs and fullscalar Int32 artifacts",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/accuracy-julia/accuracy-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent exact CPU topK count including tie-break col<=label; both GPU refs and fullscalar Int32 artifacts",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/accuracy-julia/accuracy-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent exact CPU topK count including tie-break col<=label; both GPU refs and fullscalar Int32 artifacts",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T235101366553Z_accuracy/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
