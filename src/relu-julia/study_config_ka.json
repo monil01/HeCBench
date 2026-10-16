@@ -1,0 +1,80 @@
+{
+  "benchmark": "relu",
+  "configuration_id": "relu_four_native_subkernels_n4096_r100_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "size": 4096,
+    "precision": "Float16 gradient and signedInt8 packedUInt32; outputs serialized exactly inFloat64",
+    "fixture": "feature[i]=(zero_based_i%17-8)/8; gradient1; packed=UInt32(i*2654435761 modulo2^32)",
+    "internal_repeats": 100,
+    "outputs": "4subkernels concatenated in order ReluGrad_impl1,ReluGrad_impl2,Relu_impl1,Relu_impl2; nvalues each",
+    "timing": "sum4 separately synchronized loop means perrepeat; rawsubkernel times retained"
+  },
+  "atol": 0.0,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/relu-julia",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "All4*n values checked exactly: mask gradientbyfeature>0; signed4byte maxwith0",
+      "limitations": [
+        "Native half2 andhalf8 vectorized gradient + __vmaxs4 packedintrinsic; existingJulia/KA scalar equivalent operations",
+        "Timing reports sum4 kernelmeans, notonekernel; perkernel times retained"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "-I",
+        "/home/imo/HeCBench_julia/src",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native",
+        "4096",
+        "100"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/relu-julia/relu-julia-cuda.jl",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "All4*n values checked exactly: mask gradientbyfeature>0; signed4byte maxwith0",
+      "limitations": [
+        "Native half2 andhalf8 vectorized gradient + __vmaxs4 packedintrinsic; existingJulia/KA scalar equivalent operations",
+        "Timing reports sum4 kernelmeans, notonekernel; perkernel times retained"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "4096",
+        "100"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/relu-julia/relu-julia-KA",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "All4*n values checked exactly: mask gradientbyfeature>0; signed4byte maxwith0",
+      "limitations": [
+        "Native half2 andhalf8 vectorized gradient + __vmaxs4 packedintrinsic; existingJulia/KA scalar equivalent operations",
+        "Timing reports sum4 kernelmeans, notonekernel; perkernel times retained"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "4096",
+        "100"
+      ]
+    }
+  }
+}
