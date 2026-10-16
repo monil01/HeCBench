@@ -1,0 +1,99 @@
+{
+  "benchmark": "logprob",
+  "configuration_id": "fp32_maxlen32_batch64_vocab256_pipeline_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      32,
+      64,
+      256
+    ],
+    "fixture": "logits=Float32((17*i)%97-48)/8; ids=Int32((13*i)%256); every length=32, zero-based i",
+    "internal_repeats": 10,
+    "coverage": "Both native Float32 pipeline kernels with full sequence lengths; original Julia serial lane mapping preserved",
+    "mapping": "native block-parallel reductions vs Julia/KA/JACC thread0 serial loops, 256 threads/block"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/logprob-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_pipeline_cpu_atol1e-3",
+      "native_check_description": "Full 1984 per-token and 64 cumulative log probabilities, independent CPU finite abs<=1e-3; cumulative criterion stricter than native0.1",
+      "source_dependencies": [
+        "../logprob-cuda/main.cu",
+        "../logprob-cuda/reference.h",
+        "../logprob-cuda/reduce.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/logprob-julia/logprob-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_pipeline_cpu_atol1e-3",
+      "native_check_description": "Full 1984 per-token and 64 cumulative log probabilities, independent CPU finite abs<=1e-3; cumulative criterion stricter than native0.1",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/logprob-julia/logprob-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_pipeline_cpu_atol1e-3",
+      "native_check_description": "Full 1984 per-token and 64 cumulative log probabilities, independent CPU finite abs<=1e-3; cumulative criterion stricter than native0.1",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/logprob-julia/logprob-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_pipeline_cpu_atol1e-3",
+      "native_check_description": "Full 1984 per-token and 64 cumulative log probabilities, independent CPU finite abs<=1e-3; cumulative criterion stricter than native0.1",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T233949283787Z_logprob/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
