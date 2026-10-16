@@ -1,5 +1,5 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=../_julia_ka_env
 LAUNCHER ?=
 
 main:
@@ -9,4 +9,4 @@ clean:
 	rm -rf __pycache__ result.raw
 
 run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl /home/imo/HeCBench/src/affine-cuda/data/CT-MONO2-16-brain.raw result.raw 1000
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl ../affine-cuda/data/CT-MONO2-16-brain.raw result.raw 1000

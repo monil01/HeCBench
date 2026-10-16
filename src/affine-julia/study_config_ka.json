@@ -1,0 +1,81 @@
+{
+  "benchmark": "affine",
+  "configuration_id": "gradient_uint16_fp32_512x512_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "UInt16image, Float32interpolation",
+    "shape": [
+      512,
+      512
+    ],
+    "fixture": "rowmajor pixel3*x+5*y, zero-basedx/y",
+    "internal_repeats": 10,
+    "artifact_representation": "losslessUInt16->Int32 widening outside measured work",
+    "tolerance_source": "ExistingJulia accepts<=1 pixelquantization difference; sameexplicitstudyatol1 appliedtoallmodels"
+  },
+  "atol": 1.0,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/affine-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_atol1",
+      "native_check_description": "Originalaffine_reference computesallpixels; uniformmaxdifference1studycriterionmatchesJulia",
+      "source_dependencies": [
+        "../affine-cuda/main.cu",
+        "../affine-cuda/kernel.h",
+        "../affine-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/affine-julia/affine-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_atol1",
+      "native_check_description": "PreservedCPU bilinearFloat32reference all262144UInt16pixels within1; fullbinary vsbothrefs",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/affine-julia/affine-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_atol1",
+      "native_check_description": "PreservedCPU bilinearFloat32reference all262144UInt16pixels within1; fullbinary vsbothrefs",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "../study_reference.jl"
+      ]
+    }
+  }
+}
