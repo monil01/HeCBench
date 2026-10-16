@@ -29,7 +29,7 @@ function run_trials!(launch!, reset!, readback, expected, repeats; atol=0.0, rto
         name="output_trial$(trial).bin"
         path=joinpath(get(ENV,"STUDY_OUTPUT_DIR",pwd()),name)
         write(path,got)
-        dtype=eltype(got)==Float32 ? "float32" : eltype(got)==Float64 ? "float64" : eltype(got)==Int32 ? "int32" : error("unsupported dtype")
+        dtype=eltype(got)==Float32 ? "float32" : eltype(got)==Float64 ? "float64" : eltype(got)==Int32 ? "int32" : eltype(got)==Int64 ? "int64" : error("unsupported dtype")
         @printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"correct\":%s,\"checked_values\":%d,\"max_abs_error\":%.12g,\"max_rel_error\":%.12g,\"timing_region\":\"kernel_launch_loop_per_internal_repeat\",\"jit_excluded\":true,\"internal_repeats\":%d,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"%s\",\"count\":%d,\"byte_order\":\"little\"}}\n",trial,secs,ok ? "true" : "false",length(got),maxabs,maxrel,repeats,path,dtype,length(got))
     end
     allok || error("CPU numerical verification failed")
