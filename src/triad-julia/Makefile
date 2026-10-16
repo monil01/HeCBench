@@ -1,12 +1,4 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
-main:
-	@true
-
-clean:
-	@true
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 100
+ARGS ?= 100
+run:
+	$(JULIA) --project=../_julia_env main.jl $(ARGS)
