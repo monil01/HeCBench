@@ -1,0 +1,118 @@
+{
+  "benchmark": "projectile",
+  "configuration_id": "projectile_deterministic_n1048576_r10_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "atol": 1.0,
+  "rtol": 0.0,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "n": 1048576,
+    "internal_repeats": 10,
+    "angles": "Float32(10 + zero_based_i % 90)",
+    "velocities": "Float32(10 + zero_based_i % 400)",
+    "outputs": "range[n], time[n], height[n] concatenated float32; binary little-endian",
+    "source_constants": "pi=3.1415f0 g=9.81f0; original height expression retained",
+    "native_layout": "original five-float Projectile AoS",
+    "Julia_layout": "existing CUDA.jl three-output SoA",
+    "default_run_deviation": "Named study fixture, native original num_elements=10M bound but launch exactly n threads (n%256==0). Native device kernel and constant are unchanged."
+  },
+  "ontology": {
+    "path": "ontology/benchmarks/projectile.yaml",
+    "sha256": "bea29c98ae07a155cb558bcef54f31c43ed121df78eafbd7d619ace4f10186b0",
+    "reviewed_motifs": [
+      "independent-map",
+      "transcendental-functions"
+    ],
+    "implementation_difference": "native AoS versus original CUDA.jl/KA SoA; include as performance confound"
+  },
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/projectile-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_cuda.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native",
+        "1048576",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "elementwise_native_cpu_and_binary_cross_model",
+      "native_check_description": "original reference.h function and Projectile::operator!= abs tolerance1 applied to n deterministic items; finitecheck all3outputs",
+      "limitations": [
+        "named host study fixture not default random generator",
+        "original native AoS writes angle andvelocity aswell as3measuredoutputs"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/projectile-julia/projectile-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl",
+        "1048576",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "elementwise_cpu_and_binary_cross_model",
+      "native_check_description": "all3n Float32 outputs compared to scalar Float32 trajectory reference with original tolerance1 and finitechecks; unchanged originalCUDA.jl kernel"
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/projectile-julia/projectile-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "1048576",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "elementwise_cpu_and_binary_cross_model",
+      "native_check_description": "same deterministicfixture, all3n outputs checked against CPU and fullbinary comparison to nativeCUDA and CUDA.jl"
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/projectile-julia/projectile-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl",
+        "1048576",
+        "10"
+      ],
+      "structured": true,
+      "verification_method": "elementwise_cpu_and_binary_cross_model",
+      "native_check_description": "same deterministicfixture, all3n outputs checked against CPU and fullbinary comparison to nativeCUDA and CUDA.jl"
+    }
+  },
+  "token_accounting": {
+    "status": "partial",
+    "method": "characters_div_4",
+    "source": "porting_logs/projectile-julia-ka/prompt_01.md + response_01.md",
+    "limitations": [
+      "Only saved task/response summaries; full model usage unavailable."
+    ]
+  },
+  "attempt_accounting": {
+    "ka_candidate_attempt": 1,
+    "compiler_check_invocations": 1,
+    "compiler_feedback_repairs": 0,
+    "phase": "translation",
+    "notes": "KA verified before JACC implementation; unchanged reference+KA five-trial bundles reused, no additional measurement series. Legacy adapter unchanged from verification audit.",
+    "jacc_candidate_attempt": 1
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T223558939736Z_projectile/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ],
+  "reuse_legacy_adapter_unchanged_verified": true
+}
