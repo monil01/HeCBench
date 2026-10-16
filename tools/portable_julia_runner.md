@@ -112,6 +112,18 @@ to `source_dependencies` before the initial KA run. Reused rows identify their
 original run ID, and their artifact paths continue to reference that bundle.
 The original bundle is therefore a required durable dependency of the result.
 
+A controlled resource ablation may reuse unchanged reference/KA measurements
+across named configurations by setting `allow_cross_configuration_reuse:true`
+and a nonempty `cross_configuration_reuse_reason`. Only the configuration ID
+check is relaxed. Benchmark, protocol, fixture, tolerances, GPU, shared-input
+and equivalent-region declarations, exact model specifications, source hashes,
+and dependency hashes must remain unchanged. Results and reuse events record
+both IDs, the reason, and the unchanged models. For example, changing only a
+JACC launch's shared-memory allocation can reuse native/CUDA.jl/KA evidence;
+the changed JACC source must execute a new five-trial series. Preserve the old
+configuration as the default-resource result, and analyze the new controlled
+configuration separately.
+
 Early bundles created before individual adapter hashes existed require an
 explicit manual unchanged-adapter audit, recorded with
 `reuse_legacy_adapter_unchanged_verified:true`. This is a disclosed migration
@@ -120,7 +132,7 @@ fixture, runtime/compiler environment, checker, or timing correction requires
 new appropriately labeled measurements; retain the superseded evidence.
 
 `--export` refreshes aggregate `timings.csv` from all saved SQLite rows with
-canonical model IDs, raw trials, means, numerical/matched flags, and reuse IDs.
+configuration IDs, canonical model IDs, raw trials, means, numerical/matched flags, and reuse IDs.
 It runs automatically after new completed bundles and uses an atomic file
 replacement under an export lock. Reused rows are explicitly tagged: analysis
 must select one final matched bundle per configuration and must not count the
@@ -130,3 +142,16 @@ symlink to it. Resolve that symlink before writes through external tools.
 New results record the verifier's SHA256. Earlier bundles precede that field;
 use their source commit and the saved execution event provenance instead of
 inventing a historical tool hash.
+
+Raw artifact decoding additionally supports `uint8`, `int8`, `uint16`, and
+`int16` (explicit little endian), allowing image/pixel storage to remain exact.
+New bundles archive verifier_source.py and hash bytes captured at process
+startup, so later concurrent tooling edits cannot change the recorded hash of
+the running verifier. Existing result bundles retain their original provenance.
+
+Identical SHA256-verified artifact bytes use a full finite-value scan once per
+unique floating-point content/dtype/count, then reuse that validation across
+identical repeated outputs. Both artifact byte sizes/counts are checked. Integer
+storage is finite by construction. Nonidentical bytes use the numerical
+absolute/relative comparison, preserving signed-zero and tolerance behavior.
+This avoids repeated large Python allocations without weakening checks.

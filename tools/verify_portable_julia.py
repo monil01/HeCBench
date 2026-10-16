@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE = Path(os.environ.get('STATE', ROOT / '.porting-state')) / 'portable_julia'
 MODELS = ('cuda', 'cuda_jl', 'ka', 'jacc')
 PROTOCOL = 'five_trials_last_four_v1'
+TOOL_SOURCE = Path(__file__).read_bytes()
+TOOL_SHA256 = hashlib.sha256(TOOL_SOURCE).hexdigest()
 EXPORT_MODEL_IDS = {'cuda':'cuda','cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}
 
 def discover(bench):
@@ -51,7 +53,7 @@ def finite_values(v):
 def artifact_values(row):
     artifact = row.get('output_artifact')
     if not artifact: return row.get('values')
-    types = {'float32':'f','float64':'d','int32':'i','int64':'q','uint32':'I','uint64':'Q'}
+    types = {'float32':'f','float64':'d','int32':'i','int64':'q','uint32':'I','uint64':'Q','uint8':'B','int8':'b','uint16':'H','int16':'h'}
     fmt = types.get(artifact.get('dtype'))
     if not fmt or artifact.get('byte_order','little') != 'little': return None
     data = Path(artifact['saved_path']).read_bytes()
@@ -59,10 +61,35 @@ def artifact_values(row):
     if len(data) % width or len(data)//width != artifact.get('count'): return None
     return [x[0] for x in struct.iter_unpack('<'+fmt,data)]
 
+_FINITE_ARTIFACT_CACHE = {}
+
 def compare_records(ref, got, atol, rtol):
     a=ref.get('output_artifact'); b=got.get('output_artifact')
     if a and b and any(a.get(k)!=b.get(k) for k in ('dtype','count','shape')):
         return {'status':'mismatch','reason':'artifact dtype/count/shape mismatch'}
+    # Identical saved bytes need one finite-validation scan, not repeated
+    # multi-million-element Python lists for every dual-reference/trial pair.
+    if a and b and a.get('sha256') and a['sha256']==b.get('sha256'):
+        a_bytes=Path(a['saved_path']).read_bytes(); b_bytes=Path(b['saved_path']).read_bytes()
+        if hashlib.sha256(a_bytes).hexdigest()!=a['sha256'] or hashlib.sha256(b_bytes).hexdigest()!=b['sha256']:
+            return {'status':'unverified','reason':'saved artifact content hash changed'}
+        types={'float32':('f',4),'float64':('d',8),'int8':('b',1),'uint8':('B',1),'int16':('h',2),'uint16':('H',2),'int32':('i',4),'uint32':('I',4),'int64':('q',8),'uint64':('Q',8)}
+        info=types.get(a.get('dtype'))
+        if not info or a.get('byte_order','little')!='little' or b.get('byte_order','little')!='little':
+            return {'status':'unverified','reason':'unsupported artifact storage'}
+        expected=a.get('count',0)*info[1]
+        if not a.get('count') or Path(a['saved_path']).stat().st_size!=expected or Path(b['saved_path']).stat().st_size!=expected:
+            return {'status':'unverified','reason':'artifact count/byte-size mismatch'}
+        key=(a['sha256'],a.get('dtype'),a['count'])
+        if key not in _FINITE_ARTIFACT_CACHE:
+            finite=True
+            if a.get('dtype') in ('float32','float64'):
+                data=a_bytes
+                finite=all(math.isfinite(x[0]) for x in struct.iter_unpack('<'+info[0],data))
+            _FINITE_ARTIFACT_CACHE[key]=finite
+        if not _FINITE_ARTIFACT_CACHE[key]:
+            return {'status':'unverified','reason':'nonfinite artifact values'}
+        return {'status':'pass','checked_values':a['count'],'max_abs_error':0,'max_rel_error':0}
     return compare(artifact_values(ref),artifact_values(got),atol,rtol)
 
 def save_artifacts(rows, cwd, out, model):
@@ -117,11 +144,11 @@ def export_global_csv():
         target=STATE/'timings.csv'; tmp=STATE/'timings.csv.tmp'
         with tmp.open('w') as f:
             w=csv.writer(f)
-            w.writerow(['run_id','benchmark','model','trial','time_seconds','correct','jit_excluded','mean_last_four_seconds','matched_performance_valid','reused_from_run_id'])
+            w.writerow(['run_id','benchmark','configuration_id','model','trial','time_seconds','correct','jit_excluded','mean_last_four_seconds','matched_performance_valid','reused_from_run_id'])
             for result in records:
                 for model,data in result['models'].items():
                     for row in data.get('trials',[]):
-                        w.writerow([result['run_id'],result['benchmark'],EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded'),data.get('mean_seconds'),result.get('matched_performance_valid'),data.get('reused_from_run_id')])
+                        w.writerow([result['run_id'],result['benchmark'],result.get('configuration_id'),EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded'),data.get('mean_seconds'),result.get('matched_performance_valid'),data.get('reused_from_run_id')])
         os.replace(tmp,target)
         alias=STATE/'verification.db'
         if not alias.exists(): alias.symlink_to('results.db')
@@ -130,6 +157,7 @@ def verify(config):
     bench=config['benchmark']; run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'_'+bench
     out=STATE/'runs'/run_id; out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(config,indent=2))
+    (out/'verifier_source.py').write_bytes(TOOL_SOURCE)
     env=os.environ.copy(); env['CUDA_VISIBLE_DEVICES']=str(config.get('gpu',6))
     paths=discover(bench); results={}; events=[]
     timeout=config.get('timeout',300)
@@ -137,14 +165,26 @@ def verify(config):
     (out/'hardware.txt').write_text(hardware)
     reuse_result=None
     reuse_config=None
+    reuse_configuration_transition=None
     if config.get('reuse_result'):
         reuse_path=Path(config['reuse_result'])
         reuse_result=json.loads(reuse_path.read_text())
         reuse_config=json.loads((reuse_path.parent/'config.json').read_text())
         if reuse_result['benchmark']!=bench or reuse_result['protocol']!=PROTOCOL or reuse_result.get('input_contract')!=config.get('input_contract'):
             raise ValueError('reuse benchmark/protocol/input contract mismatch')
-        for key in ('atol','rtol','gpu','configuration_id'):
+        for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified'):
             if reuse_config.get(key)!=config.get(key): raise ValueError('reuse config mismatch: '+key)
+        if reuse_config.get('configuration_id')!=config.get('configuration_id'):
+            reason=config.get('cross_configuration_reuse_reason')
+            if config.get('allow_cross_configuration_reuse') is not True or not isinstance(reason,str) or not reason.strip():
+                raise ValueError('reuse configuration_id differs: require allow_cross_configuration_reuse:true and a nonempty cross_configuration_reuse_reason')
+            if not reuse_config.get('configuration_id') or not config.get('configuration_id'):
+                raise ValueError('cross-configuration reuse requires named old and new configuration IDs')
+            reuse_configuration_transition={'source_run_id':reuse_result['run_id'],
+                'old_configuration_id':reuse_config['configuration_id'],
+                'new_configuration_id':config['configuration_id'],'reason':reason.strip(),
+                'unchanged_models':[]}
+
     for model in MODELS:
         spec=config.get('models',{}).get(model)
         if not spec:
@@ -170,7 +210,10 @@ def verify(config):
             results[model]=dict(old)
             results[model]['reused_from_run_id']=reuse_result['run_id']
             results[model]['adapter_file_hashes']=adapter_file_hashes
-            events.append({'model':model,'phase':'reuse_verified_five_trial_bundle','source_run_id':reuse_result['run_id'],'legacy_adapter_audit':old_files is None})
+            if reuse_configuration_transition is not None:
+                reuse_configuration_transition['unchanged_models'].append(EXPORT_MODEL_IDS[model])
+                results[model]['reused_from_configuration_id']=reuse_config['configuration_id']
+            events.append({'model':model,'phase':'reuse_verified_five_trial_bundle','source_run_id':reuse_result['run_id'],'legacy_adapter_audit':old_files is None,'configuration_transition':reuse_configuration_transition})
             continue
         adapter_hash=digest_tree(source_cwd)
         temp=tempfile.TemporaryDirectory(prefix=f'hecbench-{model}-')
@@ -254,19 +297,19 @@ def verify(config):
         variant_verified[model]=not reference_disagreement and results[model]['status']=='native_check_pass' and (comparisons_ok or trusted_native)
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and not reference_disagreement
-    result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
+    result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
             'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
-            'attempt_accounting':config.get('attempt_accounting'),'events':events}
+            'attempt_accounting':config.get('attempt_accounting'),'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     db=sqlite3.connect(STATE/'results.db',timeout=60)
     db.execute('PRAGMA journal_mode=WAL')
     db.execute('CREATE TABLE IF NOT EXISTS runs(run_id TEXT PRIMARY KEY,benchmark TEXT,result_json TEXT)')
     db.execute('INSERT INTO runs VALUES(?,?,?)',(run_id,bench,json.dumps(result,allow_nan=False))); db.commit(); db.close()
     with (out/'timings.csv').open('w') as f:
-        w=csv.writer(f); w.writerow(['run_id','benchmark','model','trial','time_seconds','correct','jit_excluded'])
+        w=csv.writer(f); w.writerow(['run_id','benchmark','configuration_id','model','trial','time_seconds','correct','jit_excluded'])
         for model,v in results.items():
-            for row in v.get('trials',[]): w.writerow([run_id,bench,EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded')])
+            for row in v.get('trials',[]): w.writerow([run_id,bench,config.get('configuration_id'),EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded')])
     export_global_csv()
     print(json.dumps({'result':str(out/'result.json'),'matched_performance_valid':matched,'comparisons':comparisons}))
     requested=[m for m in ('ka','jacc') if m in config.get('models',{})]
