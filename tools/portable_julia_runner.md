@@ -118,3 +118,15 @@ explicit manual unchanged-adapter audit, recorded with
 exception, not a general bypass for changed source/configurations. A source,
 fixture, runtime/compiler environment, checker, or timing correction requires
 new appropriately labeled measurements; retain the superseded evidence.
+
+`--export` refreshes aggregate `timings.csv` from all saved SQLite rows with
+canonical model IDs, raw trials, means, numerical/matched flags, and reuse IDs.
+It runs automatically after new completed bundles and uses an atomic file
+replacement under an export lock. Reused rows are explicitly tagged: analysis
+must select one final matched bundle per configuration and must not count the
+same source trial set twice. Original authoritative SQLite remains `results.db`
+for compatibility with running workers; `verification.db` is a relative
+symlink to it. Resolve that symlink before writes through external tools.
+New results record the verifier's SHA256. Earlier bundles precede that field;
+use their source commit and the saved execution event provenance instead of
+inventing a historical tool hash.

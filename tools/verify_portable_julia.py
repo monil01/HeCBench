@@ -106,6 +106,26 @@ def parse_records(text, spec, external_trial=None):
              'checked_values':spec.get('checked_values'), 'jit_excluded':spec.get('jit_excluded',False),
              'timing_region':spec.get('timing_region'),'internal_repeats':spec.get('internal_repeats')}]
 
+def export_global_csv():
+    dbpath=STATE/'results.db'
+    if not dbpath.exists(): return
+    with (STATE/'export.lock').open('w') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        db=sqlite3.connect(dbpath,timeout=60)
+        records=[json.loads(x[0]) for x in db.execute('SELECT result_json FROM runs ORDER BY run_id')]
+        db.close()
+        target=STATE/'timings.csv'; tmp=STATE/'timings.csv.tmp'
+        with tmp.open('w') as f:
+            w=csv.writer(f)
+            w.writerow(['run_id','benchmark','model','trial','time_seconds','correct','jit_excluded','mean_last_four_seconds','matched_performance_valid','reused_from_run_id'])
+            for result in records:
+                for model,data in result['models'].items():
+                    for row in data.get('trials',[]):
+                        w.writerow([result['run_id'],result['benchmark'],EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded'),data.get('mean_seconds'),result.get('matched_performance_valid'),data.get('reused_from_run_id')])
+        os.replace(tmp,target)
+        alias=STATE/'verification.db'
+        if not alias.exists(): alias.symlink_to('results.db')
+
 def verify(config):
     bench=config['benchmark']; run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'_'+bench
     out=STATE/'runs'/run_id; out.mkdir(parents=True)
@@ -234,7 +254,7 @@ def verify(config):
         variant_verified[model]=not reference_disagreement and results[model]['status']=='native_check_pass' and (comparisons_ok or trusted_native)
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and not reference_disagreement
-    result={'run_id':run_id,'benchmark':bench,'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
+    result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
             'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
             'attempt_accounting':config.get('attempt_accounting'),'events':events}
@@ -247,13 +267,15 @@ def verify(config):
         w=csv.writer(f); w.writerow(['run_id','benchmark','model','trial','time_seconds','correct','jit_excluded'])
         for model,v in results.items():
             for row in v.get('trials',[]): w.writerow([run_id,bench,EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded')])
+    export_global_csv()
     print(json.dumps({'result':str(out/'result.json'),'matched_performance_valid':matched,'comparisons':comparisons}))
     requested=[m for m in ('ka','jacc') if m in config.get('models',{})]
     return 0 if requested and all(variant_verified[m] for m in requested) else 2
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__); p.add_argument('benchmark',nargs='?'); p.add_argument('--config',type=Path); p.add_argument('--discover',action='store_true')
+    p=argparse.ArgumentParser(description=__doc__); p.add_argument('benchmark',nargs='?'); p.add_argument('--config',type=Path); p.add_argument('--discover',action='store_true'); p.add_argument('--export',action='store_true')
     a=p.parse_args(); STATE.mkdir(parents=True,exist_ok=True)
+    if a.export: export_global_csv(); return 0
     if a.discover: print(json.dumps(discover(a.benchmark),indent=2)); return 0
     if not a.config: p.error('--config required: benchmark-specific inputs/checker/timing contracts cannot safely be inferred')
     config=json.loads(a.config.read_text()); return verify(config)
