@@ -1,0 +1,75 @@
+{
+  "benchmark": "zeropoint",
+  "configuration_id": "fp32_n262144_qmin-127_qmax127_preserve_true_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "shape": [
+      262144
+    ],
+    "fixture": "lo=Float32((17*i)%257-128)/128;hi=Float32((13*i)%257-128)/128, zero-based i",
+    "internal_repeats": 10,
+    "precision": "Float32 input/scales, Float64 intermediate arithmetic, Int32 zero points; artifacts losslessly widenedFloat64",
+    "coverage": "preserve_sparsity=true, qrange[-127,127]; all sign/zero/ordered-unordered input pairs sampled",
+    "mapping": "native symmetric min/max divisions initially Float32 vs inherited Julia Float64; precision adaptation declared"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/zeropoint-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent full CPU quantizer outputs: scale tolerance1e-3, integer zero point exact (integer differences >=1 fail combined1e-3 artifact criterion)",
+      "source_dependencies": [
+        "../zeropoint-cuda/main.cu",
+        "../zeropoint-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/zeropoint-julia/zeropoint-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent full CPU quantizer outputs: scale tolerance1e-3, integer zero point exact (integer differences >=1 fail combined1e-3 artifact criterion)",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/zeropoint-julia/zeropoint-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent full CPU quantizer outputs: scale tolerance1e-3, integer zero point exact (integer differences >=1 fail combined1e-3 artifact criterion)",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  }
+}
