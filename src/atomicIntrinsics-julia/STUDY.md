@@ -1,0 +1,28 @@
+# atomicIntrinsics: verified four-model study observation
+
+RQ IDs: RQ1–RQ5. Experiment IDs: E1–E5. Evidence ID: 20261016T230318728314Z_atomicIntrinsics.
+Configuration contract: `{"precision": ["Int32", "UInt32"], "size": 4096, "internal_repeats": 10, "fixture": "native9scalarinitialbits0,0,-256,256,255,0,255,0,0; sameforbothsignedunsigned", "outputs": "all18finalscalars asUInt32bits", "timing": "sum2synchronizedloopmeans; accumulates10kernels thenchecksfullfinalstate", "reference_repair": "historicalrace-add-CAS incdec replaced byfullCASretryloop; skipped2checks restored"}`.
+Protocol: five_trials_last_four_v1, all five correctness checks retained, timing mean trials2–5.
+Evidence: `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T230318728314Z_atomicIntrinsics/result.json`, config.json, timings.csv, raw logs, binary artifacts.
+Ontology: ontology/benchmarks/atomicIntrinsics.yaml; SHA256 `191e10a8f9e8b73b09ecc0031eb7ea23354075f4d01dacbcbec2d650479ad8b9`. Original inferred ontology labels retained; no retroactive winner-based relabeling.
+
+## Numerical confirmation
+Each variant passes independent full-element CPU oracle checks and direct binary-array comparisons against native CUDA and CUDA.jl on every one of the five trials. Acceptance tolerances and all observed absolute/relative errors are preserved in result.json. NaN/nonfinite and shape/count checks are performed by the runner. Native device kernels are included unchanged; historical CUDA.jl original_main.jl and original_Makefile are retained. Parent compatibility entrypoints execute the historical original source. Study drivers change only explicitly recorded reference inputs/measurement handling, a separate phase from original translation.
+
+All9atomicoperations x2types Int32/UInt32 checked, includingpreviouslyskipped boundedinc/dec; all18completeoutputscalars matchbothrefs everytrial. HistoricalCUDA.jl approximated boundedinc/dec byadd/sub plusoneCAS andskippedtheirverification; separatelycorrected tofullCASretryloops andchecksrestored. KAfirstcandidate compiledbutselforacleFAILED (N1): atomic assignment data3=max(data3,tid) compiledas atomicSTORE ofnonatomicread/computation, losingupdates; actualInt32max3936instead4095/min256instead0 andUInt32min96instead0. A diagnosticcheckthen identifiedmisusedAtomixmacro. Correctmodifyforms Atomix.@atomic max(data3,tid) andmin(data4,tid) fixedit. KA2semanticcandidates,3compile/runinvocations includingdiagnostic,0compilerfeedbackrepairs,1numericalfeedbackrepair; JACCinheritscorrectedforms andpassesfirstcandidate. Thesehistories areorder-dependent incrementaltranslation, notindependentframeworkdifficulty. Nativeboundedinc/dec arehardwareintrinsics whileJuliaCASemulation iscorrectbutmuchslowerhere; peroperationprofilingneeded beforecausalclaim. Timing sums2signed/unsignedloopmeans; nativeN4096and10repeat sharedfixture.
+
+## Runtime: microseconds
+Each trial records the synchronized launch-loop mean per internal repeat. This includes host dispatch and excludes JIT/compilation, setup, allocations, transfers, input reset, CPU checking and artifact writing. Each trial starts with the same inputs. A device warmup precedes trial1. All timing commands are serialized on GPU6 via the shared lock. Native CUDA, CUDA.jl, KA and JACC are measured under the same named contract. Julia environments pin CUDA runtime12.0; exact package/hardware evidence lives in setup and run bundles.
+
+| Model | Trials1–5 (us) | Mean2–5 (us) |
+|---|---|---|
+| cuda | 20.5612, 20.6772, 20.7552, 20.6582, 20.6792 | 20.6925 |
+| cuda_jl | 85894.0382, 87189.8824, 86672.4809, 86049.6651, 86177.5134 | 86522.3855 |
+| ka | 67040.3375, 68165.4099, 67945.7670, 68661.0105, 67077.4442 | 67962.4079 |
+| jacc | 153374.2833, 155773.9061, 159696.9149, 173751.4180, 160904.7229 | 162531.7405 |
+
+## Attempts, tokens and feature support
+KA has two semantic candidates, three compiler/run invocations (one diagnostic), and one numerical-feedback repair (N1), with zero compiler-feedback repairs. JACC has one source candidate and no repairs after inheriting the corrected API usage. Actual runner build/JIT invocations are recorded separately from timing trials; tool/reuse/setup failures are infrastructure events, not translation candidates. A five-trial timing series is not five translation attempts. Token accounting is partial source-text characters/4, with unavailable conversation/tool/reasoning/cached usage explicitly unknown; these estimates do not establish total billed cost or an abstraction cost ranking. Shared infrastructure/reference correction/paper work are separate phases. KA-first and JACC reuse make this incremental production effort, not independent translations. No unsupported framework feature was observed for this selected configuration.
+
+## Ontology explanation and paper follow-up
+Use the existing operation/access classifications as grouping evidence, with implementation choices above recorded separately. Any runtime gap is an observation. Potential launch/configuration overhead, memory access behavior, compiler output and changed specialization are competing explanations, not demonstrated causes. No measured memory traffic, occupancy or roofline position was collected in this pass. Profiling and size scaling remain pending; this small configuration cannot support broad abstraction-selection recommendations. RQ1 is answered for this contract; RQ2 cost completeness is partial; RQ3 has matched measurements; RQ4 mechanisms and RQ5 generalization remain unresolved. Coordinator must export a portable snapshot and connect this observation to claims/figures/sections.
