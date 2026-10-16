@@ -261,7 +261,8 @@ function main()
     elapsed_us = (time_ns() - t0) * 1e-3 / repeat_n
     @printf("Average execution time: %f (us)\n", elapsed_us)
     hf = Array(d_f)
-    rf = reference_f(n, x, y)
+    # CUDA launches with (y, x); its CPU reference uses that same order.
+    rf = reference_f(n, y, x)
     err = 0.0
     for i in 1:n
         d = Float64(rf[i]) - Float64(hf[i])
@@ -283,7 +284,7 @@ function main()
     elapsed_us = (time_ns() - t0) * 1e-3 / repeat_n
     @printf("Average execution time: %f (us)\n", elapsed_us)
     hi = Array(d_i)
-    ri = reference_i(n, x, y)
+    ri = reference_i(n, y, x)
     err = 0.0
     for i in 1:n
         d = Float64(ri[i]) - Float64(hi[i])
@@ -291,7 +292,8 @@ function main()
             err += d * d
         end
     end
-    @printf("RMSE: %f\n", sqrt(err / n))
+    rmse_i = sqrt(err / n)
+    @printf("RMSE: %f\n", rmse_i)
 
     # ---- i16 ----
     println("\n======== output type is i16 ========")
@@ -304,7 +306,7 @@ function main()
     elapsed_us = (time_ns() - t0) * 1e-3 / repeat_n
     @printf("Average execution time: %f (us)\n", elapsed_us)
     hs = Array(d_s)
-    rs = reference_s(n, x, y)
+    rs = reference_s(n, y, x)
     err = 0.0
     for i in 1:n
         d = Float64(rs[i]) - Float64(hs[i])
@@ -315,9 +317,11 @@ function main()
     rmse_s = sqrt(err / n)
     @printf("RMSE: %f\n", rmse_s)
 
-    # PASS if float RMSE is small (GPU vs CPU polynomial evaluation, allowing fma differences)
-    println(rmse_f < 10.0 ? "PASS" : "FAIL")
+    # Check every output type; integer GPU/CPU results must agree exactly.
+    passed = rmse_f <= 1e-3 && rmse_i == 0.0 && rmse_s == 0.0
+    println(passed ? "PASS" : "FAIL")
+    passed || return 1
     return 0
 end
 
-main()
+exit(main())
