@@ -1,0 +1,99 @@
+{
+  "benchmark": "nlll",
+  "configuration_id": "fp32_n4096_k64_threads256_average_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      4096,
+      64
+    ],
+    "fixture": "input=-Float32((17*i)%257)/128; weights=Float32(i%7+1)/8; target=Int32(i%64), zero-based i",
+    "internal_repeats": 10,
+    "size_average": true,
+    "ignore_index": 32,
+    "coverage": "Float32 with 256 threads only; native Float16 and 64/128/512/1024 thread cases unported/unmeasured",
+    "mapping": "one block, strided per-thread partials, serial thread0 final reduction"
+  },
+  "atol": 1e-05,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/nlll-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_output_cpu_atol1e-5",
+      "native_check_description": "Independent dyadic CPU weighted NLL and total weight, both finite values abs<=1e-5; stricter named Float32 study criterion than original tolerance1",
+      "source_dependencies": [
+        "../nlll-cuda/main.cu",
+        "../nlll-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/nlll-julia/nlll-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_output_cpu_atol1e-5",
+      "native_check_description": "Independent dyadic CPU weighted NLL and total weight, both finite values abs<=1e-5; stricter named Float32 study criterion than original tolerance1",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/nlll-julia/nlll-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_output_cpu_atol1e-5",
+      "native_check_description": "Independent dyadic CPU weighted NLL and total weight, both finite values abs<=1e-5; stricter named Float32 study criterion than original tolerance1",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/nlll-julia/nlll-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_output_cpu_atol1e-5",
+      "native_check_description": "Independent dyadic CPU weighted NLL and total weight, both finite values abs<=1e-5; stricter named Float32 study criterion than original tolerance1; global-workspace staging before JACC.shared, explicit2048B dynamic shared memory",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T233742863681Z_nlll/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
