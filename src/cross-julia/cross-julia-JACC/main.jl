@@ -12,7 +12,7 @@ function cross_jacc!(index,n::Int32,out,a,b)
     end
 end
 function factory(a,b,out,n)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,n,cross_jacc!,Int32(n),out,a,b)
 end
 cross_study(factory)
