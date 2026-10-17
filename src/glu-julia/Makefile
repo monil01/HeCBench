@@ -1,12 +1,12 @@
+# Named verified configuration; REPEAT controls the internal repeats, not the archived historical problem-size CLI.
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=../_julia_ka_env
 LAUNCHER ?=
-
+REPEAT ?= 100
+.PHONY: main run clean
 main:
 	@true
-
-clean:
-	rm -rf __pycache__
-
 run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 3 1024 100
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(REPEAT)
+clean:
+	rm -f *_trial*.bin
