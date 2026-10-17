@@ -1,13 +1,2 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-ARGS ?= 512 512 10
-
-main:
-	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(ARGS)
+all:
+	$(MAKE) -C dct8x8-julia-cuda.jl
