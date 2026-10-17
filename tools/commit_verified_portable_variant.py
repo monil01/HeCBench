@@ -6,7 +6,7 @@ import argparse,json,math,subprocess,sys
 from pathlib import Path
 import verify_portable_julia as verifier
 root=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');p.add_argument('--evidence-refresh',action='store_true');a=p.parse_args()
 if bool(a.variant)==bool(a.shared):p.error('choose exactly one of --variant or --shared')
 if subprocess.check_output(['git','diff','--cached','--name-only'],cwd=root,text=True).strip():raise SystemExit('Index already contains staged work; inspect it before using coordinator helper.')
 data=[]
@@ -40,7 +40,7 @@ else:
     expected=sum(t['time_seconds'] for t in m['trials'][1:])/4
     if len(m['trials'])!=5 or not all(t['correct'] for t in m['trials']) or not math.isclose(expected,m['mean_seconds'],rel_tol=1e-11):raise SystemExit('Five-trial evidence invalid')
   proof.append({'run_id':d['run_id'],'configuration_id':c['configuration_id'],'protocol':d['protocol'],'variant_verified':True,'reference_agreement':True,'evidence_strength':c.get('numerical_evidence_strength','full_output_artifacts'),'comparisons':d['comparisons'][key],'models':d['models'],'ontology_context':d.get('ontology'),'input_contract':d.get('input_contract'),'attempt_accounting':d.get('attempt_accounting'),'token_accounting':d.get('token_accounting'),'reviewed_dependency_change':{'reason':a.reviewed_dependency_change,'paths':changed} if changed else None,'raw_result':str(path.relative_to(root))})
- child.joinpath('verification.json').write_text(json.dumps({'benchmark':a.benchmark,'variant':'julia-'+key,'configurations':proof},indent=2)+'\n');paths=[f for f in child.rglob('*') if allowed(f)];title=('Tune verified ' if a.performance_tuning else 'Add verified ')+a.benchmark+' '+a.variant+' implementation'
+ child.joinpath('verification.json').write_text(json.dumps({'benchmark':a.benchmark,'variant':'julia-'+key,'configurations':proof},indent=2)+'\n');paths=[f for f in child.rglob('*') if allowed(f)];title=('Link verified ' if a.evidence_refresh else 'Tune verified ' if a.performance_tuning else 'Add verified ')+a.benchmark+' '+a.variant+(' primary evidence' if a.evidence_refresh else ' implementation')
 if not paths:raise SystemExit('No owned files to commit')
 subprocess.run(['git','add','-f','--',*[str(f.relative_to(root)) for f in paths]],cwd=root,check=True)
 body='Evidence: '+', '.join(d['run_id'] for d,_,_ in data)+'. All five configured output checks pass; time means exclude trial1. Preserve numerical evidence strength, scope, attempt accounting and limitations.\n\nGenerated-By: OpenAI Codex'
@@ -51,6 +51,9 @@ if key:
   manifest=json.loads(m.read_text());
   if a.performance_tuning:
    manifest.setdefault('original_translation_commit',manifest.get('source_commit'));manifest.setdefault('performance_tuning_commits',[]).append({'commit':sha,'run_ids':[d['run_id'] for d,_,_ in data]});manifest.setdefault('performance_tuning_results',[]).extend({'configuration_id':c['configuration_id'],'run_id':d['run_id'],'commit':sha,'five_trial_seconds':[t['time_seconds'] for t in d['models'][key]['trials']],'mean_last_four_seconds':d['models'][key]['mean_seconds'],'attempt_accounting':c.get('attempt_accounting'),'token_accounting':c.get('token_accounting')} for d,c,_ in data);manifest['original_translation_fields_scope']='Original candidate/compiler/token and top-level timing fields retain initial translation evidence; later resourcepolicy results are separate performance_tuning_results.'
-  manifest['source_commit']=sha;manifest['commit_status']='committed';temp=m.with_suffix('.json.tmp');temp.write_text(json.dumps(manifest,indent=2)+'\n');temp.replace(m)
+  if a.evidence_refresh:
+   manifest.setdefault('verification_commits',[]).append({'commit':sha,'configurations':[c['configuration_id'] for _,c,_ in data],'note':'Evidence-link refresh only; source_commit retains actual unchanged implementation commit.'})
+  else:manifest['source_commit']=sha
+  manifest['commit_status']='committed';temp=m.with_suffix('.json.tmp');temp.write_text(json.dumps(manifest,indent=2)+'\n');temp.replace(m)
 subprocess.run([sys.executable,str(root/'tools/checkpoint_portable_study.py')],cwd=root,check=True)
 print(json.dumps({'benchmark':a.benchmark,'phase':'shared' if a.shared else a.variant,'commit':sha}))

@@ -1,0 +1,265 @@
+id: accuracy
+name: accuracy
+display_name: Top-k accuracy
+summary: Counts rows where the ground-truth label score ranks within a requested top-k threshold.
+
+source:
+  benchmark_dirs:
+    - src/accuracy-cuda
+    - src/accuracy-hip
+    - src/accuracy-julia
+    - src/accuracy-mojo
+    - src/accuracy-omp
+    - src/accuracy-rust
+    - src/accuracy-serial
+    - src/accuracy-sycl
+    - src/accuracy-triton
+  metadata_file: benchmarks.yaml
+  primary_evidence:
+    - path: benchmarks.yaml
+      reason: Catalogue category, available models, test arguments, regex, and timeout.
+    - path: src/accuracy-cuda/main.cu
+      reason: CUDA kernels, CUB block reduction, atomics, explicit allocation/copy, timing, and validation.
+    - path: src/accuracy-cuda/reference.h
+      reason: Serial CPU reference semantics for top-k accuracy count.
+    - path: src/accuracy-hip/main.cu
+      reason: HIP implementation mirrors CUDA kernels with hipCUB, atomics, allocation, copy, and timing.
+    - path: src/accuracy-omp/main.cpp
+      reason: OpenMP target offload, teams distribute, parallel reduction, and atomic update.
+    - path: src/accuracy-sycl/main.cpp
+      reason: SYCL USM, nd_range kernels, group reductions, local accessors, and atomic_ref.
+    - path: src/accuracy-julia/main.jl
+      reason: Julia CUDA kernel, CuArray use, shared memory, synchronization, @inbounds, and atomic update.
+    - path: src/accuracy-rust/src/main.rs
+      reason: Rust cudarc runtime compilation, embedded CUDA kernel, unsafe launch, and CPU reference.
+    - path: src/accuracy-mojo/main.mojo
+      reason: Mojo GPU kernel, unsafe pointers, device buffers, host reduction, and CPU reference.
+    - path: src/accuracy-triton/main.py
+      reason: Triton JIT kernel, masked vector loads, tl.sum, atomic add, and Torch reference.
+
+catalogue:
+  benchmark_group: accuracy
+  available_backends: [cuda, hip, julia, mojo, omp, rust, serial, sycl, triton]
+  implementation_languages: [cuda-cpp, hip-cpp, julia-cuda, mojo, openmp-cpp, rust, serial-cpp, sycl-cpp, triton-python]
+  programming_models: [cuda, hip, julia-cuda, mojo, openmp-target, rust, serial-cpp, sycl, triton]
+  benchmark_suite_category: [algorithms]
+  test:
+    args: ["8192", "10000", "10", "100"]
+    regex: "(?:Average execution time of accuracy kernel: )([0-9.+-e]+)(?: \\(us\\))"
+    timeout_seconds: 300
+
+taxonomy:
+  benchmark_type:
+    - numerical-kernel
+    - machine-learning
+  scientific_domains:
+    - machine-learning
+    - statistics
+  algorithm_families:
+    - top-k-classification-accuracy
+    - rank-counting
+  computational_motifs:
+    - dense-array
+    - reduction
+    - map
+    - atomic-update
+  data_structures:
+    - dense-matrix
+    - dense-vector
+  data_layout:
+    - contiguous-array
+  precision_model:
+    - float32
+    - int32
+  input_data:
+    shape: matrix-plus-label-vector
+    synthetic_or_real: synthetic
+    precision: [float32, int32]
+  output_data:
+    shape: scalar-count
+    validation: reference-cpu
+
+parallelism:
+  kernel_count: 2
+  multi_kernel: true
+  kernel_names:
+    - accuracy_kernel
+    - accuracy_kernel2
+  parallel_patterns:
+    - data-parallel-map
+    - thread-per-row
+    - parallel-reduction
+    - multi-stage-kernel
+  synchronization:
+    - block-barrier
+    - group-reduction
+    - global-atomic-add
+  atomics: true
+  reductions: true
+  memory_access_patterns:
+    - contiguous-row-scan
+    - strided-thread-column-scan
+    - scalar-label-gather
+    - global-atomic-write
+  locality:
+    temporal: low
+    spatial: high
+
+resource_model:
+  resource_bias: memory-bound
+  arithmetic_intensity: low
+  working_set: O(nrows * ndims)
+  branch_divergence: medium
+  communication_intensity: low
+  confidence: inferred
+
+language_features:
+  cuda:
+    - cuda-global-kernel
+    - cuda-device-function
+    - launch-configuration
+    - grid-stride-loop
+    - thread-indexing
+    - block-indexing
+    - cuda-static-shared-memory
+    - barrier
+    - atomic-operation
+    - block-level-reduction
+    - cuda-cub
+    - cuda-memset
+    - explicit-device-allocation
+    - explicit-host-device-copy
+  hip:
+    - global-kernel
+    - device-function
+    - launch-configuration
+    - grid-stride-loop
+    - thread-indexing
+    - block-indexing
+    - shared-memory
+    - barrier
+    - atomic-operation
+    - block-level-reduction
+    - explicit-device-allocation
+    - explicit-host-device-copy
+  omp:
+    - target-offload
+    - teams-distribute
+    - parallel-for
+    - reduction-clause
+    - atomic-operation
+    - map-clause
+  sycl:
+    - queue-submit
+    - parallel_for
+    - nd-range
+    - usm-malloc
+    - local-memory
+    - subgroup-operation
+    - barrier
+    - atomic-operation
+    - event-dependency
+  julia:
+    - cuda-array
+    - cuda-kernel
+    - cuda-device-function
+    - cuda-static-shared-memory
+    - thread-indexing
+    - block-indexing
+    - barrier
+    - atomic-operation
+    - inbounds-macro
+    - type-stable-kernel
+    - preallocation
+  rust:
+    - ffi-call
+    - unsafe-block
+    - raw-pointer
+    - cuda-global-kernel
+    - cuda-nvrtc
+    - explicit-device-allocation
+    - explicit-host-device-copy
+  mojo:
+    - unsafe-pointer
+    - parameterized-function
+    - value-semantics
+    - thread-indexing
+    - block-indexing
+    - explicit-device-allocation
+  triton:
+    - triton-jit
+    - program-id
+    - masking
+    - tl-load-store
+    - atomic-operation
+    - constexpr
+  cxx:
+    - templates
+    - raw-pointer
+    - pointer-arithmetic
+    - manual-allocation
+  code_structure:
+    - single-translation-unit
+    - separate-kernel-header
+    - templated-kernel
+    - handwritten-kernel
+    - procedural
+  memory_model:
+    - host-only-memory
+    - explicit-device-allocation
+    - explicit-copy
+    - sycl-usm
+    - contiguous-array
+    - shared-local-memory
+
+dependencies:
+  libraries:
+    - CUDA runtime
+    - CUB
+    - HIP runtime
+    - hipCUB
+    - OpenMP
+    - SYCL
+    - CUDA.jl
+    - cudarc
+    - NVRTC
+    - Mojo std.gpu
+    - PyTorch
+    - Triton
+  dependency_kinds:
+    - vendor-runtime
+    - vendor-math-library
+    - third-party-compiled
+  external_data: []
+  generated_files: []
+
+search:
+  keywords:
+    - accuracy
+    - top-k
+    - classification
+    - rank-counting
+    - dense-matrix
+    - reduction
+    - atomic-add
+    - cuda
+    - sycl
+    - julia-cuda
+    - triton
+  aliases:
+    - top-k accuracy
+    - classification accuracy
+    - rank threshold count
+  related_benchmarks:
+    - softmax
+    - logprob
+    - crossEntropy
+
+quality:
+  completeness: complete
+  confidence: high
+  reviewed_by: codex
+  last_updated: "2026-10-07"
+  open_questions:
+    - The Rust and Triton ports use different host-side random generation than the C++ reference, but each validates against its own generated input.
+
