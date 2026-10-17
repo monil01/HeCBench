@@ -13,7 +13,7 @@ function copy_jacc!(global_index,input,output,n::Int64,vec_size::Int32)
     end
 end
 function factory(input,output,n,vec_size)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,cld(n,Int(vec_size)),copy_jacc!,input,output,n,vec_size)
 end
 copy_study(factory)
