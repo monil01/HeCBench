@@ -63,7 +63,25 @@ def artifact_values(row):
 
 _FINITE_ARTIFACT_CACHE = {}
 
-def compare_records(ref, got, atol, rtol):
+def exact_input_prefix(ref, got, count):
+    if isinstance(count,bool) or not isinstance(count,int) or count<0:raise ValueError('input_prefix_count must be a nonnegative integer')
+    if not count:return {'status':'not_requested','meaning':'No automatic serialized-prefix claim; independent input audits may be recorded separately.'}
+    a=ref.get('output_artifact');b=got.get('output_artifact')
+    widths={'float32':4,'float64':8,'int8':1,'uint8':1,'int16':2,'uint16':2,'int32':4,'uint32':4,'int64':8,'uint64':8}
+    if not a or not b or a.get('dtype')!=b.get('dtype') or a.get('dtype') not in widths:
+        return {'status':'unverified','reason':'Exact input prefix requires matching saved binary artifact encodings.'}
+    if any(x.get('count',0)<count or x.get('byte_order','little')!='little' for x in (a,b)):
+        return {'status':'unverified','reason':'Declared input prefix exceeds artifact or uses unsupported byte order.'}
+    nbytes=count*widths[a['dtype']]
+    with Path(a['saved_path']).open('rb') as fa,Path(b['saved_path']).open('rb') as fb:
+        pa=fa.read(nbytes);pb=fb.read(nbytes)
+    if len(pa)!=nbytes or len(pb)!=nbytes or pa!=pb:
+        return {'status':'mismatch','reason':'Serialized input prefix bytes differ; output tolerance does not apply.','values':count,'bytes':nbytes}
+    return {'status':'pass','values':count,'bytes':nbytes,'method':'Exact saved prefix bytes; actual kernel input use still requires source/buffer audit.'}
+
+def compare_records(ref, got, atol, rtol, input_prefix_count=0):
+    prefix_check=exact_input_prefix(ref,got,input_prefix_count)
+    if prefix_check['status'] not in ('pass','not_requested'):return {'status':prefix_check['status'],'reason':prefix_check['reason'],'input_prefix_check':prefix_check}
     a=ref.get('output_artifact'); b=got.get('output_artifact')
     if a and b and any(a.get(k)!=b.get(k) for k in ('dtype','count','shape')):
         return {'status':'mismatch','reason':'artifact dtype/count/shape mismatch'}
@@ -89,8 +107,10 @@ def compare_records(ref, got, atol, rtol):
             _FINITE_ARTIFACT_CACHE[key]=finite
         if not _FINITE_ARTIFACT_CACHE[key]:
             return {'status':'unverified','reason':'nonfinite artifact values'}
-        return {'status':'pass','checked_values':a['count'],'max_abs_error':0,'max_rel_error':0}
-    return compare(artifact_values(ref),artifact_values(got),atol,rtol)
+        return {'status':'pass','checked_values':a['count'],'max_abs_error':0,'max_rel_error':0,'input_prefix_check':prefix_check}
+    comparison=compare(artifact_values(ref),artifact_values(got),atol,rtol)
+    comparison['input_prefix_check']=prefix_check
+    return comparison
 
 def save_artifacts(rows, cwd, out, model):
     for row in rows:
@@ -154,6 +174,8 @@ def export_global_csv():
         if not alias.exists(): alias.symlink_to('results.db')
 
 def verify(config):
+    prefix_count=config.get('input_prefix_count',0)
+    if isinstance(prefix_count,bool) or not isinstance(prefix_count,int) or prefix_count<0:raise ValueError('input_prefix_count must be a nonnegative integer')
     if any('reuse_run' in spec for spec in config.get('models',{}).values()):
         raise ValueError('Unsupported per-model reuse_run: use top-level reuse_result and reuse_models with strict source/config checks.')
     bench=config['benchmark']; run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'_'+bench
@@ -174,7 +196,7 @@ def verify(config):
         reuse_config=json.loads((reuse_path.parent/'config.json').read_text())
         if reuse_result['benchmark']!=bench or reuse_result['protocol']!=PROTOCOL or reuse_result.get('input_contract')!=config.get('input_contract'):
             raise ValueError('reuse benchmark/protocol/input contract mismatch')
-        for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified'):
+        for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified','input_prefix_count'):
             if reuse_config.get(key)!=config.get(key): raise ValueError('reuse config mismatch: '+key)
         if reuse_config.get('configuration_id')!=config.get('configuration_id'):
             reason=config.get('cross_configuration_reuse_reason')
@@ -307,7 +329,7 @@ def verify(config):
         comparisons[model]={}
         for ref in ('cuda','cuda_jl'):
             a=results[ref].get('trials',[]); b=results[model].get('trials',[])
-            checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5)) for x,y in zip(a,b)]
+            checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0)) for x,y in zip(a,b)]
             if len(checks)==5 and all(x['status']=='pass' for x in checks):
                 status='direct_artifact_pass' if all(x.get('output_artifact') and y.get('output_artifact') for x,y in zip(a,b)) else 'numeric_summary_pass'
             elif any(x['status']=='mismatch' for x in checks): status='mismatch'
@@ -316,7 +338,7 @@ def verify(config):
             comparisons[model][ref]={'status':status,'trials':checks}
     ref_a=results['cuda'].get('trials',[])
     ref_b=results['cuda_jl'].get('trials',[])
-    reference_checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5)) for x,y in zip(ref_a,ref_b)]
+    reference_checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0)) for x,y in zip(ref_a,ref_b)]
     reference_disagreement=any(x['status']=='mismatch' for x in reference_checks)
     reference_agreement=(len(reference_checks)==5 and all(x['status']=='pass' for x in reference_checks))
     variant_verified={}
@@ -328,7 +350,7 @@ def verify(config):
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and not reference_disagreement
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
-            'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
+            'input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
             'attempt_accounting':config.get('attempt_accounting'),'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
