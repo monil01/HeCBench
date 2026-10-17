@@ -150,8 +150,14 @@ def main():
         for model,suffix in MODELS.items():
             folder=ROOT/'src'/(b+'-julia');path=folder/(b+'-julia-'+suffix)/'main.jl'
             if model=='cuda_jl' and not path.exists():path=folder/'main.jl'
-            log=ROOT/'.porting-state/porting_logs'/(b+'-julia-'+('ka' if model=='ka' else 'jacc' if model=='jacc' else 'cuda'))
-            manifest=read(log/'manifest.json',{})
+            log_root=ROOT/'.porting-state/porting_logs'
+            aliases=['cuda','cuda.jl','cuda_jl'] if model=='cuda_jl' else [model]
+            manifest_candidates=[log_root/(b+'-julia-'+alias)/'manifest.json' for alias in aliases if (log_root/(b+'-julia-'+alias)/'manifest.json').is_file()]
+            # Prefer a current source-bound record, then the latest explicit record.
+            # Retain every alias candidate; never merge incompatible histories silently.
+            selected_manifest=max(manifest_candidates,key=lambda q:(read(q,{}).get('source_sha256')==digest(path),q.stat().st_mtime_ns)) if manifest_candidates else log_root/(b+'-julia-'+aliases[0])/'manifest.json'
+            log=selected_manifest.parent
+            manifest=read(selected_manifest,{})
             evidence=[(cid,v) for (bench,m,cid),v in latest.items() if bench==b and m==model]
             scan=scan_source(path)
             status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else 'historical_pass_not_reaudited' if model=='cuda_jl' else 'not_started'
@@ -222,6 +228,7 @@ def main():
                                         'history_completeness':'partial' if (log/'compiler_attempts.jsonl').exists() or events else 'unknown',
                                         'missing_history_is_zero':False},
                     'effort':{k:manifest.get(k) for k in ['candidate_attempts','compiler_checks','compiler_feedback_repairs','runtime_repairs','numerical_repairs','translation_tokens']},
+                    'effort_manifest_provenance':{'selected_path':str(selected_manifest.relative_to(ROOT)),'selected_sha256':digest(selected_manifest) if selected_manifest.is_file() else None,'candidate_alias_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q)} for q in manifest_candidates],'selection_rule':'Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged.'},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
             record['effort']['observed_harness_activity_windows']=usage_windows(b,model)
             scope_review=STATE/'usage_boundaries_300'/b/'measurement_scope_review.json'
