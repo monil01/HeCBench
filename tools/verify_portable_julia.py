@@ -257,7 +257,10 @@ def verify(config):
         if build_ok and spec.get('build'):
             # ARCH supplied from hardware capability, never inherited sm120.
             query=subprocess.run(['nvidia-smi','-i',env['CUDA_VISIBLE_DEVICES'],'--query-gpu=compute_cap','--format=csv,noheader'],capture_output=True,text=True)
-            arch='sm_'+query.stdout.strip().replace('.','')
+            capabilities={line.strip().replace('.','') for line in query.stdout.splitlines() if line.strip()}
+            if query.returncode or len(capabilities)!=1:
+                raise ValueError('Native build requires one known shared compute capability for selected GPUs: '+query.stdout.strip())
+            arch='sm_'+next(iter(capabilities))
             command=resolve_args([s.replace('{arch}',arch) for s in spec['build']],True)
             code,text=run_command(command,cwd,model_env,timeout,out/f'{model}_build.log')
             events.append({'model':model,'phase':'build','command':command,'returncode':code,'source_hash':source_hash})
