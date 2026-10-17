@@ -1,0 +1,13 @@
+# Tridiagonal eigenvalue fullsolve study
+
+Unchanged native kernels andexistinggenuineCUDA.jl kernelarithmetic: Sturmrecurrence counts, rank-basedintervalsplit/bisection, hostwidthpredicate. Exactnamed256rowmatrix diag4+i/2 andnonzerooffdiag(8+i%5)/256, tol.001. KA/JACCsame256lanegeometry, noshared/atomics; JACCexplicitshmem0. Nozero-pivot/clustered/repeatedspectrum certificate.
+
+Original runKernels mutateshostintervalbuffers. Anactualunchangednativecall onnamedfixture proves originalbuffer0initialwidth127.578125 becomes.0009765625; nextisCompletefalse, so repeatedoriginalcall skipskernelwhile. This diagnosesoriginalwarmuptiming onthisfixture, not originalRNGperformance. Kernelarithmeticleftunchanged. Namedstudy explicitlyreinitializesbothhost/GPUintervalbuffers for everytimedfullsolve; allfour perform10bisectioniterations(20kernels) eachsolve,10solvespertrial, recordediterationhistory.
+
+Timing `restarted_complete_host_transfer_sturm_bisection_solve_per_repeat` includeshostinitialcopy,2H2Dbuffers,convergencehostscan andfullintervalD2Heachiteration. Fivewarm inprocesstrials,mean2–5; notGPU-onlylatency/roofline. Initialdiagonal/offdiagalloc/transfer outsideclock.
+
+All512endpoints+256lastintervalcounts checked CPUFloat32sourcealgorithm andbothreferences abs1e-6(allexact). OriginalrelativeL2<1e-6 explicitlychecked, withfullfirstendpointcoverageadded. IndependentCPUFloat64eigvals(SymTridiagonal), savedoracle/provenance, confirmsalleigenvaluesinsidefiniteorderedintervals (enclosuredistance0), maxwidth.0009765625<.001. Noapplicationmatrix/domain-sciencemodelprovenance claimed.
+
+Eachportable1candidate/check,0repairs. Sharedreferencescoperestartrepair separatelycosted; originaldevicebodiespreserved. LegacyLatin1copyrightbytes retained; sourceproxyusesUTF8replacementdecode, character/4 approximate, notbilledtokens. Historicalgenerationcostunknown.
+
+Source typeboundary: Native devicecalNumEigenValuesLessThan declaresfloat return thenuint conversion; inheritedJuliahelper returnsUInt32 directly. Counts<=256 exact, codegeneffectunknown.
