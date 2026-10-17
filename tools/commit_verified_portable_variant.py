@@ -17,13 +17,19 @@ for path in a.result:
  if d['benchmark']!=a.benchmark or not d.get('reference_agreement'):raise SystemExit('Benchmark or reference agreement invalid')
  data.append((d,c,path))
 parent=root/'src'/(a.benchmark+'-julia');key={'KA':'ka','JACC':'jacc'}.get(a.variant)
-def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh'] or f.name in ['Makefile','original_Makefile'])
+def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh','.py'] or f.name in ['Makefile','original_Makefile'])
 if a.shared:
  for d,c,path in data:
   for model in ['cuda','cuda_jl']:
    if not d['models'][model].get('complete'):raise SystemExit('Incomplete reference')
    if verifier.digest_tree(verifier.discover(a.benchmark)[model])!=d['models'][model]['source_hash']:raise SystemExit('Reference source changed since verification: '+model)
  paths=[f for f in parent.iterdir() if allowed(f)]+[f for f in (parent/(a.benchmark+'-julia-cuda.jl')).rglob('*') if allowed(f)]
+ for _,config,_ in data:
+  for spec in config['models'].values():
+   for name in spec.get('source_dependencies',[]):
+    f=Path(name)
+    if f.is_relative_to(parent) and f.is_file() and allowed(f) and not any(part in [a.benchmark+'-julia-KA',a.benchmark+'-julia-JACC'] for part in f.parts):paths.append(f)
+ paths=list(dict.fromkeys(paths))
  title='Align '+a.benchmark+' study fixtures and verified references'
 else:
  child=parent/(a.benchmark+'-julia-'+a.variant);proof=[]

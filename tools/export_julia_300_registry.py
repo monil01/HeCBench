@@ -36,6 +36,20 @@ def jsonlines(p):
         except ValueError:continue # A worker may be appending; never infer a zero.
     return out
 
+def usage_windows(benchmark,model):
+    windows=[]
+    for f in sorted((STATE/'usage_boundaries_300'/benchmark).glob(model+'_*.jsonl')):
+        events=[e for _,e in jsonlines(f)]
+        for e in events:
+            if e.get('boundary') not in ['end','abandon']:continue
+            begin=next((x for x in events if x.get('event_id')==e.get('begin_event_id')),None)
+            windows.append({k:e.get(k) for k in ['event_id','begin_event_id','agent','implementation_model','phase','boundary','recorded_at','usage_event_timestamp','elapsed_usage_event_start','delta_usage','positive_counter_span','source_identity_sha256','marker_lag_seconds','accounting_level','source_token_event_sha256','meter_driver_sha256','note','measurement_status','scope']} | {'begin_marker_lag_seconds':(begin.get('marker_lag_seconds') if begin.get('marker_lag_seconds') is not None else (datetime.datetime.fromisoformat(begin['recorded_at'])-datetime.datetime.fromisoformat(begin['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()) if begin else None,'evidence_path':str(f.relative_to(ROOT)),'evidence_sha256':digest(f),'counter_span_interpretation':'Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort.'})
+    for w in windows:
+        if w.get('marker_lag_seconds') is None and w.get('recorded_at') and w.get('usage_event_timestamp'):
+            w['marker_lag_seconds']=(datetime.datetime.fromisoformat(w['recorded_at'])-datetime.datetime.fromisoformat(w['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()
+            w['marker_lag_derived_from_archived_timestamps']=True
+    return windows
+
 # Candidate families are an explicitly provisional sorting aid, not reviewed provenance.
 FAMILIES={
 'pde_continuum':'adv axhelm burger cooling divergence fdtd3d fluidSim heat heat2d hotspot iso2dfd jacobi laplace laplace3d lid-driven-cavity rtm8 s3d stencil1d stencil3d sw4ck vanGenuchten damage tissue',
@@ -112,7 +126,7 @@ def main():
         if not intent:intent={'primary_family':LOOKUP.get(b,'unclassified'), 'review_status':'provisional_category_requires_source_review','scientific_task':None,'community_use_case':None,'evidence':[],'classification_method':'Curated name/motif grouping to organize source review; not validated application provenance.'}
         domain={'schema_version':2,'benchmark_id':b,'scientific_intent':intent,
                 'base_ontology':{'path':base[b].get('ontology_path'),'frozen_sha256':base[b].get('ontology_sha256'),'status':'inferred base; not measured evidence'},
-                'historical_pass_method':base[b].get('method'),'historical_pass_is_strengthened_verification':False}
+                'historical_pass_method':base[b].get('method'),'historical_pass_is_strengthened_verification':False,'shared_observed_usage_windows':usage_windows(b,'shared')}
         witness_path=STATE/'scientific_witnesses_300'/(b+'.json')
         witness=read(witness_path)
         if witness:
@@ -191,6 +205,9 @@ def main():
                                         'missing_history_is_zero':False},
                     'effort':{k:manifest.get(k) for k in ['candidate_attempts','compiler_checks','compiler_feedback_repairs','runtime_repairs','numerical_repairs','translation_tokens']},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
+            record['effort']['observed_harness_activity_windows']=usage_windows(b,model)
+            scope_review=STATE/'usage_boundaries_300'/b/'measurement_scope_review.json'
+            if scope_review.exists():record['effort']['activity_window_scope_review']={'path':str(scope_review.relative_to(ROOT)),'sha256':digest(scope_review),'record':read(scope_review)}
             profiles=read(STATE/'profile_summaries_300'/(b+'.json'),{})
             if profiles.get('models',{}).get(model):record['measured_profile_evidence']=profiles['models'][model]
             current_ref=log/'current_reference_effort_300.json'
