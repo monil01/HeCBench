@@ -112,6 +112,8 @@ def main():
                           'evidence_path':str(file.relative_to(ROOT)),'evidence_line':line,
                           'raw_event':e,'classification_basis':'explicit event code or explicit coded status; no count imputation'}
                     events.append(item);all_events.append(item)
+            if model=='cuda_jl' and not evidence and not explicit.get('status') and any(e['taxonomy_code']=='S1' for e in events):
+                status='reference_blocked'
             config_evidence=[]
             for cid,(d,c,p) in evidence:
                 m=d['models'][model]
@@ -147,7 +149,7 @@ def main():
              'scientific_review_counts':dict(Counter(d['scientific_intent'].get('review_status','unspecified') for d in domain_rows)),
              'provisional_family_counts':dict(Counter(d['scientific_intent'].get('primary_family','unclassified') for d in domain_rows)),
              'observed_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in all_events if e['implementation_model']==m)) for m in MODELS},
-             'failure_history_totals_known':False,'all_300_verified':False,
+             'failure_history_totals_known':False,'all_300_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==300 for m in MODELS),
              'meaning':'Complete inventory denominator; current outcomes, unknown records and partial histories stay explicit.'}
     write(OUT/'index.json',{'schema_version':2,'summary':summary,'records':statuses})
     write(OUT/'failure_events.json',{'schema_version':2,'events':all_events,'count_interpretation':'Observed event rows by model, not all historical failures. N3/P1 excluded from failed-event totals.'})

@@ -1,0 +1,158 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "threadfence",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/threadfence.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": null,
+  "implementation_review_status": "not_yet_reviewed_per_model",
+  "shared_benchmark_traits": {
+    "benchmark": "threadfence",
+    "audited_at": "2026-10-16T23:42:26.988836+00:00",
+    "primary_motif": "last_block_global_reduction",
+    "storage_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "synchronization": [
+      "workgroup_barrier",
+      "shared_atomic_add",
+      "global_atomic_counter",
+      "CUDA.threadfence",
+      "volatile_global_load_store"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "KA/JACC preserve native single-kernel last-block algorithm with explicit backend-dependent device fence and volatile memory PTX. Historical CUDA.jl two-kernel tree retained as reference algorithm difference."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "hybrid_device_intrinsics",
+      "jacc": "hybrid_device_intrinsics"
+    },
+    "timing_scope": "synchronized complete reduction loop mean; native/KA/JACC one launch versus CUDA.jl two launches",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Historical CUDA.jl two-kernel tree algorithm",
+      "Hybrid CUDA device intrinsic dependency",
+      "JACC extra global-to-shared two-zero copy",
+      "Only n4096 all-minus-one input with exact Float32 sums; no broad memory-model validation"
+    ],
+    "evidence": {
+      "observation": "research/observations/threadfence.md",
+      "source_sha256": {
+        "src/threadfence-julia/threadfence-julia-KA/main.jl": "3a29505ec75ad508c2287b15ab0aea7855ecf19f1a517410d57111dfab2dbbda",
+        "src/threadfence-julia/threadfence-julia-cuda.jl/main.jl": "3ee0d07030abe861ed59a5b963477447ac4c439ef49c85e98f977fefbf08073b",
+        "src/threadfence-julia/threadfence-julia-JACC/main.jl": "d3756d4be470857941fb575302517d213d6a6f1d91d9032c639889cd28d7420b"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/threadfence-julia/threadfence-julia-KA/main.jl",
+    "sha256": "3a29505ec75ad508c2287b15ab0aea7855ecf19f1a517410d57111dfab2dbbda",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        12
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        14
+      ],
+      "barrier": [
+        16,
+        18,
+        24,
+        27,
+        32
+      ],
+      "atomic": [
+        1,
+        17,
+        21,
+        30
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "threadfence_singlekernel_hybrid_n4096_r10_v1",
+      "run_id": "20261016T234046748427Z_threadfence",
+      "result": ".porting-state/portable_julia/runs/20261016T234046748427Z_threadfence/result.json",
+      "result_sha256": "43b37b4d0dc7b0cdaebd104749bc64739651c06cfb5bfe1152e1e646ec4df870",
+      "source_hash": "979d73691273385f90f90bd1854b1d28630603032d33b9ce334fb49fa6f3ca77",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        3.571230000000001e-05,
+        2.68613e-05,
+        2.26182e-05,
+        2.24502e-05,
+        2.22412e-05
+      ],
+      "mean_last_four_seconds": 2.3542725e-05,
+      "contract": {
+        "n": 4096,
+        "internal_repeats": 10,
+        "input": "allFloat32minusone",
+        "outputs": "16blockpartial_sums(firstoverwrittentotal),UInt32completioncounter castFloat32",
+        "timing": "mean complete reductionoperation withsync; excludesreset/setup/copy"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 729,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved implementation characters/4) only",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/threadfence-julia/threadfence-julia-KA/main.jl"
+      ],
+      "limitations": "Only savedsource proxy; prompts,toolcontext,reasoning,cachedusage unknown. Not totalconsumption."
+    }
+  },
+  "source_commit": "6ca678f13cd32d2c85cddd10156caddbe8ae95eb",
+  "explicit_outcome_evidence": null
+}

@@ -1,0 +1,163 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "addBiasQKV",
+  "implementation_model": "jacc",
+  "status": "hardware_blocked",
+  "scientific_intent_record": "../../domains/addBiasQKV.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "reference_blocked",
+    "algorithm": null,
+    "mapping": null,
+    "precision": null,
+    "fidelity_status": "unimplemented"
+  },
+  "implementation_review_status": "worker_source_review",
+  "shared_benchmark_traits": {
+    "benchmark": "addBiasQKV",
+    "primary_motif": "quantized_bias_map_and_tensor_transpose",
+    "scientific_intent": {
+      "primary_domain": "scientific_machine_learning",
+      "secondary_domains": [
+        "quantized_transformer_inference"
+      ],
+      "scientific_task": "Prepare fused quantized Q/K/V attention tensors by bias/scaling and layout transpose",
+      "mathematical_operation": "BF16-rounded multiply/add/multiply with FP8 E4M3 requantization and word/QKV/head/feature permutation",
+      "discretization_or_topology": null,
+      "accuracy_requirements": [
+        "Preserve FP8 encoding, BF16 intermediate rounding and tensor axis mapping"
+      ],
+      "precision_sensitivity": "Arithmetic target explicitly lowprecision; FP32 simulation would change original rounding contract",
+      "input_size_regimes": "Native batch*sequence tokens and head/hidden feature geometry",
+      "community_use_case": "Lowprecision attention input preparation in transformer inference; a kernelproxy rather than wholemodel evaluation",
+      "provenance": [
+        {
+          "path": "src/addBiasQKV-cuda/main.cu",
+          "sha256": "f620890254df1d06aef762a99d3602b5b987bdc6032e7ae2be89fab28c4dab18",
+          "source_locations": "FP8TrtAddQKVBiasKernel lines65-95 and parameter struct"
+        }
+      ],
+      "review_status": "source_audited",
+      "uncertainty": "Source establishes transformerkernel role; no particular scientifictraining application is claimed",
+      "primary_family": "scientific_machine_learning"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "reference_algorithm_disagreement",
+        "algorithm": "Includes unrelated mcpr benchmark",
+        "fidelity_status": "S1 wrongalgorithm",
+        "source": "src/addBiasQKV-julia/main.jl",
+        "mapping": null,
+        "precision": null
+      },
+      "ka": {
+        "status": "reference_blocked",
+        "algorithm": null,
+        "mapping": null,
+        "precision": null,
+        "fidelity_status": "unimplemented"
+      },
+      "jacc": {
+        "status": "reference_blocked",
+        "algorithm": null,
+        "mapping": null,
+        "precision": null,
+        "fidelity_status": "unimplemented"
+      }
+    },
+    "keyconfounds": [
+      "NativeBF16x2 requires sm80 code generation unavailable on sm70 V100",
+      "CUDAjl alias historicalPASS unrelated to native QKV operation"
+    ],
+    "ontology_sha256": "53fc2b66ee7ecd3c222b9b2c89efb27b8f6c25a3e80b2ce998f5c703fd4ac224"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": null,
+  "configurations": [],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "0ec1a320238983c6fa24",
+        "benchmark_id": "addBiasQKV",
+        "implementation_model": "jacc",
+        "taxonomy_code": "B2",
+        "phase": "reference_compile",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/addBiasQKV.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "addBiasQKV_jacc_native_B2_001",
+          "benchmark_id": "addBiasQKV",
+          "configuration_id": "original_fp8_e4m3_bf16_contract",
+          "implementation_model": "jacc",
+          "model": "jacc",
+          "origin_model": "cuda",
+          "phase": "reference_compile",
+          "code": "B2",
+          "is_failure": true,
+          "is_target_framework_failure": false,
+          "source_candidate_id": null,
+          "compiler_check_id": null,
+          "repair_id": null,
+          "symptom": "Required native reference sm70 build fails BF16x2 __hmul2/__hadd2 overload resolution",
+          "minimal_trigger": ".porting-state/porting_logs/addBiasQKV-native-audit/required_bf16_probe.cu",
+          "evidence": [
+            {
+              "path": ".porting-state/porting_logs/addBiasQKV-native-audit/compiler_attempt_01.log",
+              "sha256": "671fb1d449b818569317f3ba317982d4c72df01f4a3888f68f503cc8961601a0"
+            },
+            {
+              "path": ".porting-state/porting_logs/addBiasQKV-native-audit/probe_sm80_on_v100.log",
+              "sha256": "1e0ca599c5720858a595d331090fe8adc2262f2bd6cf197ef3b730a71b1fb284"
+            }
+          ],
+          "root_cause": "Original source and minimal BF16 pair kernel compile for sm80; V100 sm70 rejects minimal sm80 kernel with CUDA209 no kernel image",
+          "resolution": "No precision simulation substituted; target translation unattempted while native and CUDA.jl references are invalid/unavailable",
+          "final_outcome": "environment_hardware_blocked",
+          "recorded_at": "2026-10-17T16:08:16.135283+00:00"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 0,
+    "compiler_checks": 0,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 0,
+      "total_tokens": null,
+      "status": "unknown",
+      "method": "No exactpermodel boundary; sourceaudit/nativeprobe sharedusage notattributed twice"
+    }
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": {
+    "benchmark": "addBiasQKV",
+    "model": "jacc",
+    "status": "hardware_blocked",
+    "reason": "Historical CUDA.jl runs unrelated mcpr (S1); unchanged native requires BF16x2 sm80 code and fails on V100 sm70. Target framework capability remains unassessed.",
+    "evidence": [
+      ".porting-state/porting_logs/addBiasQKV-native-audit/build_event.json",
+      ".porting-state/porting_logs/addBiasQKV-native-audit/capability_events.json",
+      ".porting-state/portable_julia/failure_events_300/addBiasQKV.jsonl"
+    ],
+    "contract": "Native FP8 E4M3 storage with BF16 intermediate multiply/add rounding and QKV axis permutation; no FP32 substitution",
+    "condition_for_resumption": "Use BF16-capable sm80+ hardware with matching toolchain, repair genuine CUDA.jl reference with separate cost, then produce both portable variants."
+  }
+}

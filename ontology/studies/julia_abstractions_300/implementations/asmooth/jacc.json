@@ -1,0 +1,533 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "asmooth",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/asmooth.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "asmooth",
+    "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "bd676d81ee79935e7f416b049eb3f923a3c5baed552a4b06223a54ec5f0e2c78",
+    "status": "verified",
+    "algorithm": "Three-stage adaptive box smoothing and normalization with atomic additions",
+    "work_item_mapping": "onepixel/workitem,16x16threads,8x8blocks perstage",
+    "layout": "row-major flattened128square image; Float32fields andInt32radius",
+    "precision": {
+      "storage": [
+        "float32_image_norm_output",
+        "int32_support_radius"
+      ],
+      "compute": [
+        "float32",
+        "int32_indices"
+      ]
+    },
+    "memory_access": "global-windowgathers andJACCFloat32atomic scatter",
+    "synchronization": [
+      "atomicFloat32normalization",
+      "kernelboundarybetween3stages",
+      "device_sync_afterpipeline"
+    ],
+    "resource_policy": {
+      "shared_bytes": 0,
+      "explicit": true
+    },
+    "launch_geometry": {
+      "threads": [
+        16,
+        16
+      ],
+      "blocks": [
+        8,
+        8
+      ],
+      "stages": 3
+    },
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+    "supported_features": [
+      "adaptivewindowloops",
+      "Float32atomics",
+      "orderedthree-kernelpipeline"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Named128square image threshold4000/rad5, complete3stagepipeline; no rectangulargrid orapplication-levelaccuracyclaim",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth",
+    "numerical_contract": "All65536normalizedimage/norm/radius/outputvalues checked against originalnativeCPU plus independentJuliaoracle andbothGPUreferences inall5trials. Originalabsolute1e-3 tolerance retained; radii separatelyexact. Native maxdifference4.8828125e-4, CUDA.jl differences<=1.220703125e-4. Originallibc srand123input identical.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      6.98575e-05,
+      8.71966e-05,
+      6.13985e-05,
+      6.02665e-05,
+      5.90994e-05
+    ],
+    "mean_last_four_seconds": 6.699025e-05,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null
+  },
+  "implementation_review_status": "worker_source_review",
+  "shared_benchmark_traits": {
+    "benchmark": "asmooth",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_domain": "signal_image_processing",
+      "secondary_domains": [],
+      "scientific_task": "Intensity-threshold adaptive image smoothing",
+      "mathematical_operation": "Select a square support until intensity sum exceeds threshold; accumulate normalization, normalize image, average selected support",
+      "discretization": "two-dimensional square pixel grid",
+      "accuracy_requirements": "Exact support radius choices; finite normalization/output and unchanged absolute1e-3 error contract. Floatingatomic accumulation order may perturb normalized intensity.",
+      "input_size_regime": "Named128x128 image, threshold4000, maximumradius5; broadimages andrectangular grids notcertified",
+      "precision_sensitivity": "Threshold comparisons and Float32atomic normalization affect output; no conservation guarantee asserted",
+      "community_use_case": "Adaptive denoising of numerical image fields; illustrative community task, not an independently validated astronomical or medical application",
+      "description": "This benchmark performs adaptive smoothing on a numeric pixel field, increasing neighborhood support until a specified intensity sum is reached. Its scientific result includes the chosen support and normalized smoothed intensity, rather than merely a fixed-radius stencil.",
+      "provenance": "Native smoothingFilter/normalizeFilter/outFilter and reference.h establish the algorithm; application-specific provenance is not supplied. Domainclassification source-backed, communityusecase illustrative."
+    },
+    "primary_motif": "adaptive_window_gather_atomic_normalization",
+    "storage_precision": [
+      "float32_image_norm_output",
+      "int32_support_radius"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32_indices"
+    ],
+    "synchronization": [
+      "atomicFloat32normalization",
+      "kernelboundarybetween3stages",
+      "device_sync_afterpipeline"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same adaptive box/normalize/output stages and16x16pixelmaps; native smoothing/output cache image in4KBblocksharedarray, existingJulia andnewports globalgather. Nativefastdivide vsJuliaordinary Float32division preserved."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_device_kernel",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+    "verification_contract": "All65536normalizedimage/norm/radius/outputvalues checked against originalnativeCPU plus independentJuliaoracle andbothGPUreferences inall5trials. Originalabsolute1e-3 tolerance retained; radii separatelyexact. Native maxdifference4.8828125e-4, CUDA.jl differences<=1.220703125e-4. Originallibc srand123input identical.",
+    "keyconfounds": [
+      "native4KBsharedimagecache vsJulia globalgathers",
+      "nativereciprocal fastdivide vsJuliaordinarydivision",
+      "nondeterministicFloat32atomic order affectsaccepteddrift",
+      "named squarefixture doesnotcertifyrectangularboundary formulas"
+    ],
+    "boundary_rounding_policy": "Entire selectedsquare must fit image or contributesnothing; untouchedborderout explicitlyzero. RadiusInt32exact, Float32atomicnormalization andoriginalabsolute1e-3 acceptance.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "asmooth",
+        "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "333aedfa2f13e373b95fe6b5b557b450464d306004ca61e7fb26cf2e500c3c94",
+        "status": "verified",
+        "algorithm": "Three-stage adaptive box smoothing and normalization with atomic additions",
+        "work_item_mapping": "onepixel/workitem,16x16threads,8x8blocks perstage",
+        "layout": "row-major flattened128square image; Float32fields andInt32radius",
+        "precision": {
+          "storage": [
+            "float32_image_norm_output",
+            "int32_support_radius"
+          ],
+          "compute": [
+            "float32",
+            "int32_indices"
+          ]
+        },
+        "memory_access": "global-windowgathers andFloat32atomic scatter",
+        "synchronization": [
+          "atomicFloat32normalization",
+          "kernelboundarybetween3stages",
+          "device_sync_afterpipeline"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0
+        },
+        "launch_geometry": {
+          "threads": [
+            16,
+            16
+          ],
+          "blocks": [
+            8,
+            8
+          ],
+          "stages": 3
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+        "supported_features": [
+          "adaptivewindowloops",
+          "Float32atomics",
+          "orderedthree-kernelpipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named128square image threshold4000/rad5, complete3stagepipeline; no rectangulargrid orapplication-levelaccuracyclaim",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth",
+        "numerical_contract": "All65536normalizedimage/norm/radius/outputvalues checked against originalnativeCPU plus independentJuliaoracle andbothGPUreferences inall5trials. Originalabsolute1e-3 tolerance retained; radii separatelyexact. Native maxdifference4.8828125e-4, CUDA.jl differences<=1.220703125e-4. Originallibc srand123input identical.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          3.98744e-05,
+          3.98932e-05,
+          3.79723e-05,
+          3.85504e-05,
+          3.82903e-05
+        ],
+        "mean_last_four_seconds": 3.8676550000000005e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false
+      },
+      "ka": {
+        "benchmark_id": "asmooth",
+        "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "8ace98dde46f81a7a70dd9dd42769811b21b4fe0ec46787bfbdda927fccdd418",
+        "status": "verified",
+        "algorithm": "Three-stage adaptive box smoothing and normalization with atomic additions",
+        "work_item_mapping": "onepixel/workitem,16x16threads,8x8blocks perstage",
+        "layout": "row-major flattened128square image; Float32fields andInt32radius",
+        "precision": {
+          "storage": [
+            "float32_image_norm_output",
+            "int32_support_radius"
+          ],
+          "compute": [
+            "float32",
+            "int32_indices"
+          ]
+        },
+        "memory_access": "global-windowgathers andAtomixFloat32atomic scatter",
+        "synchronization": [
+          "atomicFloat32normalization",
+          "kernelboundarybetween3stages",
+          "device_sync_afterpipeline"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0
+        },
+        "launch_geometry": {
+          "threads": [
+            16,
+            16
+          ],
+          "blocks": [
+            8,
+            8
+          ],
+          "stages": 3
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+        "supported_features": [
+          "adaptivewindowloops",
+          "Float32atomics",
+          "orderedthree-kernelpipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named128square image threshold4000/rad5, complete3stagepipeline; no rectangulargrid orapplication-levelaccuracyclaim",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth",
+        "numerical_contract": "All65536normalizedimage/norm/radius/outputvalues checked against originalnativeCPU plus independentJuliaoracle andbothGPUreferences inall5trials. Originalabsolute1e-3 tolerance retained; radii separatelyexact. Native maxdifference4.8828125e-4, CUDA.jl differences<=1.220703125e-4. Originallibc srand123input identical.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          5.57124e-05,
+          5.40554e-05,
+          4.87816e-05,
+          4.80165e-05,
+          4.81803e-05
+        ],
+        "mean_last_four_seconds": 4.975845e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null
+      },
+      "jacc": {
+        "benchmark_id": "asmooth",
+        "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "bd676d81ee79935e7f416b049eb3f923a3c5baed552a4b06223a54ec5f0e2c78",
+        "status": "verified",
+        "algorithm": "Three-stage adaptive box smoothing and normalization with atomic additions",
+        "work_item_mapping": "onepixel/workitem,16x16threads,8x8blocks perstage",
+        "layout": "row-major flattened128square image; Float32fields andInt32radius",
+        "precision": {
+          "storage": [
+            "float32_image_norm_output",
+            "int32_support_radius"
+          ],
+          "compute": [
+            "float32",
+            "int32_indices"
+          ]
+        },
+        "memory_access": "global-windowgathers andJACCFloat32atomic scatter",
+        "synchronization": [
+          "atomicFloat32normalization",
+          "kernelboundarybetween3stages",
+          "device_sync_afterpipeline"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0,
+          "explicit": true
+        },
+        "launch_geometry": {
+          "threads": [
+            16,
+            16
+          ],
+          "blocks": [
+            8,
+            8
+          ],
+          "stages": 3
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+        "supported_features": [
+          "adaptivewindowloops",
+          "Float32atomics",
+          "orderedthree-kernelpipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named128square image threshold4000/rad5, complete3stagepipeline; no rectangulargrid orapplication-levelaccuracyclaim",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth",
+        "numerical_contract": "All65536normalizedimage/norm/radius/outputvalues checked against originalnativeCPU plus independentJuliaoracle andbothGPUreferences inall5trials. Originalabsolute1e-3 tolerance retained; radii separatelyexact. Native maxdifference4.8828125e-4, CUDA.jl differences<=1.220703125e-4. Originallibc srand123input identical.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          6.98575e-05,
+          8.71966e-05,
+          6.13985e-05,
+          6.02665e-05,
+          5.90994e-05
+        ],
+        "mean_last_four_seconds": 6.699025e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null
+      }
+    },
+    "source_sha256": {
+      "src/asmooth-julia/asmooth-julia-cuda.jl/main.jl": "333aedfa2f13e373b95fe6b5b557b450464d306004ca61e7fb26cf2e500c3c94",
+      "src/asmooth-julia/asmooth-julia-KA/main.jl": "8ace98dde46f81a7a70dd9dd42769811b21b4fe0ec46787bfbdda927fccdd418",
+      "src/asmooth-julia/asmooth-julia-JACC/main.jl": "bd676d81ee79935e7f416b049eb3f923a3c5baed552a4b06223a54ec5f0e2c78"
+    },
+    "ontology_sha256": "4937550b3b12ddf2fda69483a5ca87effc064331a726cc3faa45bd25982de5ce"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/asmooth-julia/asmooth-julia-JACC/main.jl",
+    "sha256": "bd676d81ee79935e7f416b049eb3f923a3c5baed552a4b06223a54ec5f0e2c78",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        101
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [
+        51
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        99
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+      "run_id": "20261017T160827786836Z_asmooth",
+      "result": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth/result.json",
+      "result_sha256": "8fb4597c8ec5838bd686511370bcc9ef8554b60d677851fe7a18ba500b0eb6d6",
+      "source_hash": "60fd01de1760bc8a91ea689a086842a2157604e6dfd11ab5c59a51e4842e7f8c",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.98575e-05,
+        8.71966e-05,
+        6.13985e-05,
+        6.02665e-05,
+        5.90994e-05
+      ],
+      "mean_last_four_seconds": 6.699025e-05,
+      "contract": {
+        "width": 128,
+        "height": 128,
+        "threshold": 4000,
+        "max_radius": 5,
+        "precision": "Float32image/norm/output,Int32boxradii",
+        "fixture": "original libc srand123 rand()%256, allunwrittenborderoutzero initialized",
+        "domain": "adaptive scientific image smoothing, threshold-selected localbox average andnormalization",
+        "metric": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+        "mapping_confound": "native4KBsharedimagecache per smoothing/outputblock, Julia/globalgathers; nativefastdivide vsJuliaordinarydivision",
+        "artifact": "allimage,norm,box,out concatenatedFloat32; boxInt32smallradiuslossless andcheckedexact"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "d9d88010ad96d7ce2a7c",
+        "benchmark_id": "asmooth",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/asmooth.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "asmooth:jacc:20261017T160827786836Z_asmooth:N3:accepted",
+          "benchmark_id": "asmooth",
+          "configuration_id": "libc_rand123_fp32_128square_threshold4000_rad5_three_stages_repeat10_v1",
+          "implementation_model": "jacc",
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "source_revision": "bd676d81ee79935e7f416b049eb3f923a3c5baed552a4b06223a54ec5f0e2c78",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 0.00048828125; unchangedtolerance 0.001+0*abs(ref).",
+          "minimal_trigger": {
+            "width": 128,
+            "height": 128,
+            "threshold": 4000,
+            "max_radius": 5,
+            "precision": "Float32image/norm/output,Int32boxradii",
+            "fixture": "original libc srand123 rand()%256, allunwrittenborderoutzero initialized",
+            "domain": "adaptive scientific image smoothing, threshold-selected localbox average andnormalization",
+            "metric": "three stages adaptivebox/atomicnorm,normalizeimage,outputboxaverage;10independentrepeats resetexcluded",
+            "mapping_confound": "native4KBsharedimagecache per smoothing/outputblock, Julia/globalgathers; nativefastdivide vsJuliaordinarydivision",
+            "artifact": "allimage,norm,box,out concatenatedFloat32; boxInt32smallradiuslossless andcheckedexact"
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261017T160827786836Z_asmooth/result.json",
+              "sha256": "8fb4597c8ec5838bd686511370bcc9ef8554b60d677851fe7a18ba500b0eb6d6"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null
+  },
+  "source_commit": "4b63fe8a73be11ef638d123af416b7fab6a11d96",
+  "explicit_outcome_evidence": null
+}

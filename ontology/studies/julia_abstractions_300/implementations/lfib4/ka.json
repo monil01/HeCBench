@@ -1,0 +1,185 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "lfib4",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/lfib4.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": null,
+  "implementation_review_status": "not_yet_reviewed_per_model",
+  "shared_benchmark_traits": {
+    "benchmark": "lfib4",
+    "audited_at": "2026-10-16T23:43:25.488664+00:00",
+    "primary_motif": "parallel_lagged_fibonacci_random_generation",
+    "storage_precision": [
+      "UInt32"
+    ],
+    "compute_precision": [
+      "UInt32",
+      "Int64"
+    ],
+    "synchronization": [
+      "workgroup_barrier",
+      "two_host_stream_joins",
+      "device_synchronize"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same native four-stage parallel recurrence and convolution; historical single-thread reference separately corrected. Dead shared workspace initialized to zero and JACC full workspace copy explicit."
+    },
+    "implementation_class": {
+      "cuda_jl": "hybrid_host_control",
+      "ka": "hybrid_host_control",
+      "jacc": "hybrid_host_control"
+    },
+    "timing_scope": "four-stage pipeline with stream joins and final synchronization; excludes allocations/seedcopy/streamcreation/free",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Selected r16 s1024 only, not original sweep",
+      "CUDA host stream dependency",
+      "Native/KA static shared versus JACC dynamic global-zero workspace copies",
+      "Native uninitialized dead workspace is defined in Julia ports",
+      "Original serial historical reference replaced with native parallel algorithm in separately recorded correction phase"
+    ],
+    "evidence": {
+      "observation": "research/observations/lfib4.md",
+      "source_sha256": {
+        "src/lfib4-julia/lfib4-julia-cuda.jl/main.jl": "6ebed04c3dec40b35276ca3b833dbfb99677d85e345ad97882d16a8bfc94d2cb",
+        "src/lfib4-julia/lfib4-julia-KA/main.jl": "16b4062c1df8cd24716838d438d730760c526dcaf8ccc8713ca43b8a58b3eb7f",
+        "src/lfib4-julia/lfib4-julia-JACC/main.jl": "a740366a40ba49b0eb142a927332fe91df8fd51a5a875d23d64864271ff3cac7"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/lfib4-julia/lfib4-julia-KA/main.jl",
+    "sha256": "16b4062c1df8cd24716838d438d730760c526dcaf8ccc8713ca43b8a58b3eb7f",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        18,
+        35,
+        62
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        4,
+        19,
+        36,
+        63
+      ],
+      "barrier": [
+        6,
+        12,
+        15,
+        22,
+        25,
+        30,
+        39,
+        41,
+        43,
+        45,
+        47,
+        49
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "lfib4_parallel4stage_r16_s1024_v1",
+      "run_id": "20261016T234202779904Z_lfib4",
+      "result": ".porting-state/portable_julia/runs/20261016T234202779904Z_lfib4/result.json",
+      "result_sha256": "da46e483e395644ccb3d31a5e39c1ce6fbd1b95e35065d54416f961171c48ab7",
+      "source_hash": "cd680a6e02c4eb8369aa854f49bc7290c7176722a12e85a98ff506492abd3e87",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000322103,
+        0.00031744300000000004,
+        0.00029412300000000003,
+        0.00028937200000000003,
+        0.000285503
+      ],
+      "mean_last_four_seconds": 0.00029661025,
+      "contract": {
+        "n": 16384,
+        "r": 16,
+        "s": 1024,
+        "seed": "256UInt32(i*1664525+1013904223) fori0..255",
+        "outputs": "all16384UInt32modularrecurrencevalues",
+        "timing": "fourstagepipeline +2streamjoins+finalsync; excludesallallocation/seedreset/transfers/streamcreation"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "c45ed8689be5fb2d3523",
+        "benchmark_id": "lfib4",
+        "implementation_model": "ka",
+        "taxonomy_code": "B2",
+        "phase": "reference_correctness",
+        "is_failure": true,
+        "evidence_path": ".porting-state/porting_logs/lfib4-julia-ka/compiler_attempts.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "phase": "reference_correctness",
+          "candidate": 1,
+          "compiler_attempt": 1,
+          "status": "B2_compile_failure",
+          "bundle": "20261016T234007156128Z_lfib4",
+          "reason": "CUDA.jl column_y! implicit UInt32 kernelreturn"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 1135,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved implementation characters/4) only",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/lfib4-julia/lfib4-julia-KA/main.jl"
+      ],
+      "limitations": "Only savedsource proxy; prompts,toolcontext,reasoning,cachedusage unknown. Not totalconsumption."
+    }
+  },
+  "source_commit": "e35963d12c75db4870752ae635f0c341047efa06",
+  "explicit_outcome_evidence": null
+}

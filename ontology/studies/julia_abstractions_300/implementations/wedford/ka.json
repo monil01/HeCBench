@@ -1,0 +1,160 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "wedford",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/wedford.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": null,
+  "implementation_review_status": "not_yet_reviewed_per_model",
+  "shared_benchmark_traits": {
+    "benchmark": "wedford",
+    "audited_at": "2026-10-17T00:32:40.298940+00:00",
+    "primary_motif": "welford_mean_population_variance_reduction",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32"
+    ],
+    "synchronization": [
+      "workgroup_barrier"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same sequential Welford and counted merge tree, native shuffle/warp synchronization replaced with shared emulation/full-block barriers. Historical sum/sumsquares reference corrected."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "synchronized complete Welford kernel loop mean",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native640 shared bytes versus portable6144 bytes",
+      "Native shuffle instructions versus shared emulation",
+      "Full-block barriers replace warp synchronization",
+      "JACC additional zero-workspace global-to-shared copy",
+      "Named bs16 ss64 fs8 dyadic fixture; no high-offset stability claim"
+    ],
+    "evidence": {
+      "observation": "research/observations/wedford.md",
+      "source_sha256": {
+        "src/wedford-julia/wedford-julia-cuda.jl/main.jl": "2003b0353371bc69fafb9f9399c6a13156b6392af8b803708e596818f9e9d472",
+        "src/wedford-julia/wedford-julia-JACC/main.jl": "2d49e025995fef3247aea6bb577cc2892b90f0aca9d6c524cdcbb59f61df5b70",
+        "src/wedford-julia/wedford-julia-KA/main.jl": "7d1787476fb054b4c09aa4e5f5733b0fa5258d357289786c3902f09127d4799b"
+      }
+    },
+    "oracle_precision": [
+      "Float64"
+    ],
+    "precision_scope": "storage/compute lists describe GPU workload and bit-encoded count workspace; Float64 is CPU oracle/artifact precision, not GPU arithmetic."
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/wedford-julia/wedford-julia-KA/main.jl",
+    "sha256": "7d1787476fb054b4c09aa4e5f5733b0fa5258d357289786c3902f09127d4799b",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        15
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        17
+      ],
+      "barrier": [
+        28,
+        34,
+        40,
+        45,
+        51
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "wedford_true_welford_bs16_ss64_fs8_r10_v1",
+      "run_id": "20261017T003003745416Z_wedford",
+      "result": ".porting-state/portable_julia/runs/20261017T003003745416Z_wedford/result.json",
+      "result_sha256": "7bd274e17890e9a894cfde95dc45115bed36b00c00d844461c9ac3ef06a125c4",
+      "source_hash": "2795ed314f8182dcddc52247b9455d5ca0010b2d4b6c125926c3ee0bb3ce0195",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.41202e-05,
+        1.54782e-05,
+        1.0332e-05,
+        9.8661e-06,
+        9.5441e-06
+      ],
+      "mean_last_four_seconds": 1.1305100000000001e-05,
+      "contract": {
+        "n": 8192,
+        "repeat": 10,
+        "batch": 16,
+        "spatial": 64,
+        "features": 8,
+        "threads_mapping": "native32x16 ->portablelinear512, identicaltx/tyworkassignment",
+        "input": "Float32((i17)%1024)/1024 commonfixture",
+        "outputs": "8means+8populationvariances Float64exactencoding",
+        "oracle": "independentFloat64twopassmean/deviationvariance, nativeatol1e-3unchanged",
+        "timing": "synchronizedcompleteWelfordkernelmean"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 992,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved implementation characters/4) only",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/wedford-julia/wedford-julia-KA/main.jl"
+      ],
+      "limitations": "Only savedsource proxy; prompts,toolcontext,reasoning,cachedusage unknown. Not totalconsumption."
+    }
+  },
+  "source_commit": "2d8ceb0e348cb829527a7af96498e7b769aadcfa",
+  "explicit_outcome_evidence": null
+}

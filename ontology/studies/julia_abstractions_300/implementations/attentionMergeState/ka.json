@@ -1,0 +1,146 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "attentionMergeState",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/attentionMergeState.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": null,
+  "implementation_review_status": "not_yet_reviewed_per_model",
+  "shared_benchmark_traits": {
+    "benchmark": "attentionMergeState",
+    "primary_motif": "mixed_precision_attention_state_merge_logsumexp",
+    "storage_precision": [
+      "float32_output",
+      "float16_output",
+      "bfloat16_output",
+      "float32_LSE"
+    ],
+    "compute_precision": [
+      "float32_exp_log_weights_and_FMA",
+      "output_rounding_FP16_BF16"
+    ],
+    "synchronization": [
+      "device_sync_after_complete_kernel_region"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native16bytepack4/8outputs/thread reusesweights; baselineJulia/newports scalaroutput/thread recomputesexp/logweights, actual3dtypes verified."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_device_kernel",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Matched synchronized host launch region; exact perbenchmark scope in study_config.json, five_trials_last_four_v1, mean2\u20135.",
+    "verification_contract": "The study evaluates genuine Float32, Float16 and BFloat16 output storage, with Float32 softmax weights, arithmetic and LSE. It has 128 tokens, 8 heads and head size 64. Historical CUDA.jl printed a BF16 label while invoking Float32; this study corrects the dtype configuration using the existing CUDA.CUDACore.BFloat16 type, already available through CUDA, while preserving the original generic device kernel and historical main source. Actual dtype sizes are logged, including two-byte BF16 storage. Prefix and suffix features and LSE values differ, avoiding the original same-seed equal-state degeneracy. One-sided positive/negative infinity sentinels exercise the original mapping of infinity to minus infinity; both-infinite heads, whose original formula produces NaN, are explicitly outside this finite-output contract. All 199680 output/LSE values across three dtypes pass both references in all five trials, maximum native difference 2.9802322387695312e-8 and exact CUDA.jl agreement, under the unchanged absolute 1e-3 tolerance. Float16/BFloat16 outputs are losslessly widened to Float32 only for artifact storage after timing.",
+    "keyconfounds": [
+      "HistoricalBF16labelFloat32alias correctedstudyconfiguration, genericreferencekernel preserved.",
+      "Nativepacked4/8elements/thread vsJuliascalar repeatedtranscendentalwork.",
+      "Namednonidenticalstates replaceoriginalsame-seeddegenerateequalstates.",
+      "BothinfiniteoriginalformulaNaNdomain excluded, one-sided\u00b1Inf covered.",
+      "Nativeconstexprbuildflagrepair separatefromportablecandidate."
+    ],
+    "boundary_rounding_policy": "Both\u00b1InfLSE mapped-minusInf; onlyone-sidedinfinityheads included, originalfiniteoutput1e-3criterion; actualFP16/BF16rounding andlosslessartifactwidening.",
+    "source_sha256": {
+      "src/attentionMergeState-julia/attentionMergeState-julia-JACC/main.jl": "b868f34f6a90baa1cac4f69b8f33631aeb5b7c7811ec0213ae7433a001e0bbfa",
+      "src/attentionMergeState-julia/attentionMergeState-julia-KA/main.jl": "dad67a2f5b98e10061af80d5c76a0de57cb9e7d2ebb6686d29a8326e86a78f16",
+      "src/attentionMergeState-julia/attentionMergeState-julia-cuda.jl/main.jl": "79d1115b78bc18499c9eadd7d9c6b22a37358de450068df998109fc0cd069e54",
+      "src/attentionMergeState-cuda/main.cu": "87371d25ab5ab30a9c296e58e1ea1c8b71f94375a30dd0b03222c0ee35ba1763",
+      "src/attentionMergeState-cuda/reference.h": "29adab82b41fe71259b545e18e30e963fa378ca16f7adf8a754f61bb8c9e0262"
+    },
+    "ontology_sha256": "b4059d5634fdd63b4f6b44eb539693180deaf8086d4beabbdb1edc639ed03484",
+    "profile_status": "No measuredbottleneckclaim fromsourceaudit; rootseparateprofilingrecords authoritative.",
+    "audit_status": "source_reviewed_and_conditioned_numerical_evidence",
+    "reviewer": "stencil_ports_worker"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/attentionMergeState-julia/attentionMergeState-julia-KA/main.jl",
+    "sha256": "dad67a2f5b98e10061af80d5c76a0de57cb9e7d2ebb6686d29a8326e86a78f16",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "real_FP32_FP16_BF16_nonidentical_states_128tokens8heads64size_repeat100_v1",
+      "run_id": "20261017T002439273225Z_attentionMergeState",
+      "result": ".porting-state/portable_julia/runs/20261017T002439273225Z_attentionMergeState/result.json",
+      "result_sha256": "cf44f207c3e91284baad1787e89b8e3a78cef6702d82d82783d5d86b1418a468",
+      "source_hash": "77077421ae4af788c7b4935ebc5019de895b99f4266ae527a3fbe4825d44ccf1",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.696265e-05,
+        1.676474e-05,
+        1.603745e-05,
+        1.574143e-05,
+        1.542843e-05
+      ],
+      "mean_last_four_seconds": 1.59930125e-05,
+      "contract": {
+        "tokens": 128,
+        "heads": 8,
+        "head_size": 64,
+        "dtypes": [
+          "float32",
+          "float16",
+          "bfloat16"
+        ],
+        "compute_precision": "Float32softmaxweights/FMA/LSE; outputroundtoactualdtype",
+        "fixture": "nonidenticalsigneddyadicprefix/suffix, distinctLSE[-4,4], one-sided\u00b1Inf sentinelcases; both-infinite undefinedNaNdomain excluded",
+        "reference_correction": "LegacyBF16labelrunsFloat32; studyusesactualCUDA.CUDACore.BFloat16 with2bytestorage andexistinggenericCUDA.jlkernel, originalmainpreserved.",
+        "mapping_confound": "Native16bytepacked4/8elements perthread vsbaselineJulia/newports1scalar/thread, repeatssoftmaxperdimension; noframeworkunsupportedclaim",
+        "artifact": "alloutputsandLSEforeach3dtypes losslesslywidenedtoFloat32outside timer",
+        "metric": "sum3synchronized100launchdtype regions/100; transfers/clear/checks excluded"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null
+  },
+  "source_commit": "eaac8337289706f312f0ac4b6a0b28010756d74d",
+  "explicit_outcome_evidence": null
+}

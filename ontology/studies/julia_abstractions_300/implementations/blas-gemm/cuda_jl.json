@@ -1,0 +1,531 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_300_v2",
+  "benchmark_id": "blas-gemm",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/blas-gemm.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "blas-gemm",
+    "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
+    "status": "verified",
+    "algorithm": "Vendor cuBLAS GEMM for Float16/Float32/Float64",
+    "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+    "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
+    "precision": {
+      "storage": [
+        "float16",
+        "float32",
+        "float64"
+      ],
+      "compute": [
+        "float16_scalar_GEMM",
+        "float32",
+        "float64"
+      ]
+    },
+    "memory_access": "vendor-library internal implementation unprofiled",
+    "synchronization": [
+      "cuBLAS_dispatch_or_scalar_GEMM_kernel",
+      "device_sync_after_each_GEMM"
+    ],
+    "resource_policy": {
+      "shared_bytes": null,
+      "reason": "vendor internals unprofiled"
+    },
+    "launch_geometry": {
+      "portable_threads": [
+        16,
+        16
+      ],
+      "portable_blocks": [
+        3,
+        4
+      ],
+      "vendor_launch_geometry": "not profiled"
+    },
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+    "supported_features": [
+      "three precision GEMM",
+      "FP64 arithmetic",
+      "Float16 conversion and accumulation"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Named rectangular GEMM operation only, not large-matrix optimization or application solver.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm",
+    "numerical_contract": "All9216 outputs across FP16/32/64 exact CPU and both unchanged-native/cuBLAS and corrected CUDA.jl/cuBLAS references in allfive trials; original exact memcmp acceptance retained for binary inputs.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.0001162169,
+      9.17718e-05,
+      8.11216e-05,
+      7.82048e-05,
+      7.73257e-05
+    ],
+    "mean_last_four_seconds": 8.2105975e-05,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false
+  },
+  "implementation_review_status": "worker_source_review",
+  "shared_benchmark_traits": {
+    "benchmark": "blas-gemm",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_domain": "numerical_linear_algebra",
+      "secondary_domains": [],
+      "scientific_task": "Dense mixed-precision matrix multiplication with scaled accumulation",
+      "mathematical_operation": "C=2AB+0.5C, M64 K32 N48, separately FP16 FP32 FP64",
+      "discretization": "dense rectangular matrices, no PDE discretization",
+      "accuracy_requirements": "All 9216 outputs exactly match CPU dot products and both GPU references for the original binary fixture; this does not establish general FP16 cancellation accuracy.",
+      "input_size_regime": "Named M64 K32 N48, libc srand2 binary inputs, ten independent reset operations per precision.",
+      "precision_sensitivity": "Binary input sums bounded by32 give exact FP16 accumulation for this fixture; arbitrary real inputs may not.",
+      "community_use_case": "Dense linear operators in numerical solvers and scientific machine learning; illustrative application context.",
+      "description": "GEMM multiplies two dense matrices and accumulates their scaled product into an existing matrix. The study preserves the native alpha/beta operation and three precision modes, replacing a historical Julia smoke-only reference with an actual vendor-library GEMM.",
+      "provenance": "Native blas-gemm main.cu and utils.h define the operation and fixture; no specific end-use scientific application is asserted."
+    },
+    "primary_motif": "dense_matrix_multiplication",
+    "storage_precision": [
+      "float16",
+      "float32",
+      "float64"
+    ],
+    "compute_precision": [
+      "float16_scalar_GEMM",
+      "float32",
+      "float64"
+    ],
+    "synchronization": [
+      "cuBLAS_dispatch_or_scalar_GEMM_kernel",
+      "device_sync_after_each_GEMM"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native and corrected CUDA.jl use actual vendor cuBLAS GEMM. KA/JACC implement original native validation-kernel scalar dot-product algorithm,16x16 output maps, no tiled shared-memory optimization. Vendor optimization vs scalar mapping is an explicit algorithm/resource confound."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_vendor_CUBLAS_library_call",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+    "verification_contract": "All9216 outputs across FP16/32/64 exact CPU and both unchanged-native/cuBLAS and corrected CUDA.jl/cuBLAS references in allfive trials; original exact memcmp acceptance retained for binary inputs.",
+    "keyconfounds": [
+      "vendor optimized cuBLAS vs scalar KA/JACC algorithm",
+      "small named binary fixture, not arbitrary-real numerical certificate",
+      "historical Julia smoke reference required substantive correction",
+      "native adapter needed brace-only nvcc macro repair, separate T1 instrumentation phase"
+    ],
+    "boundary_rounding_policy": "Independent C reset before each timed GEMM; alpha2 beta0.5; values exactly representable in named binary fixture.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "blas-gemm",
+        "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
+        "status": "verified",
+        "algorithm": "Vendor cuBLAS GEMM for Float16/Float32/Float64",
+        "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+        "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
+        "precision": {
+          "storage": [
+            "float16",
+            "float32",
+            "float64"
+          ],
+          "compute": [
+            "float16_scalar_GEMM",
+            "float32",
+            "float64"
+          ]
+        },
+        "memory_access": "vendor-library internal implementation unprofiled",
+        "synchronization": [
+          "cuBLAS_dispatch_or_scalar_GEMM_kernel",
+          "device_sync_after_each_GEMM"
+        ],
+        "resource_policy": {
+          "shared_bytes": null,
+          "reason": "vendor internals unprofiled"
+        },
+        "launch_geometry": {
+          "portable_threads": [
+            16,
+            16
+          ],
+          "portable_blocks": [
+            3,
+            4
+          ],
+          "vendor_launch_geometry": "not profiled"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+        "supported_features": [
+          "three precision GEMM",
+          "FP64 arithmetic",
+          "Float16 conversion and accumulation"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named rectangular GEMM operation only, not large-matrix optimization or application solver.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm",
+        "numerical_contract": "All9216 outputs across FP16/32/64 exact CPU and both unchanged-native/cuBLAS and corrected CUDA.jl/cuBLAS references in allfive trials; original exact memcmp acceptance retained for binary inputs.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0001162169,
+          9.17718e-05,
+          8.11216e-05,
+          7.82048e-05,
+          7.73257e-05
+        ],
+        "mean_last_four_seconds": 8.2105975e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false
+      },
+      "ka": {
+        "benchmark_id": "blas-gemm",
+        "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "30d3ff9ca45d0bec0a6143079b95b2d34330ccf1047231d482a23d4463e58880",
+        "status": "verified",
+        "algorithm": "Scalar per-output dot-product GEMM with alpha2 betaHalf",
+        "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+        "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
+        "precision": {
+          "storage": [
+            "float16",
+            "float32",
+            "float64"
+          ],
+          "compute": [
+            "float16_scalar_GEMM",
+            "float32",
+            "float64"
+          ]
+        },
+        "memory_access": "global scalar dot-product gathers",
+        "synchronization": [
+          "cuBLAS_dispatch_or_scalar_GEMM_kernel",
+          "device_sync_after_each_GEMM"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0
+        },
+        "launch_geometry": {
+          "portable_threads": [
+            16,
+            16
+          ],
+          "portable_blocks": [
+            3,
+            4
+          ],
+          "vendor_launch_geometry": "not profiled"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+        "supported_features": [
+          "three precision GEMM",
+          "FP64 arithmetic",
+          "Float16 conversion and accumulation"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named rectangular GEMM operation only, not large-matrix optimization or application solver.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm",
+        "numerical_contract": "All9216 outputs across FP16/32/64 exact CPU and both unchanged-native/cuBLAS and corrected CUDA.jl/cuBLAS references in allfive trials; original exact memcmp acceptance retained for binary inputs.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          8.04607e-05,
+          6.11995e-05,
+          5.13303e-05,
+          5.06253e-05,
+          4.92646e-05
+        ],
+        "mean_last_four_seconds": 5.3104925e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null
+      },
+      "jacc": {
+        "benchmark_id": "blas-gemm",
+        "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "60cde33f1a48a6912d61ee393400978bb8edce6f8d64192f39185355e79ad56a",
+        "status": "verified",
+        "algorithm": "Scalar per-output dot-product GEMM with alpha2 betaHalf",
+        "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+        "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
+        "precision": {
+          "storage": [
+            "float16",
+            "float32",
+            "float64"
+          ],
+          "compute": [
+            "float16_scalar_GEMM",
+            "float32",
+            "float64"
+          ]
+        },
+        "memory_access": "global scalar dot-product gathers",
+        "synchronization": [
+          "cuBLAS_dispatch_or_scalar_GEMM_kernel",
+          "device_sync_after_each_GEMM"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0,
+          "explicit": true
+        },
+        "launch_geometry": {
+          "portable_threads": [
+            16,
+            16
+          ],
+          "portable_blocks": [
+            3,
+            4
+          ],
+          "vendor_launch_geometry": "not profiled"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+        "supported_features": [
+          "three precision GEMM",
+          "FP64 arithmetic",
+          "Float16 conversion and accumulation"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named rectangular GEMM operation only, not large-matrix optimization or application solver.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm",
+        "numerical_contract": "All9216 outputs across FP16/32/64 exact CPU and both unchanged-native/cuBLAS and corrected CUDA.jl/cuBLAS references in allfive trials; original exact memcmp acceptance retained for binary inputs.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          9.71579e-05,
+          0.0001050398,
+          7.39898e-05,
+          7.08465e-05,
+          7.14284e-05
+        ],
+        "mean_last_four_seconds": 8.032612499999999e-05,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null
+      }
+    },
+    "source_sha256": {
+      "src/blas-gemm-julia/blas-gemm-julia-cuda.jl/main.jl": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
+      "src/blas-gemm-julia/blas-gemm-julia-KA/main.jl": "30d3ff9ca45d0bec0a6143079b95b2d34330ccf1047231d482a23d4463e58880",
+      "src/blas-gemm-julia/blas-gemm-julia-JACC/main.jl": "60cde33f1a48a6912d61ee393400978bb8edce6f8d64192f39185355e79ad56a"
+    },
+    "ontology_sha256": "ba6df2bbf966f94507cb7f4455da7c199baf4a90b6362e97bdc545f4577a4fe0"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/blas-gemm-julia/blas-gemm-julia-cuda.jl/main.jl",
+    "sha256": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [
+        5
+      ],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
+      "run_id": "20261017T161855946063Z_blas-gemm",
+      "result": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm/result.json",
+      "result_sha256": "bf9fcf3b9551404ed6c61763c669769f3ebd3dfb489b5df0809a10be394fda5e",
+      "source_hash": "bf310d971b3c996967d5a1f172a46792c889eb71801e5f2ac3912fe2ed09cd7a",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0001162169,
+        9.17718e-05,
+        8.11216e-05,
+        7.82048e-05,
+        7.73257e-05
+      ],
+      "mean_last_four_seconds": 8.2105975e-05,
+      "contract": {
+        "M": 64,
+        "K": 32,
+        "N": 48,
+        "precision": [
+          "Float16",
+          "Float32",
+          "Float64"
+        ],
+        "fixture": "originallibc srand2 binaryA,B,C initializedinsequentialsameorder",
+        "alpha": 2,
+        "beta": 0.5,
+        "domain": "dense numerical linear algebra GEMM",
+        "reference_correction": "HistoricalJulia smokedummy+constantPASS replaced actualCUDA.CUBLASgemm!, originallegacy_main.jl/legacy_Makefile preserved",
+        "metric": "oneGEMM perindependentreset,10averaged pertype,sum3types; reset/transfers excluded",
+        "mapping_confound": "NativeandCUDAjlvendorcuBLAS vsnewKA/JACC scalarGEMM matchingoriginalnativevalidationkernel,16x16threads; notpureframeworkoverhead",
+        "scope": "Binaryinitialfixture followsnativecurrentrand_matrix andmakesall3dtypesexact; arbitraryhalfinput cancellation/unboundedprecision notclaimed"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "8d06282fa34ad51da180",
+        "benchmark_id": "blas-gemm",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/blas-gemm.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "blas-gemm:cuda_jl:reference_semantics:S1:01",
+          "benchmark_id": "blas-gemm",
+          "configuration_id": "native_semantics_audit_pending_study",
+          "implementation_model": "cuda_jl",
+          "environment_id": "static_source_audit_no_execution",
+          "source_revision": "0add452a2169faf122fd68b33d60fd570c9e5befc31b07337ee27cc351c7c652",
+          "phase": "reference_repair",
+          "code": "S1",
+          "is_failure": true,
+          "candidate_id": null,
+          "check_id": 1,
+          "repair_id": 1,
+          "exact_error": "Historical Julia executes only a smoke marker kernel and prints canned PASS/zero timings; no BLAS dot/GEMM computation or real output comparison.",
+          "minimal_trigger": "Sourceinspection smoke_kernel! plusliteralStringPASS outputs.",
+          "root_cause_evidence": [
+            {
+              "path": "src/blas-gemm-julia/blas-gemm-julia-cuda.jl/legacy_main.jl",
+              "sha256": "0add452a2169faf122fd68b33d60fd570c9e5befc31b07337ee27cc351c7c652"
+            }
+          ],
+          "resolution": "Replaced with actual CUDA.CUBLAS.gemm!, preserved legacy_main.jl and legacy_Makefile byte-identically.",
+          "final_outcome": "reference_repaired_verified_all_five_both_outputs",
+          "compiler_failure": false,
+          "historical_cost_known": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null
+}
