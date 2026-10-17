@@ -21,8 +21,8 @@ function study(allocate)
   else
    a=T.(aa);b=T.(bb)
   end
-  S=T==Int8 ? Int32 : T;A=allocate(T,length(a));B=allocate(T,length(b));C=allocate(S,MM*NN);copyto!(A,a);copyto!(B,b);fill!(C,zero(S));CUDA.synchronize()
-  scalar=compute==70 ? Float64 : compute==64 ? UInt16 : compute==72 ? Int32 : Float32;alpha=Ref{scalar}(compute==64 ? UInt16(0x3c00) : one(scalar));beta=Ref{scalar}(zero(scalar));args=(handle[],A,B,C,atype,ctype,compute,alpha,beta);s=callgemm(args...);CUDA.synchronize();push!(flags,Int(s));println("STUDY_CASE label=",label," status=",s," compute=",compute)
+  S=T==Int8 ? Int32 : T;A=allocate(T,length(a));B=allocate(T,length(b));C=allocate(S,MM*NN);copyto!(A,a);copyto!(B,b);fill!(C,zero(S));CUDA.device_synchronize(blocking=true)
+  scalar=compute==70 ? Float64 : compute==64 ? UInt16 : compute==72 ? Int32 : Float32;alpha=Ref{scalar}(compute==64 ? UInt16(0x3c00) : one(scalar));beta=Ref{scalar}(zero(scalar));args=(handle[],A,B,C,atype,ctype,compute,alpha,beta);s=callgemm(args...);CUDA.device_synchronize(blocking=true);push!(flags,Int(s));println("STUDY_CASE label=",label," status=",s," compute=",compute)
   (s==0||(label==:bf16&&s==15))||error("UnexpectedcuBLASstatus",s)
   if s==0
    want=Float64[]
@@ -36,7 +36,7 @@ function study(allocate)
   total=0.;got=Float64.(flags)
   for (args,label) in cases
    for k in 1:10
-    CUDA.synchronize();t=time_ns();s=callgemm(args...);CUDA.synchronize();total+=(time_ns()-t)*1e-9/10;s==0||error("TimedcuBLASstatus",s)
+    CUDA.device_synchronize(blocking=true);t=time_ns();s=callgemm(args...);CUDA.device_synchronize(blocking=true);total+=(time_ns()-t)*1e-9/10;s==0||error("TimedcuBLASstatus",s)
    end
    data=Array(args[4]);values=label in (:f16_acc16,:f16_acc32) ? Float64.(reinterpret(Float16,data)) : label==:bf16 ? Float64.(bfdecode.(data)) : Float64.(data);append!(got,values)
   end
