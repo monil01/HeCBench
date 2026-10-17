@@ -1,1 +1,2 @@
-include("../mcpr-julia/main.jl")
+include("nqueen-julia-cuda.jl/main.jl")
+if abspath(PROGRAM_FILE)==@__FILE__;main();end

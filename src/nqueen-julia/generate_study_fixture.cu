@@ -1,0 +1,13 @@
+#define main preserved_native_main
+#include "../nqueen-cuda/main.cu"
+#undef main
+#include <vector>
+#include <stdint.h>
+#include <cstring>
+constexpr int STUDY_N=15,STUDY_DEPTH=7;
+constexpr uint32_t ALL=(1u<<STUDY_N)-1;
+struct Count {uint64_t tree,solutions;};
+Count solve(uint32_t cols,uint32_t left,uint32_t right,int depth){Count out{0,0};uint32_t avail=ALL&~(cols|left|right);while(avail){uint32_t bit=avail&-avail;avail-=bit;out.tree++;if(depth+1==STUDY_N)out.solutions++;else{Count child=solve(cols|bit,((left|bit)<<1)&ALL,(right|bit)>>1,depth+1);out.tree+=child.tree;out.solutions+=child.solutions;}}return out;}
+std::vector<QueenRoot> independent;uint64_t prefix_nodes=0;
+void prefix(uint32_t cols,uint32_t left,uint32_t right,int depth,QueenRoot state){uint32_t avail=ALL&~(cols|left|right);while(avail){uint32_t bit=avail&-avail;avail-=bit;prefix_nodes++;state.board[depth]=__builtin_ctz(bit);state.control=cols|bit;if(depth+1==STUDY_DEPTH)independent.push_back(state);else prefix(cols|bit,((left|bit)<<1)&ALL,(right|bit)>>1,depth+1,state);}}
+int main(){static_assert(sizeof(QueenRoot)==16,"QueenRoot layout");QueenRoot zero{};prefix(0,0,0,0,zero);size_t P=independent.size();std::vector<QueenRoot>source(P);unsigned long long native_prefix_nodes=0;auto count=BP_queens_prefixes(STUDY_N,STUDY_DEPTH,&native_prefix_nodes,source.data());if(count!=P||native_prefix_nodes!=prefix_nodes||memcmp(source.data(),independent.data(),16*P)){fprintf(stderr,"Source prefix mismatch\n");return 2;}std::vector<uint64_t>expected(2*P);uint64_t total_tree=prefix_nodes,total_solutions=0;for(size_t i=0;i<P;i++){uint32_t cols=0,left=0,right=0;for(int row=0;row<STUDY_DEPTH;row++){uint32_t bit=1u<<source[i].board[row];cols|=bit;left=((left|bit)<<1)&ALL;right=(right|bit)>>1;}Count c=solve(cols,left,right,STUDY_DEPTH);expected[i]=c.tree;expected[P+i]=c.solutions;total_tree+=c.tree;total_solutions+=c.solutions;}if(total_tree!=171129071ull||total_solutions!=2279184ull){fprintf(stderr,"Source supplemental totals mismatch\n");return 3;}FILE*f=fopen("study_roots.bin","wb");fwrite(source.data(),16,P,f);fclose(f);f=fopen("study_expected_u64.bin","wb");fwrite(expected.data(),8,2*P,f);fclose(f);f=fopen("study_shape.json","w");fprintf(f,"{\"N\":15,\"depth\":7,\"prefixes\":%zu,\"prefix_tree_nodes\":%llu,\"total_tree_nodes\":%llu,\"total_solutions\":%llu,\"input_prefix_uint64_values\":%zu,\"root_struct_bytes\":16}\n",P,(unsigned long long)prefix_nodes,(unsigned long long)total_tree,(unsigned long long)total_solutions,2*P);fclose(f);printf("N15depth7 prefixes=%zu prefixnodes=%llu totalnodes=%llu solutions=%llu\n",P,(unsigned long long)prefix_nodes,(unsigned long long)total_tree,(unsigned long long)total_solutions);}
