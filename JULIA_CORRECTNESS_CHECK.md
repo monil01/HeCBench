@@ -15,6 +15,13 @@
 
 **Scoped multi-GPU exception for the frozen ring benchmark:** the coordinator may use the otherwise idle physical devices5 and6 with `gpu: "5,6"` for a genuine two-device exchange. Retain the global GPU6 study lock, check device5 is idle before starting, and stop/defer if another workload owns it; never interfere with device0 or other users. Record both UUIDs, visibility/order, peer-copy semantics, synchronization, precision and scope. This is a separate two-GPU stratum, excluded from single-V100 aggregate rankings. KA/JACC host CUDA orchestration and zero-device-kernel interoperability must be labeled honestly. A one-device self-copy is diagnostic only and never satisfies multi-GPU correctness/performance coverage. Other benchmarks retain GPU6-only measurement.
 
+
+### Scientific counterexamples and reference allocation repairs
+
+For domain-facing case studies, connect a diagnosed semantic change to a concrete scientific consequence where a justified witness exists: for example, repeated Sobol coordinates alter a known two-dimensional integral even when the same-table self-check passes. Keep full output/reference checks alongside such witnesses. A single integrand, invariant or finite-prefix balance does not establish general convergence, statistical quality, or application validity. State which rejected shortcut the witness distinguishes and its limits; preserve contrary/negative findings.
+
+A host allocation or initialization correction is still a native reference intervention even when device kernel bodies remain unchanged. If padding repairs a demonstrated inactive-lane out-of-bounds access, record the original access/allocation witness, old/new logical and physical sizes, defined padding values, and `native_reference_repaired:true` for the affected configuration. Keep a genuinely unchanged base variant separate when applicable. Exclude the repaired configuration from untouched-native aggregates. Distinguish source-proven invalid access from an actually observed sanitizer/runtime failure; do not invent failed checks.
+
 ### Meaning of Julia version and separate implementation records
 
 Here, implementation versions mean **CUDA.jl, KA, and JACC**. Also record the actual Julia language release, CUDA.jl/KA/JACC package versions, manifests, driver/toolkit, GPU, and source/configuration hashes independently. Package/model comparisons are not evidence of differences between Julia language releases. A claim about runtime release changes requires an explicit matched release experiment.
