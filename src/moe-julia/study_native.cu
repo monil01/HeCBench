@@ -1,0 +1,20 @@
+
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cuda_runtime.h>
+#include "../moe-cuda/kernels.h"
+#define CK(c) do{auto e=(c);if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}while(0)
+template<class T>std::vector<T>readbin(const char*name){FILE*f=fopen(name,"rb");if(!f){perror(name);exit(3);}fseek(f,0,SEEK_END);long bytes=ftell(f);rewind(f);std::vector<T>v(bytes/sizeof(T));if(fread(v.data(),sizeof(T),v.size(),f)!=v.size())exit(4);fclose(f);return v;}
+struct Case{int k,n;float*a,*p,*w;int*i,*r;size_t offset;};
+void launch(Case&c){moeSoftmax<256><<<257,256>>>(c.a,nullptr,c.p,384);moeTopK<256><<<257,256>>>(c.p,nullptr,c.w,c.i,c.r,384,c.k,0,384);}
+int main(){auto input=readbin<float>("moe_input_float32.bin");auto gold=readbin<double>("moe_expected_float64.bin");std::vector<Case>cases;std::vector<double>prefix;size_t offset=0;
+ cudaFuncAttributes sa,ta;CK(cudaFuncGetAttributes(&sa,moeSoftmax<256>));CK(cudaFuncGetAttributes(&ta,moeTopK<256>));printf("STUDY_RESOURCE {\"softmax_static_shared\":%zu,\"topk_static_shared\":%zu,\"softmax_registers\":%d,\"topk_registers\":%d}\n",sa.sharedSizeBytes,ta.sharedSizeBytes,sa.numRegs,ta.numRegs);
+ for(int pattern:{0,1})for(int k:{1,2,4,8}){Case c;c.k=k;c.n=k*257;c.offset=offset;offset+=98688+3*c.n;CK(cudaMalloc(&c.a,98688*4));CK(cudaMalloc(&c.p,98688*4));CK(cudaMalloc(&c.w,c.n*4));CK(cudaMalloc(&c.i,c.n*4));CK(cudaMalloc(&c.r,c.n*4));CK(cudaMemcpy(c.a,input.data()+pattern*98688,98688*4,cudaMemcpyHostToDevice));CK(cudaMemset(c.i,0,c.n*4));prefix.insert(prefix.end(),{double(pattern),double(k),257.,384.});for(int j=0;j<98688;j++)prefix.push_back(input[pattern*98688+j]);prefix.insert(prefix.end(),c.n,0.);launch(c);launch(c);cases.push_back(c);}CK(cudaDeviceSynchronize());if(prefix.size()!=797246||offset!=812634)return 5;
+ for(int trial=1;trial<=5;trial++){for(auto&c:cases)CK(cudaMemset(c.i,0,c.n*4));CK(cudaDeviceSynchronize());std::vector<double>times;for(auto&c:cases){auto start=std::chrono::steady_clock::now();for(int r=0;r<20;r++)launch(c);CK(cudaGetLastError());CK(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/20);}auto out=prefix;bool ok=true;double ma=0,mr=0,total=0;for(auto&c:cases){std::vector<float>p(98688),w(c.n);std::vector<int>i(c.n),r(c.n);CK(cudaMemcpy(p.data(),c.p,p.size()*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(w.data(),c.w,c.n*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(i.data(),c.i,c.n*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(r.data(),c.r,c.n*4,cudaMemcpyDeviceToHost));std::vector<double>got;for(auto x:p)got.push_back(x);for(auto x:w)got.push_back(x);for(auto x:i)got.push_back(x);for(auto x:r)got.push_back(x);out.insert(out.end(),got.begin(),got.end());for(size_t j=0;j<got.size();j++){double g=gold[c.offset+j],x=got[j],e=abs(x-g);ok&=std::isfinite(x);if(j<size_t(98688+c.n)){ma=std::max(ma,e);mr=std::max(mr,e/std::max(abs(g),1e-6));ok&=e<=1e-6+1e-5*abs(g);}else ok&=x==g;}for(int t=0;t<257;t++){double sum=0;for(int e=0;e<384;e++){double x=p[t*384+e];sum+=x;ok&=x>=0&&x<=1;}ok&=abs(sum-1)<=1e-5;}}
+ std::string ts;for(auto t:times){total+=t;char b[64];snprintf(b,sizeof(b),"%.12g",t);if(!ts.empty())ts+=",";ts+=b;}std::string path=std::string(getenv("STUDY_OUTPUT_DIR")?getenv("STUDY_OUTPUT_DIR"):".")+"/output_trial"+std::to_string(trial)+".bin";FILE*f=fopen(path.c_str(),"wb");if(!f)return 6;fwrite(out.data(),8,out.size(),f);fclose(f);printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"component_seconds\":[%s],\"correct\":%s,\"checked_values\":812634,\"max_abs_error\":%.12g,\"max_rel_error\":%.12g,\"relative_error_denominator_floor\":0.000001,\"timing_region\":\"eight_routing_case_twokernel_loop_means\",\"jit_excluded\":true,\"internal_repeats\":20,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,total,ts.c_str(),ok?"true":"false",ma,mr,path.c_str(),out.size());if(!ok)return 7;}
+ for(auto&c:cases){cudaFree(c.a);cudaFree(c.p);cudaFree(c.w);cudaFree(c.i);cudaFree(c.r);}puts("PASS");}
