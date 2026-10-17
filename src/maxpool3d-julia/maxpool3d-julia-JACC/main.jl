@@ -11,7 +11,7 @@ function maxpool_jacc!(xi,yi,zi,input,output,w,h,count,ow,oh)
     end
 end
 function factory(input,output,w,h,count,ow,oh)
-    spec=JACC.launch_spec(;threads=(8,8,4),sync=false)
+    spec=JACC.launch_spec(;threads=(8,8,4),shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,(Int(ow),Int(oh),Int(count)),maxpool_jacc!,input,output,w,h,count,ow,oh)
 end
 pool_study(factory)
