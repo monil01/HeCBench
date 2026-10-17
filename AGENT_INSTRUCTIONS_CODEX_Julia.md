@@ -1,5 +1,12 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+
+### Scientific fixture diversity and nonunique answers
+
+Audit supplied data before treating repeated cases as independent evidence. Record identical weight files, repeated sequences, symmetry, zero/constant fields, conditioning and exact input diversity. Retain the supplied contract; add separately named varied fixtures when needed to distinguish plausible translation mistakes. Declare fixture choices and tolerances before collecting target timings, and state which original sizes or modes remain untested. Do not infer trained-model accuracy or scientific prediction quality from an operator check.
+
+For nonunique scientific outputs such as graph colorings, preserve complete raw outputs and use an explicitly declared property-equivalence contract with an independent checker over every relevant node/edge. Record solution quality (for example, colors used), convergence iterations when observed, and rigorous problem-specific bounds where justified. Unknown internal iteration counts stay null. A normalized property vector is not exact raw-output equivalence; disclose algorithm and work differences in performance comparisons. Do not add asymmetric instrumentation to timed regions.
+
 ## Active expansion: all 300 benchmarks and scientific interpretation (2026-10-17)
 
 **This section is the current authority.** It supersedes historical 100-pair completion/stop instructions, earlier feasibility-subset targets, and any instruction to commit `paper/research/`. The user has explicitly reopened translation and paper work, requested multiagents, and expanded coverage to the entire frozen 300-benchmark population. Read the other two canonical guides and the newest combined checkpoint. The previous 100 pairs/200 portable implementations/107 configurations remain valid evidence, not results for 300.
