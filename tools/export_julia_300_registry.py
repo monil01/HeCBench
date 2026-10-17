@@ -183,6 +183,11 @@ def main():
             config_evidence=[]
             for cid,(d,c,p) in evidence:
                 m=d['models'][model]
+                model_traits=traits.get('implementation_traits',{}).get(model,{}) or {}
+                config_traits=model_traits.get('configuration_traits',{}).get(cid,{})
+                shared_config_traits=traits.get('configuration_overrides',{}).get(cid,{})
+                class_map=shared_config_traits.get('implementation_class',{})
+                config_class=config_traits.get('implementation_class') or (class_map.get({'cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}[model]) if isinstance(class_map,dict) else class_map)
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
                                         'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),
@@ -196,6 +201,10 @@ def main():
                                         'trials_correct':[t.get('correct') for t in m.get('trials',[])],
                                         'trials_seconds':[t.get('time_seconds') for t in m.get('trials',[])],
                                         'mean_last_four_seconds':m.get('mean_seconds'),'contract':c.get('input_contract'),
+                                        'configuration_implementation_class':config_class,
+                                        'implementation_ontology_override':config_traits or None,
+                                        'shared_configuration_traits_override':shared_config_traits or None,
+                                        'configuration_ontology_semantics':'Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.',
                                         'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
             per_model=traits.get('implementation_traits',{}).get(model)
             record={'schema_version':2,'study':'julia_abstractions_300_v2','benchmark_id':b,'implementation_model':model,
