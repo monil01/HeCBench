@@ -154,6 +154,8 @@ def export_global_csv():
         if not alias.exists(): alias.symlink_to('results.db')
 
 def verify(config):
+    if any('reuse_run' in spec for spec in config.get('models',{}).values()):
+        raise ValueError('Unsupported per-model reuse_run: use top-level reuse_result and reuse_models with strict source/config checks.')
     bench=config['benchmark']; run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'_'+bench
     out=STATE/'runs'/run_id; out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(config,indent=2))

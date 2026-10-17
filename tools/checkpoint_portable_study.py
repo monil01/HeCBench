@@ -42,6 +42,9 @@ for path in sorted((local / 'runs').glob('*/result.json')):
         'benchmark': d['benchmark'], 'configuration_id': cid,
         'run_id': d['run_id'], 'variants': d['variant_verified'],
         'matched_performance_valid': d.get('matched_performance_valid', False),
+        'native_reference_repaired': bool(config.get('native_reference_repaired')),
+        'hardware_stratum': 'single_v100' if str(config.get('gpu',6))=='6' else 'multiple_or_other_devices',
+        'untouched_single_gpu_aggregate_eligible': str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False),
         'role': dispositions.get(cid, {}).get('role', 'primary'),
         'references_agree': d.get('reference_agreement'),
         'result': str(path.relative_to(root)),
@@ -55,6 +58,10 @@ primary = [r for r in records.values() if r['role'] == 'primary']
 pairs = len({r['benchmark'] for r in primary if r['matched_performance_valid']})
 versions = {k: len({r['benchmark'] for r in primary if r['variants'].get(k)})
             for k in ['ka', 'jacc']}
+strata = {
+    'corrected_native_reference_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']}),
+    'multiple_or_other_device_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
+    'untouched_native_single_gpu_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
 heads = {k: git(p, 'rev-parse', 'HEAD') for k, p in [('source', root), ('paper', paper)]}
 now = datetime.datetime.now(datetime.timezone.utc)
 stamp = now.strftime('%Y%m%dT%H%M%S%fZ')
@@ -72,6 +79,7 @@ payload = {
     'cohort': str(cohort_path.relative_to(root)), 'target_benchmarks': target,
     'frozen_baseline': str((local/'baseline_300.json').relative_to(root)),
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
+    'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'model_status_inventory': str((local/'study_300_status.json').relative_to(root)),
     'dirty_files': {k: git(p, 'status', '--short') for k,p in [('source',root),('paper',paper)]},
@@ -96,6 +104,7 @@ out.write_text('# Translation and scientific-paper checkpoint\n\n'
 latest = {'checkpoint_id': stamp, 'path': str(out.relative_to(root)),
           'created_at': now.isoformat(), 'status': status, 'verified_pairs': pairs,
           'verified_portable_versions': versions, 'target_pairs': target,
+          'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
           'performance_protocol': 'five_trials_last_four_v1',
           'source_head': heads['source'], 'paper_head': heads['paper']}
 tmp = folder/'LATEST.json.tmp'

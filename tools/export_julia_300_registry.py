@@ -137,7 +137,7 @@ def main():
                     if code not in CODES:continue
                     item={'event_id':e.get('event_id') or hashlib.sha256((str(file)+':'+str(line)).encode()).hexdigest()[:20],
                           'benchmark_id':b,'implementation_model':model,'taxonomy_code':code,
-                          'phase':e.get('phase','unspecified'),'origin_model':e.get('origin_model') or ('shared_infrastructure' if str(e.get('phase','')).startswith('shared_') else model),'is_failure':code not in ['N3','P1'],
+                          'phase':e.get('phase','unspecified'),'origin_model':e.get('origin_model') or ('shared_infrastructure' if str(e.get('phase','')).startswith('shared_') else model),'is_failure':code not in ['N3','P1'] and e.get('is_failure',True) is not False and not e.get('diagnostic_only',False) and e.get('in_scope',True) is not False,
                           'evidence_path':str(file.relative_to(ROOT)),'evidence_line':line,
                           'raw_event':e,'classification_basis':'explicit event code or explicit coded status; no count imputation'}
                     events.append(item);all_events.append(item)
@@ -148,6 +148,9 @@ def main():
                 m=d['models'][model]
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
+                                        'gpu_visibility':str(c.get('gpu',6)),
+                                        'hardware_stratum':'single_v100' if str(c.get('gpu',6))=='6' else 'multiple_or_other_devices',
+                                        'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False),
                                         'reference_provenance':c.get('reference_provenance'),
                                         'result_sha256':digest(p),'source_hash':m.get('source_hash'),
                                         'declared_environment':c.get('environment',c.get('toolchain')),
