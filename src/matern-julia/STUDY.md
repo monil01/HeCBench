@@ -9,3 +9,9 @@ Primarytiming14casecomposite x5internalrepeats divided5, all5correct/mean2–5; 
 CurrentreferenceoneGPUcandidate/twoactualchecks: secondcorrects unusedoriginal-lookingCLI silentlyrunningfixedstudy. Namedentry nowrejectsCLIarguments; oldplaceholderarchived, nooriginalCLIcompatibilityclaim. Devicekernelunchangedbetweenchecks. Bothportable1candidate/check,nofailures. Immutableinput_contract prose mistakenlysays257blocks fromearlier4103plan; measured4913always308blocks, outputcounts alwayscorrect. Hash-bound study_adjudications.json suppliesexplicitproseerratum withoutchangingany execution/acceptance.
 
 Prospective reference/KA/JACC windows include repeatedcachedcontext/rootcoordination. Newmath/oracle/fixturehelpers attributedonce referencephase; targetcosts marginalorderedreuse. HistoricalCUDAjlcost unknown,sourcechars/4partialproxy; overlappingparent/child windows notsummed.
+
+## Separate initialization diagnostic
+
+Primary JACC shared API mean remains1.726663ms. A separately metered CUDA-backend arena control uses the same4192B request, mapping, inputs, formula and source barriers but removes shared-template initialization/extra barrier; allfive full-output checks remain exact, mean.18716725ms (9.225× improvement). It is analysis-only, not a replacement primary or framework-only portability claim.
+
+Independent Nsight first-kernel replays report JACC58→32registers, shared configuration8192→16384B, L2traffic69.400→5.285MB. Additional local-memory counters report2,131,900→157,672local-store sectors and348,892→157,796local-load sectors. These may include stack/spill/localarray traffic; they do not identify a unique compiler cause. Thus initialization API and generated resource behavior change together; do not ascribe the effect solely to copied template bytes. Profiling times/counters remain separate from the unprofiled five-trial means. No genericFLOProofline position is assigned to the exp/sqrt kernel.

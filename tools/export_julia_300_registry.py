@@ -29,12 +29,13 @@ def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() e
 
 def jsonlines(p):
     if not p.exists():return []
-    out=[]
-    for i,line in enumerate(p.read_text().splitlines(),1):
-        if not line.strip():continue
-        try:out.append((i,json.loads(line)))
-        except ValueError:continue # A worker may be appending; never infer a zero.
-    return out
+    for attempt in range(4):
+        try:
+            return [(i,json.loads(line)) for i,line in enumerate(p.read_text().splitlines(),1) if line.strip()]
+        except json.JSONDecodeError:
+            if attempt==3:raise
+            time.sleep(.05) # A concurrent append may have exposed an incomplete line.
+
 
 def usage_windows(benchmark,model):
     windows=[]
@@ -114,12 +115,12 @@ def main():
         d=read(p,{})
         if d.get('benchmark') not in selected or adjud.get(d.get('run_id'),{}).get('exclude_from_performance'):continue
         c=effective_config(p,read(p.with_name('config.json'),{}));cid=c.get('configuration_id')
-        if disp.get(cid,{}).get('role','primary') not in ['primary','corrected_reference_secondary']:continue
+        if disp.get(cid,{}).get('role',c.get('configuration_role','primary')) not in ['primary','corrected_reference_secondary']:continue
         for model in MODELS:
             good=(d.get('reference_agreement') and d.get('models',{}).get('cuda_jl',{}).get('complete')) if model=='cuda_jl' else d.get('variant_verified',{}).get(model)
             if good:latest[(d['benchmark'],model,cid)]=(d,c,p)
     domains=read(STATE/'scientific_domains_300.json',{})
-    statuses=[];all_events=[];all_reference_events=[];domain_rows=[]
+    statuses=[];all_events=[];all_reference_events=[];all_infrastructure_events=[];domain_rows=[]
     for b in cohort['benchmarks']:
         traits=read(STATE/'traits'/(b+'.json'),{})
         # A completed operator audit supersedes an earlier header-level review.
@@ -143,6 +144,9 @@ def main():
         for line,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
             if event.get('implementation_model') in ['cuda','native_cuda']:
                 all_reference_events.append({'benchmark_id':b,'evidence_path':str((STATE/'failure_events_300'/(b+'.jsonl')).relative_to(ROOT)),'evidence_line':line,'raw_event':event})
+        for line,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
+            if event.get('implementation_model') in ['shared','shared_infrastructure','infrastructure']:
+                all_infrastructure_events.append({'benchmark_id':b,'evidence_path':str((STATE/'failure_events_300'/(b+'.jsonl')).relative_to(ROOT)),'evidence_line':line,'raw_event':event})
         for model,suffix in MODELS.items():
             folder=ROOT/'src'/(b+'-julia');path=folder/(b+'-julia-'+suffix)/'main.jl'
             if model=='cuda_jl' and not path.exists():path=folder/'main.jl'
@@ -185,7 +189,7 @@ def main():
                                         'gpu_visibility':str(c.get('gpu',6)),
                                         'hardware_stratum':'single_v100' if str(c.get('gpu',6))=='6' else 'multiple_or_other_devices',
                                         'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),
-                                        'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
+                                        'input_contract_metadata_erratum':c.get('input_contract_metadata_erratum'),'source_scope_adjudication':c.get('source_scope_adjudication'),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
                                         'result_sha256':digest(p),'source_hash':m.get('source_hash'),
                                         'declared_environment':c.get('environment',c.get('toolchain')),
                                         'hardware_snapshot_path':str(p.with_name('hardware.txt').relative_to(ROOT)) if p.with_name('hardware.txt').exists() else None,
@@ -228,9 +232,20 @@ def main():
         return (event['benchmark_id'],event['origin_model'],event['taxonomy_code'],event['phase'],
                 raw.get('configuration_id'),raw.get('root_cause',raw.get('cause',raw.get('reason',raw.get('symptom')))),
                 raw.get('check_id',raw.get('compiler_check')),raw.get('source_candidate_id',raw.get('candidate')))
-    copied_origin_groups={origin_fingerprint(e) for e in all_events if e['origin_model']!=e['implementation_model']}
+    # Direct native/shared events have no Julia target row; retain them in origin accounting.
+    standalone=[]
+    for item in [*all_reference_events,*all_infrastructure_events]:
+        raw=item['raw_event'];code=raw.get('taxonomy_code') or raw.get('error_tag') or raw.get('tag') or raw.get('code')
+        if code not in CODES:continue
+        model='cuda' if raw.get('implementation_model') in ['cuda','native_cuda'] else 'shared_infrastructure'
+        standalone.append({**item,'event_id':raw.get('event_id') or hashlib.sha256((item['evidence_path']+':'+str(item['evidence_line'])).encode()).hexdigest()[:20],
+            'implementation_model':model,'origin_model':raw.get('origin_model',model),'taxonomy_code':code,'phase':raw.get('phase','unspecified'),
+            'is_failure':code not in ['N3','P1'] and raw.get('is_failure',True) is not False and not raw.get('diagnostic_only',False) and raw.get('in_scope',True) is not False,
+            'classification_basis':'Explicit standalone native/shared event; no target failure imputation'})
+    origin_population=[*all_events,*standalone]
+    copied_origin_groups={origin_fingerprint(e) for e in origin_population if e['origin_model']!=e['implementation_model']}
     origin_events={}
-    for event in all_events:
+    for event in origin_population:
         fp=origin_fingerprint(event)
         key=('copied_origin',fp) if fp in copied_origin_groups else ('event_id',event['event_id'])
         origin_events.setdefault(key,event)
@@ -242,14 +257,14 @@ def main():
              'observed_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in all_events if e['implementation_model']==m)) for m in MODELS},
              'observed_origin_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in origin_events.values() if e['origin_model']==m)) for m in [*MODELS,'cuda','shared_infrastructure']},
              'origin_event_semantics':'Explicit origin_model overrides affected target; shared_* phases grouped as shared infrastructure. Repeated reference notifications deduplicated by benchmark/origin/code/phase/cause/check/candidate. Partial histories, not total rates.',
-             'recorded_native_reference_events':len(all_reference_events),'failure_history_totals_known':False,'all_300_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==300 for m in MODELS),
+             'recorded_shared_infrastructure_events':len(all_infrastructure_events),'recorded_native_reference_events':len(all_reference_events),'failure_history_totals_known':False,'all_300_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==300 for m in MODELS),
              'meaning':'Complete inventory denominator; current outcomes, unknown records and partial histories stay explicit.'}
     write(OUT/'index.json',{'schema_version':2,'summary':summary,'records':statuses})
-    write(OUT/'failure_events.json',{'schema_version':2,'events':all_events,'native_reference_events':all_reference_events,'count_interpretation':'Observed event rows by model, not all historical failures. N3/P1 excluded from failed-event totals.'})
+    write(OUT/'failure_events.json',{'schema_version':2,'events':all_events,'native_reference_events':all_reference_events,'shared_infrastructure_events':all_infrastructure_events,'origin_events':list(origin_events.values()),'count_interpretation':'Observed event rows by model, not all historical failures. N3/P1 excluded from failed-event totals.'})
     write(STATE/'study_300_status.json',{'summary':summary,'records':statuses})
     write(PAPER/'research/data/study_300_status.json',{'summary':summary,'records':statuses})
     write(PAPER/'research/data/scientific_domains_300.json',domain_rows)
-    write(PAPER/'research/data/failure_events_300.json',{'events':all_events,'native_reference_events':all_reference_events,'partial_history':True})
+    write(PAPER/'research/data/failure_events_300.json',{'events':all_events,'native_reference_events':all_reference_events,'shared_infrastructure_events':all_infrastructure_events,'origin_events':list(origin_events.values()),'partial_history':True})
     print(json.dumps(summary))
 
 if __name__=='__main__':main()
