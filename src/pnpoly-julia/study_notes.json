@@ -1,0 +1,146 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl only executes a256-element touch kernel and prints a fixed checksum/PASS, not point-in-polygon. Genuine native crossing parity and all8tile mappings now implemented.",
+    "phase": "reference_correctness",
+    "original_path": "/home/imo/HeCBench_julia/src/pnpoly-julia/pnpoly-julia-cuda.jl/original_main.jl",
+    "original_sha256": "3717cbc5f33105c40d2acd67e8f7dfaa9f944b31dce81740444d14c5433861ab",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Crossing-number point-in-polygon parity over600edges, base and1/2/4/8/16/32/64point private tiles",
+  "mapping": "256threads64blocks, optimizedcaseworkitem ownsK points at stride256 with unrolled private tuples",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 64,
+    "private_point_tiles": [
+      1,
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ]
+  },
+  "traits": {
+    "primary_motif": "point_in_polygon_crossing",
+    "storage_precision": [
+      "Float32",
+      "Int32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32",
+      "Bool"
+    ],
+    "synchronization": [
+      "host_device_after_ten_launches"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Native edge-outer point-tile-inner algorithm and all8tile widths retained; private tuples replace C arrays"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_eight_case_bulk_kernel_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Named axis-aligned polygon not original unsorted random vertices",
+      "No boundary/tail coverage",
+      "Private tuple compiler resource choices not profiled"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "computational geometry point classification",
+      "scientific_task": "Classify sample points by polygon inclusion",
+      "governing_method": "Ray-crossing parity with tiled point reuse across edges",
+      "discretization": "600vertex rectangle,16384samplepoints",
+      "accuracy_needs": [
+        "exact crossing parity",
+        "all tile mappings equivalent",
+        "no boundary ambiguity in fixture"
+      ],
+      "input_regime": "Dyadic coordinates, simple convex orthogonal polygon",
+      "precision_sensitivity": "Float32 edge intersection predicates; no geometric robustness claim",
+      "community_use_case": "Mesh or spatial masking primitive; no specific application dataset in source",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/pnpoly-cuda/kernel.h",
+          "sha256": "0735ab8cec41b6e67ece9caf3a1d35a51014424c85a3322b293ab7d8cc4f4c22"
+        }
+      ]
+    }
+  },
+  "observation": "The port retains every native point-tile width, not scalar aliases. A dyadic rectangle fixture provides an independent analytic membership witness and excludes boundary ambiguity. This contract verifies all configured outputs; it does not establish robust predicates for arbitrary or self-intersecting polygons. Optimized partial-tile inputs are excluded because native loads leave invalid private slots uninitialized.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 2,
+      "compiler_checks": 3,
+      "compiler_feedback_repairs": 1,
+      "measurement_adapter_repairs": 1
+    },
+    "ka": {
+      "candidate_attempts": 2,
+      "compiler_checks": 3,
+      "compiler_feedback_repairs": 1,
+      "measurement_adapter_repairs": 1
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "implementation_model": "cuda_jl",
+        "phase": "shared_measurement_helper",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "fail",
+        "taxonomy_code": "B2",
+        "cause": "Missing whitespace before generator for; no device compilation reached",
+        "shared_phase_id": "pnpoly_shared_helper_space_01",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T172227708998Z_pnpoly/cuda_jl_run1.log",
+        "repair": "Insert generator whitespace"
+      },
+      {
+        "implementation_model": "cuda_jl",
+        "phase": "device_compilation",
+        "candidate_id": 1,
+        "check_id": 2,
+        "outcome": "fail",
+        "taxonomy_code": "B4",
+        "cause": "Base and tiled branches reuse i captured by ntuple, causing boxed dynamic indices even in Val0 specialization",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T172324478528Z_pnpoly/cuda_jl_run1.log",
+        "repair": "Give base branch a separate uncaptured index name"
+      }
+    ],
+    "ka": [
+      {
+        "implementation_model": "ka",
+        "phase": "shared_measurement_helper",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "fail",
+        "taxonomy_code": "B2",
+        "cause": "Missing whitespace before generator for; no device compilation reached",
+        "shared_phase_id": "pnpoly_shared_helper_space_01",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T172227708998Z_pnpoly/ka_run1.log",
+        "repair": "Insert generator whitespace"
+      },
+      {
+        "implementation_model": "ka",
+        "phase": "device_compilation",
+        "candidate_id": 1,
+        "check_id": 2,
+        "outcome": "fail",
+        "taxonomy_code": "B4",
+        "cause": "Base and tiled branches reuse i captured by ntuple, causing boxed dynamic indices even in Val0 specialization",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T172324478528Z_pnpoly/ka_run1.log",
+        "repair": "Give base branch a separate uncaptured index name"
+      }
+    ]
+  },
+  "effort_observation": "A shared host-fixture generator spacing error failed CUDA.jl and KA before device JIT. One measurement-helper repair, preserved separately from device candidates; corrected reference and KA second checks follow. JACC inherits corrected fixture. A subsequent device InvalidIRError exposed a captured index shared across base and tiled branches. Candidate2 separates the base index; this is recorded compiler feedback, not framework unsupported."
+}
