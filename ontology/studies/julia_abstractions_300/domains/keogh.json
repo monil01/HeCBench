@@ -2,20 +2,43 @@
   "schema_version": 2,
   "benchmark_id": "keogh",
   "scientific_intent": {
-    "primary_family": "stochastic_statistics",
-    "application_domain": "Time-series similarity search",
-    "scientific_task": "LB_Keogh lower bounds against a normalized subject and envelopes",
-    "mathematical_method": "Windowed statistics and squared envelope deviations with shared data reuse",
-    "community_use_case": "Pruning distance-based time-series searches; not a full dynamic-time-warping calculation",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-backed operator/probe intent; application-scale accuracy and performance assessed separately.",
-    "accuracy_requirements": "Configuration-specific mathematical/numerical contract still required; not certified by intent review.",
-    "evidence": [
+    "review_status": "source_audited",
+    "primary_family": "signal_image",
+    "primary_domain": "time_series_similarity_DTW_lower_bound",
+    "scientific_task": "Compute a squared envelope-distance bound for each normalized subject subsequence, suitable for filtering candidates before dynamic time warping under matching envelope/warping constraints.",
+    "mathematical_operation": "Forwindowz_i=(s[start+i]-mean[start])/std[start], LB\u00b2=sum_i max(lower_i-z_i,0,z_i-upper_i)\u00b2. Envelopecomesfromnormalizedquery\u00b1radius8; squaredbound\u2264squaredconstrainedDTWcost.",
+    "discretization_or_topology": "N262144subjectscalars,M256windowlength,261889overlappingwindows;1024blocks256lanes,512-floathalotile.",
+    "invariants": [
+      "Nonnegativefinitebounds withpositivestandarddeviations andorderedqueryenvelopes.",
+      "Exactmatchingfirstquerywindowhaszero/negligiblescore.",
+      "Selected8CPU/GPUbounds\u2264independentconstrainedDTWcostwithin1e-2roundingtolerance."
+    ],
+    "accuracy_requirements": [
+      "All261889Float32scores/5trials vsindependentFloat64distance-to-envelope anddualGPUreferences,absolute1e-2matchingoriginalsource.",
+      "OriginalFloat32CPUreferencealsochecked; maximumFloat64errors2.03e-5.",
+      "IndependentPythonradius8DTWdynamicprogram,8selectedwindows,all5savedtrialsofall4models; witnesscount8not261889."
+    ],
+    "precision_sensitivity": "Per-windowFloat32normalizationdivision andserialsquaredsum; stdboundedawayfromzeroinfixture. Unorderedbounds/nearzerostd/differentdataregimescaninvalidateboundinterpretationornumericalconditioning.",
+    "input_size_regimes": "M256matchesoriginalquerylength; N262144reducedfrom20million,10overwriteoperations/trial. Wellconditionedtruewindowstatistics,radius8queryenvelope; originalrandomarraysunmeasured.",
+    "community_use_case": "LB_Keogh authorUCRpage/paperconnectprotectiveenvelopeswithDTWlowerbounding for time-seriesindexing/search. No ECG/seismic/otherphysicaldatasetorfullsearchworkflowvalidated.",
+    "uncertainty": "Noend-to-endpruningrate/searchlatency orscientificapplicationaccuracyclaim; abstractsourceinputdoesnotestablishcorrectenvelopeassumptions.",
+    "provenance": [
       {
         "path": "src/keogh-cuda/main.cu",
         "sha256": "21fa3ea58b709bd63fbe3bfe0550f7d506cc615fb1fbe422b8c4824c977718b0",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
+        "source_locations": "operator, arithmetic, source provenance and launch scope"
+      },
+      {
+        "path": "src/keogh-julia/study_common.jl",
+        "sha256": "c047d55bb119d73798122695f595c3fd949c7eae58dbcb8d0a2d8b6368257737",
+        "source_locations": "named fixture and CPU verification contract"
       }
+    ],
+    "reviewed_at": "2026-10-17T20:29:57.916970+00:00",
+    "review_phase": "prospective post-verification annotation",
+    "external_primary_sources": [
+      "https://www.cs.ucr.edu/~eamonn/LB_Keogh.htm",
+      "https://www.cs.ucr.edu/~eamonn/vldb2002.pdf"
     ]
   },
   "base_ontology": {
@@ -25,5 +48,70 @@
   },
   "historical_pass_method": "native_pass_trusted",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "d28e51006ca4962bb0c92766",
+      "begin_event_id": "272fc6b122f32260c157f7b2",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T20:30:27.117000+00:00",
+      "usage_event_timestamp": "2026-10-17T20:29:58.135Z",
+      "elapsed_usage_event_start": "2026-10-17T20:27:41.011Z",
+      "delta_usage": {
+        "input_tokens": 394706,
+        "cached_input_tokens": 393728,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6167,
+        "reasoning_output_tokens": 1341,
+        "total_tokens": 400873
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 28.982,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "e012f44484fb5434be1662a7245befb256850c5de25622d3a201a4352a6509f8",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Fullontology/scientificdomain/attempts/status/proxies/STUDY/observation/checkpointcomplete. ValidfixtureDTWassumptions/8witnessesvsfull261889scores/partialbarrier/sourcevsnewregimeall explicit. Timingsall4retained, CV0.0015..0.022,nocausalclaim.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 10.200466,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/keogh/shared_annotation.jsonl",
+      "evidence_sha256": "7cf53f66dd1fd974d294567e840bc46eeeefd3672f4350bfcc50570162e83cdb",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "36d5616064c9320c3aed5fa3",
+      "begin_event_id": "a2400c4a64582901ef6d5e93",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T20:30:42.984319+00:00",
+      "usage_event_timestamp": "2026-10-17T20:30:27.163Z",
+      "elapsed_usage_event_start": "2026-10-17T20:19:13.052Z",
+      "delta_usage": {
+        "input_tokens": 5265534,
+        "cached_input_tokens": 5054208,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 24118,
+        "reasoning_output_tokens": 11147,
+        "total_tokens": 5289652
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 15.821319,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "db1b7713cda02aa436ce94cdc4ff70d46dbcceda9baf3cb872c9ca7091f6d1b9",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Completeverifiedpair+independentdomainchecks+scientificannotation,firstcandidateKAandJACCeach1check0repairs,sharedstubrepairseparate. Cleanphaseordering, context/cacheinclusive/nonadditivebroadworkflow.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 13.37236,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/keogh/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "a035562328b5ad1f5385bfd0bd26fe0ecc878df0a1d6e5c1891ace441c9cfd69",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }

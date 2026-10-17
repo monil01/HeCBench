@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "knn",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/knn.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,28 +14,972 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "knn",
+    "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+    "implementation_model": "ka",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da",
+    "status": "verified",
+    "algorithm": "Full tiled brute-force Euclidean KNN with stable insertion topk and selectedsqrt",
+    "work_item_mapping": "Distance16x16threads compute onequery/referencepair each across16-featuretiles; insertion256threads onequeryperthread; sqrt16x16threads oneselecteddistanceperthread",
+    "layout": "Dimension-major SoA features, flattenedrow-major reference\u00d7query squared-distance workspace and neighbor-rank\u00d7query outputs. Shared arrays16feature rows\u00d716point columns; Julia flat row-major staging preserves nativelayout.",
+    "precision": {
+      "storage": [
+        "Float32_features_squared_distances_Euclidean_distances",
+        "Int32_zero_based_neighbor_indices"
+      ],
+      "compute": [
+        "Float32_sequential_squared_difference_accumulation_sqrt",
+        "Int64_Julia_index_arithmetic_where_inferred",
+        "Float64_independent_CPU_oracle"
+      ]
+    },
+    "memory_access": "Same dimension-major/global/shared/insertionpattern as native andCUDAjl",
+    "synchronization": [
+      "2block barriers per16-featuretile",
+      "Ordered distance/insertion/sqrt kernel launches",
+      "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+      "Device sync at outerbatchtiming boundaries"
+    ],
+    "resource_policy": {
+      "distance_shared_bytes": 2048,
+      "sort_shared_bytes": 0,
+      "sqrt_shared_bytes": 0,
+      "application_device_allocations_per_search": 4,
+      "kernel_launches_per_search": 3
+    },
+    "launch_geometry": {
+      "distance_threads": [
+        16,
+        16
+      ],
+      "distance_grids": [
+        [
+          5,
+          9
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "insertion_threads": 256,
+      "insertion_blocks_each": 1,
+      "sqrt_threads": [
+        16,
+        16
+      ],
+      "sqrt_grids": [
+        [
+          5,
+          2
+        ],
+        [
+          3,
+          1
+        ]
+      ]
+    },
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+    "supported_features": [
+      "workgroup_shared_tiling",
+      "workgroup_barriers_in_featureloops",
+      "serial_perquery_insertion",
+      "mixedFloat32_Int32outputs",
+      "hostinclusive_allocation_transfer_pipeline"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Complete exact brute-force Euclidean KNN for two namedcases, k<=referencecount. No approximateKNN, extractedfeatures, trainingpipeline,4096\u00b2size performance or otherbackend claim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn",
+    "numerical_contract": "17044Float64rawartifactvalues pertrial:13846 byte-identical losslessly encoded input/parameter prefix plus3198 actual outputs (1599Float32distances and1599Int32zero-based indices). All5outputs permodel pass independentFloat64stable sort fullpublic topk; distances1e-3absolute, indicesexact. Native originalCPUchecks also pass. KA/JACC all5comparebothnativeandCUDAjl; maxdistancecrossdifference4.768371582e-7, noindexdifference. No canonicalization or property-only substitute.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.011289220400000001,
+      0.0010150044,
+      0.0009725920000000001,
+      0.000964999,
+      0.0009659999
+    ],
+    "mean_last_four_seconds": 0.000979648825,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/knn-julia/knn-julia-KA/main.jl",
+        "sha256": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da"
+      },
+      {
+        "path": "src/knn-julia/study_common.jl",
+        "sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+      },
+      {
+        "path": "src/knn-julia/knn_sort_math.jl",
+        "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c"
+      }
+    ],
+    "implementation_source_digest": "7eb7f0a693de70bdb67f3c42049fb57d9b0a34d3de6aecae530001fd2bef12f3"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Full tiled brute-force Euclidean KNN with stable insertion topk and selectedsqrt",
+    "work_item_mapping": "Distance16x16threads compute onequery/referencepair each across16-featuretiles; insertion256threads onequeryperthread; sqrt16x16threads oneselecteddistanceperthread",
+    "layout": "Dimension-major SoA features, flattenedrow-major reference\u00d7query squared-distance workspace and neighbor-rank\u00d7query outputs. Shared arrays16feature rows\u00d716point columns; Julia flat row-major staging preserves nativelayout.",
+    "storage_precision": [
+      "Float32_features_squared_distances_Euclidean_distances",
+      "Int32_zero_based_neighbor_indices"
+    ],
+    "compute_precision": [
+      "Float32_sequential_squared_difference_accumulation_sqrt",
+      "Int64_Julia_index_arithmetic_where_inferred",
+      "Float64_independent_CPU_oracle"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Same dimension-major/global/shared/insertionpattern as native andCUDAjl",
+    "synchronization": [
+      "2block barriers per16-featuretile",
+      "Ordered distance/insertion/sqrt kernel launches",
+      "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+      "Device sync at outerbatchtiming boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "distance_shared_bytes": 2048,
+      "sort_shared_bytes": 0,
+      "sqrt_shared_bytes": 0,
+      "application_device_allocations_per_search": 4,
+      "kernel_launches_per_search": 3
+    },
+    "launch_geometry": {
+      "distance_threads": [
+        16,
+        16
+      ],
+      "distance_grids": [
+        [
+          5,
+          9
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "insertion_threads": 256,
+      "insertion_blocks_each": 1,
+      "sqrt_threads": [
+        16,
+        16
+      ],
+      "sqrt_grids": [
+        [
+          5,
+          2
+        ],
+        [
+          3,
+          1
+        ]
+      ]
+    },
+    "library_backend_boundary": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/knn-julia/knn-julia-KA/main.jl",
+        "sha256": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da"
+      },
+      {
+        "path": "src/knn-julia/study_common.jl",
+        "sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+      },
+      {
+        "path": "src/knn-julia/knn_sort_math.jl",
+        "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "knn",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "exact_high_dimensional_nearest_neighbor_search",
+      "secondary_domains": [
+        "numerical_geometry",
+        "feature_matching",
+        "data_analysis"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Find exact k nearest reference vectors for every query using Euclidean distance, returning ordered distances and reference indices",
+      "mathematical_operation": "All-pairs squared L2distance, stable per-query insertion topk, then square root of selected distances. Exact ties retain ascending original reference index.",
+      "discretization": "Dimension-major finite feature vectors, no physical mesh. Cases129reference\u00d767queries\u00d768dimensions,k20 native-seeded random;65\u00d737\u00d75,k7 signed dyadic repeated reference/query patterns.",
+      "accuracy_requirements": "All1599 selected distances within originalsource1e-3absolute tolerance vs independentFloat64L2; all1599 referenceindices exact vs independent lexicographic(distance,index)sort. Original native CPUknn_c also passes. All20 raw artifacts preserve complete public outputs with no canonicalization.",
+      "input_size_regime": "Two complete search problems, including featuretail68mod16=4 andpartialpoint/query blocks; source4096\u00b2default not measured. Ten complete repeated batches, each2full searches with application allocations/transfers/frees inside.",
+      "precision_sensitivity": "Float32 feature/distance arithmetic and Int32indices, independentFloat64 pairwisesums and sqrt. Random case has nonzero cutoff gap; repeated-point case verifies exactties and stable index policy. Rawmixed Float64artifacts losslessly encode actual Float32distances/Int32indices, not Float64GPUcomputation.",
+      "community_use_case": "Vector retrieval and feature matching are supported by explicit kNNsource/provenance. This primitive could support scientific data analysis or machine learning, but no classifiertraining/accuracy, feature extraction or downstreamscientific application is implemented.",
+      "description": "Complete brute-force exact nearest-neighbor search, not a distance-only subkernel. Both returned distances and ordered neighboridentities are checked against independent mathematical search and sourceCPU.",
+      "provenance": "OriginalCUDA contains tiled distance, insertion-topk andsqrt kernels plus complete allocate/copy/free wrapper. Historical CUDAjl was an unrelated sqrt-touch placeholder with hardcoded accuracy; preserved and replaced with fullsource-equivalent pipeline. KA/JACC translate this actualalgorithm after source review.",
+      "source_evidence": [
+        {
+          "path": "src/knn-cuda/main.cu",
+          "sha256": "cd38642d2b53a8e61663247a70120548bc9533879f4be5e912a0c2b4f5295c87"
+        }
+      ]
+    },
+    "primary_motif": "tiled_all_pairs_distance_then_serial_perquery_topk",
+    "storage_precision": [
+      "Float32_features_squared_distances_Euclidean_distances",
+      "Int32_zero_based_neighbor_indices"
+    ],
+    "compute_precision": [
+      "Float32_sequential_squared_difference_accumulation_sqrt",
+      "Int64_Julia_index_arithmetic_where_inferred",
+      "Float64_independent_CPU_oracle"
+    ],
+    "synchronization": [
+      "2block barriers per16-featuretile",
+      "Ordered distance/insertion/sqrt kernel launches",
+      "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+      "Device sync at outerbatchtiming boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Allmodels preserve native16x16 distance tiles with two256-Float32 shared arrays,256-thread perquery insertion and16x16sqrt. JuliausesCUDAmemorypool/explicitunsafe_free! vsnativecudaMalloc/cudaFree; JACC copies512-Float32 persistenttemplate and addsbarrier. Bounds/indexarithmetic differ; hostinclusive timing cannot isolate kernelperformance."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "repaired_original_sqrt_touch_placeholder_full_three_stage_KNN",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+    "verification_contract": "17044Float64rawartifactvalues pertrial:13846 byte-identical losslessly encoded input/parameter prefix plus3198 actual outputs (1599Float32distances and1599Int32zero-based indices). All5outputs permodel pass independentFloat64stable sort fullpublic topk; distances1e-3absolute, indicesexact. Native originalCPUchecks also pass. KA/JACC all5comparebothnativeandCUDAjl; maxdistancecrossdifference4.768371582e-7, noindexdifference. No canonicalization or property-only substitute.",
+    "keyconfounds": [
+      "Hostinclusive original fullKNNscope contains4applicationGPUallocations,H2D,3kernels,D2H,frees; JuliaCUDAmemorypool vsnativecudaMalloc/cudaFree ismaterial, no purekernel or roofline speedup attribution",
+      "JACC persistent2KBzero-template support input initialized outside alltrials; applicationarrays stillallocatedinsideeverycall. Templatecopy/barrierinsideeverydistancekernel isextra",
+      "SourceC++uncheckedpointer arithmetic versus Julia retainedbounds/indexarithmetic; generatedregister/localtraffic unprofiled",
+      "Small named cases129x67d68 and65x37d5 versus original4096\u00b2d68; no large-scale memory/computation scaling conclusion",
+      "Exactrepeated-pointties and duplicatedqueries affect sortingbranch distribution; explicitfixture descriptors are notintrinsicframeworkproperties",
+      "HistoricalCUDAjl sqrt-touch/hardcodedPASS placeholder replaced, originalcostunknown and currentreference translation/repair separatelymetered",
+      "No featureextraction/bilinearinterpolation or classifierincludeddespitesourceheaderprovenance notes"
+    ],
+    "boundary_rounding_policy": "Allreference/queryvectors validfinite; fullpartial16x16point/querygroups anddimensiontailzero-filled. Stable ascendingreferenceindex exactties; topkselectionstrict< atcutoff matchesnative, no approximate-neighbor policy. ActualGPUdistanceFloat32, artifactFloat64onlylosslessencoding.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "knn",
+        "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "41f85e06329c6a4923bc6079fbaedc1c91a81d280e6e10f0f7faf7f042ea4f1e",
+        "status": "verified",
+        "algorithm": "Full tiled brute-force Euclidean KNN with stable insertion topk and selectedsqrt",
+        "work_item_mapping": "Distance16x16threads compute onequery/referencepair each across16-featuretiles; insertion256threads onequeryperthread; sqrt16x16threads oneselecteddistanceperthread",
+        "layout": "Dimension-major SoA features, flattenedrow-major reference\u00d7query squared-distance workspace and neighbor-rank\u00d7query outputs. Shared arrays16feature rows\u00d716point columns; Julia flat row-major staging preserves nativelayout.",
+        "precision": {
+          "storage": [
+            "Float32_features_squared_distances_Euclidean_distances",
+            "Int32_zero_based_neighbor_indices"
+          ],
+          "compute": [
+            "Float32_sequential_squared_difference_accumulation_sqrt",
+            "Int64_Julia_index_arithmetic_where_inferred",
+            "Float64_independent_CPU_oracle"
+          ]
+        },
+        "memory_access": "Coalesced featuretileloads/sharedreuse, fullNQdistanceworkspace, perquery strided insertion updates, topkD2H",
+        "synchronization": [
+          "2block barriers per16-featuretile",
+          "Ordered distance/insertion/sqrt kernel launches",
+          "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+          "Device sync at outerbatchtiming boundaries"
+        ],
+        "resource_policy": {
+          "distance_shared_bytes": 2048,
+          "sort_shared_bytes": 0,
+          "sqrt_shared_bytes": 0,
+          "application_device_allocations_per_search": 4,
+          "kernel_launches_per_search": 3
+        },
+        "launch_geometry": {
+          "distance_threads": [
+            16,
+            16
+          ],
+          "distance_grids": [
+            [
+              5,
+              9
+            ],
+            [
+              3,
+              5
+            ]
+          ],
+          "insertion_threads": 256,
+          "insertion_blocks_each": 1,
+          "sqrt_threads": [
+            16,
+            16
+          ],
+          "sqrt_grids": [
+            [
+              5,
+              2
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+        "supported_features": [
+          "workgroup_shared_tiling",
+          "workgroup_barriers_in_featureloops",
+          "serial_perquery_insertion",
+          "mixedFloat32_Int32outputs",
+          "hostinclusive_allocation_transfer_pipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Complete exact brute-force Euclidean KNN for two namedcases, k<=referencecount. No approximateKNN, extractedfeatures, trainingpipeline,4096\u00b2size performance or otherbackend claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn",
+        "numerical_contract": "17044Float64rawartifactvalues pertrial:13846 byte-identical losslessly encoded input/parameter prefix plus3198 actual outputs (1599Float32distances and1599Int32zero-based indices). All5outputs permodel pass independentFloat64stable sort fullpublic topk; distances1e-3absolute, indicesexact. Native originalCPUchecks also pass. KA/JACC all5comparebothnativeandCUDAjl; maxdistancecrossdifference4.768371582e-7, noindexdifference. No canonicalization or property-only substitute.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0074354548000000005,
+          0.0009498208000000001,
+          0.0009281036000000001,
+          0.0009331326000000001,
+          0.0009258166
+        ],
+        "mean_last_four_seconds": 0.0009342184,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/knn-julia/knn-julia-cuda.jl/main.jl",
+            "sha256": "41f85e06329c6a4923bc6079fbaedc1c91a81d280e6e10f0f7faf7f042ea4f1e"
+          },
+          {
+            "path": "src/knn-julia/study_common.jl",
+            "sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+          },
+          {
+            "path": "src/knn-julia/knn_sort_math.jl",
+            "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c"
+          }
+        ],
+        "implementation_source_digest": "cb1d0e0eba2a1f3b326fba5744e9cdc31ebbc026b010f13f83aaccd3875e6651"
+      },
+      "ka": {
+        "benchmark_id": "knn",
+        "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da",
+        "status": "verified",
+        "algorithm": "Full tiled brute-force Euclidean KNN with stable insertion topk and selectedsqrt",
+        "work_item_mapping": "Distance16x16threads compute onequery/referencepair each across16-featuretiles; insertion256threads onequeryperthread; sqrt16x16threads oneselecteddistanceperthread",
+        "layout": "Dimension-major SoA features, flattenedrow-major reference\u00d7query squared-distance workspace and neighbor-rank\u00d7query outputs. Shared arrays16feature rows\u00d716point columns; Julia flat row-major staging preserves nativelayout.",
+        "precision": {
+          "storage": [
+            "Float32_features_squared_distances_Euclidean_distances",
+            "Int32_zero_based_neighbor_indices"
+          ],
+          "compute": [
+            "Float32_sequential_squared_difference_accumulation_sqrt",
+            "Int64_Julia_index_arithmetic_where_inferred",
+            "Float64_independent_CPU_oracle"
+          ]
+        },
+        "memory_access": "Same dimension-major/global/shared/insertionpattern as native andCUDAjl",
+        "synchronization": [
+          "2block barriers per16-featuretile",
+          "Ordered distance/insertion/sqrt kernel launches",
+          "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+          "Device sync at outerbatchtiming boundaries"
+        ],
+        "resource_policy": {
+          "distance_shared_bytes": 2048,
+          "sort_shared_bytes": 0,
+          "sqrt_shared_bytes": 0,
+          "application_device_allocations_per_search": 4,
+          "kernel_launches_per_search": 3
+        },
+        "launch_geometry": {
+          "distance_threads": [
+            16,
+            16
+          ],
+          "distance_grids": [
+            [
+              5,
+              9
+            ],
+            [
+              3,
+              5
+            ]
+          ],
+          "insertion_threads": 256,
+          "insertion_blocks_each": 1,
+          "sqrt_threads": [
+            16,
+            16
+          ],
+          "sqrt_grids": [
+            [
+              5,
+              2
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+        "supported_features": [
+          "workgroup_shared_tiling",
+          "workgroup_barriers_in_featureloops",
+          "serial_perquery_insertion",
+          "mixedFloat32_Int32outputs",
+          "hostinclusive_allocation_transfer_pipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Complete exact brute-force Euclidean KNN for two namedcases, k<=referencecount. No approximateKNN, extractedfeatures, trainingpipeline,4096\u00b2size performance or otherbackend claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn",
+        "numerical_contract": "17044Float64rawartifactvalues pertrial:13846 byte-identical losslessly encoded input/parameter prefix plus3198 actual outputs (1599Float32distances and1599Int32zero-based indices). All5outputs permodel pass independentFloat64stable sort fullpublic topk; distances1e-3absolute, indicesexact. Native originalCPUchecks also pass. KA/JACC all5comparebothnativeandCUDAjl; maxdistancecrossdifference4.768371582e-7, noindexdifference. No canonicalization or property-only substitute.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.011289220400000001,
+          0.0010150044,
+          0.0009725920000000001,
+          0.000964999,
+          0.0009659999
+        ],
+        "mean_last_four_seconds": 0.000979648825,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/knn-julia/knn-julia-KA/main.jl",
+            "sha256": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da"
+          },
+          {
+            "path": "src/knn-julia/study_common.jl",
+            "sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+          },
+          {
+            "path": "src/knn-julia/knn_sort_math.jl",
+            "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c"
+          }
+        ],
+        "implementation_source_digest": "7eb7f0a693de70bdb67f3c42049fb57d9b0a34d3de6aecae530001fd2bef12f3"
+      },
+      "jacc": {
+        "benchmark_id": "knn",
+        "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "343b91166c0cb52af276607dc5d1babc37f86a6911e44b91bd13c113e85924fd",
+        "status": "verified",
+        "algorithm": "Full tiled brute-force Euclidean KNN with stable insertion topk and selectedsqrt",
+        "work_item_mapping": "Distance16x16threads compute onequery/referencepair each across16-featuretiles; insertion256threads onequeryperthread; sqrt16x16threads oneselecteddistanceperthread",
+        "layout": "Dimension-major SoA features, flattenedrow-major reference\u00d7query squared-distance workspace and neighbor-rank\u00d7query outputs. Shared arrays16feature rows\u00d716point columns; Julia flat row-major staging preserves nativelayout.",
+        "precision": {
+          "storage": [
+            "Float32_features_squared_distances_Euclidean_distances",
+            "Int32_zero_based_neighbor_indices"
+          ],
+          "compute": [
+            "Float32_sequential_squared_difference_accumulation_sqrt",
+            "Int64_Julia_index_arithmetic_where_inferred",
+            "Float64_independent_CPU_oracle"
+          ]
+        },
+        "memory_access": "Same pattern plus512-Float32 shared-template reads/writes perworkgroup;sourceaccesspattern, not measuredDRAMtraffic",
+        "synchronization": [
+          "2block barriers per16-featuretile",
+          "Ordered distance/insertion/sqrt kernel launches",
+          "Device sync beforeD2Hcopy, explicitapplicationfrees percall",
+          "Device sync at outerbatchtiming boundaries"
+        ],
+        "resource_policy": {
+          "distance_shared_bytes": 2048,
+          "sort_shared_bytes": 0,
+          "sqrt_shared_bytes": 0,
+          "explicit": true,
+          "application_device_allocations_per_search": 4,
+          "kernel_launches_per_search": 3,
+          "persistent_template_bytes": 2048,
+          "persistent_template_initialization_outside_trials": true,
+          "template_copy_elements_per_distance_workgroup": 512
+        },
+        "launch_geometry": {
+          "distance_threads": [
+            16,
+            16
+          ],
+          "distance_grids": [
+            [
+              5,
+              9
+            ],
+            [
+              3,
+              5
+            ]
+          ],
+          "insertion_threads": 256,
+          "insertion_blocks_each": 1,
+          "sqrt_threads": [
+            16,
+            16
+          ],
+          "sqrt_grids": [
+            [
+              5,
+              2
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+        "supported_features": [
+          "workgroup_shared_tiling",
+          "workgroup_barriers_in_featureloops",
+          "serial_perquery_insertion",
+          "mixedFloat32_Int32outputs",
+          "hostinclusive_allocation_transfer_pipeline"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Complete exact brute-force Euclidean KNN for two namedcases, k<=referencecount. No approximateKNN, extractedfeatures, trainingpipeline,4096\u00b2size performance or otherbackend claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn",
+        "numerical_contract": "17044Float64rawartifactvalues pertrial:13846 byte-identical losslessly encoded input/parameter prefix plus3198 actual outputs (1599Float32distances and1599Int32zero-based indices). All5outputs permodel pass independentFloat64stable sort fullpublic topk; distances1e-3absolute, indicesexact. Native originalCPUchecks also pass. KA/JACC all5comparebothnativeandCUDAjl; maxdistancecrossdifference4.768371582e-7, noindexdifference. No canonicalization or property-only substitute.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0044123047,
+          0.0010056283,
+          0.0009520418000000001,
+          0.0009480828,
+          0.0009531508000000001
+        ],
+        "mean_last_four_seconds": 0.000964725925,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/knn-julia/knn-julia-JACC/main.jl",
+            "sha256": "343b91166c0cb52af276607dc5d1babc37f86a6911e44b91bd13c113e85924fd"
+          },
+          {
+            "path": "src/knn-julia/study_common.jl",
+            "sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+          },
+          {
+            "path": "src/knn-julia/knn_sort_math.jl",
+            "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c"
+          }
+        ],
+        "implementation_source_digest": "22bd6d3acda95d775eca6b31154eca3b936268bcc9e2bed96e708d1611d2382e"
+      }
+    },
+    "source_sha256": {
+      "src/knn-julia/knn-julia-cuda.jl/main.jl": "41f85e06329c6a4923bc6079fbaedc1c91a81d280e6e10f0f7faf7f042ea4f1e",
+      "src/knn-julia/knn-julia-KA/main.jl": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da",
+      "src/knn-julia/knn-julia-JACC/main.jl": "343b91166c0cb52af276607dc5d1babc37f86a6911e44b91bd13c113e85924fd"
+    },
+    "ontology_sha256": "cd23c672dcd0b7aeaf22f0a34e6d1c920c77ebb367d7217dbf158badedab255c",
+    "canonical_fixture_descriptors": {
+      "cases": [
+        {
+          "reference_points": 129,
+          "query_points": 67,
+          "dimension": 68,
+          "k": 20,
+          "all_pairs_count": 8643,
+          "unique_reference_vectors": 129,
+          "unique_query_vectors": 67,
+          "queries_with_exact_ties_in_topk": 0,
+          "min_squared_distance_gap_within_topk": 2.3431983080968166e-05,
+          "min_squared_distance_k_cutoff_gap": 0.00024591907881266195,
+          "derivation": "Float64directpairwisesquaredL2 onactualFloat32inputprefix, stablelexicographicsort"
+        },
+        {
+          "reference_points": 65,
+          "query_points": 37,
+          "dimension": 5,
+          "k": 7,
+          "all_pairs_count": 2405,
+          "unique_reference_vectors": 13,
+          "unique_query_vectors": 11,
+          "queries_with_exact_ties_in_topk": 37,
+          "min_squared_distance_gap_within_topk": 0.0,
+          "min_squared_distance_k_cutoff_gap": 0.0,
+          "derivation": "Float64directpairwisesquaredL2 onactualFloat32inputprefix, stablelexicographicsort"
+        }
+      ],
+      "source_sha256": "2252bded4da56a53612446008ab1bbd0837fdf549f455f10849fcde573dc3d6e"
+    },
+    "shared_helper_provenance": {
+      "path": "src/knn-julia/knn_sort_math.jl",
+      "sha256": "d7ac905a078b87e0fbce1eca50cf786fd0cf20c2c97d2d214a9a6f3f064ada4c",
+      "origin": "Newtranslationofnativeinsertionkernel, attributedoncecurrentreferencephaseandreusedportableversions",
+      "historical_cost": "unknown"
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/knn-julia/knn-julia-KA/main.jl",
+    "sha256": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4,
+        18,
+        21
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        6
+      ],
+      "barrier": [
+        10,
+        14
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+      "run_id": "20261017T203851172468Z_knn",
+      "result": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "e75d7a22b17c5dcc5b03914ab212640aab1fe0f51c84156bef7aabacdb81c1fa",
+      "source_hash": "965cdc9a32d74246ea9c4a8616453f8778738e30227de6aa7fecfb29b8b8d31c",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.011289220400000001,
+        0.0010150044,
+        0.0009725920000000001,
+        0.000964999,
+        0.0009659999
+      ],
+      "mean_last_four_seconds": 0.000979648825,
+      "contract": {
+        "cases": [
+          {
+            "reference_points": 129,
+            "query_points": 67,
+            "dimension": 68,
+            "k": 20,
+            "input": "source libc srand2Float32reference thenquery random0..1"
+          },
+          {
+            "reference_points": 65,
+            "query_points": 37,
+            "dimension": 5,
+            "k": 7,
+            "input": "signeddyadicreference13repeatedpatterns/query11patterns toexerciseexactties"
+          }
+        ],
+        "precision": "Float32 stored/computed source distances;Int32 exact0based indices; Float64 mathematicaloracle and losslessmixedartifacts",
+        "metric": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+        "output": "3198actual mixed distance/indexvalues+13846lossless input/parameter prefix=17044Float64artifactvalues. Distances1e-3absolute same source tolerance; indices checkedexactindependently and numericdualartifactcomparison1e-3cannotacceptoffby1.",
+        "ties": "Ascendingstable originalreferenceindex for exactequaldistances, checked with repeatedpointfixture. Fulltopkoutputs, no multisetcanonicalization."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "knn:ka:20261017T203851172468Z_knn:N3:accepted",
+        "benchmark_id": "knn",
+        "implementation_model": "ka",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/knn.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "knn:ka:20261017T203851172468Z_knn:N3:accepted",
+          "benchmark_id": "knn",
+          "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+          "implementation_model": "ka",
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "source_revision": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 4.76837158203125e-07; unchangedtolerance 0.001+0*abs(ref).",
+          "minimal_trigger": {
+            "cases": [
+              {
+                "reference_points": 129,
+                "query_points": 67,
+                "dimension": 68,
+                "k": 20,
+                "input": "source libc srand2Float32reference thenquery random0..1"
+              },
+              {
+                "reference_points": 65,
+                "query_points": 37,
+                "dimension": 5,
+                "k": 7,
+                "input": "signeddyadicreference13repeatedpatterns/query11patterns toexerciseexactties"
+              }
+            ],
+            "precision": "Float32 stored/computed source distances;Int32 exact0based indices; Float64 mathematicaloracle and losslessmixedartifacts",
+            "metric": "Two COMPLETE knn_parallel-equivalent calls per batch incl4GPUallocations,H2Dreference/query,3kernels,synchronization,D2Hdistances+indices,explicitGPUfrees;repeat10; setup/oracle CPU excluded. CUDAjlmemorypool vs native cudaMalloc/cudaFree confound.",
+            "output": "3198actual mixed distance/indexvalues+13846lossless input/parameter prefix=17044Float64artifactvalues. Distances1e-3absolute same source tolerance; indices checkedexactindependently and numericdualartifactcomparison1e-3cannotacceptoffby1.",
+            "ties": "Ascendingstable originalreferenceindex for exactequaldistances, checked with repeatedpointfixture. Fulltopkoutputs, no multisetcanonicalization."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261017T203851172468Z_knn/result.json",
+              "sha256": "e75d7a22b17c5dcc5b03914ab212640aab1fe0f51c84156bef7aabacdb81c1fa"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "knn:ka:hostinclusive_mapping:P1:01",
+        "benchmark_id": "knn",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "source_mapping_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/knn.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "knn:ka:hostinclusive_mapping:P1:01",
+          "benchmark_id": "knn",
+          "configuration_id": "knn_complete_hostinclusive_129x67d68k20_65x37d5k7_v1",
+          "implementation_model": "ka",
+          "phase": "source_mapping_review",
+          "code": "P1",
+          "is_failure": false,
+          "compiler_failure": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "exact_error": null,
+          "root_cause": "Originalfullhostscopeincludesallocations/transfers/frees; JuliaCUDApool differs nativecudaMalloc, andJACCtemplatecopy/barrier pluspersistenttemplate lifecycle differs.",
+          "root_cause_evidence": [
+            {
+              "path": "src/knn-julia/knn-julia-KA/main.jl",
+              "sha256": "849b26e963818e283ab08a52f310a9e890490bbcac0206c1911ac3487e1904da"
+            }
+          ],
+          "resolution": "Recordactualhostboundary/resources, retainall5timings, no kernel-onlycausalclaim.",
+          "final_outcome": "verified_complete_hostinclusive_search"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
+    "candidate_attempts": 1,
     "compiler_checks": null,
     "compiler_feedback_repairs": null,
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "36f6b13f0ad2ca0747a67896",
+        "begin_event_id": "8f2f838f3f955a309dbaa687",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T20:38:17.010106+00:00",
+        "usage_event_timestamp": "2026-10-17T20:38:08.900Z",
+        "elapsed_usage_event_start": "2026-10-17T20:37:09.433Z",
+        "delta_usage": {
+          "input_tokens": 501961,
+          "cached_input_tokens": 498176,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2171,
+          "reasoning_output_tokens": 1032,
+          "total_tokens": 504132
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 8.110106,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "84bedc74373d867b57ca6e39f412f72d44ca26e497774c6057774ffee4d793aa",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "First KA fullpipeline candidate all5distances andexactindices pass bothrefs; partialtiles andstabletie fixture pass, nofeedbackrepair.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 18.243026,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/knn/ka_translation.jsonl",
+        "evidence_sha256": "8fb86ed7567f5d2b89bb37f576b944d094e17f9c5b603ed13be980bd78ac4e68",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/knn/measurement_scope_review.json",
+      "sha256": "f73616da356c9c61069faa18b92b50d1090a07006ee7a3279fd86a7d94bfe51d",
+      "record": {
+        "benchmark_id": "knn",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
-  "source_commit": null,
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/knn-julia-ka/manifest.json",
+    "selected_sha256": "aa725834ec7b1d7b434073f78ea88b2f088f628d25615fd607546d34d4cf6582",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/knn-julia-ka/manifest.json",
+        "sha256": "aa725834ec7b1d7b434073f78ea88b2f088f628d25615fd607546d34d4cf6582"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "52bcd658cde637759ad7a2b7d553fe920bc2735b",
   "explicit_outcome_evidence": null
 }
