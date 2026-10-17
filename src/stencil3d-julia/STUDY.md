@@ -1,6 +1,6 @@
 # stencil3d: scientific and implementation observation
 
-Source-levelscientificauditmatters: a7pointscalarLaplacianisnotthenative9componentanisotropicfacefluxoperator. Genuineportsretainrolling4planeFP64sharedtilesandcrossderivativefacegradients. Independentdirectsixfacefluxoraclesavoidreusingrollingstorage, andconstantpotentialtestsnullresponsewithvariableSPDconductivity. FullYZtilesavoidnativebarrierdivergencehazard; Xpartialslabremainscovered. ThespatialoperatorstudydoesnotestablishaPDEsolverconvergence/stabilityorparticularcardiacapplication.
+Source-levelscientificauditmatters: a7pointscalarLaplacianisnotthenative9componentanisotropicfacefluxoperator. Genuineportsretainrolling4planeFP64sharedtilesandcrossderivativefacegradients. Independentdirectsixfacefluxoraclesavoidreusingrollingstorage, andconstantpotentialtestsnullresponsewithvariableSPDconductivity. Full YZ tiles define the measured scope; partial YZ tiles remain untested, while the partial X slab is covered. ThespatialoperatorstudydoesnotestablishaPDEsolverconvergence/stabilityorparticularcardiacapplication.
 
 ## Reference audit
 
@@ -21,3 +21,7 @@ Independent tracked scientific_operator_witness.py uses generic face-normal/tang
 
 
 Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
+
+## Source scope correction
+
+Partial YZ tiles were not tested. Early returns alone do not establish a barrier defect: on Volta, barriers wait for all non-exited threads. Source-specific halo and data dependencies remain unmeasured. The N30 full-YZ results are unchanged. See the [CUDA 12.6 programming guide, Volta migration](https://docs.nvidia.com/cuda/archive/12.6.0/cuda-c-programming-guide/index.html#independent-thread-scheduling-7-x). Archived configs retain the original wording; the source_scope_adjudication supplement supersedes that interpretation.

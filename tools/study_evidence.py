@@ -2,7 +2,7 @@
 import copy,hashlib,json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-ALLOWED={'numerical_evidence_strength','native_reference_repaired','native_behavior_known_scientific_defect','reference_provenance','exclude_from_scientific_fidelity_aggregates','exclude_untouched_native_aggregates','exclude_from_aggregate'}
+ALLOWED={'numerical_evidence_strength','native_reference_repaired','native_behavior_known_scientific_defect','reference_provenance','exclude_from_scientific_fidelity_aggregates','exclude_untouched_native_aggregates','exclude_from_aggregate','source_scope_adjudication','input_contract_metadata_erratum'}
 def effective_config(result_path,config):
     result_path=Path(result_path);raw_result=result_path.read_bytes();result=json.loads(raw_result)
     sidecar=ROOT/'src'/(result['benchmark']+'-julia')/'study_adjudications.json'
