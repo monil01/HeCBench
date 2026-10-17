@@ -23,3 +23,8 @@ All 14,336 nodal values in each of all20 artifacts pass the independent Float64 
 
 
 Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
+
+
+## Precision-role clarification
+
+Device compute: Float32operator. Timed device compute: Float32operator. Untimed device compute: none. Host fixture/oracle precision: Float64basisgeneration/tensororacle. Artifact encoding: Float32nodaloutputs. This source-bound classification correction changes no execution, source, output, tolerance, or timing. Later review effort is outside the closed original workflow interval.

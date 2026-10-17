@@ -23,3 +23,8 @@ All200,974retainedintegers/artifact match an independent arbitrary-precision mod
 
 
 Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
+
+
+## Precision-role clarification
+
+Device compute: Float64GPU46bitLCGsplit, Int32ranking/scans/scatter. Timed device compute: Int32histogram/prefix/rank_verification. Untimed device compute: Float64GPU46bitLCGsplit, Int32GPUfullsortscatter/orderedness. Host fixture/oracle precision: UInt64modularLCGoracle, hostintegerhistogram/prefix/sort. Artifact encoding: Int32keys/ranks/prefix/sorted/flags/counters. This source-bound classification correction changes no execution, source, output, tolerance, or timing. Later review effort is outside the closed original workflow interval.
