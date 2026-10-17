@@ -1,0 +1,41 @@
+{
+  "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+  "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+  "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+  "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+  "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+  "witnesses": {
+    ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+  },
+  "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+  "status": "conditional_reference_repaired",
+  "exclude_untouched_native_aggregates": true,
+  "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+  "original_checker_defects": [
+    {
+      "kind": "actual_CPU_witness",
+      "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+      "value": 0.690000057220459,
+      "expected_single_bias_update": 0.30000001192092896,
+      "blocks": 2,
+      "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+    },
+    {
+      "kind": "static_source_order_hazard",
+      "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+      "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+    }
+  ],
+  "raw_witnesses": {
+    "backprop_native_witness.log": {
+      "path": ".porting-state/portable_julia/backprop_native_witness.log",
+      "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+      "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+    },
+    "backprop_checker_witness.log": {
+      "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+      "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+      "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+    }
+  }
+}
