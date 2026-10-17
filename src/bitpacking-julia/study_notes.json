@@ -1,0 +1,122 @@
+{
+  "reference_audit": {
+    "finding": "HistoricalJuliaimplementscorrectbitpackingbutCPUmin/maxreplacesnative2GPUreductionsandperwordglobalreadsreplacecooperativesharedinputbuffering. P1mapping/perfregioncompromise,notwrongscientificoperator. Restorenative3GPUkernelpipelineforcomparison;preserveoldsource.",
+    "taxonomy_code": "P1",
+    "phase": "reference_mapping_repair",
+    "original_path": "/home/imo/HeCBench_julia/src/bitpacking-julia/bitpacking-julia-cuda.jl/original_main.jl",
+    "original_sha256": "aa7057ea197d1250196351f590993d221444df7110e9672948a518a0ad79f665",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "SignedInt32min/maxscan+finalizebitwidththenminimum-offsetUInt32bitstreampackingwithcooperativeinputsharedtiles",
+  "mapping": "256threads;scan/packgridmin4096/ceil(n/256),finalize1block;split128min/128maxlanetreereduction;packoutputwordperlane,cooperativeload/buffer/barriers",
+  "launch_geometry": {
+    "threads": 256,
+    "grid": "min4096/ceil(n/256),finalize1",
+    "scan_finalize_shared_bytes": 2048,
+    "pack_shared_bytes": 1024
+  },
+  "traits": {
+    "primary_motif": "integer_range_reduction_and_lossless_bitpacking",
+    "storage_precision": [
+      "Int32input/minmax",
+      "UInt32packed",
+      "UInt8width",
+      "UInt64num"
+    ],
+    "compute_precision": [
+      "Int32index/minmax",
+      "UInt32bitstreamshifts"
+    ],
+    "synchronization": [
+      "blockbarriersduringmin/maxreductionandpackbufferloads",
+      "streamordered3kernels",
+      "syncboundaryafter1000repeats"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "GPUscan/finalizeandsharedbufferedpackingrestoredwithsamegeometry/sharedbytes"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_six_sizes_native_full_gpu_config_and_buffered_pack_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Namedpositive13bitrangeInt32fixture",
+      "Largestnative100millionsizenotmeasured",
+      "Otherintegerdatatypesnotmainstudy",
+      "Zero-bitconstantinputnotcovered",
+      "JACCsharedtemplatecopyoverheadmustrecord"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "Losslessintegercompression",
+      "scientific_task": "Inferminimum/rangebitwidthandcompactminimum-offsetintegersintobitstream",
+      "governing_method": "Two-stageGPUmin/maxreduction+fixedwidthbitpacking",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/bitpacking-cuda/kernels.cu",
+          "sha256": "aecbccb32bb26de624dafce0d8e0f6dd4c96aaffafcf4b861b2ead7028141516"
+        },
+        {
+          "path": "src/bitpacking-cuda/main.cu",
+          "sha256": "1a4a717ed1e12cc15687e0296bdf7ee749917c2fd70531afa5ad2f89a2417738"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "resource_policy": "2048Bscan/finalize,1024Bpackshared"
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "resource_policy": "2048Bscan/finalize,1024Bpackshared",
+      "backend_scope": "KA GPU-only cpu=false kernels; nested documented @synchronize helpers; no CPU-backend claim."
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "resource_policy": "2048Bscan/finalize,1024Bpackshared;JACCtemplatecopiesadditional",
+      "additional_shared_initialization": "JACC.shared copies512Int32scan/finalizetemplate(2048B),256UInt32packtemplate(1024B),withinitialbarrier; native/KAdo notcopyglobaltemplates."
+    }
+  },
+  "observation": "MathematicalbitstreamagreementalonewouldnotmakehistoricalCPUconfiguration/unbufferedpackingaperformancematchedtranslation. GenuinecomparisonrestoresnativeGPUreductionandcooperativebuffering,thenchecksallconfigurationpartialsandpackedwordsratherthansampledunpackonly. Smalltailcasesand4096gridstridecasecoverdifferentmappingboundaries;zerowidth/otherdatatypesand100millionsizearenotcertified.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 1
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "shared_host_parse_failure_before_device_JIT",
+        "taxonomy_code": "B2",
+        "source_archive": ".porting-state/portable_julia/diagnostics/bitpacking/shared_candidate1_host_parse.jl",
+        "log": ".porting-state/portable_julia/runs/20261017T195443772993Z_bitpacking/cuda_jl_run1.log"
+      }
+    ]
+  },
+  "effort_observation": "Reference GPU mapping repair is separate from target translation: historical operator output is meaningful but host reductions/unbuffered packing do not match native mapping. A shared B2 host comprehension spacing error was repaired before device JIT; no compiler feedback repair is implied. Target attempt counts are independent."
+}
