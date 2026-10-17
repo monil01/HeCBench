@@ -1,0 +1,7 @@
+# CHEMV study scope
+
+The original unchanged CPU runs one update, while GPU runs 1000 stateful updates with beta=2.71+8.28i. The retained diagnostic invokes those actual paths: CPU740/740 components finite, GPU0/740 finite. Original absolute comparisons miss NaNs. `native_default_diagnostic.cu` and `diagnostic_evidence.json` preserve this witness. Original source is not corrected and original default is not certified.
+
+The named study uses original N370, unitstrides, unchanged native two generated kernels (12blocks,32threads) and genuine existing CUDA.jl kernels, but explicitly one update on a reset bounded dyadic fixture. Allfour models use the same fixture/region. Lowercolumnmajor triangle defines a Hermitian matrix, conjugating upper entries and ignoring diagonal imaginary components. Independent Float64 complex matvec oracle checks every740 component and finiteness at absolute1e-5. Five warm inprocess trials, mean2–5; reset/oracle/artifacts outside clock. Native kernel.cu is linked unchanged. No vendormath replacement or unsupported feature claim.
+
+KA first macrocheck rejected explicitterminalreturn; second candidate removes that statement only, then passes. JACC uses samegeneratedindices and groupbarriers, explicitshmem_size=0. Full artifacts and raw compiler/diagnostic events retained under .porting-state. Exact billed translation tokens unavailable; savedsource proxies partial and exclude failed revisions/sharedcontext/paper.
