@@ -1,5 +1,5 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=../_julia_ka_env
 LAUNCHER ?=
 ARGS ?= 1024 1024 10
 
