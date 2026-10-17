@@ -1,0 +1,28 @@
+# chacha20: verified four-model study observation
+
+RQ IDs: RQ1–RQ5. Experiment IDs: E1–E5. Evidence ID: 20261017T002322924183Z_chacha20.
+Configuration contract: `{"n": 256, "repeat": 10, "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "nonce_hex": "0001020304050607", "reference_keystream_hex": "f798a189f195e66982105ffb640bb7757f579da31602fc93ec01ac56f85ac3c134a4547b733b46413042c9440049176905d3be59ea1c53f15916155c2be8241a38008b9a26bc35941e2444177c8ade6689de95264986d95889fb60e84629c9bd9a5acb1cc118be563eb9b3a4a472f82e09a7e778492b562ef7130e88dfe031c79db9d4f7c7a899151b9a475032b63fc385245fe054e3dd5a97a5f576fe064025d3ce042c566ab2c507b138db853e3d6959660996546cc9c4a6eafdc777c040d70eaf46f76dad3979e5c5360c3317166a1c894c94a371876a94df7628fe4eaaf2ccb27d5aaae0ad7ad0f9d4b6ad3b54098746d4524d38407a6deb3ab78fab78c9", "threads": 256, "active_cipher_threads": 1, "outputs": "Cipherbytes +decodedkey +decodednonce +decodedreference, allbytesexactFloat64encoding", "timing": "resultzeroing +devicehexdecode +serialstreamcipher kernelmean"}`.
+Protocol: five_trials_last_four_v1, all five correctness checks retained, timing mean trials2–5.
+Evidence: `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T002322924183Z_chacha20/result.json`, config.json, timings.csv, raw logs, binary artifacts.
+Ontology: ontology/benchmarks/chacha20.yaml; SHA256 `da98061ce73edfa2d2bac3eaa61fabb91a332a08f42e06fc1247098bfcc3d8a9`. Original inferred ontology labels retained; no retroactive winner-based relabeling.
+
+## Numerical confirmation
+Each variant passes independent full-element CPU oracle checks and direct binary-array comparisons against native CUDA and CUDA.jl on every one of the five trials. Acceptance tolerances and all observed absolute/relative errors are preserved in result.json. NaN/nonfinite and shape/count checks are performed by the runner. Native device kernels are included unchanged; historical CUDA.jl original_main.jl and original_Makefile are retained. Parent compatibility entrypoints execute the historical original source. Study drivers change only explicitly recorded reference inputs/measurement handling, a separate phase from original translation.
+
+The original key, nonce and256-byte known-answer keystream are retained. The study includes device hex decoding and uses exactly one active cipher thread within the native256-thread block. Historical Julia host-decoded inputs and parallel-per64-byte-block execution are separately corrected to this mapping. A workgroup barrier establishes decoded-key visibility where native relies on implicit ordering. Julia builds each64-byte block state from private decoded key words rather than the native incremented-counter object; this arithmetic/state mapping is disclosed. All552 bytes (cipher output, decoded key, nonce and reference) match the published native sample and both references exactly across five trials. Result zeroing remains inside each timed repeat: native cudaMemset versus Julia fill kernel is a confound. Both frameworks succeed on candidate one, StaticArrays supplies private fixed-size state, and JACC reserves zero shared bytes. Other keys/nonces/lengths are untested.
+
+## Runtime: microseconds
+Each trial records the synchronized launch-loop mean per internal repeat. This includes host dispatch and excludes JIT/compilation, setup, allocations, transfers, input reset, CPU checking and artifact writing. Each trial starts with the same inputs. A device warmup precedes trial1. All timing commands are serialized on GPU6 via the shared lock. Native CUDA, CUDA.jl, KA and JACC are measured under the same named contract. Julia environments pin CUDA runtime12.0; exact package/hardware evidence lives in setup and run bundles.
+
+| Model | Trials1–5 (us) | Mean2–5 (us) |
+|---|---|---|
+| cuda | 40.9853, 41.2404, 41.1103, 41.0744, 41.0143 | 41.1099 |
+| cuda_jl | 21.8232, 24.1812, 19.5432, 18.9841, 19.0052 | 20.4284 |
+| ka | 27.9992, 23.8852, 19.3382, 18.6412, 18.5542 | 20.1047 |
+| jacc | 32.4583, 47.3114, 20.9202, 19.9882, 19.9652 | 27.0463 |
+
+## Attempts, tokens and feature support
+Each new framework has one source candidate; zero compiler-feedback code repairs. Actual runner build/JIT invocations are recorded separately from timing trials; tool/reuse/setup failures are infrastructure events, not translation candidates. A five-trial timing series is not five translation attempts. Token accounting is partial source-text characters/4, with unavailable conversation/tool/reasoning/cached usage explicitly unknown; these estimates do not establish total billed cost or an abstraction cost ranking. Shared infrastructure/reference correction/paper work are separate phases. KA-first and JACC reuse make this incremental production effort, not independent translations. No unsupported framework feature was observed for this selected configuration.
+
+## Ontology explanation and paper follow-up
+Use the existing operation/access classifications as grouping evidence, with implementation choices above recorded separately. Any runtime gap is an observation. Potential launch/configuration overhead, memory access behavior, compiler output and changed specialization are competing explanations, not demonstrated causes. No measured memory traffic, occupancy or roofline position was collected in this pass. Profiling and size scaling remain pending; this small configuration cannot support broad abstraction-selection recommendations. RQ1 is answered for this contract; RQ2 cost completeness is partial; RQ3 has matched measurements; RQ4 mechanisms and RQ5 generalization remain unresolved. Coordinator must export a portable snapshot and connect this observation to claims/figures/sections.
