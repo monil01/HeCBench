@@ -2,24 +2,46 @@
   "schema_version": 2,
   "benchmark_id": "histogram",
   "scientific_intent": {
+    "review_status": "source_audited",
+    "review_phase": "prospective post-verification annotation",
     "primary_family": "signal_image",
-    "application_domain": "Image count statistics",
-    "scientific_task": "Multichannel image histograms",
-    "mathematical_method": "Global/shared-memory atomic alternatives with partial histograms",
-    "community_use_case": "Image statistics and atomic contention study; exact count conservation is a relevant future invariant",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-backed operator/probe intent; application-scale accuracy and performance assessed separately.",
-    "accuracy_requirements": "Configuration-specific mathematical/numerical contract still required; not certified by intent review.",
-    "evidence": [
-      {
-        "path": "src/histogram-cuda/histogram_gmem_atomics.h",
-        "sha256": "e93b12f60faf8cf52ca852d7a89fd33de69b880c6b0d7d552bb67d93c6cdb6cd",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
-      },
+    "primary_domain": "image_channel_histogram",
+    "scientific_task": "Count discrete image intensity distributions using private global or block-shared partial histograms, then combine across blocks.",
+    "mathematical_operation": "H[c,b]=sum_pixels 1[bin(pixel_c)=b]; uchar1=floor((R+G+B)/3), uchar4 RGB channels separately, float4 exact byte/256 with bin=trunc(256*x); alpha ignored.",
+    "discretization_or_topology": "1080columns\u00d71920rows,256 independent source groups(16x16),128lanes(32x4),rasterstrides512x64;256 or768 finalbins.",
+    "invariants": [
+      "Sum of each channel finalcounts equals2073600 pixels.",
+      "Finalcounts equal sum of256 group-private partials.",
+      "All UInt32 additions exact within bounded fixture, ordering-independent."
+    ],
+    "accuracy_requirements": [
+      "All256/768finalbins and65536/196608activepartialbins exact against independentCPUgroupownership and bothGPUreferences,5trials eachmode.",
+      "Original HistogramGold validates finalbins too; uninitialized1024-stride padding excluded."
+    ],
+    "precision_sensitivity": "Float32*256 bin conversion exact for supplied bytes/256 fixture; arbitrary continuous intensity/binboundary cases unmeasured.",
+    "input_size_regimes": "Source-sized2073600pixels; stored input2.07/8.29/33.18MB bygenre plus1MiBpartialarray, storage footprints are not measured traffic.",
+    "community_use_case": "Image statistics/distribution primitive; no particular imaging modality, scientific dataset or downstream inference demonstrated.",
+    "uncertainty": "Synthetic distributions do not establish representative application contention or end-to-end image processing performance.",
+    "provenance": [
       {
         "path": "src/histogram-cuda/histogram_compare.cu",
         "sha256": "e9eae828f1bb5b48f2aa0b3bef5ac5ee0561a2f3dac84da64dffd6fd46d4a764",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
+        "source_locations": "TestGenres, TestMethods, HistogramGold and argument order"
+      },
+      {
+        "path": "src/histogram-cuda/histogram_gmem_atomics.h",
+        "sha256": "e93b12f60faf8cf52ca852d7a89fd33de69b880c6b0d7d552bb67d93c6cdb6cd",
+        "source_locations": "global partial/accum kernels"
+      },
+      {
+        "path": "src/histogram-cuda/histogram_smem_atomics.h",
+        "sha256": "9a684455c0e795f61ec2e8a0e99c3881a2bddabd366e9ef50dfee658fe32c42c",
+        "source_locations": "padded shared partial/accum kernels"
+      },
+      {
+        "path": "src/histogram-julia/study_common.jl",
+        "sha256": "add6f252571338ff4ed708b15d20ef1e305a50a13e0bce985fe53f23332a4d38",
+        "source_locations": "LCG fixture, bin rules and independent group CPU checks"
       }
     ]
   },
@@ -30,5 +52,70 @@
   },
   "historical_pass_method": "native_pass_trusted",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "c213e27d7eeecdd729566154",
+      "begin_event_id": "d16a017d48c750fce04e111c",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T19:53:35.352955+00:00",
+      "usage_event_timestamp": "2026-10-17T19:53:27.398Z",
+      "elapsed_usage_event_start": "2026-10-17T19:52:25.782Z",
+      "delta_usage": {
+        "input_tokens": 650805,
+        "cached_input_tokens": 644096,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1746,
+        "reasoning_output_tokens": 330,
+        "total_tokens": 652551
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 7.954955,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "9a12ac3703ed11254de8f6b8ec0595f9516fcaaa009aa44db927e047b31328b2",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "All6configmetadata/ontology/status/observation/checkpointcomplete. TwometadatawritererrorscorrectedwithoutGPUrerun; annotationdraftleftcensoredinscope_review. Makefilesnowexposegmemu4default.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 4.88067,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/histogram/shared_annotation.jsonl",
+      "evidence_sha256": "8b83267caac70774c6b361f1fafc810dc431dd1967b3a7fae0d978b6ec951e13",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "d90aadebd0edac936148b115",
+      "begin_event_id": "721db7288be98e1b56f32baf",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T19:53:41.015008+00:00",
+      "usage_event_timestamp": "2026-10-17T19:53:35.402Z",
+      "elapsed_usage_event_start": "2026-10-17T19:29:32.125Z",
+      "delta_usage": {
+        "input_tokens": 7999041,
+        "cached_input_tokens": 7879808,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 40855,
+        "reasoning_output_tokens": 17560,
+        "total_tokens": 8039896
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 5.613008,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "c7183e2e68ab4e627a9a0584c102d4f0674c2bfef832783d01d7c2edf306af9b",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Complete6configurationworkflow,bothvariantsverified; rawphaseboundariesretained, exclusiveKA/JACCusageunknownbecausedraftinterleaving, broadworkflowcompleteandnonadditive. Initialreference+oneunintendedrepeatseriesallretained.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 11.697069,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/histogram/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "5616147b99209ebb648309ad7a0d676aeee3863d2d97980e179d1bfddbace42c",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }

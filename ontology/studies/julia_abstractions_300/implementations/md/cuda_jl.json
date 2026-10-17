@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "md",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/md.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,15 +14,323 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_audited",
+    "actual_algorithm": "One work item per atom, serial128-neighbor gather and xyz force sum; overwrite force on every launch; strict cutoff/zero guard retained",
+    "work_item_mapping": "One partial256-thread block for129 atoms, same native block shape",
+    "data_layout": "Separate contiguous xyz position/force arrays; Int32 neighbor matrix flattened slot-major, atom-contiguous. Native float4 AoS retained as reference",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "memory_access": "Global coalesced neighbor-index reads and irregular position gathers; no shared tile or atomic force accumulation",
+    "synchronization": [
+      "Same-stream launches",
+      "Synchronized trial boundaries"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1,
+      "dynamic_shared_bytes": 0,
+      "JACC_spec": null,
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": "256threads,1block,127 masked tail lanes",
+    "library_boundary": "CUDA backend array allocation/runtime only; no force library or custom device intrinsics",
+    "host_control_boundary": "Common CuArray fixture driver; resets and all oracles outside timer; host launch/vector splatting and final synchronization included",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "inherited_layout_adaptation",
+      "reason": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim"
+    },
+    "fidelity_scope": "Preserves native force formula/constants and genuine historical CUDAjl SoA kernel body. Named all-neighbor reciprocal graph, not original default list builder or whole MD simulation",
+    "source_evidence": {
+      "path": "src/md-julia/md-julia-cuda.jl/main.jl",
+      "sha256": "d50752f1965f92bd3cd94178dbd266515dbc27957e49a6f814201b424a3cb36b"
+    },
+    "study_entrypoint": {
+      "path": "src/md-julia/md-julia-cuda.jl/study.jl",
+      "sha256": "6a8f0f2c1b4a73665dbe432e370934f3b6910187c5f5643e5e97d9e45d919c0b"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "profiling_status": "Source-reviewed only; no measured memory-bound or occupancy cause",
+    "keyconfounds": [
+      "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+      "Native fused arithmetic versus source Julia uncontracted expressions; accepted drift5.96e-8 under unchanged1e-5 port tolerance",
+      "Small129-atom complete reciprocal list differs from original large nearest128 fixtures; neighbor builder excluded",
+      "Three-kernel composite time per internal repeat, not per-case timings or full MD time to solution",
+      "Host dispatch/sync and Julia vector splatting included; register/cache/occupancy counters unmeasured",
+      "Auxiliary Float64 absolute budget revised after first failure with explicit scale justification; failed evidence retained; port/sourceCPU tolerance unchanged"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "One work item per atom, serial128-neighbor gather and xyz force sum; overwrite force on every launch; strict cutoff/zero guard retained",
+    "work_item_mapping": "One partial256-thread block for129 atoms, same native block shape",
+    "layout": "Separate contiguous xyz position/force arrays; Int32 neighbor matrix flattened slot-major, atom-contiguous. Native float4 AoS retained as reference",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "memory_hierarchy_and_access": "Global coalesced neighbor-index reads and irregular position gathers; no shared tile or atomic force accumulation",
+    "synchronization": [
+      "Same-stream launches",
+      "Synchronized trial boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1,
+      "dynamic_shared_bytes": 0,
+      "JACC_spec": null,
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": "256threads,1block,127 masked tail lanes",
+    "library_backend_boundary": "CUDA backend array allocation/runtime only; no force library or custom device intrinsics",
+    "host_control_boundary": "Common CuArray fixture driver; resets and all oracles outside timer; host launch/vector splatting and final synchronization included",
+    "fidelity_status_and_scope": "Preserves native force formula/constants and genuine historical CUDAjl SoA kernel body. Named all-neighbor reciprocal graph, not original default list builder or whole MD simulation",
+    "source_review_evidence": {
+      "path": "src/md-julia/md-julia-cuda.jl/main.jl",
+      "sha256": "d50752f1965f92bd3cd94178dbd266515dbc27957e49a6f814201b424a3cb36b"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "md",
+    "scientific_intent": {
+      "primary_family": "particle_molecular",
+      "application_domain": "Molecular pair-force operator",
+      "scientific_task": "Evaluate finite-cutoff pair forces over a fixed reciprocal neighbor list; no trajectory integration",
+      "mathematical_method": "Nonperiodic inverse-power Lennard-Jones-like pair force with source lj1=1.5,lj2=2, strict squared cutoff13.5 and zero-distance guard",
+      "accuracy_requirements": [
+        "Full signed finite xyz force components against sourceCPU and both GPU references",
+        "Independent unordered-pair Float64 force and potential-gradient witness",
+        "Translation/rotation consistency and scale-normalized net force; source coincident guard is a policy probe, not a physical admissibility claim"
+      ],
+      "community_use_case": "Inspect irregular neighbor gathers, force precision and geometric consistency before integrating a force kernel in molecular simulation; this does not establish energy-conserving trajectories or neighbor-list construction correctness",
+      "review_status": "source_audited",
+      "input_size_regime": "129 atoms, all other128 neighbors, three related geometries and partial256-thread block; original12288..73728 classes and nearest128 list builder unmeasured",
+      "evidence": [
+        {
+          "path": "src/md-cuda/main.cu",
+          "sha256": "f700ae2bb2f8b237772954dd78829bf242ba3d75eb441213eb7ee3dc2b111e0d"
+        },
+        {
+          "path": "src/md-cuda/MD.h",
+          "sha256": "36fc12cb5dea621074a6f81e5c3bf94903208ef0f0481978d00cd8e6765c6442"
+        },
+        {
+          "path": "src/md-julia/scientific_operator_witness.py",
+          "sha256": "3f8ee3c6b3d4f886c22996f4a18034018aed1442a0199458570bcd3ff8856980"
+        }
+      ]
+    },
+    "primary_motif": "serial_neighbor_gather_pair_force",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "Ordered overwrite kernels",
+      "Host synchronization at trial boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "inherited_layout_adaptation",
+      "reason": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim"
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Three geometries x20 overwrite kernels divided20; host dispatch/sync included, setup/reset/H2D/D2H/CPU oracles excluded",
+    "verification_contract": "All1161 actual xyz forces;50697 exact input-prefix values; sourceCPU1e-5 and explicit Float64 pair/error/geometric checks",
+    "keyconfounds": [
+      "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+      "Native fused arithmetic versus source Julia uncontracted expressions; accepted drift5.96e-8 under unchanged1e-5 port tolerance",
+      "Small129-atom complete reciprocal list differs from original large nearest128 fixtures; neighbor builder excluded",
+      "Three-kernel composite time per internal repeat, not per-case timings or full MD time to solution",
+      "Host dispatch/sync and Julia vector splatting included; register/cache/occupancy counters unmeasured",
+      "Auxiliary Float64 absolute budget revised after first failure with explicit scale justification; failed evidence retained; port/sourceCPU tolerance unchanged"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "One work item per atom, serial128-neighbor gather and xyz force sum; overwrite force on every launch; strict cutoff/zero guard retained",
+        "work_item_mapping": "One partial256-thread block for129 atoms, same native block shape",
+        "data_layout": "Separate contiguous xyz position/force arrays; Int32 neighbor matrix flattened slot-major, atom-contiguous. Native float4 AoS retained as reference",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "memory_access": "Global coalesced neighbor-index reads and irregular position gathers; no shared tile or atomic force accumulation",
+        "synchronization": [
+          "Same-stream launches",
+          "Synchronized trial boundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": null,
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "256threads,1block,127 masked tail lanes",
+        "library_boundary": "CUDA backend array allocation/runtime only; no force library or custom device intrinsics",
+        "host_control_boundary": "Common CuArray fixture driver; resets and all oracles outside timer; host launch/vector splatting and final synchronization included",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "inherited_layout_adaptation",
+          "reason": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim"
+        },
+        "fidelity_scope": "Preserves native force formula/constants and genuine historical CUDAjl SoA kernel body. Named all-neighbor reciprocal graph, not original default list builder or whole MD simulation",
+        "source_evidence": {
+          "path": "src/md-julia/md-julia-cuda.jl/main.jl",
+          "sha256": "d50752f1965f92bd3cd94178dbd266515dbc27957e49a6f814201b424a3cb36b"
+        },
+        "study_entrypoint": {
+          "path": "src/md-julia/md-julia-cuda.jl/study.jl",
+          "sha256": "6a8f0f2c1b4a73665dbe432e370934f3b6910187c5f5643e5e97d9e45d919c0b"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no measured memory-bound or occupancy cause",
+        "keyconfounds": [
+          "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+          "Native fused arithmetic versus source Julia uncontracted expressions; accepted drift5.96e-8 under unchanged1e-5 port tolerance",
+          "Small129-atom complete reciprocal list differs from original large nearest128 fixtures; neighbor builder excluded",
+          "Three-kernel composite time per internal repeat, not per-case timings or full MD time to solution",
+          "Host dispatch/sync and Julia vector splatting included; register/cache/occupancy counters unmeasured",
+          "Auxiliary Float64 absolute budget revised after first failure with explicit scale justification; failed evidence retained; port/sourceCPU tolerance unchanged"
+        ]
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "One work item per atom, serial128-neighbor gather and xyz force sum; overwrite force on every launch; strict cutoff/zero guard retained",
+        "work_item_mapping": "One partial256-thread block for129 atoms, same native block shape",
+        "data_layout": "Separate contiguous xyz position/force arrays; Int32 neighbor matrix flattened slot-major, atom-contiguous. Native float4 AoS retained as reference",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "memory_access": "Global coalesced neighbor-index reads and irregular position gathers; no shared tile or atomic force accumulation",
+        "synchronization": [
+          "Same-stream launches",
+          "Synchronized trial boundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": null,
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "256threads,1block,127 masked tail lanes",
+        "library_boundary": "CUDA backend array allocation/runtime only; no force library or custom device intrinsics",
+        "host_control_boundary": "Common CuArray fixture driver; resets and all oracles outside timer; host launch/vector splatting and final synchronization included",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "inherited_layout_adaptation",
+          "reason": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim"
+        },
+        "fidelity_scope": "Preserves native force formula/constants and genuine historical CUDAjl SoA kernel body. Named all-neighbor reciprocal graph, not original default list builder or whole MD simulation",
+        "source_evidence": {
+          "path": "src/md-julia/md-julia-KA/main.jl",
+          "sha256": "0080cea2c349ce26e4b3f278497e88503c6e5db68c3ec24326453e0b7019a016"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no measured memory-bound or occupancy cause",
+        "keyconfounds": [
+          "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+          "Native fused arithmetic versus source Julia uncontracted expressions; accepted drift5.96e-8 under unchanged1e-5 port tolerance",
+          "Small129-atom complete reciprocal list differs from original large nearest128 fixtures; neighbor builder excluded",
+          "Three-kernel composite time per internal repeat, not per-case timings or full MD time to solution",
+          "Host dispatch/sync and Julia vector splatting included; register/cache/occupancy counters unmeasured",
+          "Auxiliary Float64 absolute budget revised after first failure with explicit scale justification; failed evidence retained; port/sourceCPU tolerance unchanged"
+        ]
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "One work item per atom, serial128-neighbor gather and xyz force sum; overwrite force on every launch; strict cutoff/zero guard retained",
+        "work_item_mapping": "One partial256-thread block for129 atoms, same native block shape",
+        "data_layout": "Separate contiguous xyz position/force arrays; Int32 neighbor matrix flattened slot-major, atom-contiguous. Native float4 AoS retained as reference",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "memory_access": "Global coalesced neighbor-index reads and irregular position gathers; no shared tile or atomic force accumulation",
+        "synchronization": [
+          "Same-stream launches",
+          "Synchronized trial boundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": "Explicit fixed256threads/1block/0shared/syncfalse",
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "256threads,1block,127 masked tail lanes",
+        "library_boundary": "CUDA backend array allocation/runtime only; no force library or custom device intrinsics",
+        "host_control_boundary": "Common CuArray fixture driver; resets and all oracles outside timer; host launch/vector splatting and final synchronization included",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "inherited_layout_adaptation",
+          "reason": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim"
+        },
+        "fidelity_scope": "Preserves native force formula/constants and genuine historical CUDAjl SoA kernel body. Named all-neighbor reciprocal graph, not original default list builder or whole MD simulation",
+        "source_evidence": {
+          "path": "src/md-julia/md-julia-JACC/main.jl",
+          "sha256": "17c9f6a0c6cec546a674a65440a7c379cd3961ec3c436900112e78233f0276c5"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no measured memory-bound or occupancy cause",
+        "keyconfounds": [
+          "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+          "Native fused arithmetic versus source Julia uncontracted expressions; accepted drift5.96e-8 under unchanged1e-5 port tolerance",
+          "Small129-atom complete reciprocal list differs from original large nearest128 fixtures; neighbor builder excluded",
+          "Three-kernel composite time per internal repeat, not per-case timings or full MD time to solution",
+          "Host dispatch/sync and Julia vector splatting included; register/cache/occupancy counters unmeasured",
+          "Auxiliary Float64 absolute budget revised after first failure with explicit scale justification; failed evidence retained; port/sourceCPU tolerance unchanged"
+        ]
+      }
+    },
+    "numerical_evidence_strength": "complete_xyz_force_arrays",
+    "scientific_witness": ".porting-state/portable_julia/scientific_witnesses_300/md.json"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/md-julia/main.jl",
-    "sha256": "b122b313fc60c7eaf7cd03209e7dc54240f85676398cee8ab4afd22d0c17c9cc",
+    "path": "src/md-julia/md-julia-cuda.jl/main.jl",
+    "sha256": "d50752f1965f92bd3cd94178dbd266515dbc27957e49a6f814201b424a3cb36b",
     "syntax_features": {
       "cuda_kernel_launch": [
         137
@@ -40,11 +348,114 @@
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "fp32_n129_all128neighbors_three_geometries_cutoff_branches_v1",
+      "run_id": "20261017T192434181877Z_md",
+      "result": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "e871b481fbb675a946b9f661b42b99de560b6577a59cc87d4d14a16b2d8100d1",
+      "source_hash": "0c7051a550d2d6a42029f05712be58f4a595a6e839920328e8b68914d8d22063",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00332337555,
+        0.0001588275,
+        0.00015290795,
+        0.00015332795,
+        0.0001533214
+      ],
+      "mean_last_four_seconds": 0.0001545962,
+      "contract": {
+        "n_atoms": 129,
+        "neighbors": 128,
+        "cases": [
+          "dyadic7x7x3partiallattice includingdistinctcoincidentatoms/exact13.5cutoffpair",
+          "samepositionstranslated(.5,-.25,1)",
+          "rotated(-y,x,z)"
+        ],
+        "neighbor_policy": "Allother128atomssortedbyindex;reciprocalcompletegraph,notdefaultlargernearest128builder;kernelusesgivenneighborlists unchanged",
+        "precision": "Float32 SPyes; nativefloat4AoS(16B/atom) vsJulia xyzSoA, force.w zero checkednative only; notfloat3",
+        "constants": {
+          "lj1": 1.5,
+          "lj2": 2,
+          "cutsq": 13.5
+        },
+        "input_prefix_values": 50697,
+        "computed_values": 1161,
+        "artifact_values": 51858,
+        "roi": "Threegeometries x20overwritekernels divided20;hostlaunch/syncincluded;setup/H2D/reset/D2H/CPUoraclesexcluded;no timeintegration orneighborbuilder performance claim",
+        "science": "IndependentFloat64unorderedpairantisymmetricaccumulation, netforce,translation/rotationequivariance, potentialgradientfinite-differenceawayfromcutoff; sourcezero-distanceignored andstrictcutoffpreserved; no equilibrium/trajectory claim",
+        "scientific_accuracy_budget": "SourceCPUanddualreference1e-5 unchanged. IndependentFloat64pairmath absolute1e-5+relative1e-6, normalizednetforce<=1e-6; reportabsoluteerrors. Firststudycheck incorrectly imposed1e-5absoluteonFloat64math despite~1e3near-pairforces; preservedfailedrun191944; revisedscientificFP32scale beforeportabletargets, notnative/sourcealgorithmrepair or hiddenrerun."
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "19b20076d540daa1f107",
+        "benchmark_id": "md",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/md.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "Native float4 AoS16B/atom versus all Julia separate xyz SoA4B/component; this inherited layout difference prevents an isolated abstraction penalty claim",
+          "outcome": "Declared inherited layout confound",
+          "result": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "c384dad3bdc529448373",
+        "benchmark_id": "md",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/md.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "N3",
+          "phase": "numerical_verification",
+          "is_failure": false,
+          "cause": "Accepted fused versus uncontracted source arithmetic drift",
+          "max_abs_error": 5.960464477539063e-08,
+          "atol": 1e-05,
+          "result": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -53,9 +464,81 @@
     "compiler_feedback_repairs": null,
     "runtime_repairs": null,
     "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "translation_tokens": {
+      "status": "prospective_activity_window_plus_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/md/cuda_jl_reference_repair.jsonl",
+          "event_id": "29cbf26f4db0d1bb239948ac",
+          "delta_usage": {
+            "input_tokens": 1580421,
+            "cached_input_tokens": 1510784,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 11181,
+            "reasoning_output_tokens": 2338,
+            "total_tokens": 1591602
+          },
+          "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+        }
+      ],
+      "estimated_saved_source_tokens": 1627,
+      "method": "Saved source chars/4 is a partial proxy. Observed windows include repeated/cached context and interleaved root paper/commit coordination. Cached input/reasoning are subsets, overlapping spans not summed, no exclusive/billed cost claim. Historical CUDAjl cost unknown.",
+      "reuse_condition": "Shared new sourceCPU/Float64 unordered-pair oracle and fixture driver authored once during reference repair; target windows are marginal ordered-workflow costs, JACC follows KA."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "29cbf26f4db0d1bb239948ac",
+        "begin_event_id": "d756de1cbd50e0609cf37936",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T19:22:33.623250+00:00",
+        "usage_event_timestamp": "2026-10-17T19:22:23.563Z",
+        "elapsed_usage_event_start": "2026-10-17T19:16:41.439Z",
+        "delta_usage": {
+          "input_tokens": 1580421,
+          "cached_input_tokens": 1510784,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 11181,
+          "reasoning_output_tokens": 2338,
+          "total_tokens": 1591602
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 10.06025,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "bab61b0b54c9dcd4b86b494c5d9027adf8f322380069b5549fd9da01122d9500",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Referenceadaptercandidate2/check2; originalgenuineCUDAjl/nativekernels unchanged. FirstauxiliaryFP64absolute1e-5 checkfailed due nearpairforce~1e3 FP32scale; oldrunretained. Replacedauxiliarybudget with explicitabs1e-5+rel1e-6 andnormalizednetforce1e-6, preservingport/sourceCPU1e-5. Independentpairgradient/antisymmetry/geometricequivariance. All5dualrefs pass, maxnativeJulia5.96e-8. Metadata/methodrepair T1shared, notframework/nativefailure. Rootpaper/commitsinterleaved.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 25.445581,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/md/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "5c851a0e2b03d6c1b8a953e48ba37ad24289a97ab586acd670344f4711a2999d",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "md",
+    "model": "cuda_jl",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/result.json",
+    "evidence": [
+      {
+        "path": "src/md-julia/md-julia-cuda.jl/main.jl",
+        "sha256": "d50752f1965f92bd3cd94178dbd266515dbc27957e49a6f814201b424a3cb36b"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T192434181877Z_md/result.json",
+        "sha256": "e871b481fbb675a946b9f661b42b99de560b6577a59cc87d4d14a16b2d8100d1"
+      }
+    ]
+  }
 }

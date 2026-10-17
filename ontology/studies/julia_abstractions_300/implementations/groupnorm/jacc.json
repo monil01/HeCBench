@@ -14,10 +14,510 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Paired full-block moment/gradient trees; separate scalar and four-component forward accumulation; per-channel backward reductions with global Float32 atomics.",
+    "mapping": "32groups1024threads; source source-CGwarp hierarchy replaced manual fullblock tree; forward2 first256lanes load4 components, all1024 participate in reduction.",
+    "layout": "Contiguous NCHW groups of1024; channelweights/bias32 and group\u03bc/rstd32;1024x2 Float32scratch, flat2048vector inJACC.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 addition/FMA/variance/normalization",
+      "independent_oracle": "float64 with centered finite differences outside timers"
+    },
+    "implementation_detail": "Three callbacks use flat2048 shared vector, explicit8192B; avoids unimplemented matrix-copy1D path, stages zero template then overwrites fullscratch.",
+    "memory": "8192Bdynamicshared plus8192Breadonlyzero template.",
+    "synchronization": [
+      "paired reduction initialization and ten tree barriers",
+      "barrier after scalar reads before reuse",
+      "JACC extra template staging barrier"
+    ],
+    "atomic_operations": [
+      "float32 global channel dweight/dbias add over batches"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "One selectedstage only: forward10 overwrite operations or backward1 gradientoperation; precomputedcanonicalmoments fed identically to backward, resets/checks/finite differences outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/groupnorm-julia/groupnorm-julia-JACC/main.jl",
+        "sha256": "4e384b46a69ed544a4c25001ae1c75dc510f661ed09e18792c40a362dbc658d0",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "resource_geometry": {
+      "blocks": 32,
+      "threads": 1024,
+      "shared_bytes": 8192,
+      "registers": null
+    },
+    "configuration_ids": [
+      "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+      "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+      "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1"
+    ],
+    "api_boundaries": [
+      {
+        "library": "JACC1.4.0",
+        "feature": "shared matrix initialization/copy in one-dimensional thread blocks",
+        "source_status": "unimplemented TODO branch; allocator stillreturns sharedarray, no matrixcopy inthatbranch",
+        "source_path": "/home/imo/.julia/packages/JACC/NLI8A/ext/CUDAExt/CUDAExt.jl",
+        "source_sha256": "b81f94bae782acaf458228a69810a67af19c64bff4836b0f733b6f077918bcec",
+        "source_location": "JACC.shared(::CUDABackend,::AbstractMatrix), CUDAExt.jl611-632",
+        "attempted_failed_invocations": 0,
+        "benchmark_blocked": false,
+        "chosen_mapping": "Supported sharedvector2048 backing, pairedlogicalcolumns at offsets0/1024; initialcontents unused after fullwrite."
+      }
+    ],
+    "feedback_reuse": "SuccessfulKA paired reductions/lifetime arithmetic reused before firstdraft.",
+    "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Paired full-block moment/gradient trees; separate scalar and four-component forward accumulation; per-channel backward reductions with global Float32 atomics.",
+    "work_item_mapping": "32groups1024threads; source source-CGwarp hierarchy replaced manual fullblock tree; forward2 first256lanes load4 components, all1024 participate in reduction.",
+    "layout": "Contiguous NCHW groups of1024; channelweights/bias32 and group\u03bc/rstd32;1024x2 Float32scratch, flat2048vector inJACC.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 addition/FMA/variance/normalization",
+    "memory_hierarchy_and_access": "8192Bdynamicshared plus8192Breadonlyzero template.",
+    "synchronization": [
+      "paired reduction initialization and ten tree barriers",
+      "barrier after scalar reads before reuse",
+      "JACC extra template staging barrier"
+    ],
+    "atomics_and_reductions": [
+      "float32 global channel dweight/dbias add over batches"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": {
+      "blocks": 32,
+      "threads": 1024,
+      "shared_bytes": 8192,
+      "registers": null
+    },
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "One selectedstage only: forward10 overwrite operations or backward1 gradientoperation; precomputedcanonicalmoments fed identically to backward, resets/checks/finite differences outside timer.",
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "groupnorm",
+    "primary_motif": "group_normalization_forward_and_reverse_gradients",
+    "storage_precision": [
+      "float32_NCHW",
+      "float32_channel_affine",
+      "float32_group_moments"
+    ],
+    "compute_precision": [
+      "float32_moments_and_reductions",
+      "float32_normalization_gradient"
+    ],
+    "synchronization": [
+      "paired_block_tree_barriers",
+      "barrier_before_shared_buffer_reuse"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same NCHW grouped moments/affine output and analytic gradients; native warp collectives become full1024-lane paired trees, source float4 path uses four component accumulators with scalar loads."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Named B4,C32,H16,W16,G8 only; source larger-image backward branch and default B32 cases remain unmeasured.",
+      "Backward receives shared canonical Float64-formula moments roundedFloat32, rather than a differently rounded preceding GPUforward result; this isolates a named backward stage, not a timed end-to-end training pipeline.",
+      "Native cooperative-group warp reductions/float4 loads versus agent-selected full-block paired trees/scalar component loads; translation mapping is not a claim about framework-optimal performance.",
+      "Native source declares256B shared partials; Julia-family uses8192B paired scratch. Actual native compiled resource attributes and register/spill counts were not measured here.",
+      "JACC adds2048-element zero-vector staging and a barrier, explicit8192B dynamicshared. Matrix shared-copy for1Dblocks is unimplemented in pinned JACC1.4; flatvector backing avoids that API boundary.",
+      "Group moments use E[x\u00b2]-E[x]\u00b2, not Welford; high-offset/low-variance conditioning regimes are unmeasured.",
+      "Synthetic32768-value bounded NCHW fixture fits V100L2; no large-tensor scaling/bottleneck attribution.",
+      "Sequential JACC sees successful KA mapping; consumed usage includes context/cache/coordination and broad workflow overlaps child phases.",
+      "Only32 independent blocks in this named case; larger batch/group-count regimes are unmeasured and no full-GPU scaling claim is made."
+    ],
+    "jacc_shared_memory_policy": "explicit8192bytes_flat2048vector",
+    "observation": "research/observations/groupnorm.md",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "group_normalization_tensor_forward_backward",
+      "scientific_task": "Normalize groups of image-like tensor channels with per-channel affine parameters, and compute input/weight/bias gradients.",
+      "mathematical_operation": "\u03bc=mean_group(x),\u03c3\u00b2=mean_group(x\u00b2)-\u03bc\u00b2,r=1/sqrt(\u03c3\u00b2+eps),y=\u03b3*(x-\u03bc)*r+\u03b2; dx=r*(\u03b3dy-mean_group(\u03b3dy)-normalized_x*mean_group(\u03b3dy*normalized_x)); d\u03b3=sum(dy*normalized_x),d\u03b2=sum(dy).",
+      "discretization_or_topology": "NCHW B4,C32,H16,W16,G8;4 consecutive channels and1024 scalars/group,32 independent groups; channel gradients sum over batches/spatial sites.",
+      "invariants": [
+        "Group population variance uses denominator1024, not unbiased1023.",
+        "Means/rstd shared by four consecutive channels; affine parameters remain per-channel.",
+        "Backward analytic gradients agree with independent centered finite differences for8 selected input elements."
+      ],
+      "accuracy_requirements": [
+        "Every forward checks32768 outputs+32means+32rstd; backward checks32768dx+32dweight+32dbias,32832 values eachtrial.",
+        "Independent Float64 mathematical formulas and8 centeredfinite differences, allstrictatol1e-3; originalout/dweight/dbias1e-2 anddx1.0 are also satisfied."
+      ],
+      "precision_sensitivity": "Uncentered moments and Float32 reduction/rsqrt lowering, atomic channel-gradient order acrossB4; large offsets/tiny variance can amplify cancellation and are not tested.",
+      "input_size_regimes": "Fixed group1024,32blocks1024threads; forward/forward2 each10 repeatedoverwrite operations, backward1 complete operation pertrial to prevent ambiguous repeated atomicgradient accumulation.",
+      "community_use_case": "Source explicitly relates to llm.c normalization and image-channel grouping; operator is training/inference tensor normalization, not an identified model/scientific dataset.",
+      "uncertainty": "No full neural model, physical data, optimization trajectory or application-level scientific validation established.",
+      "provenance": [
+        {
+          "path": "src/groupnorm-cuda/main.cu",
+          "sha256": "8ad8eebd7700b6613ed46e2c6cb13efac6351d4580ec366ecf57e5454fa34c53",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/groupnorm-julia/study_common.jl",
+          "sha256": "e0a69b49579608ffe522c834f70f895a23b53cb4821b1f81e6f22a4239d461ee",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T19:16:01.219488+00:00",
+      "review_phase": "prospective post-verification annotation"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Paired full-block moment/gradient trees; separate scalar and four-component forward accumulation; per-channel backward reductions with global Float32 atomics.",
+        "mapping": "32groups1024threads; source source-CGwarp hierarchy replaced manual fullblock tree; forward2 first256lanes load4 components, all1024 participate in reduction.",
+        "layout": "Contiguous NCHW groups of1024; channelweights/bias32 and group\u03bc/rstd32;1024x2 Float32scratch, flat2048vector inJACC.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 addition/FMA/variance/normalization",
+          "independent_oracle": "float64 with centered finite differences outside timers"
+        },
+        "implementation_detail": "Archived historical lane0-serial forward and aliasedforward2; restored distinct parallel paired-tree forward paths and explicit scratch-read barrier before reuse.",
+        "memory": "8192Bstaticshared perkernel, globalarrays.",
+        "synchronization": [
+          "paired reduction initialization and ten tree barriers",
+          "barrier after scalar reads before reuse",
+          "JACC extra template staging barrier"
+        ],
+        "atomic_operations": [
+          "float32 global channel dweight/dbias add over batches"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One selectedstage only: forward10 overwrite operations or backward1 gradientoperation; precomputedcanonicalmoments fed identically to backward, resets/checks/finite differences outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/groupnorm-julia/groupnorm-julia-cuda.jl/main.jl",
+            "sha256": "bae25590083b6b080b746a8c8f43363a3ce6f20985435058149cdd65b0b26b91",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "blocks": 32,
+          "threads": 1024,
+          "shared_bytes": 8192,
+          "registers": null
+        },
+        "configuration_ids": [
+          "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1"
+        ],
+        "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Paired full-block moment/gradient trees; separate scalar and four-component forward accumulation; per-channel backward reductions with global Float32 atomics.",
+        "mapping": "32groups1024threads; source source-CGwarp hierarchy replaced manual fullblock tree; forward2 first256lanes load4 components, all1024 participate in reduction.",
+        "layout": "Contiguous NCHW groups of1024; channelweights/bias32 and group\u03bc/rstd32;1024x2 Float32scratch, flat2048vector inJACC.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 addition/FMA/variance/normalization",
+          "independent_oracle": "float64 with centered finite differences outside timers"
+        },
+        "implementation_detail": "Three source-mode @kernels with8192Blocalpairedscratch, barriers in uniform loops, Atomixglobal channel-gradient adds.",
+        "memory": "8192Bstaticlocal perkernel.",
+        "synchronization": [
+          "paired reduction initialization and ten tree barriers",
+          "barrier after scalar reads before reuse",
+          "JACC extra template staging barrier"
+        ],
+        "atomic_operations": [
+          "float32 global channel dweight/dbias add over batches"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One selectedstage only: forward10 overwrite operations or backward1 gradientoperation; precomputedcanonicalmoments fed identically to backward, resets/checks/finite differences outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/groupnorm-julia/groupnorm-julia-KA/main.jl",
+            "sha256": "4defddfd6663db3c7c17e900019fac974e1c24b9ede11e485e5f2e1edcb745a0",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "blocks": 32,
+          "threads": 1024,
+          "shared_bytes": 8192,
+          "registers": null
+        },
+        "configuration_ids": [
+          "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1"
+        ],
+        "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Paired full-block moment/gradient trees; separate scalar and four-component forward accumulation; per-channel backward reductions with global Float32 atomics.",
+        "mapping": "32groups1024threads; source source-CGwarp hierarchy replaced manual fullblock tree; forward2 first256lanes load4 components, all1024 participate in reduction.",
+        "layout": "Contiguous NCHW groups of1024; channelweights/bias32 and group\u03bc/rstd32;1024x2 Float32scratch, flat2048vector inJACC.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 addition/FMA/variance/normalization",
+          "independent_oracle": "float64 with centered finite differences outside timers"
+        },
+        "implementation_detail": "Three callbacks use flat2048 shared vector, explicit8192B; avoids unimplemented matrix-copy1D path, stages zero template then overwrites fullscratch.",
+        "memory": "8192Bdynamicshared plus8192Breadonlyzero template.",
+        "synchronization": [
+          "paired reduction initialization and ten tree barriers",
+          "barrier after scalar reads before reuse",
+          "JACC extra template staging barrier"
+        ],
+        "atomic_operations": [
+          "float32 global channel dweight/dbias add over batches"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One selectedstage only: forward10 overwrite operations or backward1 gradientoperation; precomputedcanonicalmoments fed identically to backward, resets/checks/finite differences outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/groupnorm-julia/groupnorm-julia-JACC/main.jl",
+            "sha256": "4e384b46a69ed544a4c25001ae1c75dc510f661ed09e18792c40a362dbc658d0",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "blocks": 32,
+          "threads": 1024,
+          "shared_bytes": 8192,
+          "registers": null
+        },
+        "configuration_ids": [
+          "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+          "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1"
+        ],
+        "api_boundaries": [
+          {
+            "library": "JACC1.4.0",
+            "feature": "shared matrix initialization/copy in one-dimensional thread blocks",
+            "source_status": "unimplemented TODO branch; allocator stillreturns sharedarray, no matrixcopy inthatbranch",
+            "source_path": "/home/imo/.julia/packages/JACC/NLI8A/ext/CUDAExt/CUDAExt.jl",
+            "source_sha256": "b81f94bae782acaf458228a69810a67af19c64bff4836b0f733b6f077918bcec",
+            "source_location": "JACC.shared(::CUDABackend,::AbstractMatrix), CUDAExt.jl611-632",
+            "attempted_failed_invocations": 0,
+            "benchmark_blocked": false,
+            "chosen_mapping": "Supported sharedvector2048 backing, pairedlogicalcolumns at offsets0/1024; initialcontents unused after fullwrite."
+          }
+        ],
+        "feedback_reuse": "SuccessfulKA paired reductions/lifetime arithmetic reused before firstdraft.",
+        "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1"
+      }
+    },
+    "configuration_results": {
+      "forward": {
+        "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191214872254Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 5.12005e-06,
+          "cuda_jl": 6.74155e-06,
+          "ka": 1.8125699999999998e-05,
+          "jacc": 2.4241475e-05
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 10,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.19209289551e-07,
+          "cuda_jl": 2.38418579102e-07,
+          "ka": 2.38418579102e-07,
+          "jacc": 2.38418579102e-07
+        }
+      },
+      "forward2": {
+        "configuration_id": "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191224622634Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 5.0228000000000004e-06,
+          "cuda_jl": 7.171825e-06,
+          "ka": 1.2908375e-05,
+          "jacc": 2.5822974999999998e-05
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 10,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.19209289551e-07,
+          "cuda_jl": 2.38418579102e-07,
+          "ka": 2.38418579102e-07,
+          "jacc": 2.38418579102e-07
+        }
+      },
+      "backward": {
+        "configuration_id": "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191228368820Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 1.2455e-05,
+          "cuda_jl": 3.921075e-05,
+          "ka": 4.97305e-05,
+          "jacc": 0.0001201085
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 1,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.90734863281e-06,
+          "cuda_jl": 1.66893005371e-06,
+          "ka": 1.90734863281e-06,
+          "jacc": 1.66893005371e-06
+        }
+      }
+    },
+    "configuration_timing_dispersion": {
+      "forward": {
+        "cuda": {
+          "retained_trial_seconds": [
+            5.181e-06,
+            5.32e-06,
+            4.9841e-06,
+            4.9951e-06
+          ],
+          "coefficient_of_variation": 0.03145042552933616,
+          "outlier_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            7.811e-06,
+            6.5791e-06,
+            6.3371e-06,
+            6.239e-06
+          ],
+          "coefficient_of_variation": 0.10786123209389571,
+          "outlier_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            3.31364e-05,
+            1.38161e-05,
+            1.28672e-05,
+            1.26831e-05
+          ],
+          "coefficient_of_variation": 0.5527752951300879,
+          "outlier_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            2.79173e-05,
+            2.49302e-05,
+            2.23412e-05,
+            2.17772e-05
+          ],
+          "coefficient_of_variation": 0.11587158934878007,
+          "outlier_removed": false
+        }
+      },
+      "forward2": {
+        "cuda": {
+          "retained_trial_seconds": [
+            4.7501e-06,
+            6.0271e-06,
+            4.63e-06,
+            4.684e-06
+          ],
+          "coefficient_of_variation": 0.1336569786624016,
+          "outlier_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            8.6701e-06,
+            6.858e-06,
+            6.7001e-06,
+            6.4591e-06
+          ],
+          "coefficient_of_variation": 0.14113950420352772,
+          "outlier_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            2.39392e-05,
+            1.02591e-05,
+            8.9141e-06,
+            8.5211e-06
+          ],
+          "coefficient_of_variation": 0.5726081234300407,
+          "outlier_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            3.59013e-05,
+            2.29222e-05,
+            2.23962e-05,
+            2.20722e-05
+          ],
+          "coefficient_of_variation": 0.26054344616505193,
+          "outlier_removed": false
+        }
+      },
+      "backward": {
+        "cuda": {
+          "retained_trial_seconds": [
+            1.262e-05,
+            1.267e-05,
+            1.216e-05,
+            1.237e-05
+          ],
+          "coefficient_of_variation": 0.018982883047028314,
+          "outlier_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            6.0431e-05,
+            3.772e-05,
+            3.0661e-05,
+            2.8031e-05
+          ],
+          "coefficient_of_variation": 0.3755721518539513,
+          "outlier_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            8.8541e-05,
+            3.7891e-05,
+            3.684e-05,
+            3.565e-05
+          ],
+          "coefficient_of_variation": 0.5206031982630946,
+          "outlier_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            0.000241272,
+            8.751e-05,
+            8.0561e-05,
+            7.1091e-05
+          ],
+          "coefficient_of_variation": 0.6748522141361641,
+          "outlier_removed": false
+        }
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
@@ -67,6 +567,8 @@
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
       "result_sha256": "994e06daa5efc0d66a29a8c811b182aecb34d781eac6869be2af164d94124443",
@@ -100,6 +602,8 @@
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
       "result_sha256": "4d15aaa680a0908612ac3ae5e4581d960a1be8ba957e6d7a3a211809ead42c79",
@@ -133,6 +637,8 @@
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
       "result_sha256": "c4053c98d8b50a8a6dfd09fbb78f8cfe279af83d3ffbd1a50ce0c3f55de2ba83",
@@ -159,18 +665,112 @@
     }
   ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "groupnorm-jacc-P1-retrospective-implementation",
+        "benchmark_id": "groupnorm",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/groupnorm.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "groupnorm-jacc-P1-retrospective-implementation",
+          "benchmark": "groupnorm",
+          "model": "jacc",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Agent-chosen paired trees/scalarloads differ native CGwarp/float4 mapping; native source256Bdeclaredshared vs8192BJulia-family, no framework-ceiling or occupancy attribution.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/groupnorm-cuda/main.cu",
+              "sha256": "8ad8eebd7700b6613ed46e2c6cb13efac6351d4580ec366ecf57e5454fa34c53",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/groupnorm-julia/groupnorm-julia-JACC/main.jl",
+              "sha256": "4e384b46a69ed544a4c25001ae1c75dc510f661ed09e18792c40a362dbc658d0",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "groupnorm-jacc-P1-flat-shared-api-boundary",
+        "benchmark_id": "groupnorm",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "translation_design",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/groupnorm.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "groupnorm-jacc-P1-flat-shared-api-boundary",
+          "benchmark": "groupnorm",
+          "model": "jacc",
+          "phase": "translation_design",
+          "code": "P1",
+          "is_failure": false,
+          "attempted_failed_invocations": 0,
+          "api_boundary": {
+            "library": "JACC1.4.0",
+            "feature": "shared matrix initialization/copy in one-dimensional thread blocks",
+            "source_status": "unimplemented TODO branch; allocator stillreturns sharedarray, no matrixcopy inthatbranch",
+            "source_path": "/home/imo/.julia/packages/JACC/NLI8A/ext/CUDAExt/CUDAExt.jl",
+            "source_sha256": "b81f94bae782acaf458228a69810a67af19c64bff4836b0f733b6f077918bcec",
+            "source_location": "JACC.shared(::CUDABackend,::AbstractMatrix), CUDAExt.jl611-632",
+            "attempted_failed_invocations": 0,
+            "benchmark_blocked": false,
+            "chosen_mapping": "Supported sharedvector2048 backing, pairedlogicalcolumns at offsets0/1024; initialcontents unused after fullwrite."
+          },
+          "resolution": "Flatvectorsupportedsharedbacking preserveslogicalpairedcolumns, no benchmarkfeatureblock.",
+          "evidence": [
+            "src/groupnorm-julia/api_boundary_evidence.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
     "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 3,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 9314,
+      "output_tokens": 1437,
+      "cached_tokens": null,
+      "total_tokens": 10751,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/groupnorm-cuda/main.cu",
+        "src/groupnorm-cuda/common.h",
+        "src/groupnorm-cuda/reference.h",
+        "src/groupnorm-julia/groupnorm-julia-cuda.jl/main.jl",
+        "src/groupnorm-julia/groupnorm-julia-KA/main.jl",
+        "src/groupnorm-julia/groupnorm-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/groupnorm/jacc_translation.jsonl"
+    },
     "observed_harness_activity_windows": [
       {
         "event_id": "cfc448bfe7e17940365d5ace",
@@ -206,6 +806,83 @@
       }
     ]
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "f7fb99086ae7bbea436fbbcc0987e3e167fd9f4f",
+  "explicit_outcome_evidence": {
+    "benchmark": "groupnorm",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T191214872254Z_groupnorm/result.json",
+      ".porting-state/portable_julia/runs/20261017T191224622634Z_groupnorm/result.json",
+      ".porting-state/portable_julia/runs/20261017T191228368820Z_groupnorm/result.json"
+    ],
+    "contract": "SharedFloat32NCHW B4C32H16W16G8,group1024pixels,source1024threads32blocks. Three source modesforward1/vectorforward2/backward separately; backwardstats canonicalFloat64formula roundedFloat32,onekernel,all32832 outputs/gradients. Original largerimagebackwardbranch unmeasured.",
+    "limitations": [
+      "Named B4,C32,H16,W16,G8 only; source larger-image backward branch and default B32 cases remain unmeasured.",
+      "Backward receives shared canonical Float64-formula moments roundedFloat32, rather than a differently rounded preceding GPUforward result; this isolates a named backward stage, not a timed end-to-end training pipeline.",
+      "Native cooperative-group warp reductions/float4 loads versus agent-selected full-block paired trees/scalar component loads; translation mapping is not a claim about framework-optimal performance.",
+      "Native source declares256B shared partials; Julia-family uses8192B paired scratch. Actual native compiled resource attributes and register/spill counts were not measured here.",
+      "JACC adds2048-element zero-vector staging and a barrier, explicit8192B dynamicshared. Matrix shared-copy for1Dblocks is unimplemented in pinned JACC1.4; flatvector backing avoids that API boundary.",
+      "Group moments use E[x\u00b2]-E[x]\u00b2, not Welford; high-offset/low-variance conditioning regimes are unmeasured.",
+      "Synthetic32768-value bounded NCHW fixture fits V100L2; no large-tensor scaling/bottleneck attribution.",
+      "Sequential JACC sees successful KA mapping; consumed usage includes context/cache/coordination and broad workflow overlaps child phases.",
+      "Only32 independent blocks in this named case; larger batch/group-count regimes are unmeasured and no full-GPU scaling claim is made."
+    ],
+    "configuration_results": {
+      "forward": {
+        "configuration_id": "groupnorm_forward_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191214872254Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 5.12005e-06,
+          "cuda_jl": 6.74155e-06,
+          "ka": 1.8125699999999998e-05,
+          "jacc": 2.4241475e-05
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 10,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.19209289551e-07,
+          "cuda_jl": 2.38418579102e-07,
+          "ka": 2.38418579102e-07,
+          "jacc": 2.38418579102e-07
+        }
+      },
+      "forward2": {
+        "configuration_id": "groupnorm_forward2_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191224622634Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 5.0228000000000004e-06,
+          "cuda_jl": 7.171825e-06,
+          "ka": 1.2908375e-05,
+          "jacc": 2.5822974999999998e-05
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 10,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.19209289551e-07,
+          "cuda_jl": 2.38418579102e-07,
+          "ka": 2.38418579102e-07,
+          "jacc": 2.38418579102e-07
+        }
+      },
+      "backward": {
+        "configuration_id": "groupnorm_backward_B4C32H16W16G8_float32_fullmath_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T191228368820Z_groupnorm/result.json",
+        "mean_seconds": {
+          "cuda": 1.2455e-05,
+          "cuda_jl": 3.921075e-05,
+          "ka": 4.97305e-05,
+          "jacc": 0.0001201085
+        },
+        "checked_values_each_trial": 32832,
+        "internal_repeats": 1,
+        "max_abs_error_vs_Float64": {
+          "cuda": 1.90734863281e-06,
+          "cuda_jl": 1.66893005371e-06,
+          "ka": 1.90734863281e-06,
+          "jacc": 1.66893005371e-06
+        }
+      }
+    }
+  }
 }
