@@ -1,0 +1,5 @@
+@inline rgba(p::UInt32)=(Float32(p&0xff),Float32((p>>8)&0xff),Float32((p>>16)&0xff),Float32((p>>24)&0xff))
+@inline add4(a,b)=(a[1]+b[1],a[2]+b[2],a[3]+b[3],a[4]+b[4])
+@inline sub4(a,b)=(a[1]-b[1],a[2]-b[2],a[3]-b[3],a[4]-b[4])
+@inline scale4(a,s)=(a[1]*s,a[2]*s,a[3]*s,a[4]*s)
+@inline pack4(a,s)=((unsafe_trunc(UInt32,a[1]*s)&0xff)|((unsafe_trunc(UInt32,a[2]*s)&0xff)<<8)|((unsafe_trunc(UInt32,a[3]*s)&0xff)<<16)|((unsafe_trunc(UInt32,a[4]*s)&0xff)<<24))
