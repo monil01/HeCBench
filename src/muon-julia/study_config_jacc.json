@@ -1,0 +1,136 @@
+{
+  "benchmark": "muon",
+  "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 6470,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "cases": [
+      [
+        16,
+        32,
+        "diagonal"
+      ],
+      [
+        32,
+        16,
+        "diagonal"
+      ],
+      [
+        17,
+        33,
+        "dense"
+      ],
+      [
+        33,
+        17,
+        "dense"
+      ]
+    ],
+    "fixture": "Dyadic initial weights/momentum/gradients, defaultbeta.95/lr.02/wd0,2optimizersteps/5NSsteps",
+    "input_prefix_count": 6470,
+    "output_count": 11858,
+    "checked_values": 18328,
+    "precision": "Float32 parameter/momentum; actual UInt16BF16 working matrices and GEMM storage, FP32 GEMM accumulation, explicitRNE stages",
+    "timing": "Sum4case2optimizerstepmeans inclmomentum/transpose,256blocknormreduction,normalize,15BF16GEMMs/step,combine/update,parameter; reset/captureoutside",
+    "native_geometry": "256threads/vector4 kernels,256blocks norm reduction;32x8 shared2048B fused transpose; scalar tails retained",
+    "library": "Pinned systemcuBLAS12.0.2.224; Julia rawhandleexplicitly bound to same stream as authored kernels; context-wide timer completion",
+    "outputs": "Complete p,m,X,A,A2,B,BX andss fromfinaloptimizerstep, rowmajor state",
+    "scope": "Four smallwide/tall cases; diagonal singular-value and dense fixtures. Source native GPU scales update inFP32, CPUcompanion additionallyBF16roundsscale; distinguish. No exactpolarorthogonalityortrainingconvergenceclaim."
+  },
+  "atol": 0.01,
+  "rtol": 0,
+  "models": {
+    "cuda": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/muon-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/muon-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/muon-cuda/reference.h"
+      ],
+      "build": [
+        "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "--cudart=none",
+        "study_native.cu",
+        "-L/usr/lib/x86_64-linux-gnu",
+        "-lcudart",
+        "-lcublas",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "verification_method": "full_state_capture_pending_independent_mixed_precision_oracle",
+      "native_check_description": "Finite fullstate capture; independent mixed-precision CPU/diagonal witnesses must pass before accepted."
+    },
+    "cuda_jl": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/muon-julia/study_kernel_body.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_reference_kernels.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_common.jl"
+      ],
+      "verification_method": "full_state_dual_reference_and_independent_mixed_precision_oracle",
+      "native_check_description": "Full p/m/BF16matrix state; independent optimizer witness required before scientific acceptance."
+    },
+    "ka": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-KA/study_kernels.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_kernel_body.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_common.jl"
+      ],
+      "verification_method": "full_state_dual_reference_and_independent_mixed_precision_oracle",
+      "native_check_description": "FullBF16/FP32state plus independent mixed-precision optimizer witness, same native geometry and stream-bound vendor calls."
+    },
+    "jacc": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-JACC/study_kernels.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_kernel_body.jl",
+        "/home/imo/HeCBench_julia/src/muon-julia/study_common.jl"
+      ],
+      "verification_method": "full_state_dual_reference_and_independent_mixed_precision_oracle",
+      "native_check_description": "Complete BF16/FP32state and independent optimizer witness. Explicit1024/2048Bshared templates and zero shared elementwise; same stream vendor dependency."
+    }
+  },
+  "native_compiler_override": {
+    "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+    "version": "CUDA12.9 V12.9.41",
+    "reason": "CUDA12.0 headers hide packed BF16 conversion APIs onsm70; newer toolchain supports unchanged source.",
+    "runtime": "--cudart=none, explicit system libcudart12.0 and cuBLAS12.0.2.224",
+    "primary_native_source_unchanged": true,
+    "prior_scalar_compatibility_diagnostic": "20261017T225001642126Z_muon; successful finite capture, not primary measurement or scientific acceptance"
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T225704200243Z_muon/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ],
+  "jacc_shared_adaptation": "JACC.shared copies initialized256Float32/1024UInt16 templates and adds an initial barrier before actual reduction/tile stores. Same allocatedbytes, extra API work disclosed."
+}

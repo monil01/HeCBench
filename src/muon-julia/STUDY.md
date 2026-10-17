@@ -1,0 +1,22 @@
+# muon: mixed-precision optimizer pipeline
+
+The source applies momentum and a five-step quintic Newton–Schulz polynomial to a hidden-layer weight matrix. Parameters and momentum are Float32; every working matrix and matrix-product output is BF16 with Float32 GEMM accumulation. The historical Julia recurrence used all-FP32 working matrices. That is a precision/mapping fidelity compromise rather than an established wrong idealized optimizer; the named reference restores the executable native BF16 staging.
+
+## Scientific witness and complete state
+
+Two diagonal and two dense cases cover16x32,32x16,17x33 and33x17 shapes, transposed/nontransposed paths, scalar tails and shared-tile edges. Two optimizer steps retain6470 exact input values and11858 fullstate values per capture. All five trials of all four models match both references; maximum cross-model difference is2.98e-8. An independent standard-library scalar FP32/FMA and explicit BF16 rounding oracle passes all20 captures: maximum final parameter error2.98023224e-08, momentum error2.98023224e-08. Independent acceptance retains native parameter1e-2 and adds momentum1e-6; intermediate oracle differences are descriptive, distinct from fullstate cross-model checking.
+
+State time alignment is explicit: p/m are after optimizer step2; X is after its fifth NS iteration; A/A2/B/BX are scratch from that iteration formed from X at iteration4; ss is its pre-normalization squared norm. The source CPU companion also rounds the spectrally scaled update toBF16, whereas the fused GPU update scales inFP32. That arithmetic approximation is disclosed rather than silently substituted. A finite quintic iteration and these small fixtures do not establish exact polar orthogonality or training convergence.
+
+## Component and timing scope
+
+Each optimizer step has eight distinct authored kernel definitions, fourteen authored kernel calls, and fifteen vendor GEMMs. The entire measured object is `mixed_kernel_library_pipeline`. CUDA.jl authored components are framework kernels; KA/JACC authored components use CUDA atomic norm accumulation and are hybrid device kernels. Vendor GEMMs are explicit library interoperability. Raw cuBLAS handles are bound to the same stream as authored kernels, and context-wide synchronization brackets timing. Allocation, reset and capture are outside timing. Julia scalarizes source vector4 loads, retains the row-major XOR shared layout, and uses a backend fill instead of native norm cudaMemset. JACC shared templates add copies and an initial barrier before actual reduction/tile stores; their1024/2048-byte capacities match, but instruction overhead is not assumed removed. No profile establishes a bottleneck.
+
+## Toolchain and effort history
+
+CUDA12.0 native compilation failed because its headers hide packed BF16 conversion APIs onsm70. A scalar-equivalent conversion adapter produced a diagnostic capture, then the original unchanged source built successfully with the available CUDA12.9.41 compiler. The primary configuration uses that unchanged source and explicit system CUDA runtime/cuBLAS12.0 linkage. The diagnostic adapter is not primary, and no native scientific defect or source repair is claimed. Its faster/slower timing was not a selection criterion. Two shared Julia host setup failures occurred before device JIT: fixture-comprehension whitespace and an unexported stream typedef. CUDA.jl has three program processes but one actual authored-device candidate/JIT process; KA and JACC each pass their first candidate/check. An optional NumPy import probe failed and the independent oracle instead uses the standard library.
+
+Five trials retain all outputs and average trials2–5, each the sum of four case means over two optimizer steps. Mean microseconds: {"cuda": 661.373375, "cuda_jl": 632.0795, "ka": 719.71775, "jacc": 923.32575}. Result: `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T225841732698Z_muon/result.json`. These mixed-pipeline values are separated from pure authored-kernel aggregates. Prospective activity windows include cached/repeated context, source/toolchain investigation, metadata, feedback, coordination and waiting, not exclusive coding or billed cost. Parent and child intervals are non-additive; source-size proxies remain partial.
+
+
+Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
