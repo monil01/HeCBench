@@ -1,0 +1,80 @@
+{
+  "reference_audit": {
+    "finding": "Historical Julia reference only launches a one-word smoke marker and prints hardcoded PASS, with no tensor permutation. Genuine reference now preserves native tiled six-dimensional permutation and reciprocal indexing.",
+    "phase": "reference_correctness",
+    "original_path": "/home/imo/HeCBench_julia/src/tensorT-julia/tensorT-julia-cuda.jl/original_main.jl",
+    "original_sha256": "38e0c01009d8ca34a2728ed8bbb6ddccad81e268e72a68b87bc2132fb559f4ea",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Shared-tile six-dimensional tensor permutation from123456to234615, with reciprocal-based dimension decoding",
+  "mapping": "256threads per tile,60tiles, strided tile loops and two block barriers",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 60
+  },
+  "traits": {
+    "primary_motif": "tiled_tensor_permutation",
+    "storage_precision": [
+      "Float64",
+      "Float32",
+      "Int32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32"
+    ],
+    "synchronization": [
+      "two_block_barriers_per_tile",
+      "host_device_after_ten_launches"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same reciprocal index decoding, shared capacity, tile reuse and launch geometry for named extents"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "mean_ten_bulk_kernel_launches",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Reduced dimensions",
+      "47200sharedbytes retained versus385activewords",
+      "JACC extra full shared-template copy"
+    ],
+    "scientific_intent": {
+      "primary_family": "hardware_data_movement",
+      "primary_domain": "multidimensional scientific tensor layout",
+      "scientific_task": "Reorder six tensor dimensions without modifying numeric payload",
+      "governing_method": "Blocked shared-memory transpose and linear-stride coordinate transforms",
+      "discretization": "Dense5x7x11x3x4x5tensor",
+      "accuracy_needs": [
+        "exact bijective coordinate mapping",
+        "all payloads bit-preserved"
+      ],
+      "input_regime": "Signed integer-valued Float64 payloads",
+      "precision_sensitivity": "Float32 reciprocal index decoding, no Float64 arithmetic on payload",
+      "community_use_case": "Layout preparation for tensor contractions or multidimensional scientific arrays; no application solver in source",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/tensorT-cuda/main.cu",
+          "sha256": "9ab0a6c3fc716e6faddf6c0d09d28d4153c867898f385a053d9478708021265d"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "resource_policy": "Static5900Float64sharedwords=47200bytes"
+    },
+    "ka": {
+      "resource_policy": "Static5900Float64sharedwords=47200bytes"
+    },
+    "jacc": {
+      "resource_policy": "Explicit47200dynamicsharedbytes plus entire5900word global-template copy"
+    }
+  },
+  "observation": "The study preserves the native shared-memory transpose, including its5900word capacity and Float32 reciprocal indexing, on smaller six-dimensional extents. Every output is checked through an independent six-index permutation. Float64 is payload storage, not floating-point arithmetic precision; performance cannot be interpreted as Float64 throughput. JACC shared initialization copies a full template in addition to native tile loading."
+}
