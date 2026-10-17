@@ -155,7 +155,7 @@ def main():
             manifest_candidates=[log_root/(b+'-julia-'+alias)/'manifest.json' for alias in aliases if (log_root/(b+'-julia-'+alias)/'manifest.json').is_file()]
             # Prefer a current source-bound record, then the latest explicit record.
             # Retain every alias candidate; never merge incompatible histories silently.
-            selected_manifest=max(manifest_candidates,key=lambda q:(read(q,{}).get('source_sha256')==digest(path),q.stat().st_mtime_ns)) if manifest_candidates else log_root/(b+'-julia-'+aliases[0])/'manifest.json'
+            selected_manifest=max(manifest_candidates,key=lambda q:(bool(digest(path) and read(q,{}).get('source_sha256')==digest(path)),q.stat().st_mtime_ns)) if manifest_candidates else log_root/(b+'-julia-'+aliases[0])/'manifest.json'
             log=selected_manifest.parent
             manifest=read(selected_manifest,{})
             evidence=[(cid,v) for (bench,m,cid),v in latest.items() if bench==b and m==model]
@@ -167,7 +167,11 @@ def main():
             if explicit.get('status') and not evidence:status=explicit['status']
             events=[]
             sources=[(log/'compiler_attempts.jsonl',False),(STATE/'failure_events_300'/(b+'.jsonl'),True)]
-            normalized_links={(e.get('preserved_event_source'),e.get('check_id')) for _,e in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')) if e.get('implementation_model',e.get('model'))==model and e.get('preserved_event_source') and e.get('check_id') is not None}
+            normalized_links=set()
+            for _,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
+                if event.get('implementation_model',event.get('model'))!=model or not event.get('preserved_event_source'):continue
+                check_ids=event.get('preserved_event_check_ids') or ([event['check_id']] if event.get('check_id') is not None else [])
+                normalized_links.update((event['preserved_event_source'],check_id) for check_id in check_ids)
             for file,shared in sources:
                 for line,e in jsonlines(file):
                     if not shared and (str(file.relative_to(ROOT)),e.get('compiler_check',e.get('check_id'))) in normalized_links:continue
