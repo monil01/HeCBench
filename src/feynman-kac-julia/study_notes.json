@@ -1,0 +1,123 @@
+{
+  "reference_audit": {
+    "finding": "Existing CUDA.jl implements genuine per-point random walks, Park-Miller recurrence, potential integration, and atomic error reduction. Measurement helper extracts the same algorithm; no established historical semantic defect.",
+    "taxonomy_code": null,
+    "phase": "measurement_harness",
+    "original_path": "/home/imo/HeCBench_julia/src/feynman-kac-julia/feynman-kac-julia-cuda.jl/original_main.jl",
+    "original_sha256": "f075fcdaa01b738106bc3c821b1a7cacf173d7da622ab4580424a0845ded482a",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Per-grid-point Feynman-Kac random walks with weak trapezoidal potential weighting until ellipse exit, then global inside-count and squared analytic-error sums",
+  "mapping": "16x16 blocks, one workitem per grid point, sequential32paths with same private initialseed",
+  "launch_geometry": {
+    "threads": [
+      16,
+      16
+    ],
+    "blocks": [
+      2,
+      1
+    ]
+  },
+  "traits": {
+    "primary_motif": "stochastic_pde_path_simulation",
+    "storage_precision": [
+      "Float64",
+      "Int32"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Int32"
+    ],
+    "synchronization": [
+      "global_atomic_add_Int32",
+      "global_atomic_add_Float64",
+      "host_device_after_each_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Original coordinate formula, private RNG recurrence and common seed, walk update and atomic aggregates preserved"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "mean_stochastic_kernel_excluding_reset",
+    "verification_contract": "aggregate_count_and_error_sum",
+    "keyconfounds": [
+      "Reduced grid and paths",
+      "Complete native output only2aggregates",
+      "Correlated common per-workitem seed",
+      "No original PASS threshold; study declares strict FP64 agreement bound"
+    ],
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "primary_domain": "stochastic elliptic PDE solution",
+      "scientific_task": "Estimate solution of half-Laplacian U minus VU equals0 inside ellipse with unit boundary",
+      "governing_method": "Feynman-Kac stochastic representation, lattice random-walk increments and trapezoidal potential integration",
+      "discretization": "17x9 rectangular sample grid,32walks per interior point,h=.001",
+      "accuracy_needs": [
+        "finite nonnegative squared error",
+        "exact interior-point classification",
+        "RNG recurrence and exit test preserved"
+      ],
+      "input_regime": "Ellipse semiaxes2and1, fixed seed123456789, same sequence per point",
+      "precision_sensitivity": "FP64 potential integration, exit predicates, order-dependent atomic sum",
+      "community_use_case": "Stochastic PDE solvers; analytic exp((x/a)^2+(y/b)^2-1) witness in source",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/feynman-kac-cuda/main.cu",
+          "sha256": "63608a792fd619a6552d6883fb74ec3225e120cf5b4c951b82fb813c3cbbbfe1"
+        }
+      ]
+    }
+  },
+  "observation": "This port retains the native stochastic elliptic-PDE estimator, including its common per-workitem seed. Complete native outputs are only an interior count and analytic-solution squared-error aggregate. A reduced named grid and path count enable full semantic checks, but agreement is not evidence of sampling independence or convergence. The analytic reference is part of the source contract. There is no pointwise path or estimated field comparison. On the configured fixture the native analytic RMS is0.0345829384; this is an observed aggregate error, not a confidence bound or convergence demonstration.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 1
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 1
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "implementation_model": "cuda_jl",
+        "phase": "shared_measurement_helper",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "fail",
+        "taxonomy_code": "B2",
+        "cause": "Missing end in extracted pure point helper; no device compilation reached",
+        "shared_phase_id": "fk_shared_helper_end_01",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T171517642716Z_feynman-kac/cuda_jl_run1.log",
+        "repair": "Restore enclosing point-bound if end"
+      }
+    ],
+    "ka": [
+      {
+        "implementation_model": "ka",
+        "phase": "shared_measurement_helper",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "fail",
+        "taxonomy_code": "B2",
+        "cause": "Missing end in extracted pure point helper; no device compilation reached",
+        "shared_phase_id": "fk_shared_helper_end_01",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T171517642716Z_feynman-kac/ka_run1.log",
+        "repair": "Restore enclosing point-bound if end"
+      }
+    ]
+  },
+  "effort_observation": "One unchanged device candidate per model. CUDA.jl and KA each encountered a shared helper parser error before device compilation, then passed their second process check; one shared measurement-helper repair, not two independent algorithm repairs. JACC sees the corrected helper."
+}
