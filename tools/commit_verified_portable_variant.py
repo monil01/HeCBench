@@ -21,7 +21,7 @@ def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hp
 if a.shared:
  for d,c,path in data:
   for model in ['cuda','cuda_jl']:
-   if not d['models'][model].get('complete'):raise SystemExit('Incomplete reference')
+   if not d['models'][model].get('complete') or d['models'][model].get('status')!='native_check_pass':raise SystemExit('Reference needs all five correct checks; complete artifact capture alone is not verification')
    if verifier.digest_tree(verifier.discover(a.benchmark)[model])!=d['models'][model]['source_hash']:raise SystemExit('Reference source changed since verification: '+model)
  paths=[f for f in parent.iterdir() if allowed(f)]+[f for f in (parent/(a.benchmark+'-julia-cuda.jl')).rglob('*') if allowed(f)]
  for _,config,_ in data:
