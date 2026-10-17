@@ -1,0 +1,192 @@
+{
+  "algorithm": "Hogbom CLEAN fixed19iteration signedabsolute-peak extraction, croppedshiftedunitPSF subtraction andhostmodelaccumulation.",
+  "mapping": "128blocks\u00d7256threads gridstride32768; one sharedbarrier then thread0serial256scan; blocking128PeakD2H then hostserial128scan.16\u00d716PSFupdate. Nativehierarchicaltiepriority(idx%32768,idx//32768).",
+  "launch_geometry": {
+    "peak_threads": 256,
+    "peak_blocks": 128,
+    "peak_shared_bytes": 3072,
+    "update_threads": [
+      16,
+      16
+    ],
+    "update_blocks": "ceil(croppedoverlap/16)",
+    "update_shared_bytes": 0,
+    "timed_device_kernel_calls": 76,
+    "iterations_per_case": 19
+  },
+  "reference_audit": {
+    "phase": "reference_repair",
+    "taxonomy_code": "S1",
+    "finding": "Historical hogbom main only includes mcpr-julia/main.jl, a structural smoke dependency with no CLEAN argmax/PSF/model computation. Preserve original include and dependency hash; implement actualnative-equivalent CLEAN.",
+    "original_main_sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+    "included_dependency_path": "src/mcpr-julia/main.jl",
+    "included_dependency_sha256": "b3d3449c7670988c88904099d438686a154fbdbf552abaf0bf78fb6fdb599231",
+    "native_source_path": "src/hogbom-cuda/kernels.cu",
+    "native_source_sha256": "6450ab752d0a70e630f989576c95550fd27c393e6685fa22b10e1b5b000b424c",
+    "native_scope": "CenteredunitPSF makes actual diffy=ry-px equalry-py; offcenterstatic witness retainedseparately. Every measuredpeakabove threshold, nativeGPUlog-without-break vsCPUbreak inactive. Originalnativekernels unchanged."
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 2,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 1,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "traits": {
+    "primary_motif": "iterative_argmax_shifted_psf_sparse_update",
+    "storage_precision": [
+      "Float32 images/PSF/model",
+      "UInt64 positions",
+      "UInt32 sharedpackedwords"
+    ],
+    "compute_precision": [
+      "Float32 peakselection/PSF/model",
+      "UInt64 positionindexing"
+    ],
+    "synchronization": [
+      "blockbarrier/peak kernel",
+      "blocking128PeakD2H/iteration",
+      "contextwideROIboundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Samehierarchicalargmax/updategeometry;3072BcandidatecapacitypackedUInt32words insteadnativeFloat32+UInt64sharedarrays. JACCtemplatecopy/initialbarrier."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_two_full19iteration_clean_pipelines_with_D2H_and_host_control",
+    "verification_contract": "raw_numeric_outputs",
+    "numerical_evidence_strength": "full_model_residual_all_peak_history_exact_positions",
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "application_domain": "radioastronomical imaging deconvolution",
+      "operator": "Hogbom CLEAN greedy pointsource deconvolution with shiftedPSF",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/hogbom-cuda/kernels.cu",
+          "sha256": "6450ab752d0a70e630f989576c95550fd27c393e6685fa22b10e1b5b000b424c"
+        },
+        {
+          "path": "src/hogbom-cuda/reference.cpp",
+          "sha256": "ea52b5cec8f8eab4d5ce98c0ac447aba4605bdd615b1b5bfd90fdcb9c082f591"
+        }
+      ],
+      "scope": "CenteredunitpeakPSF,syntheticpointsourceconvolution,19above-thresholditerations; noarbitraryPSF/fullCLI/convergenceclaim."
+    },
+    "keyconfounds": [
+      "ROIincludesblockingD2H/hostcontrol,notkernel-onlyroofline",
+      "JuliahostArrayallocation128Peak eachiteration vsnative stackarray",
+      "HierarchicalGPUtiepolicy differs CPUglobalfirst on>32768pixels; independentoracleusesactualGPUpriority",
+      "JACC3072Btemplatecopy/initialbarrier",
+      "UInt32sharedpacking instructionsunprofiled",
+      "Offcenter yoffsetbug inactivecenteredscope, separatecorrectionbacklog",
+      "Thresholdstoppingdifferenceinactivemeasuredpeaks"
+    ],
+    "host_fixture_precision": [
+      "Float32 dyadicconvolution"
+    ],
+    "host_oracle_precision": [
+      "Float32 FMArecurrence",
+      "Float64 independentconvolutionreconstruction"
+    ],
+    "artifact_encoding": "Float64 only; positions exactintegers"
+  },
+  "observation": "Radioimaging CLEAN is a host-controlled iterativepipeline. Each iteration copies128devicepeakcandidates to CPU, resolves an absolute maximum, updateshostmodel andlaunches croppedPSF subtraction. Timing includes synchronization,D2H,managedhostallocation/control anddispatch, so no device-onlyrooflineclaim. The257wide equal-amplitudecase explicitlytests actualGPUhierarchical tiepriority: pixel32769 precedes300, unlikeglobalfirst. Fullmodel/residual/all19peakpairs arechecked and independent dirty=residual+shiftedPSF*model identity verifiesdeconvolution bookkeeping. CenteredunitPSF leavesnativeoffcenter yoffsetflaw inactive; everycapturedpeak proves thresholdstoppingdifferenceinactive. Results do not certify arbitraryPSF/CLI modes, numericalconvergence or astronomicaldatafidelity.",
+  "effort_observation": "CUDA.jl repair andKA one candidate/JITprocess each. JACC first used JACC.Array (Base.Array) instead lowercase JACC.array, producing hostvectors and B4 non-bitstype GPUargument error beforelaunch; second candidate fixes onlyallocationAPI. Noobserved numerical/runtime repair. Prospectivewindows include samebenchmark verification and dp/fsm ownershipcoordination, not exclusivecodingcost.",
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 2,
+      "backend_extensions": [],
+      "resource_policy": "3072Bpeakshared,0Bupdate;noimplicitsharedinit",
+      "host_boundary": "blocking128PeakD2H+CPUargmax+modelupdate eachiteration;contextwideROIcompletion",
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/hogbom-julia/study_reference_kernels.jl": "8b97a8b16eb3ef08f639823b60bb4becdb932bafe53c4fe02d12b911cf702fd7",
+        "/home/imo/HeCBench_julia/src/hogbom-julia/study_common.jl": "2e6a4c2c14c41d89693807a6510588af6ff35cb70222af48afcbe43b4a6fc96c"
+      }
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 2,
+      "backend_extensions": [],
+      "resource_policy": "3072Bpeakshared,0Bupdate;noimplicitsharedinit",
+      "host_boundary": "blocking128PeakD2H+CPUargmax+modelupdate eachiteration;contextwideROIcompletion",
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/hogbom-julia/hogbom-julia-KA/study_kernels.jl": "b0fc473afde01efbbc2976bd3226940a0d615fa95b510c0d5e702c25d6680567",
+        "/home/imo/HeCBench_julia/src/hogbom-julia/study_common.jl": "2e6a4c2c14c41d89693807a6510588af6ff35cb70222af48afcbe43b4a6fc96c"
+      }
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 2,
+      "backend_extensions": [],
+      "resource_policy": "3072Bpeakshared,0Bupdate;JACCtemplatecopyandinitialbarrier",
+      "host_boundary": "blocking128PeakD2H+CPUargmax+modelupdate eachiteration;contextwideROIcompletion",
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/hogbom-julia/hogbom-julia-JACC/study_kernels.jl": "3c55c8bd42eb2d4b3d62d7a8f8953663e7a1a7e441eae5137a86bc9bc4eaec7f",
+        "/home/imo/HeCBench_julia/src/hogbom-julia/study_common.jl": "2e6a4c2c14c41d89693807a6510588af6ff35cb70222af48afcbe43b4a6fc96c"
+      }
+    }
+  },
+  "prior_attempts": {
+    "jacc": [
+      {
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "compiler_failure",
+        "taxonomy_code": "B4",
+        "cause": "Uppercase JACC.Array resolves Base.Array and leaveshostvectors; kernel rejectsnon-bitstype Vector arguments. Fixlowercase JACC.array deviceconversion.",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T232836484269Z_hogbom/jacc_run1.log",
+        "source_archive": "/home/imo/HeCBench_julia/.porting-state/porting_logs/hogbom-julia-jacc/candidate01_main.jl"
+      }
+    ]
+  },
+  "scientific_witness_summary": {
+    "captured_trials_checked": 20,
+    "full_state_max_abs_error": 0.0,
+    "reconstruction_identity_max_abs_error": 1.1920928955078125e-07,
+    "minimum_measured_peak_abs": 1.5496819019317627,
+    "globalfirst_finite_model_difference": 0.15496826171875,
+    "offcenter_static_witness": {
+      "psf_width": 5,
+      "peak_x": 1,
+      "peak_y": 3,
+      "first_overlap_row": "ry-3",
+      "native_diffy": "ry-1",
+      "computed_psf_y": -2,
+      "classification": "static source-specific scientific-contract limitation, not observed failure for measured centered inputs",
+      "repair_backlog": "Independently justified offcenter dy correction configuration, separate from untouched native primary."
+    },
+    "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/hogbom.json",
+    "witness_source_sha256": "3f306efcb56d2d0cad194e5cb47e49be489ce475fdd3285006e5d1e819215281"
+  },
+  "repair_backlog": [
+    {
+      "configuration": "offcenter_nonunit_psf_generalization",
+      "status": "not_measured",
+      "reason": "Native offcenter diffy bug staticindexwitness; requires independentlyjustified separatecorrected reference configuration. Unitnormalization must also beexplicit."
+    }
+  ]
+}
