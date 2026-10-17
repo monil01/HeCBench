@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "local-ht",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "conditionally_verified_native_reference_repaired",
   "scientific_intent_record": "../../domains/local-ht.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,34 +14,1182 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Native local genomic assembly: warp-parallel Murmur-key table insertion/counts, depth/quality extension ratings, visited-key hash table and serial-lane0 iterative-k extension walk.",
+    "work_item_mapping": "512-thread block, one32-lane warp/contig; five active contigs, other whole warps inactive. Native AoS raw-pointer keys become SoA fields and byte offsets. Exact NVVM match-any preserves address-cohort partitioning using bijective slot IDs.",
+    "storage_precision": [
+      "UInt8 DNA/Phred/extensions/walk bytes",
+      "UInt32 key lengths/counts/hash buckets/offsets",
+      "Int32 Julia byte offsets",
+      "Float64 contig depth"
+    ],
+    "compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "synchronization": [
+      "Warp32 active-mask match-any cohorts",
+      "CAS key publication followed by cohort warp synchronization",
+      "Atomic low/high quality counts",
+      "Full-warp stage synchronization and corrected lane0 broadcast",
+      "Host sync around one integrated kernel"
+    ],
+    "launch_geometry": {
+      "threads": 512,
+      "blocks": 1,
+      "warps_per_contig": 1,
+      "contigs": 5,
+      "shared_bytes": 0,
+      "timed_algorithm_kernels": 1,
+      "untimed_hash_capture_kernels": 1
+    },
+    "resource_policy": "Public KA static512 workgroup; backend maxthreads512 launch bound; no custom launch adapter",
+    "backend_extensions": [
+      "Custom NVVM llvm.nvvm.match.any.sync.i64",
+      "CUDA.atomic_cas!/global UInt32 atomics",
+      "CUDA.active_mask/sync_warp/shfl_sync"
+    ],
+    "implementation_class": "hybrid_device_intrinsics",
+    "source_sha256": "b6844067e0a5f81796865ba12a0b0b3579969018a85c22955d6dc4936dafa663",
+    "reference_repair": null,
+    "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "translated_device_kernels": 1,
+    "untimed_verification_capture_kernels": 1,
+    "storage_layout": "SoA length/byte-offset/count/extension arrays; native baseline AoS raw-pointer records",
+    "timed_compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "untimed_device_compute_precision": [
+      "UInt32 actual-key hash capture diagnostic"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer read-window Counter/hash/graph walk",
+      "Float64 depth threshold policy"
+    ],
+    "artifact_encoding": [
+      "UInt32 DNA byte values/counts/hash/visited/walk records",
+      "IEEE754 Float64 depth encoded as two UInt32 input words"
+    ],
+    "native_reference_repaired": true,
+    "verification_stratum": "conditional_native_reference_repaired",
+    "exclude_from_untouched_native_aggregates": true,
+    "reference_provenance": {
+      "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+      "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+      "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+      "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+      "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+      "original_gpu_probe_observed_mismatches": 0,
+      "corrected_gpu_probe_observed_mismatches": 0,
+      "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+      "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+      "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+      "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+    },
+    "numerical_evidence_strength": "canonicalized_complete_stage_records_plus_full_initialized_walk_temp_buffers",
+    "verification_method": "canonicalized_complete_stage_records_and_independent_graph_oracle",
+    "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/local-ht.json",
+    "scope_limits": [
+      "Integrated right-walk kernel only; left reverse complement/stitching and file parser unmeasured.",
+      "Five K21 fixtures; arbitrary K, short reads, biological datasets and formal race freedom not certified.",
+      "Canonicalized occupied records retain counts, quality, extension and actual GPU hash; raw slot order and pointer identities are not compared.",
+      "Original broadcast probe happened to match; conditional repair is justified by source initialization, not an observed original numerical failure."
+    ],
+    "actual_device_kernel_count": 1,
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Native local genomic assembly: warp-parallel Murmur-key table insertion/counts, depth/quality extension ratings, visited-key hash table and serial-lane0 iterative-k extension walk.",
+    "work_item_mapping": "512-thread block, one32-lane warp/contig; five active contigs, other whole warps inactive. Native AoS raw-pointer keys become SoA fields and byte offsets. Exact NVVM match-any preserves address-cohort partitioning using bijective slot IDs.",
+    "layout": null,
+    "storage_precision": [
+      "UInt8 DNA/Phred/extensions/walk bytes",
+      "UInt32 key lengths/counts/hash buckets/offsets",
+      "Int32 Julia byte offsets",
+      "Float64 contig depth"
+    ],
+    "compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "timed_compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "untimed_device_compute_precision": [
+      "UInt32 actual-key hash capture diagnostic"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer read-window Counter/hash/graph walk",
+      "Float64 depth threshold policy"
+    ],
+    "artifact_encoding": [
+      "UInt32 DNA byte values/counts/hash/visited/walk records",
+      "IEEE754 Float64 depth encoded as two UInt32 input words"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Warp32 active-mask match-any cohorts",
+      "CAS key publication followed by cohort warp synchronization",
+      "Atomic low/high quality counts",
+      "Full-warp stage synchronization and corrected lane0 broadcast",
+      "Host sync around one integrated kernel"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Public KA static512 workgroup; backend maxthreads512 launch bound; no custom launch adapter",
+    "launch_geometry": {
+      "threads": 512,
+      "blocks": 1,
+      "warps_per_contig": 1,
+      "contigs": 5,
+      "shared_bytes": 0,
+      "timed_algorithm_kernels": 1,
+      "untimed_hash_capture_kernels": 1
+    },
+    "library_backend_boundary": [
+      "Custom NVVM llvm.nvvm.match.any.sync.i64",
+      "CUDA.atomic_cas!/global UInt32 atomics",
+      "CUDA.active_mask/sync_warp/shfl_sync"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "b6844067e0a5f81796865ba12a0b0b3579969018a85c22955d6dc4936dafa663",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "warp_parallel_string_hash_CAS_cohorts_quality_histograms_deBruijn_graph_walk",
+    "storage_precision": [
+      "UInt8 DNA/Phred/extensions/walk bytes",
+      "UInt32 key lengths/counts/hash buckets/offsets",
+      "Int32 Julia byte offsets",
+      "Float64 contig depth"
+    ],
+    "compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "timed_compute_precision": [
+      "UInt32 Murmur2/hash/CAS/atomic counts",
+      "Int32 string indices/control",
+      "Float64 quality-depth thresholds"
+    ],
+    "untimed_device_compute_precision": [
+      "UInt32 actual-key hash capture diagnostic"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer read-window Counter/hash/graph walk",
+      "Float64 depth threshold policy"
+    ],
+    "artifact_encoding": [
+      "UInt32 DNA byte values/counts/hash/visited/walk records",
+      "IEEE754 Float64 depth encoded as two UInt32 input words"
+    ],
+    "synchronization": [
+      "Warp32 active-mask match-any cohorts",
+      "CAS key publication followed by cohort warp synchronization",
+      "Atomic low/high quality counts",
+      "Full-warp stage synchronization and corrected lane0 broadcast",
+      "Host sync around one integrated kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Preserve warp-per-contig counting, CAS/cohort publication, source quality comparator, iterative-k direction control and serial-lane0 graph walk; explicit native AoS/raw-pointer strings to Julia SoA/Int32 byte offsets; canonical Murmur2 byte implementation checked against actual native aligned hash outputs."
+    },
+    "implementation_class": {
+      "cuda_jl": "hybrid_device_intrinsics",
+      "ka": "hybrid_device_intrinsics",
+      "jacc": "hybrid_device_intrinsics"
+    },
+    "timing_scope": "integrated_right_kmer_count_quality_walk_kernel_only",
+    "verification_contract": "canonicalized_complete_kmer_quality_extension_hash_and_visited_records_plus_full_walk_temp_buffers",
+    "keyconfounds": [
+      "Conditionally repaired native lane initialization; excluded from untouched-native aggregate",
+      "AoS pointer-string representation versus SoA offset-string representation",
+      "CUDA.jl required maxregs128 after observed160-register launch failure",
+      "KA static512 workgroup supplies maxthreads512 compiler bound",
+      "NVVM match-any shim and CUDA warp/CAS APIs are backend-specific",
+      "Five small K21 right-walk fixtures, not full datasets/left stitching",
+      "Canonicalization removes raw slot order and pointer identity",
+      "Hash capture diagnostic is outside timing"
+    ],
+    "scientific_intent": {
+      "primary_family": "graph_irregular",
+      "primary_domain": "Genomics and local de novo sequence assembly",
+      "scientific_task": "Count read k-mer extension support by Phred quality and traverse the resulting local de Bruijn extension graph, handling missing support, forks and repeat cycles.",
+      "governing_method": "Warp-parallel local hash tables with depth-aware extension ratings and lane0 iterative graph walks.",
+      "accuracy_needs": [
+        "Complete occupied k-mer low/high-quality count records",
+        "Correct selected extension/fork/missing-support decisions",
+        "Actual GPU hash values",
+        "Visited graph states and full assembled extension bytes",
+        "Independent read-window/quality/graph oracle, not copied golden files"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/local-ht-cuda/src/main.cu",
+          "sha256": "ea86c4401f4f970b6b2af0900d734c03ceb6a6fa9578dbc7ab2236a663869c69"
+        },
+        {
+          "path": "src/local-ht-cuda/src/kernel.cu",
+          "sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433"
+        },
+        {
+          "path": "src/local-ht-cuda/src/kernel.hpp",
+          "sha256": "90ca8adc2bb0088b1383bcac95e333e4283bca70dde1c65951c8e1b8fe30b168"
+        },
+        {
+          "path": "src/local-ht-cuda/src/helper.cu",
+          "sha256": "18206061e47159d99c20ca9a20d3044db7e4b04906e9cb06b75ce262b7c9d92d"
+        },
+        {
+          "path": "src/local-ht-cuda/src/helper.hpp",
+          "sha256": "64487002bd57080f1d87431c5f364763a64f0dfd87e5bef900a7744f146fd155"
+        }
+      ]
+    },
+    "native_reference_repaired": true,
+    "exclude_from_untouched_native_aggregates": true,
+    "reference_provenance": {
+      "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+      "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+      "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+      "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+      "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+      "original_gpu_probe_observed_mismatches": 0,
+      "corrected_gpu_probe_observed_mismatches": 0,
+      "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+      "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+      "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+      "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+    },
+    "benchmark": "local-ht",
+    "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T220520566506Z_local-ht/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+      "native_source_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+      "reviewed_at": "2026-10-17T22:10:10.723713+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Native local genomic assembly: warp-parallel Murmur-key table insertion/counts, depth/quality extension ratings, visited-key hash table and serial-lane0 iterative-k extension walk.",
+        "work_item_mapping": "512-thread block, one32-lane warp/contig; five active contigs, other whole warps inactive. Native AoS raw-pointer keys become SoA fields and byte offsets. Exact NVVM match-any preserves address-cohort partitioning using bijective slot IDs.",
+        "storage_precision": [
+          "UInt8 DNA/Phred/extensions/walk bytes",
+          "UInt32 key lengths/counts/hash buckets/offsets",
+          "Int32 Julia byte offsets",
+          "Float64 contig depth"
+        ],
+        "compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "synchronization": [
+          "Warp32 active-mask match-any cohorts",
+          "CAS key publication followed by cohort warp synchronization",
+          "Atomic low/high quality counts",
+          "Full-warp stage synchronization and corrected lane0 broadcast",
+          "Host sync around one integrated kernel"
+        ],
+        "launch_geometry": {
+          "threads": 512,
+          "blocks": 1,
+          "warps_per_contig": 1,
+          "contigs": 5,
+          "shared_bytes": 0,
+          "timed_algorithm_kernels": 1,
+          "untimed_hash_capture_kernels": 1
+        },
+        "resource_policy": "Explicit maxregs128 after observed160-register failure,512threads unchanged",
+        "backend_extensions": [
+          "Custom NVVM llvm.nvvm.match.any.sync.i64",
+          "CUDA.atomic_cas!/global UInt32 atomics",
+          "CUDA.active_mask/sync_warp/shfl_sync"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "6041998892a4654d2c122f7ac4c16c3d4523aa8748f18cd04bc7ce58546ca8ad",
+        "reference_repair": {
+          "finding": "Historical Julia code copies expected res_* assembly files and touches CUDA; it does not compute k-mer counts or sequence assembly. This is an S1 semantic placeholder. Preserve original bytes and implement the actual native hash/CAS/cohort/quality-rating/iterative-walk algorithm. Native lane expression also has a concrete initialization defect; its minimal original GPU probe happened to match, so no observed original numerical failure is claimed. Scoped lane-mask repair and diagnostic output initialization are conditional native interventions.",
+          "taxonomy_code": "S1",
+          "phase": "reference_algorithm_repair",
+          "original_path": "/home/imo/HeCBench_julia/src/local-ht-julia/local-ht-julia-cuda.jl/original_main.jl",
+          "original_sha256": "5e0273ce5aad0ce164944383db3aa1c521e06830709c4e1bda2affdea0de9f0d",
+          "original_preserved": true,
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 1,
+        "untimed_verification_capture_kernels": 1,
+        "storage_layout": "SoA length/byte-offset/count/extension arrays; native baseline AoS raw-pointer records",
+        "timed_compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "untimed_device_compute_precision": [
+          "UInt32 actual-key hash capture diagnostic"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer read-window Counter/hash/graph walk",
+          "Float64 depth threshold policy"
+        ],
+        "artifact_encoding": [
+          "UInt32 DNA byte values/counts/hash/visited/walk records",
+          "IEEE754 Float64 depth encoded as two UInt32 input words"
+        ],
+        "native_reference_repaired": true,
+        "verification_stratum": "conditional_native_reference_repaired",
+        "exclude_from_untouched_native_aggregates": true,
+        "reference_provenance": {
+          "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+          "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+          "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+          "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+          "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+          "original_gpu_probe_observed_mismatches": 0,
+          "corrected_gpu_probe_observed_mismatches": 0,
+          "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+          "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+          "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+          "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+        },
+        "numerical_evidence_strength": "canonicalized_complete_stage_records_plus_full_initialized_walk_temp_buffers",
+        "verification_method": "canonicalized_complete_stage_records_and_independent_graph_oracle",
+        "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/local-ht.json",
+        "scope_limits": [
+          "Integrated right-walk kernel only; left reverse complement/stitching and file parser unmeasured.",
+          "Five K21 fixtures; arbitrary K, short reads, biological datasets and formal race freedom not certified.",
+          "Canonicalized occupied records retain counts, quality, extension and actual GPU hash; raw slot order and pointer identities are not compared.",
+          "Original broadcast probe happened to match; conditional repair is justified by source initialization, not an observed original numerical failure."
+        ],
+        "actual_device_kernel_count": 1,
+        "source_review_status": "source_reviewed"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Native local genomic assembly: warp-parallel Murmur-key table insertion/counts, depth/quality extension ratings, visited-key hash table and serial-lane0 iterative-k extension walk.",
+        "work_item_mapping": "512-thread block, one32-lane warp/contig; five active contigs, other whole warps inactive. Native AoS raw-pointer keys become SoA fields and byte offsets. Exact NVVM match-any preserves address-cohort partitioning using bijective slot IDs.",
+        "storage_precision": [
+          "UInt8 DNA/Phred/extensions/walk bytes",
+          "UInt32 key lengths/counts/hash buckets/offsets",
+          "Int32 Julia byte offsets",
+          "Float64 contig depth"
+        ],
+        "compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "synchronization": [
+          "Warp32 active-mask match-any cohorts",
+          "CAS key publication followed by cohort warp synchronization",
+          "Atomic low/high quality counts",
+          "Full-warp stage synchronization and corrected lane0 broadcast",
+          "Host sync around one integrated kernel"
+        ],
+        "launch_geometry": {
+          "threads": 512,
+          "blocks": 1,
+          "warps_per_contig": 1,
+          "contigs": 5,
+          "shared_bytes": 0,
+          "timed_algorithm_kernels": 1,
+          "untimed_hash_capture_kernels": 1
+        },
+        "resource_policy": "Public KA static512 workgroup; backend maxthreads512 launch bound; no custom launch adapter",
+        "backend_extensions": [
+          "Custom NVVM llvm.nvvm.match.any.sync.i64",
+          "CUDA.atomic_cas!/global UInt32 atomics",
+          "CUDA.active_mask/sync_warp/shfl_sync"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "b6844067e0a5f81796865ba12a0b0b3579969018a85c22955d6dc4936dafa663",
+        "reference_repair": null,
+        "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 1,
+        "untimed_verification_capture_kernels": 1,
+        "storage_layout": "SoA length/byte-offset/count/extension arrays; native baseline AoS raw-pointer records",
+        "timed_compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "untimed_device_compute_precision": [
+          "UInt32 actual-key hash capture diagnostic"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer read-window Counter/hash/graph walk",
+          "Float64 depth threshold policy"
+        ],
+        "artifact_encoding": [
+          "UInt32 DNA byte values/counts/hash/visited/walk records",
+          "IEEE754 Float64 depth encoded as two UInt32 input words"
+        ],
+        "native_reference_repaired": true,
+        "verification_stratum": "conditional_native_reference_repaired",
+        "exclude_from_untouched_native_aggregates": true,
+        "reference_provenance": {
+          "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+          "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+          "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+          "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+          "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+          "original_gpu_probe_observed_mismatches": 0,
+          "corrected_gpu_probe_observed_mismatches": 0,
+          "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+          "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+          "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+          "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+        },
+        "numerical_evidence_strength": "canonicalized_complete_stage_records_plus_full_initialized_walk_temp_buffers",
+        "verification_method": "canonicalized_complete_stage_records_and_independent_graph_oracle",
+        "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/local-ht.json",
+        "scope_limits": [
+          "Integrated right-walk kernel only; left reverse complement/stitching and file parser unmeasured.",
+          "Five K21 fixtures; arbitrary K, short reads, biological datasets and formal race freedom not certified.",
+          "Canonicalized occupied records retain counts, quality, extension and actual GPU hash; raw slot order and pointer identities are not compared.",
+          "Original broadcast probe happened to match; conditional repair is justified by source initialization, not an observed original numerical failure."
+        ],
+        "actual_device_kernel_count": 1,
+        "source_review_status": "source_reviewed"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Native local genomic assembly: warp-parallel Murmur-key table insertion/counts, depth/quality extension ratings, visited-key hash table and serial-lane0 iterative-k extension walk.",
+        "work_item_mapping": "512-thread block, one32-lane warp/contig; five active contigs, other whole warps inactive. Native AoS raw-pointer keys become SoA fields and byte offsets. Exact NVVM match-any preserves address-cohort partitioning using bijective slot IDs.",
+        "storage_precision": [
+          "UInt8 DNA/Phred/extensions/walk bytes",
+          "UInt32 key lengths/counts/hash buckets/offsets",
+          "Int32 Julia byte offsets",
+          "Float64 contig depth"
+        ],
+        "compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "synchronization": [
+          "Warp32 active-mask match-any cohorts",
+          "CAS key publication followed by cohort warp synchronization",
+          "Atomic low/high quality counts",
+          "Full-warp stage synchronization and corrected lane0 broadcast",
+          "Host sync around one integrated kernel"
+        ],
+        "launch_geometry": {
+          "threads": 512,
+          "blocks": 1,
+          "warps_per_contig": 1,
+          "contigs": 5,
+          "shared_bytes": 0,
+          "timed_algorithm_kernels": 1,
+          "untimed_hash_capture_kernels": 1
+        },
+        "resource_policy": "Pinned JACC1.4.0 CUDA extension index wrapper compiled with CUDA.cufunction maxregs=128; 512 threads, one block, zero dynamic shared bytes. Public JACC launch failed register resources.",
+        "backend_extensions": [
+          "Custom NVVM llvm.nvvm.match.any.sync.i64",
+          "CUDA.atomic_cas!/global UInt32 atomics",
+          "CUDA.active_mask/sync_warp/shfl_sync",
+          "Pinned JACC CUDAExt._kernel_args and _parallel_for_cuda host adapter; CUDA.cufunction maxregs=128"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "ffec683226646dda8b549166ef1a70778893f0ea68d7e0c31d3661b1ac385e59",
+        "reference_repair": null,
+        "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 1,
+        "untimed_verification_capture_kernels": 1,
+        "storage_layout": "SoA length/byte-offset/count/extension arrays; native baseline AoS raw-pointer records",
+        "timed_compute_precision": [
+          "UInt32 Murmur2/hash/CAS/atomic counts",
+          "Int32 string indices/control",
+          "Float64 quality-depth thresholds"
+        ],
+        "untimed_device_compute_precision": [
+          "UInt32 actual-key hash capture diagnostic"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer read-window Counter/hash/graph walk",
+          "Float64 depth threshold policy"
+        ],
+        "artifact_encoding": [
+          "UInt32 DNA byte values/counts/hash/visited/walk records",
+          "IEEE754 Float64 depth encoded as two UInt32 input words"
+        ],
+        "native_reference_repaired": true,
+        "verification_stratum": "conditional_native_reference_repaired",
+        "exclude_from_untouched_native_aggregates": true,
+        "hybrid_host_control": true,
+        "compiler_control_gap": "JACC LaunchSpec does not expose maxregs/maxthreads; explicit private backend host adapter required for this case.",
+        "reference_provenance": {
+          "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+          "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+          "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+          "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+          "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+          "original_gpu_probe_observed_mismatches": 0,
+          "corrected_gpu_probe_observed_mismatches": 0,
+          "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+          "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+          "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+          "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+        },
+        "numerical_evidence_strength": "canonicalized_complete_stage_records_plus_full_initialized_walk_temp_buffers",
+        "verification_method": "canonicalized_complete_stage_records_and_independent_graph_oracle",
+        "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/local-ht.json",
+        "scope_limits": [
+          "Integrated right-walk kernel only; left reverse complement/stitching and file parser unmeasured.",
+          "Five K21 fixtures; arbitrary K, short reads, biological datasets and formal race freedom not certified.",
+          "Canonicalized occupied records retain counts, quality, extension and actual GPU hash; raw slot order and pointer identities are not compared.",
+          "Original broadcast probe happened to match; conditional repair is justified by source initialization, not an observed original numerical failure."
+        ],
+        "actual_device_kernel_count": 1,
+        "source_review_status": "source_reviewed"
+      }
+    },
+    "verification_stratum": "conditional_native_reference_repaired",
+    "numerical_evidence_strength": "canonicalized_complete_stage_records_plus_full_initialized_walk_temp_buffers",
+    "verification_method": "canonicalized_complete_stage_records_and_independent_graph_oracle",
+    "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/local-ht.json",
+    "scope_limits": [
+      "Integrated right-walk kernel only; left reverse complement/stitching and file parser unmeasured.",
+      "Five K21 fixtures; arbitrary K, short reads, biological datasets and formal race freedom not certified.",
+      "Canonicalized occupied records retain counts, quality, extension and actual GPU hash; raw slot order and pointer identities are not compared.",
+      "Original broadcast probe happened to match; conditional repair is justified by source initialization, not an observed original numerical failure."
+    ],
+    "prospective_usage_intervals": [
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/local-ht/shared_benchmark_workflow.jsonl",
+        "end_event": "247389f1795e8b7b5c582c61",
+        "delta_usage": {
+          "input_tokens": 17261617,
+          "cached_input_tokens": 16955392,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 63324,
+          "reasoning_output_tokens": 33093,
+          "total_tokens": 17324941
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "annotation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/local-ht/shared_annotation.jsonl",
+        "end_event": "b270d1cfcc68ae6f131cc86c",
+        "delta_usage": {
+          "input_tokens": 258585,
+          "cached_input_tokens": 221312,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3738,
+          "reasoning_output_tokens": 47,
+          "total_tokens": 262323
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/local-ht/ka_translation.jsonl",
+        "end_event": "f8263cdfc7e0e1011107d6f4",
+        "delta_usage": {
+          "input_tokens": 969809,
+          "cached_input_tokens": 967936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2975,
+          "reasoning_output_tokens": 2030,
+          "total_tokens": 972784
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/local-ht/shared_reference_preparation.jsonl",
+        "end_event": "be25fb40125102ffd95cabe8",
+        "delta_usage": {
+          "input_tokens": 11416319,
+          "cached_input_tokens": 11232896,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 44357,
+          "reasoning_output_tokens": 24221,
+          "total_tokens": 11460676
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/local-ht/jacc_translation.jsonl",
+        "end_event": "31fa2ba73e85d6ff9dd73f70",
+        "delta_usage": {
+          "input_tokens": 2656925,
+          "cached_input_tokens": 2588032,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8327,
+          "reasoning_output_tokens": 4116,
+          "total_tokens": 2665252
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/local-ht-julia/local-ht-julia-KA/main.jl",
+    "sha256": "b6844067e0a5f81796865ba12a0b0b3579969018a85c22955d6dc4936dafa663",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4,
+        8
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "localht_conditional_lane_broadcast_k21_five_known_assembly_graphs_v1",
+      "run_id": "20261017T220520566506Z_local-ht",
+      "result": ".porting-state/portable_julia/runs/20261017T220520566506Z_local-ht/result.json",
+      "native_reference_repaired": true,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "original_source": "/home/imo/HeCBench_julia/src/local-ht-cuda/src/kernel.cu",
+        "original_sha256": "df0fcdf0458e4d9e0087ef66aa9560c992b9028d7fc6cad8c83c2dbe1a158433",
+        "corrected_copy": "/home/imo/HeCBench_julia/src/local-ht-julia/study_native_kernel.cuh",
+        "corrected_sha256": "4506213df3581b95ec99cbfe5597970972b69441730c6764c81ab7dfcff3210c",
+        "only_source_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+        "original_gpu_probe_observed_mismatches": 0,
+        "corrected_gpu_probe_observed_mismatches": 0,
+        "probe_interpretation": "Originalundefinedvaluedidnotyieldobservedmismatchonminimalprobe;repairjustifiedsourceinitializationinvariantnotclaimedobservednumericfailure.",
+        "fixture": "Generated5knownDNAgraphcasesallK21/allreads>=22,qualities5/15/30,uniqueextension/fork/cycle;fullsourcehash/count/rating/walkalgorithmnotgenericwalksurrogate",
+        "output_initialization": "Zeroinitializelongest_walks/mer_walk_tempforfullbufferdiagnostics,beforetimer;outputunusedtaildefinedbynamedstudy,notclaimedoriginaluninitializedbytes",
+        "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "58fe02ad5bb66c6bf8701bf12d517ddc97e48d51f1ccace23907b2b69b35029f",
+      "source_hash": "5160623516bc071a373e1619e86148a994af5b13a40c0f9476e71febf8282347",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T220520566506Z_local-ht/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00035194400000000003,
+        0.037037618,
+        0.000339103,
+        0.000316863,
+        0.000312163
+      ],
+      "mean_last_four_seconds": 0.00950143675,
+      "contract": {
+        "kmer": 21,
+        "contigs": 5,
+        "cases": [
+          {
+            "contig": 0,
+            "seed": "ACGTTGCACTGATCGTAGCTA",
+            "read_count": 8,
+            "quality": 30,
+            "occupied_keys": 6,
+            "walk": "ACTGCA",
+            "termination": "X",
+            "visited_keys": 7,
+            "all_key_records": [
+              {
+                "key": "ACGTTGCACTGATCGTAGCTA",
+                "low": [
+                  8,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  8,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "A",
+                "count": 8,
+                "hash": 156
+              },
+              {
+                "key": "CGTTGCACTGATCGTAGCTAA",
+                "low": [
+                  0,
+                  8,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  8,
+                  0,
+                  0
+                ],
+                "extension": "C",
+                "count": 8,
+                "hash": 467
+              },
+              {
+                "key": "GCACTGATCGTAGCTAACTGC",
+                "low": [
+                  8,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  8,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "A",
+                "count": 8,
+                "hash": 321
+              },
+              {
+                "key": "GTTGCACTGATCGTAGCTAAC",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  8
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  8
+                ],
+                "extension": "T",
+                "count": 8,
+                "hash": 184
+              },
+              {
+                "key": "TGCACTGATCGTAGCTAACTG",
+                "low": [
+                  0,
+                  8,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  8,
+                  0,
+                  0
+                ],
+                "extension": "C",
+                "count": 8,
+                "hash": 108
+              },
+              {
+                "key": "TTGCACTGATCGTAGCTAACT",
+                "low": [
+                  0,
+                  0,
+                  8,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  8,
+                  0
+                ],
+                "extension": "G",
+                "count": 8,
+                "hash": 225
+              }
+            ]
+          },
+          {
+            "contig": 1,
+            "seed": "GCTAGCTTACGATGCACTAGC",
+            "read_count": 16,
+            "quality": 30,
+            "occupied_keys": 1,
+            "walk": "",
+            "termination": "F",
+            "visited_keys": 1,
+            "all_key_records": [
+              {
+                "key": "GCTAGCTTACGATGCACTAGC",
+                "low": [
+                  8,
+                  8,
+                  0,
+                  0
+                ],
+                "hi": [
+                  8,
+                  8,
+                  0,
+                  0
+                ],
+                "extension": "F",
+                "count": 0,
+                "hash": 192
+              }
+            ]
+          },
+          {
+            "contig": 2,
+            "seed": "TGCATACGTTAGCGATCGACT",
+            "read_count": 8,
+            "quality": 5,
+            "occupied_keys": 3,
+            "walk": "",
+            "termination": "X",
+            "visited_keys": 1,
+            "all_key_records": [
+              {
+                "key": "CATACGTTAGCGATCGACTGT",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "X",
+                "count": 0,
+                "hash": 249
+              },
+              {
+                "key": "GCATACGTTAGCGATCGACTG",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "X",
+                "count": 0,
+                "hash": 54
+              },
+              {
+                "key": "TGCATACGTTAGCGATCGACT",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "X",
+                "count": 0,
+                "hash": 127
+              }
+            ]
+          },
+          {
+            "contig": 3,
+            "seed": "CATGCTAGTACGATTCGAGCA",
+            "read_count": 8,
+            "quality": 15,
+            "occupied_keys": 3,
+            "walk": "TGA",
+            "termination": "X",
+            "visited_keys": 4,
+            "all_key_records": [
+              {
+                "key": "ATGCTAGTACGATTCGAGCAT",
+                "low": [
+                  0,
+                  0,
+                  8,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "G",
+                "count": 8,
+                "hash": 485
+              },
+              {
+                "key": "CATGCTAGTACGATTCGAGCA",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  8
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "T",
+                "count": 8,
+                "hash": 31
+              },
+              {
+                "key": "TGCTAGTACGATTCGAGCATG",
+                "low": [
+                  8,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "A",
+                "count": 8,
+                "hash": 76
+              }
+            ]
+          },
+          {
+            "contig": 4,
+            "seed": "ACGTACGTACGTACGTACGTA",
+            "read_count": 8,
+            "quality": 30,
+            "occupied_keys": 4,
+            "walk": "CGTA",
+            "termination": "R",
+            "visited_keys": 4,
+            "all_key_records": [
+              {
+                "key": "ACGTACGTACGTACGTACGTA",
+                "low": [
+                  0,
+                  104,
+                  0,
+                  0
+                ],
+                "hi": [
+                  0,
+                  104,
+                  0,
+                  0
+                ],
+                "extension": "C",
+                "count": 104,
+                "hash": 37
+              },
+              {
+                "key": "CGTACGTACGTACGTACGTAC",
+                "low": [
+                  0,
+                  0,
+                  96,
+                  0
+                ],
+                "hi": [
+                  0,
+                  0,
+                  96,
+                  0
+                ],
+                "extension": "G",
+                "count": 96,
+                "hash": 391
+              },
+              {
+                "key": "GTACGTACGTACGTACGTACG",
+                "low": [
+                  0,
+                  0,
+                  0,
+                  96
+                ],
+                "hi": [
+                  0,
+                  0,
+                  0,
+                  96
+                ],
+                "extension": "T",
+                "count": 96,
+                "hash": 197
+              },
+              {
+                "key": "TACGTACGTACGTACGTACGT",
+                "low": [
+                  96,
+                  0,
+                  0,
+                  0
+                ],
+                "hi": [
+                  96,
+                  0,
+                  0,
+                  0
+                ],
+                "extension": "A",
+                "count": 96,
+                "hash": 436
+              }
+            ]
+          }
+        ],
+        "threads": 512,
+        "blocks": 1,
+        "ht_capacity_per_contig": 512,
+        "max_walk": 16,
+        "mer_temp_stride": 137,
+        "depth": 10.0,
+        "qualities": [
+          30,
+          30,
+          5,
+          15,
+          30
+        ],
+        "quality_offset": 33,
+        "input_prefix_count": 3211,
+        "output_count": 12780,
+        "checked_values": 15991,
+        "output_contract": "Canonicalizealloccupied21mer/8low-hiqualitycounts/selectedextension/count/actualGPUhashrecordsandallvisited21mers;actualwalklength/full16walkbytes/full137tempbytes. Emptycanonicalrecordpaddingzero,notrawtable-slot/pointeridentity.",
+        "input_encoding": "UInt32bytevalues/offsets/prefixes;Float64depthIEEE754lo/hiwords;allcontrolsserialized exactly",
+        "scope": "Integratedright-walkkernelonly. Leftreverse-complement/stitching/fileparserandotherK21/33/55/77datasetcasesunmeasured;noall-genomeassemblyaccuracyclaim.",
+        "native_repair": "laneId threadIdx.x&warpSize\u2192threadIdx.x&(warpSize-1),concreteoddwarpinitializationdefect",
+        "source_limitations": "Originalshort-readcontinuefailsadvance running_sum_len;namedreadsall>=22sooutsidefixture. Noall-inputdatasetcertification.",
+        "timing": "Oneintegratedright-walkkernel+sync,allocation/reset/fullrecord/hashdiagnosticcaptureoutside timer",
+        "hash_capture": "UntimedGPUhashcapturecallsactualnativeMurmurHashAligned2foralloccupiedkeys;canonicalizedrecordsnotrawslotorder"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "canonicalized_all_kmer_quality_extension_hash_and_visited_records_plus_full_walk_temp_buffers"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
     "runtime_repairs": null,
     "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 294,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/local-ht-julia/local-ht-julia-KA/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "f8263cdfc7e0e1011107d6f4",
+        "begin_event_id": "b903b7ee7787e9e2321f0f01",
+        "agent": "/root/maps_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T22:02:33.825808+00:00",
+        "usage_event_timestamp": "2026-10-17T22:02:22.321Z",
+        "elapsed_usage_event_start": "2026-10-17T22:01:03.684Z",
+        "delta_usage": {
+          "input_tokens": 969809,
+          "cached_input_tokens": 967936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2975,
+          "reasoning_output_tokens": 2030,
+          "total_tokens": 972784
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 11.504808,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "d2914e7ad5875f0ef9b29516d4172f8bb2a1b41a7387dc52a0bdedecff3964d9",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 15.214258,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/local-ht/ka_translation.jsonl",
+        "evidence_sha256": "d26f0dcf2a56c84ccad1d69551fafac4d198ad68438aa82d34045cc58cc00557",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/local-ht-julia-ka/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "9aba6542989d3bc70fa27cfb24f40e8b6c667e86fc21b5e96b612a256991541f",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/local-ht-julia-ka/manifest.json",
+        "sha256": "9aba6542989d3bc70fa27cfb24f40e8b6c667e86fc21b5e96b612a256991541f"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
+  "source_commit": "55d79dfce19832d51898da4fdaaeb507bd66c8b3",
   "explicit_outcome_evidence": null
 }
