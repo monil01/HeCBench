@@ -1,0 +1,124 @@
+{
+  "benchmark": "graphExecution",
+  "target": "julia-ka",
+  "driver": "codex",
+  "translation_tokens": {
+    "input_tokens": null,
+    "output_tokens": 1098,
+    "cached_tokens": null,
+    "total_tokens": null,
+    "status": "partial_estimated",
+    "method": "ceil(saved implementation characters/4) only",
+    "sources": [
+      "/home/imo/HeCBench_julia/src/graphExecution-julia/graphExecution-julia-KA/main.jl"
+    ],
+    "limitations": "Only savedsource proxy; prompts,toolcontext,reasoning,cachedusage unknown. Not totalconsumption."
+  },
+  "status": "verified",
+  "verification_method": "direct_artifact_pass",
+  "numerical_evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T003150669336Z_graphExecution/result.json",
+  "five_trial_seconds": [
+    0.002618613,
+    0.002634462,
+    0.002544792,
+    0.002573393,
+    0.002565522
+  ],
+  "mean_last_four_seconds": 0.00257954225,
+  "candidate_attempts": 2,
+  "compiler_feedback_repairs": 0,
+  "compiler_checks": 2,
+  "unsupported_features": [],
+  "paper_observation": "research/observations/graphExecution.md",
+  "ontology_sha256": "6655e68ed30b287b1e1b1c419052af7a56cdc3f5ea70d61114022b17c9ceb20d",
+  "source_commit": null,
+  "commit_status": "coordinator_pending",
+  "implementation_class": "hybrid_host_control",
+  "device_kernel_candidates": 1,
+  "compiled_kernel_specializations": 2,
+  "shared_attempts_file": "src/graphExecution-julia/shared_attempts.json",
+  "shared_phase_ids": [
+    "graphExecution_reference_fidelity",
+    "graphExecution_shared_host_lifecycle",
+    "graphExecution_native_instrumentation_label"
+  ],
+  "shared_phase_accounting": {
+    "benchmark": "graphExecution",
+    "phase_accounting_scope": "Shared host/reference/instrumentation work; do not silently drop these from benchmark effort or count duplicate copies per variant. Exact attributed tokens remain partial/unknown.",
+    "phases": [
+      {
+        "phase_id": "graphExecution_reference_fidelity",
+        "phase": "reference_correctness",
+        "historical_defect": "Graph label ran ordinary stream loop, omitted timed H2D/D2H and used different RNG/tolerance",
+        "correction": "Actual capture/replay and stream segment, shared pinned input/output, original1e-6 tolerance",
+        "algorithm_adaptation": "Full shared tree replaces native warp/tile/shuffle reduction",
+        "source_revisions": 2,
+        "process_checks": 2,
+        "compiler_feedback_repairs": 0,
+        "runtime_feedback_repairs": 1
+      },
+      {
+        "phase_id": "graphExecution_shared_host_lifecycle",
+        "phase": "shared_host_control",
+        "source_revisions": 2,
+        "runtime_feedback_repairs": 1,
+        "failure_taxonomy": "R1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "failed_at_process_exit_after_five_correct_trials",
+            "bundle": "20261017T002432967285Z_graphExecution",
+            "models": [
+              "cuda_jl",
+              "ka"
+            ],
+            "cause": "Manual unsafe_destroy! left registered finalizers; graph handles destroyed twice, invalid handle errors and KA segfault"
+          },
+          {
+            "attempt": 2,
+            "status": "verified_clean_exit",
+            "bundle": "20261017T002710831896Z_graphExecution",
+            "models": [
+              "cuda_jl",
+              "ka"
+            ],
+            "repair": "Base.finalize executable, graph and stream exactly once; removes finalizers"
+          }
+        ]
+      },
+      {
+        "phase_id": "graphExecution_native_instrumentation_label",
+        "phase": "measurement_instrumentation",
+        "source_revisions": 2,
+        "kernel_or_timing_boundary_changed": false,
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "all_outputs_and_per_model_times_valid_but_region_label_mismatch",
+            "bundle": "20261017T002953521684Z_graphExecution",
+            "native_series_origin": "20261017T002432967285Z_graphExecution",
+            "reason": "Native emitted synchronized_kernel_loop_mean while Julia emitted graph_and_stream_segment_total_including_h2d_d2h"
+          },
+          {
+            "attempt": 2,
+            "status": "matched_verified",
+            "bundle": "20261017T003150669336Z_graphExecution",
+            "repair": "Native output label matches actual shared graph/stream total contract; native alone remeasured, unchanged Julia results reused"
+          }
+        ]
+      }
+    ]
+  },
+  "runtime_feedback_repairs": 1,
+  "failure_taxonomy": [
+    "R1"
+  ],
+  "candidate_unit": "Complete target program including host graph lifecycle; device kernel candidate count remains1",
+  "timing_normalization": "Total graph segment plus total stream segment, each100 reductions; no division by100",
+  "timing_includes": [
+    "Pinned H2D",
+    "100 partial resets and reduction pairs per mode",
+    "Pinned D2H8byte result",
+    "stream fence"
+  ]
+}
