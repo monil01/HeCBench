@@ -1,3 +1,5 @@
+> Measurement correction: the v1 Julia timing table below is superseded and excluded. The cuBLASLt default-stream launches were not covered by the task-stream synchronization used in v1. Numerical artifacts remain valid. A v2 device-wide completion protocol is being remeasured for all three Julia implementations; see `measurement_repair_scope.json`.
+
 # MLP: three-layer FP32 inference
 
 This study retains the source's synthetic three-layer dense network: batch 128,
@@ -66,3 +68,16 @@ Both targets passed their first generic kernel candidate, four configuration-che
 | b1_r1 | 55.760 | 41.480 | 222.634 | 406.843 |
 
 All retained samples and variation are in the traits file. The custom/vendor gap and the KA/JACC gap are measured observations; their individual causes are not established without profiling. No fastest-run selection or causal backend ranking is made. Logical dense work is 171,180,032 FLOPs per forward under the two-FLOP multiply-add convention, plus optional 132,352 bias additions; ReLU comparisons are separate. These are algorithmic counts, not measured physical instructions/traffic or roofline positions.
+
+## Authoritative v2 completion-boundary measurement correction
+
+A retrospective S2 audit found that cuBLASLt launched on the legacy default stream while the Julia harness synchronized the task stream. The v1 numerical outputs remain correct, but its matched timing claim is excluded. The old source, raw results, table and source-commit receipts are retained. Device-wide blocking completion now covers preparation, all 300 warmups, pre/post timed regions and cleanup, matching native cudaDeviceSynchronize. All three Julia models were freshly evaluated for all four configurations; unchanged native source/adapter/input/clock series alone was reused under explicit cross-configuration review. No arithmetic, device kernel or vendor algorithm change was made, and no fastest-run selection occurred. The exclusion policy was recorded before new trials; an initial metadata key typo delayed sidecar application until it was caught and fixed by an effective-config audit. That T1 event and the original sidecar are retained.
+
+| Bias/ReLU v2 | CUDA (us) | CUDA.jl (us) | KA (us) | JACC (us) |
+|---|---:|---:|---:|---:|
+| b0_r0 | 54.108 | 57.657 | 219.175 | 408.564 |
+| b1_r0 | 58.301 | 60.228 | 219.772 | 404.281 |
+| b0_r1 | 58.149 | 55.407 | 221.652 | 402.841 |
+| b1_r1 | 55.760 | 64.070 | 219.719 | 404.936 |
+
+The CPU-only replacement audit rechecks all 80 artifacts against exact input prefix and independent Float64 all-layer oracle. Original translation attempts/usage remain unchanged; this shared measurement correction has a separate prospective usage window and 12 fresh Julia validation process evaluations, not 12 new device-kernel candidates. Internal compiler/cache work is unknown. Vendor/custom algorithm and host-descriptor confounds remain.
