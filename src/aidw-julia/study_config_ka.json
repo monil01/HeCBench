@@ -1,0 +1,77 @@
+{
+  "benchmark": "aidw",
+  "configuration_id": "fp32_untiled_d1024_i1024_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      1024,
+      1024
+    ],
+    "fixture": "zero-based i: dx=16*(i%32)+1,dy=16*(i/32)+2,dz=11+(i%47)/8,ix=16*(i%32)+7.25,iy=16*(i/32)+9.5,avg_dist=2*(i%33),area=4000000",
+    "internal_repeats": 10,
+    "scope": "original untiled AIDW_Kernel; tiled variant remains unported/unmeasured",
+    "mapping": "one thread per interpolated point, sequential all-data weighted sum; 4 blocks256; JACC dynamic shared memory0",
+    "accuracy": "full finite Float32 outputs atol1e-3 rtol0, stricter than original EPS1; positive-weight range invariant on CPU"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/aidw-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU piecewise-alpha inverse-distance sum, all1024 finite outputs abs<=1e-3 plus full raw dual-reference artifact comparisons",
+      "source_dependencies": [
+        "../aidw-cuda/main.cu",
+        "../aidw-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/aidw-julia/aidw-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU piecewise-alpha inverse-distance sum, all1024 finite outputs abs<=1e-3 plus full raw dual-reference artifact comparisons",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/aidw-julia/aidw-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU piecewise-alpha inverse-distance sum, all1024 finite outputs abs<=1e-3 plus full raw dual-reference artifact comparisons",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  }
+}
