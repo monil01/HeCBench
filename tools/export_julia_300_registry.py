@@ -191,6 +191,8 @@ def main():
                                         'missing_history_is_zero':False},
                     'effort':{k:manifest.get(k) for k in ['candidate_attempts','compiler_checks','compiler_feedback_repairs','runtime_repairs','numerical_repairs','translation_tokens']},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
+            profiles=read(STATE/'profile_summaries_300'/(b+'.json'),{})
+            if profiles.get('models',{}).get(model):record['measured_profile_evidence']=profiles['models'][model]
             current_ref=log/'current_reference_effort_300.json'
             if current_ref.is_file():
                 record['current_reference_repair_effort']={'path':str(current_ref.relative_to(ROOT)),'sha256':digest(current_ref),'record':read(current_ref),'scope':'Current repair phase only; does not replace unknown historical original translation effort.'}

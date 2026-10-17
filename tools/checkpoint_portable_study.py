@@ -90,6 +90,10 @@ payload = {
     'next_translation': 'Continue disjoint frozen300 queues KA then JACC, repairing references where needed. Root commits verified variants separately.',
     'next_paper': 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.',
     'local_only_research': True,
+    'paper_build_artifact': {'path':str((paper/'build/main.pdf').relative_to(root)),
+        'sha256':hashlib.sha256((paper/'build/main.pdf').read_bytes()).hexdigest() if (paper/'build/main.pdf').exists() else None,
+        'sources_newer_than_pdf':[str(p.relative_to(paper)) for p in [paper/'main.tex',paper/'references.bib',*paper.glob('sections/**/*.tex'),*paper.glob('figures/*.tex'),*paper.glob('figures/*.pdf')] if p.exists() and (not (paper/'build/main.pdf').exists() or p.stat().st_mtime>(paper/'build/main.pdf').stat().st_mtime)],
+        'scope':'File hash and source freshness, not a submission or full build-quality certification.'},
     'resume_notes': [
         'Read the current authority at the TOP of all three guides, then this checkpoint. Completed100 stop notes are superseded.',
         'Preserve unrelated deleted AGENT_INSTRUCTIONS_CODEX.md and md5hash caches. Root alone stages source commits.',
