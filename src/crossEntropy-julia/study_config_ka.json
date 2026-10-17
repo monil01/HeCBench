@@ -1,0 +1,112 @@
+{
+  "benchmark": "crossEntropy",
+  "configuration_id": "crossentropy_bs1_w81_h8732_three_precision_r10_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "batch": 1,
+    "original_batch": 128,
+    "W": 81,
+    "H": 8732,
+    "precision": [
+      "Float16",
+      "Float32",
+      "Float64"
+    ],
+    "fixture": "p_i=-((13i+7)%129+1)/32;g_i=(i%13+1)/32;gn_i=(i%7+1)/64;weight_i=(i%5+1)/8;mask_i=i%2;target_i=(17i+3)%81",
+    "checked_outputs": "all 3*81*8732 outputs; complete selected batch",
+    "scope": "one original batch slice; all class/position dimensions unchanged",
+    "internal_repeats": 10,
+    "oracle": "scalar CPU with storage-type rounding and native Float32 intermediate narrowing",
+    "acceptance": "original absolute4e-3 plus finite"
+  },
+  "atol": 0.004,
+  "rtol": 0.0,
+  "ontology": {
+    "path": "ontology/benchmarks/crossEntropy.yaml"
+  },
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/crossEntropy-julia",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Full selected batch, all three precisions versus scalar CPU and both reference arrays",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/crossEntropy-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/crossEntropy-cuda/reference.h"
+      ],
+      "limitations": [
+        "One of original128 batches",
+        "Native Float32 fast exponential versus Julia exponential; Half exponential rounded via Float32",
+        "Kernel-specific mixed-precision loss formula; not claimed canonical cross-entropy derivative"
+      ],
+      "build": [
+        "nvcc",
+        "--expt-relaxed-constexpr",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "-I",
+        "/home/imo/HeCBench_julia/src",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/crossEntropy-julia/crossEntropy-julia-cuda.jl",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Full selected batch, all three precisions versus scalar CPU and both reference arrays",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/crossEntropy-julia/study_common.jl"
+      ],
+      "limitations": [
+        "One of original128 batches",
+        "Native Float32 fast exponential versus Julia exponential; Half exponential rounded via Float32",
+        "Kernel-specific mixed-precision loss formula; not claimed canonical cross-entropy derivative"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/crossEntropy-julia/crossEntropy-julia-KA",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Full selected batch, all three precisions versus scalar CPU and both reference arrays",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/crossEntropy-julia/study_common.jl"
+      ],
+      "limitations": [
+        "One of original128 batches",
+        "Native Float32 fast exponential versus Julia exponential; Half exponential rounded via Float32",
+        "Kernel-specific mixed-precision loss formula; not claimed canonical cross-entropy derivative"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ]
+    }
+  },
+  "attempt_accounting": {
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_feedback_repairs": 0,
+      "compiler_check_invocations": 1
+    }
+  },
+  "token_accounting": {
+    "status": "partial_estimated",
+    "full_usage": null,
+    "method": "saved source proxy only; not consumed tokens"
+  }
+}

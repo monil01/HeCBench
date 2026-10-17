@@ -1,0 +1,98 @@
+{
+  "reference_audit": {
+    "finding": "Existing Julia reference has genuine loss kernels but converts all inputs to Float32 before target products and exponentials, unlike native Float16-rounded products and Float64 exponentials. Corrected storage-type product and narrowing sequence; this is a precision/mapping fidelity correction, not a proven wrong-output historical failure.",
+    "taxonomy_code": "P1",
+    "phase": "reference_mapping_fidelity",
+    "original_path": "/home/imo/HeCBench_julia/src/crossEntropy-julia/crossEntropy-julia-cuda.jl/original_main.jl",
+    "original_sha256": "97c35a0d33643147be3494a221da2374a41d86fa65224eea507175f18ea1d1f8",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Per-position masked weighted loss backward across81 classes, with native Float32 sum/exponential-product intermediates and precision-specific storage",
+  "mapping": "One64-thread-grid workitem per spatial position, sequential81-class loop; one selected batch",
+  "launch_geometry": {
+    "threads": 64,
+    "blocks": 137,
+    "batch_blocks": 1
+  },
+  "traits": {
+    "primary_motif": "masked_loss_backward",
+    "storage_precision": [
+      "Float16",
+      "Float32",
+      "Float64",
+      "Int64"
+    ],
+    "compute_precision": [
+      "Float16",
+      "Float32",
+      "Float64",
+      "Int64"
+    ],
+    "synchronization": [
+      "host_device_after_each_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Preserves native mixed-precision narrowing; Float32 and Half exponential implementations differ, checked at original tolerance"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_three_precision_mean_kernels",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "One selected batch, not128-batch default",
+      "Fast versus full exponential implementation",
+      "Float64 storage retains Float32 intermediate narrowing by native design"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "masked weighted classification loss",
+      "scientific_task": "Compute gradient-like outputs over class channels and spatial positions",
+      "governing_method": "Native masked weighted log-softmax backward formula",
+      "discretization": "81 classes by8732 positions, one selected batch",
+      "accuracy_needs": [
+        "all class outputs finite",
+        "three storage precisions",
+        "masked and unmasked paths"
+      ],
+      "input_regime": "negative dyadic log inputs and positive weights; both masks and all target classes",
+      "precision_sensitivity": "Half-rounded target products and exponentials; Float64 exponentials narrowed into Float32 intermediates",
+      "community_use_case": "Dense classification or detection loss primitive; no training convergence claims",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/crossEntropy-cuda/main.cu",
+          "sha256": "22c46ff522b5f703eb19a88cb599eb43dcaa1c20e0dba5114fe88d0a29d886e0"
+        }
+      ]
+    }
+  },
+  "observation": "The benchmark uses a mixed-precision loss formula even for Float64 storage. The study preserves those narrowing points and checks every output in one complete original-size batch slice. Agreement establishes this kernel contract; it does not establish a canonical cross-entropy gradient or training behavior.",
+  "counts": {
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 1
+    }
+  },
+  "prior_attempts": {
+    "jacc": [
+      {
+        "implementation_model": "jacc",
+        "phase": "host_launch_adapter",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "fail",
+        "taxonomy_code": "R1",
+        "cause": "Attempted to call JACC.LaunchSpec module rather than public JACC.launch_spec constructor; kernel JIT not reached",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T171225361239Z_crossEntropy/jacc_run1.log",
+        "repair": "Use JACC.launch_spec with explicit64 threads,137blocks,zero shared memory"
+      }
+    ]
+  },
+  "effort_observation": "CUDA.jl and KA each passed one candidate/check. JACC retained one device candidate, but a host launch-constructor mistake failed before JIT; the corrected public constructor passed its second process check. This host runtime repair is separate from compiler feedback."
+}
