@@ -23,3 +23,8 @@ All 2,097,158 values per trial match the independent dyadic integer-numerator or
 
 
 Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
+
+
+## Usage activity-window scope review
+
+The zerocopy KA activity window includes cross-benchmark archival bookkeeping: copying already-written PRESENT/memtest helper files into the recovery directory. It also includes same-benchmark verification waiting and metadata work. No other benchmark translation or GPU run occurred. Target windows are observed activity windows, not exclusive coding or billed costs; raw counters and boundary records remain unchanged.
