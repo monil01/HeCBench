@@ -18,7 +18,7 @@ for path in a.result:
  if len(d.get('reference_checks',[]))!=5 or not all(x.get('status')=='pass' for x in d['reference_checks']):raise SystemExit('Reference agreement requires five explicit passing comparisons')
  data.append((d,c,path))
 parent=root/'src'/(a.benchmark+'-julia');key={'KA':'ka','JACC':'jacc'}.get(a.variant)
-def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh','.py'] or f.name in ['Makefile','original_Makefile','LICENSE','COPYING','NOTICE'])
+def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh','.py'] or f.name in ['Makefile','original_Makefile','legacy_Makefile','LICENSE','COPYING','NOTICE'])
 if a.shared:
  for d,c,path in data:
   for model in ['cuda','cuda_jl']:
