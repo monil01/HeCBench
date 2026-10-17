@@ -29,3 +29,9 @@ Use the existing operation/access classifications as grouping evidence, with imp
 
 ## Vendor library provenance
 Both native and Julia cuRAND resolve to `/usr/lib/x86_64-linux-gnu/libcurand.so.10.3.1.124`, APIversion10301. Postmeasurement libraryquery logged separately; no additional timingseries. This removes vendorversiondifference as a confound for this measured setup.
+
+## Completion/ordering measurement correction
+
+RawcuRAND generator explicitly bound to CUDA.stream() before generation and dependent taskstreamD2H copy; device-wide blocking completion. Allfourmodels fresh five trials; addedstreambinding configurationcall insideJuliaROI. Oldnumericalcaptures retained, oldtimingexcluded before replacement. No observed numerical failure or quantified timing bias inferred from missing ordering/completion proof. Not a translation or tuning attempt.
+
+Corrected configuration `mrg32k3a_curand_interop_n4096_r1_taskstream_binding_v2`, result `.porting-state/portable_julia/runs/20261017T225238703220Z_mrg32k3a/result.json`. All five correctness checks against both references pass. Time1 alone is discarded; mean times2–5 in seconds: cuda=0.0032286845, cuda_jl=0.0032598975, ka=0.0032408495000000002, jacc=0.0028543635. Original translation attempts/tokens and commit receipts remain distinct from this shared measurement repair.
