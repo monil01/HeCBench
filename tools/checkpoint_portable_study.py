@@ -66,16 +66,50 @@ strata = {
     'corrected_native_reference_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']}),
     'multiple_or_other_device_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
     'untouched_native_single_gpu_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
+# Preserve only activity marker identities and state, never cumulative counters or stream paths.
+usage_segments=[]
+for marker_file in sorted((local/'usage_boundaries_300').glob('*/*.jsonl')):
+    events=[]
+    for line in marker_file.read_text().splitlines():
+        try: events.append(json.loads(line))
+        except ValueError: continue  # A worker can be appending its final line.
+    closed={e.get('begin_event_id') for e in events if e.get('boundary') in ['end','abandon']}
+    for e in events:
+        if e.get('boundary')=='begin' and e.get('event_id') not in closed:
+            usage_segments.append({'benchmark':marker_file.parent.name,
+                'agent':e.get('agent'),'implementation_model':e.get('implementation_model'),
+                'phase':e.get('phase'),'event_id':e.get('event_id'),
+                'source_identity_sha256':e.get('source_identity_sha256'),
+                'recorded_at':e.get('recorded_at'),'path':str(marker_file.relative_to(root)),
+                'resume_action':'Continue only within same registered stream identity; otherwise abandon with reason and unknown cost, then begin a new prospective segment.'})
 heads = {k: git(p, 'rev-parse', 'HEAD') for k, p in [('source', root), ('paper', paper)]}
 now = datetime.datetime.now(datetime.timezone.utc)
 stamp = now.strftime('%Y%m%dT%H%M%S%fZ')
 status = f'active_{target}_benchmark_expansion'
 if args.complete:
-    coverage = read(paper / 'research/data/coverage.json')
+    # Census completion includes evidence-backed unavailable outcomes; it never
+    # converts these outcomes to passing ports or relaxes any verification check.
+    registry=root/'ontology/studies/julia_abstractions_300'
+    passing={'verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect'}
+    unavailable={'hardware_blocked','environment_blocked','reference_blocked','feature_unsupported','failed'}
+    unfinished=[]
+    for b in sorted(selected):
+        domain=read(registry/'domains'/(b+'.json'),{})
+        if 'provisional' in domain.get('scientific_intent',{}).get('review_status','provisional'):
+            unfinished.append(b+':scientific_intent')
+        for model in ['cuda_jl','ka','jacc']:
+            record=read(registry/'implementations'/b/(model+'.json'),{})
+            outcome=record.get('status')
+            explicit=read(local/'status_300'/b/(model+'.json'),{})
+            if outcome in passing and record.get('configurations'):continue
+            if outcome in unavailable and explicit.get('terminal_adjudication') is True and explicit.get('repair_or_limitation_review_completed') is True and explicit.get('evidence'):continue
+            unfinished.append(b+':'+model+':'+str(outcome))
+    if unfinished:raise SystemExit('Incomplete census assessments: '+', '.join(unfinished[:25]))
     audit = read(paper / 'research/data/numerical_contract_audit.json')
-    assert pairs == target and coverage['matched_benchmarks'] == target
-    assert audit['summary']['hard_issue_count'] == 0 and (paper / 'build/main.pdf').is_file()
-    status = f'complete_{target}_pairs_manuscript_review_ready'
+    if audit['summary']['hard_issue_count'] or audit['summary']['audited_benchmarks']!=pairs:
+        raise SystemExit('Refresh the full numerical evidence audit before completing the census.')
+    if not (paper / 'build/main.pdf').is_file():raise SystemExit('Paper PDF missing.')
+    status = f'complete_{target}_assessments_manuscript_review_ready'
 payload = {
     'created_at': now.isoformat(), 'status': status, 'heads': heads,
     'instruction_hashes': {n: hashlib.sha256((root/n).read_bytes()).hexdigest()
@@ -86,6 +120,8 @@ payload = {
     'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'model_status_inventory': str((local/'study_300_status.json').relative_to(root)),
+    'open_prospective_usage_segments': usage_segments,
+    'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',
     'dirty_files': {k: git(p, 'status', '--short') for k,p in [('source',root),('paper',paper)]},
     'next_translation': 'Continue disjoint frozen300 queues KA then JACC, repairing references where needed. Root commits verified variants separately.',
     'next_paper': 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.',
