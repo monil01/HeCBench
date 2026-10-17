@@ -1,0 +1,104 @@
+{
+  "benchmark": "moe-sum",
+  "configuration_id": "fp32_tokens512_hidden1024_topk3_vec4_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      512,
+      3,
+      1024
+    ],
+    "fixture": "Float32((17*i)%257-128)/128 zero-basedi",
+    "internal_repeats": 10,
+    "kernel": "vec4",
+    "coverage": "topk3 scalar/vec4; topk2/4 originalcasesunmeasured",
+    "mapping": "nativecompile-timetopk vs Julia runtime loop; nativevec4 uses256threads while inheritedJulia/KA/JACC vec4 uses1024threads"
+  },
+  "atol": 0.0001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/moe-sum-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native",
+        "vec4"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU 3-expert sum, all524288 finiteFloat32outputs abs<=1e-4",
+      "source_dependencies": [
+        "../moe-sum-cuda/main.cu",
+        "../moe-sum-cuda/kernels.h",
+        "../moe-sum-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/moe-sum-julia/moe-sum-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl",
+        "vec4"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU 3-expert sum, all524288 finiteFloat32outputs abs<=1e-4",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/moe-sum-julia/moe-sum-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "vec4"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU 3-expert sum, all524288 finiteFloat32outputs abs<=1e-4",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/moe-sum-julia/moe-sum-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl",
+        "vec4"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU 3-expert sum, all524288 finiteFloat32outputs abs<=1e-4",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T235859859606Z_moe-sum/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
