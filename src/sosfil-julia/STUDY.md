@@ -1,0 +1,15 @@
+# Second-order-section GPU filter
+
+HistoricalJulia ran aCPUreference twice and timedCPU, noGPUkernel; archivedoriginalbytes preserved. The currentCUDAjl/KA/JACC restoreoriginal64laneGPU time-skewed pipeline, oneblockpersignal, two unconditionalbarriers perclock, load/process/drain. Nativekernel unchanged. Source sharedallocation704/832elements includesall-signalzi although576used, preserved;2816/3328/5632/6656B actualFP32/64 sharedcapacity. JACCtemplatecopy+extrabarrier explicitlyadditional, no measuredcausality claim.
+
+Named2signals65samples sourceallonescoefficients/zi1 and3signals257samples boundedgaincoefficients/zi0; bothFP32/FP64. Secondaryv2boundedgain H(z) factorsfirstordersections withpoles1/8,1/4 andunitDCgain, |H|≤1onunitcircle. Inputsincludeoriginalsinformula plusimpulse/DC/dyadicpattern, exactactualroundedinputsserialized4642prefix. All5406actualfirst/second/fifthapplicationsignalvalues recorded andindependentlycheckedon20v2artifacts; all20dualrefcomparisonspass source1e-4+1e-4relative tolerance. Float64containerslosslesslyencodeactualFP32/64 data.
+
+Scientificscope: Sourcepipelineinitialnonzerozi is clockedthroughupstreamstartuptransients. Independentserialsectionoracle prependsonezero towholeprecedingstageoutputhistory,then trims63finalpipeline-latency values; merelyadvancingeachstate throughzeros was an initialoracleassumption correctedandretained. Conventionalunshiftednonzerozi differs63in sourceallones fixture; we do notclaim conventionalSOSinitial-state API equivalence. Zerozi boundedgainfixturedoes agreewithconventionalcascade math.
+
+Originalv1 othercoefficients hadstablepoles butfrequencygain>1. After5applications/320sections bothnativeandJulia FP32failedfixedaccuracynearzeros, maxnormalizedacceptanceratios105.8003/84.2296; maxabsoluteerrors28.3432/50.4963 onfieldsup to1.0026e8. Tencompletefalsecaptures212742 retained. Firstfailedseries212546nonzeroexit causedbinarycapturegap; logs/source/gold retained, no recoveredarraysclaimed. V1remainsuncertified; thisisprecision/gain/cancellationevidence, notframeworkunsupported. Secondaryv2inputcoefficientschosenafterthisobservation, not tolerance/algorithmrelaxation; neverclaimv1success. 
+
+ROI sums4separate3launchmeans after2warmup/filterapplications, snapshots1/2/5 outsideclock; inputreset,H2D/D2H/oracles/JIT excluded. Fivecorrectv2trials,discardonlytime1,average2–5. Native8x1000000/30warmup/fullCLIunmeasured. No resetbetween3timedapplications; actualrepeatedfilter composition.
+
+Reference1deviceprogramcandidate/3processchecks,2capturemodeadapters,2oracleformulations,2inputfixtures; no actualcompilerfeedbackrepair. HistoricalJuliaeffortunknown. KA/JACC1candidate/devicecheck each,samekernel4specializations not4attempts. Prospectiveactivitywindows include cached/repeatedcontext,rootpaper/team/toolcoordination; notexclusive/billedcost, overlappingworkflow notsummed. 
+
+Rawper-trialmax_rel_error0 was uncomputedplaceholder. Hash-boundstudy_adjudications.json identifies itasunknownandprovidesindependentlyrecomputedrelative-with1e-4floormetrics; centraldualrelativeerrorscomputedcorrectly. Source/trial bytesunchanged.
