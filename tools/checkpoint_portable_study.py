@@ -6,6 +6,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+from study_evidence import effective_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--complete', action='store_true')
@@ -36,15 +37,17 @@ for path in sorted((local / 'runs').glob('*/result.json')):
         continue
     if not any(d.get('variant_verified', {}).values()):
         continue
-    config = read(path.with_name('config.json'))
+    config = effective_config(path,read(path.with_name('config.json')))
     cid = d.get('configuration_id') or config['configuration_id']
     records[(d['benchmark'], cid)] = {
         'benchmark': d['benchmark'], 'configuration_id': cid,
         'run_id': d['run_id'], 'variants': d['variant_verified'],
         'matched_performance_valid': d.get('matched_performance_valid', False),
         'native_reference_repaired': bool(config.get('native_reference_repaired')),
+        'native_behavior_known_scientific_defect': bool(config.get('native_behavior_known_scientific_defect')),
+        'configuration_classification_adjudication': config.get('configuration_classification_adjudication'),
         'hardware_stratum': 'single_v100' if str(config.get('gpu',6))=='6' else 'multiple_or_other_devices',
-        'untouched_single_gpu_aggregate_eligible': str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False),
+        'untouched_single_gpu_aggregate_eligible': str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
         'role': dispositions.get(cid, {}).get('role', 'primary'),
         'references_agree': d.get('reference_agreement'),
         'result': str(path.relative_to(root)),
@@ -59,6 +62,7 @@ pairs = len({r['benchmark'] for r in primary if r['matched_performance_valid']})
 versions = {k: len({r['benchmark'] for r in primary if r['variants'].get(k)})
             for k in ['ka', 'jacc']}
 strata = {
+    'known_native_scientific_defect_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']}),
     'corrected_native_reference_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']}),
     'multiple_or_other_device_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
     'untouched_native_single_gpu_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}

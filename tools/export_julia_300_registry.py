@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Export the full census without converting unknowns into successes or failures."""
 from pathlib import Path
+from study_evidence import effective_config
 from collections import Counter
 import datetime, hashlib, json, re, subprocess, time
 
@@ -98,7 +99,7 @@ def main():
     for p in sorted((STATE/'runs').glob('*/result.json')):
         d=read(p,{})
         if d.get('benchmark') not in selected or adjud.get(d.get('run_id'),{}).get('exclude_from_performance'):continue
-        c=read(p.with_name('config.json'),{});cid=c.get('configuration_id')
+        c=effective_config(p,read(p.with_name('config.json'),{}));cid=c.get('configuration_id')
         if disp.get(cid,{}).get('role','primary') not in ['primary','corrected_reference_secondary']:continue
         for model in MODELS:
             good=(d.get('reference_agreement') and d.get('models',{}).get('cuda_jl',{}).get('complete')) if model=='cuda_jl' else d.get('variant_verified',{}).get(model)
@@ -133,6 +134,7 @@ def main():
             status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else 'historical_pass_not_reaudited' if model=='cuda_jl' else 'not_started'
             explicit=read(STATE/'status_300'/b/(model+'.json'),{})
             if evidence and any(v[1].get('native_reference_repaired') for _,v in evidence):status='conditionally_verified_native_reference_repaired'
+            if evidence and any(v[1].get('native_behavior_known_scientific_defect') for _,v in evidence):status='verified_native_behavior_known_scientific_defect'
             if explicit.get('status') and not evidence:status=explicit['status']
             events=[]
             sources=[(log/'compiler_attempts.jsonl',False),(STATE/'failure_events_300'/(b+'.jsonl'),True)]
@@ -160,17 +162,18 @@ def main():
                 m=d['models'][model]
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
+                                        'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),
                                         'gpu_visibility':str(c.get('gpu',6)),
                                         'hardware_stratum':'single_v100' if str(c.get('gpu',6))=='6' else 'multiple_or_other_devices',
-                                        'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False),
-                                        'reference_provenance':c.get('reference_provenance'),
+                                        'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),
+                                        'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
                                         'result_sha256':digest(p),'source_hash':m.get('source_hash'),
                                         'declared_environment':c.get('environment',c.get('toolchain')),
                                         'hardware_snapshot_path':str(p.with_name('hardware.txt').relative_to(ROOT)) if p.with_name('hardware.txt').exists() else None,
                                         'trials_correct':[t.get('correct') for t in m.get('trials',[])],
                                         'trials_seconds':[t.get('time_seconds') for t in m.get('trials',[])],
                                         'mean_last_four_seconds':m.get('mean_seconds'),'contract':c.get('input_contract'),
-                                        'numerical_evidence_strength':c.get('numerical_evidence_strength','full_output_artifacts')})
+                                        'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
             per_model=traits.get('implementation_traits',{}).get(model)
             record={'schema_version':2,'study':'julia_abstractions_300_v2','benchmark_id':b,'implementation_model':model,
                     'status':status,'scientific_intent_record':f'../../domains/{b}.json',
@@ -188,6 +191,9 @@ def main():
                                         'missing_history_is_zero':False},
                     'effort':{k:manifest.get(k) for k in ['candidate_attempts','compiler_checks','compiler_feedback_repairs','runtime_repairs','numerical_repairs','translation_tokens']},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
+            current_ref=log/'current_reference_effort_300.json'
+            if current_ref.is_file():
+                record['current_reference_repair_effort']={'path':str(current_ref.relative_to(ROOT)),'sha256':digest(current_ref),'record':read(current_ref),'scope':'Current repair phase only; does not replace unknown historical original translation effort.'}
             write(OUT/'implementations'/b/(model+'.json'),record)
             statuses.append({'benchmark_id':b,'model':model,'status':status,'ontology_review':record['implementation_review_status'],
                              'scientific_review':intent.get('review_status','unspecified'),
