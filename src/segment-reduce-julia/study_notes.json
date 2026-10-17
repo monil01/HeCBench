@@ -1,0 +1,79 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl launches a one-element touch kernel; no segmented sums or output keys are computed. Study reference implements full parallel reductions for the native uniform-key contract.",
+    "original_path": "/home/imo/HeCBench_julia/src/segment-reduce-julia/segment-reduce-julia-cuda.jl/original_main.jl",
+    "original_sha256": "133e8f0bd3d075b739be5ec4a6939e1372721e627ff82353f356a1f13e8aaf4a",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Fixed-uniform-segment blocked integer sums, strided per-thread accumulation followed by256-entry shared reduction tree",
+  "mapping": "One256-thread workgroup per segment, all eleven native segment sizes",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": "16384/segment_size"
+  },
+  "traits": {
+    "primary_motif": "segmented_reduction",
+    "storage_precision": [
+      "Int32"
+    ],
+    "compute_precision": [
+      "Int32"
+    ],
+    "synchronization": [
+      "workgroup_tree_barriers",
+      "host_device_between_sizes"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "GeneralThrustreduce_by_key replacedwithauthoreduniformsegmentedtree; no arbitrarykeysupportclaimed"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_eleven_segment_size_operation_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Vendorlibraryalgorithm vs authoredtree",
+      "Fixeduniformkeys eliminatekeyloads",
+      "Thrusttemporaryallocation policies",
+      "JACCdynamicsharedtemplatecopy"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "grouped numerical reduction",
+      "scientific_task": "Aggregate integer values within sorted key runs",
+      "governing_method": "Segmented sum with key outputs",
+      "discretization": "Uniform key-run boundaries; no physicalmesh",
+      "accuracy_needs": [
+        "exact segment boundaries",
+        "output key and count agreement",
+        "integer sum correctness"
+      ],
+      "input_regime": "16384values,11segmentsizes16..16384",
+      "precision_sensitivity": "Exactbounded Int32 sums; overflow unexercised",
+      "community_use_case": "Grouped aggregation in irregular simulation/dataanalysis; no application dataset provenance",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/segment-reduce-cuda/main.cu",
+          "sha256": "592830e8871e845aad774ea61c8033ff6425f563b23cbe8708d77cab6da85461"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "resource_policy": "Static CuStaticSharedArray Int32[256],1024bytes."
+    },
+    "ka": {
+      "resource_policy": "Static @localmem Int32[256],1024bytes."
+    },
+    "jacc": {
+      "resource_policy": "Explicit1024byte dynamicshared allocation and256-entry JACC.shared zero-template copy."
+    }
+  },
+  "observation": "The native benchmark uses general Thrust reduce_by_key over uniform runs. Portable versions use a genuine authored tree specialized to those uniform boundaries; this removes key-array reads and changes scratch allocation. All output keys and sums are checked across every native segment size, using signed nonuniform inputs so a constant-fill shortcut cannot pass. Performance comparisons include algorithm and resource choices."
+}
