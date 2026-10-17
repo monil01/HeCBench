@@ -1,0 +1,7 @@
+#define main preserved_native_main
+#include "../overlay-cuda/main.cu"
+#undef main
+#include <vector>
+#include <cstring>
+std::vector<unsigned char> readbytes(const char*name){FILE*f=fopen(name,"rb");if(!f)exit(3);fseek(f,0,SEEK_END);size_t bytes=ftell(f);rewind(f);std::vector<unsigned char>v(bytes);if(fread(v.data(),1,bytes,f)!=bytes)exit(4);fclose(f);return v;}
+int main(){auto raw=readbytes("study_input_f32.bin"),br=readbytes("study_boxes_i32.bin"),er=readbytes("study_expected_f64.bin");std::vector<Box>boxes(br.size()/sizeof(Box));memcpy(boxes.data(),br.data(),br.size());float3*input,*out;cudaMalloc(&input,raw.size());cudaMalloc(&out,raw.size());cudaMemcpy(input,raw.data(),raw.size(),cudaMemcpyHostToDevice);cudaMemcpy(out,input,raw.size(),cudaMemcpyDeviceToDevice);int rc=DetectionOverlay<float3>(input,out,640,480,boxes.data(),boxes.size(),make_float4(255,204,203,1));auto status=cudaDeviceSynchronize();std::vector<float>got(raw.size()/4);cudaMemcpy(got.data(),out,raw.size(),cudaMemcpyDeviceToHost);double error=0;bool finite=true;for(size_t i=0;i<got.size();i++){double expected;memcpy(&expected,er.data()+8*i,8);error=std::max(error,fabs(double(got[i])-expected));finite&=std::isfinite(got[i]);}printf("OVERLAY_DIAGNOSTIC original640x480_boxes=%zu status=%d rc=%d allRGBfinite=%d maxCPUabsolute=%.12g cold_module_loading_may_be_included=1 primary_series=0\n",boxes.size(),int(status),rc,int(finite),error);return rc==0&&status==cudaSuccess&&finite&&error<=1e-3?0:1;}
