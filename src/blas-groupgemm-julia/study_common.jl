@@ -18,9 +18,9 @@ function study_main(prepare,args=ARGS)
         end
         push!(oa,length(a));push!(ob,length(b));push!(oc,length(expected))
     end
-    da,db,dc=CuArray(a),CuArray(b),CUDA.zeros(Float16,length(expected));launch! = prepare(da,db,dc,m,oa,ob,oc,k,n);launch!();CUDA.synchronize();allok=true
+    da,db,dc=CuArray(a),CuArray(b),CUDA.zeros(Float16,length(expected));launch! = prepare(da,db,dc,m,oa,ob,oc,k,n);launch!();CUDA.device_synchronize(blocking=true);allok=true
     for trial in 1:5
-        CUDA.synchronize();t0=time_ns();for rep in 1:repeat;launch!();end;CUDA.synchronize();seconds=(time_ns()-t0)*1e-9/repeat;got=Float32.(Array(dc));err=maximum(abs.(got.-expected));origerr=maximum(abs.(got.-original_expected));ok=all(isfinite,got)&&err<=.02&&origerr<=1;allok &=ok
+        CUDA.device_synchronize(blocking=true);t0=time_ns();for rep in 1:repeat;launch!();end;CUDA.device_synchronize(blocking=true);seconds=(time_ns()-t0)*1e-9/repeat;got=Float32.(Array(dc));err=maximum(abs.(got.-expected));origerr=maximum(abs.(got.-original_expected));ok=all(isfinite,got)&&err<=.02&&origerr<=1;allok &=ok
         file=joinpath(get(ENV,"STUDY_OUTPUT_DIR",pwd()),"groupgemm_trial$(trial).bin");write(file,got)
         @printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"correct\":%s,\"checked_values\":%d,\"max_abs_error\":%.12g,\"max_rel_error\":0,\"original_fullfloat_reference_error\":%.12g,\"timing_region\":\"full_four_group_FP16_MoE_GEMM_FP32compute_transfer_excluded\",\"jit_excluded\":true,\"internal_repeats\":%d,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%d,\"byte_order\":\"little\"}}\n",trial,seconds,string(ok),length(got),err,origerr,repeat,file,length(got))
     end
