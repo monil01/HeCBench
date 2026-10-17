@@ -30,7 +30,7 @@ function softmax_jacc!(index,dest,src,numSlice::Int32,sliceSize::Int32)
 end
 
 function factory(output,input,rows,cols)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,Int(rows),softmax_jacc!,output,input,rows,cols)
 end
 softmax_study(factory)
