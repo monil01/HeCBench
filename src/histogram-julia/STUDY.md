@@ -1,0 +1,17 @@
+# Histogram study
+
+## Operation, original source and named scope
+
+All six source GPU paths are measured separately: global-private/shared-private atomics times uchar1/uchar4/float4 pixel formats. The original TestGenres(width,height) passes dimensions into TestMethods(height,width); the study preserves the actual kernel view1080×1920 for the original1920×1080 default. Groups16×16, threads32×4, rasterstrides512×64, global partialstride1024 and shared channelpadding are preserved. Original CUDA kernels and HistogramGold remain unchanged. Historical Julia was a genuine singleRGBA8 directglobal histogram, but omitted the other modes/two-stage mapping; archived source and separately costed current coverage repair are retained.
+
+Shared deterministic UInt64-wrap LCG generates RGBA bytes. uchar1 uses integeraverageRGB, uchar4 uses separateRGB bins, float4 uses exactbyte/256 then trunc(256*x); alpha is ignored. Entropy presets/sourceMersenne/fileparsing/TGA inputs remain unmeasured. No specific imaging modality or scientific dataset is established.
+
+Every trial checks all256/768 finalbins plus all65536/196608 active group-privatepartialbins (65792/197376 values), exactly versus independent CPUgroupownership and bothGPUreferences. Unused globalstridepadding is excluded; eachchannel conserves2073600 counts. UInt32 counters are losslessly exportedInt32 for the bounded namedfixture. ContinuousFloat32 binboundary/overflow regimes remain unmeasured.
+
+## Mapping, runtime and interpretation
+
+Native vectorpixel loads become scalarcomponents in Julia; actual generated vectorization/atomicordering is unknown. KA uses fixedshape localmemory/Atomix. JACC explicitly uses0B globalmode and1036/3084B sharedmode; sharedzero-template staging adds accesses/barrier before originalcooperativezeroing. Separate firstpass/accumLaunchSpecs avoid cachedextent reuse. Generic sourcekernels specialize channelcount1/3, three definitions perprogram ratherthan six independently writtenprograms.
+
+All4 use explicitwarmup,5 synchronizedinprocess host-clock trials, meanlast4,10 internal two-kernel repetitions; allocations/transfers/CPUchecks/artifacts excluded. Original CUDAevent figures are not mixed with these new host-clock timings. Storedimage footprints2.07/8.29/33.18MB plus1MiBpartials are capacity descriptors, not measuredtraffic. No profiler counters, occupancy or atomic-bottleneck claim follows solely from timing. Sourceuchar1 intensity averaging changes binentropy/concentration; artifact-derived entropy,maxfraction andHHI are recorded to separate workload distribution from format/precision labels.
+
+KA candidate1/6checks/0repairs. JACC programcandidate1 failedhostAPI (Module called asconstructor); publiclaunch_spec repair producedcandidate2/6successfulchecks,7checks total,1APIrepair,1devicekernelcandidate/3genericdefinitions. Sharedsetup assertion allowed firstKArunner to repeat bothreference timingseries; bothare retained and charged, no performance-basedselection or targetrerun. Other5cases reuseoriginalseries. The KA usagewindow is contaminated by temporary JACCgenerator/sharedannotation drafting while queued; JACC phase is left-censored for that drafting. Exclude thiscase from exclusive pertarget consumedusage comparisons; broadworkflow still covers allwork. Historicaltranslationcost remainsunknown; finalsourceproxies and prospectivecontext/cache-inclusiveconsumedusage are separate. Broadworkflow overlapsphases and isnotadditive or monetarybilling.
