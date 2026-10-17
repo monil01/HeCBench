@@ -1,0 +1,63 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl forward2 and backward3 labels launch scalar kernels instead of genuine native four-element vector work items. Study repairs these cases with NTuple4 reinterpret arrays and 4lanes perworkitem. Scalar formulas retained.",
+    "original_path": "/home/imo/HeCBench_julia/src/silu-julia/silu-julia-cuda.jl/original_main.jl",
+    "original_sha256": "3bf3cdc015fbb3baa749976a419f847e3042ec160a127c604b6fd586b4001a4a",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "SiLU x/(1+exp(-x)); two native backward derivative formulations; scalar and4lane vector variants",
+  "mapping": "one workitem per scalar or NTuple4, fullsource forward/backward formulations",
+  "launch_geometry": {
+    "threads": 256,
+    "scalar_blocks": 16,
+    "vector_blocks": 4
+  },
+  "traits": {
+    "primary_motif": "elementwise_activation",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "host_device_between_subkernels"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "float4 mappedtoNTuple4same4lane workitem; actualmachine vectorization unprofiled"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_five_synchronized_kernel_loop_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Vector width andgrid matched, but machine memory instructions notprofiled",
+      "One blocksize and divisible4fixture"
+    ],
+    "scientific_intent": {
+      "primary_domain": "scientific machine learning",
+      "scientific_task": "Nonlinear neural network activation and backpropagation gradient",
+      "governing_method": "Sigmoid linear unit and analyticderivative",
+      "discretization": "independent tensor elements; named1x1x64x64tensor",
+      "accuracy_needs": [
+        "forward nonlinearfunction",
+        "backward derivative",
+        "algebraicallyequivalentform FP32drift"
+      ],
+      "input_regime": "4096 signed inputs spanning[-4,4] andsignedgradients",
+      "precision_sensitivity": "FP32exp and derivative reassociation",
+      "community_use_case": "Activation in learned surrogate models; benchmark isprimitive, notwholeapplication",
+      "evidence": [
+        "src/silu-cuda/main.cu",
+        "src/silu-cuda/reference.h"
+      ],
+      "confidence": "source_reviewed"
+    }
+  },
+  "observation": "Includes allfive native SiLU variants at256threads, preserves4lanevectorworkitems and bothderivativeformulas. Named signedfixture exercises positive/negative activations andgradients. Any timing difference is scoped to thissmalltensor andhostlaunch loop; noapplication speedupor vectorinstructionidentity claimed."
+}
