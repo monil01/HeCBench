@@ -25,6 +25,8 @@ end
 function run_on_device(n::Int)
     d_data = KernelAbstractions.allocate(CUDA.CUDABackend(),Float32,(n,))
     gen = configure_generator!(create_generator(false))
+    # Order raw generator writes on the allocation/readback task stream.
+    CURAND.curandSetStream(gen, CUDA.stream())
     CURAND.curandGenerateUniform(gen, d_data, Csize_t(n))
     h_data = Vector{Float32}(undef, n)
     copyto!(h_data, d_data)
@@ -47,18 +49,18 @@ end
 function main(args)
     n=length(args)>=1 ? parse(Int,args[1]) : 4096
     repeat=length(args)>=2 ? parse(Int,args[2]) : 1
-    run_on_host(n);run_on_device(n);CUDA.synchronize()
+    run_on_host(n);run_on_device(n);CUDA.device_synchronize(blocking=true)
     for trial in 1:5
         start=time_ns();host=Float32[]
         for _ in 1:repeat
             host=run_on_host(n)
         end
         host_seconds=(time_ns()-start)*1e-9/repeat
-        CUDA.synchronize();start=time_ns();result=Float32[]
+        CUDA.device_synchronize(blocking=true);start=time_ns();result=Float32[]
         for _ in 1:repeat
             result=run_on_device(n)
         end
-        CUDA.synchronize();seconds=(time_ns()-start)*1e-9/repeat
+        CUDA.device_synchronize(blocking=true);seconds=(time_ns()-start)*1e-9/repeat
         error=maximum(abs.(result.-host));correct=all(isfinite,result)&&error<=1f-3
         artifact=joinpath(get(ENV,"STUDY_OUTPUT_DIR",pwd()),"trial_$(trial).bin")
         open(artifact,"w") do io;write(io,result);end
