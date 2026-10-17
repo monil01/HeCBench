@@ -1,0 +1,80 @@
+{
+  "benchmark": "attentionMultiHead",
+  "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": {
+      "beams": 4,
+      "heads": 16,
+      "features_per_head": 256,
+      "decoded_steps": 9
+    },
+    "fixture": "zero-based i: q=(i%17-8)/16,k=((7*i)%31-15)/32,v=((11*i)%53-26)/32,scale1/16,threshold64",
+    "internal_repeats": 10,
+    "scope": "Original default-shape fused attention kernel; full16384-value output",
+    "mapping": "64 blocks256; eachblock candidate/head; sharedquery/logits; native CUB blockreduce softmax versus preserved CUDAjl/KA/JACC serial9 softmax",
+    "resource_policy": "Native dynamic1060B plus CUB static; CUDAjl dynamic1060B; KA static1060B; JACC dynamic1060B plus explicit cooperative template initialization",
+    "accuracy": "Full finite CPU and dualnative/CUDAjl array checks atol1e-3 rtol0, same sourcecriterion"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/attentionMultiHead-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Full16384 output values compared to CPU fused attention reference and dualrawartifacts abs<=1e-3",
+      "source_dependencies": [
+        "../attentionMultiHead-cuda/main.cu",
+        "../attentionMultiHead-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/attentionMultiHead-julia/attentionMultiHead-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Full16384 output values compared to CPU fused attention reference and dualrawartifacts abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/attentionMultiHead-julia/attentionMultiHead-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Full16384 output values compared to CPU fused attention reference and dualrawartifacts abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  }
+}
