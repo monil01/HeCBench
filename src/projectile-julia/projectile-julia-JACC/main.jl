@@ -13,7 +13,7 @@ function projectile_kernel!(i,angle,velocity,ranges,times,heights,n)
     end
     return
 end
-const PROJECTILE_SPEC=JACC.launch_spec(threads=256,sync=false)
+const PROJECTILE_SPEC=JACC.launch_spec(threads=256,shmem_size=0,sync=false)
 function launch_jacc!(a,v,r,t,h,n)
     JACC.parallel_for(PROJECTILE_SPEC,Int(n),projectile_kernel!,a,v,r,t,h,n)
 end
