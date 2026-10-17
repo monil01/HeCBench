@@ -1,0 +1,85 @@
+{
+  "benchmark": "gru2",
+  "configuration_id": "gru_warp128_odd_even_multilayer_non_square_and_analytic_zero_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 24708,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "cases": [
+      {
+        "seq": 3,
+        "batch": 3,
+        "input": 37,
+        "hidden": 35,
+        "layers": 3,
+        "weights": "Deterministicdyadic+nonzeroinitialhidden;deeperunusedpaddingpoison55.25"
+      },
+      {
+        "seq": 4,
+        "batch": 2,
+        "input": 5,
+        "hidden": 7,
+        "layers": 2,
+        "weights": "Zeroallweights/bias,nonzeroh0;analytic h_t=.5^t*h0"
+      }
+    ],
+    "gates": "Reset/update/new,reset-after: candidate=tanh(input_new+reset*hidden_new)",
+    "threads": 128,
+    "mapping": "4warps/block,onewarpperhidden,grid(batch,ceil(hidden/4));lanestride32dot+shuffle16/8/4/2/1;lane0writes",
+    "kernel": "Unchangednativefused_gru_layer_kernel/unchangedgruorchestration",
+    "inputs": "24708Float32serializedslotsallinputs/weights/bias/h0/dims",
+    "outputs": "714valuesallsequenceoutputs+alllayersfinalhidden,bothodd/evenhiddenbufferparities",
+    "checked_values": 25422,
+    "timing": "Sum2cases3internalwholeGRUforwardmeans;alllayer/timekernels+hostorchestration,resetstartsfromsameh0eachrepeat,alloc/D2Houtside",
+    "scope": "Named2fixtures,nobackwardtraining/variableactivations/tensorcorevendorlibrarypaths;historicaloneperhiddenmappingreplacedexplicitP1warp-alignmentphase"
+  },
+  "atol": 0.0001,
+  "rtol": 0,
+  "models": {
+    "cuda": {
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Alltimeoutputs/alllayerhiddenvsindependentFloat64GRUforwardequations+zero-weightanalyticrecurrence",
+      "limitations": [
+        "Named2fixtures,nobackwardtraining/variableactivations/tensorcorevendorlibrarypaths;historicaloneperhiddenmappingreplacedexplicitP1warp-alignmentphase"
+      ],
+      "cwd": "/home/imo/HeCBench_julia/src/gru2-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/gru2-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/gru2-cuda/reference.h"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ]
+    },
+    "cuda_jl": {
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Alltimeoutputs/alllayerhiddenvsindependentFloat64GRUforwardequations+zero-weightanalyticrecurrence",
+      "limitations": [
+        "Named2fixtures,nobackwardtraining/variableactivations/tensorcorevendorlibrarypaths;historicaloneperhiddenmappingreplacedexplicitP1warp-alignmentphase"
+      ],
+      "cwd": "/home/imo/HeCBench_julia/src/gru2-julia/gru2-julia-cuda.jl",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/gru2-julia/study_kernel_body.jl",
+        "/home/imo/HeCBench_julia/src/gru2-julia/study_common.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ]
+    }
+  }
+}
