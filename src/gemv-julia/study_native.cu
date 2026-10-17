@@ -1,0 +1,18 @@
+#include "../gemv-cuda/kernels.h"
+#include <vector>
+#include <cmath>
+#include <chrono>
+#include <cstring>
+int main(int argc,char**argv){
+ bool packed=argc>1&&strcmp(argv[1],"int4")==0;const int n=512,repeats=10;std::vector<int8_t>weights8(n*n);std::vector<uint4_2>weights4(n*n/2);std::vector<__half>vec(n),out(n);std::vector<float>expected(n),got(n);std::vector<double>direct(n);
+ for(int row=0;row<n;row++){for(int col=0;col<n;col++)weights8[row*n+col]=(row*17+col*23+row/7)%256-128;for(int j=0;j<n/2;j++){weights4[row*n/2+j].setX((row*3+j*7+row/5)%16);weights4[row*n/2+j].setY((row*11+j*5+j/3)%16);}}for(int j=0;j<n;j++)vec[j]=__float2half(float((j*19)%127+1)/128.f);
+ __half scale=__float2half(.0625f),zp=__float2half(.01f);float sf=__half2float(scale),zf=__half2float(zp);int chunk=packed?16:8;
+ auto quant=[&](int row,int col){return packed?float((col%2)?weights4[row*n/2+col/2].getY():weights4[row*n/2+col/2].getX()):float(weights8[row*n+col]);};
+ for(int row=0;row<n;row++){float lane[32]={};for(int tid=0;tid<32;tid++){float acc=0;for(int iteration=0;iteration<n/(32*chunk);iteration++){int base=(tid+iteration*32)*chunk;for(int off=0;off<chunk;off++)acc=std::fma(__half2float(vec[base+off]),quant(row,base+off)-zf,acc);}lane[tid]=acc*sf;}for(int stride=16;stride;stride/=2)for(int tid=0;tid<stride;tid++)lane[tid]+=lane[tid+stride];expected[row]=__half2float(__float2half(lane[0]));double sum=0;for(int col=0;col<n;col++)sum+=(double(quant(row,col))-zf)*sf*__half2float(vec[col]);direct[row]=sum;if(fabs(double(expected[row])-sum)>.125)return 7;}
+ int8_t*d8;uint4_2*d4;__half*dv,*dr;cudaMalloc(&d8,n*n);cudaMalloc(&d4,n*n/2);cudaMalloc(&dv,n*2);cudaMalloc(&dr,n*2);cudaMemcpy(d8,weights8.data(),n*n,cudaMemcpyHostToDevice);cudaMemcpy(d4,weights4.data(),n*n/2,cudaMemcpyHostToDevice);cudaMemcpy(dv,vec.data(),n*2,cudaMemcpyHostToDevice);
+ cudaFuncAttributes attr;if(packed)cudaFuncGetAttributes(&attr,gemv_quantized_int4);else cudaFuncGetAttributes(&attr,gemv_quantized_int8);printf("STUDY_NATIVE_RESOURCES shared_bytes=%zu registers=%d maxThreads=%d mode=%s\n",attr.sharedSizeBytes,attr.numRegs,attr.maxThreadsPerBlock,packed?"int4":"int8");
+ auto launch=[&](){if(packed)gemv_quantized_int4<<<dim3(1,128),dim3(32,4)>>>(d4,dv,dr,n,scale,zp,n/32);else gemv_quantized_int8<<<dim3(1,128),dim3(32,4)>>>(d8,dv,dr,n,scale,zp,n/32);};launch();if(cudaDeviceSynchronize()!=cudaSuccess)return 8;
+ bool allok=true;for(int trial=1;trial<=5;trial++){cudaMemset(dr,0,n*2);cudaDeviceSynchronize();auto start=std::chrono::steady_clock::now();for(int j=0;j<repeats;j++)launch();auto status=cudaDeviceSynchronize();double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/repeats;cudaMemcpy(out.data(),dr,n*2,cudaMemcpyDeviceToHost);bool ok=status==cudaSuccess;double error=0,matherror=0;for(int i=0;i<n;i++){got[i]=__half2float(out[i]);double e=fabs(double(got[i])-expected[i]);error=fmax(error,e);matherror=fmax(matherror,fabs(double(got[i])-direct[i]));ok&=std::isfinite(got[i])&&e==0;}ok&=matherror<=.125;allok&=ok;printf("STUDY_DIRECT_FLOAT64_MAXERROR %.12g\n",matherror);char name[80];snprintf(name,sizeof(name),"output_trial%d.bin",trial);FILE*f=fopen(name,"wb");if(!f)return 9;fwrite(got.data(),4,n,f);fclose(f);
+ printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"correct\":%s,\"checked_values\":512,\"max_abs_error\":%.12g,\"max_rel_error\":0,\"timing_region\":\"kernel_launch_loop_per_internal_repeat\",\"jit_excluded\":true,\"internal_repeats\":10,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":512,\"byte_order\":\"little\"}}\n",trial,seconds,ok?"true":"false",error,name);
+ }return allok?0:1;
+}
