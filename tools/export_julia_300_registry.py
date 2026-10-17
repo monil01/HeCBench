@@ -208,7 +208,7 @@ def main():
                                         'gpu_visibility':str(c.get('gpu',6)),
                                         'hardware_stratum':'single_v100' if str(c.get('gpu',6))=='6' else 'multiple_or_other_devices',
                                         'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),
-                                        'input_contract_metadata_erratum':c.get('input_contract_metadata_erratum'),'source_scope_adjudication':c.get('source_scope_adjudication'),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
+                                        'input_contract_metadata_erratum':c.get('input_contract_metadata_erratum'),'reported_metric_definition_erratum':c.get('reported_metric_definition_erratum'),'source_scope_adjudication':c.get('source_scope_adjudication'),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
                                         'result_sha256':digest(p),'source_hash':m.get('source_hash'),
                                         'declared_environment':c.get('environment',c.get('toolchain')),
                                         'hardware_snapshot_path':str(p.with_name('hardware.txt').relative_to(ROOT)) if p.with_name('hardware.txt').exists() else None,
