@@ -1,0 +1,77 @@
+{
+  "benchmark": "topk",
+  "configuration_id": "permutation_fp32_batch128_hidden4096_top1024_fullvalues_ids_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "Float32values/Int32IDs; IDs losslesslywidenedFloat32outsideclock",
+    "shape": [
+      128,
+      4096,
+      1024
+    ],
+    "fixture": "Eachrowinput[col]=(5*col+17*row)%4096, full permutation, not sorted",
+    "internal_repeats": 10,
+    "coverage": "Permutation-of-arange contract from nativecurrentkernel, notgeneral arbitraryFloat32 topK; hidden4096/k1024 only",
+    "reference_correction": "OriginalJulia fabricated outputs from dimensions without input loads; preservedoriginal_main.jl, correctedrealinputscan/rank/IDs"
+  },
+  "atol": 0.0,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/topk-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU sorting returns full131072 selectedvalues and actualcolumnIDs, exact botharrays",
+      "source_dependencies": [
+        "../topk-cuda/main.cu",
+        "../topk-cuda/utils.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/topk-julia/topk-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU sorting returns full131072 selectedvalues and actualcolumnIDs, exact botharrays",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/topk-julia/topk-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU sorting returns full131072 selectedvalues and actualcolumnIDs, exact botharrays",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  }
+}
