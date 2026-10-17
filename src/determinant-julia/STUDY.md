@@ -1,0 +1,9 @@
+# Determinant interoperation study
+
+Originalexact11x11SPDmatrix is used, Float32 lowercuSOLVERSpotrf factorization inallfourmodels. This is vendor-library interoperation: KA/JACCimplement a real16-lane diagonalproductkernel, not thefactorization. NativeThrustproduct isunchanged; explicitJulia-familyproducttree andJACC64Btemplate staging differences disclosed. Vendoralgorithm/geometry/resources remainunknown.
+
+Timedregion `h2d_factorization_device_diag_product_scalar_d2h_per_repeat` includes121Float32matrixH2D, preallocatedworkspaceSpotrf, deviceproduct, Float32scalarD2H, matching nativeworkflow boundaries. OriginalCUDA.jlmain ispreserved and its allocation+wholefactorD2H+CPUprod differs(S2); studyreference repairs those boundaries with a newactualCUDA.jlproductkernel. NativeThrusttemporaryhandling versus explicittree remainsconfound. No pureGPUkernel-latency or wholeworkflowroofline claim. Librarybuffers/workspacequery/allocations/infoerrorchecks outsideclock; statuschecksasAPIwrappersinside asordinarycalloverhead. Fivewarm inprocesstrials,mean2–5,10repeats.
+
+All66lowerfactorentries plusroot/determinant (68Float32values) retained everytrial. IndependentFloat64CPUCholesky; strictfactoratol1e-5, originaldet2048±.05 andfinitechecks. Directartifactglobalatol.05 isrecorded honestly; actualallcrossoutputsidentical. CPUdetdifference0.00146484375toleratedN3. Fixed11x11caseonly,noapplicationmatrixorlargefactorizationscalingclaim. Scientificrole SPDmatrixdeterminant; noidentifieddomain-sciencemodel.
+
+Eachportable1candidate/check,0repairs. Newreference1candidate/check,workflowboundaryrepair1,originalvendorfactorizationunchanged; historicalgenerationcostunknown. Exactbilledtokensunavailable,finalsourceproxiespartial.
