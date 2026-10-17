@@ -1,0 +1,10 @@
+include(joinpath(@__DIR__,"study_kernels.jl"))
+include(joinpath(@__DIR__,"..","study_common.jl"))
+const BACKEND=CUDA.CUDABackend()
+const PEAK=peak_ka!(BACKEND,256)
+const SUBTRACT=subtract_ka!(BACKEND,(16,16))
+peak_launch(img,n,pk)=PEAK(img,n,pk;ndrange=32768)
+function subtract_launch(psf,res,w,sx,sy,ex,ey,dx,dy,val,gain)
+ SUBTRACT(psf,res,w,sx,sy,ex,ey,dx,dy,val,gain;ndrange=(Int(cld(ex-sx+1,Int32(16)))*16,Int(cld(ey-sy+1,Int32(16)))*16))
+end
+study(peak_launch,subtract_launch,(T,n)->KernelAbstractions.allocate(BACKEND,T,n))
