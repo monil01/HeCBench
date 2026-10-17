@@ -1,0 +1,137 @@
+{
+  "benchmark": "blas-gemmEx",
+  "configuration_id": "gemmex_m32_n32_k16_dyadic_all9requests_localcublas120_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "M": 32,
+    "N": 32,
+    "K": 16,
+    "fixture": "A_i=(i%17-8)/32,B_i=(i%13-6)/32;Int8inputs unscaledintegers",
+    "layout": "Native row-major, cuBLASoperandsswapped n,m,k; fullC row-major",
+    "case_requests": [
+      "fp64",
+      "fp32_tf32_label_actualfp32",
+      "fp32_bf16_label_actualfp32",
+      "fp32_fp16_label_actualfp32",
+      "fp32",
+      "fp16_acc16",
+      "fp16_acc32",
+      "bf16_acc32",
+      "int8_acc32"
+    ],
+    "unsupported_policy": "BF16 only mayreturn nativeCUBLAS_STATUS_NOT_SUPPORTED; status9vector included, unsupportedoutputs/timingexcluded",
+    "checked_outputs": "9case-statusvalues plus every32x32output of allsupportedcases",
+    "scope": "vendorlibraryinterop,zero authoreddevicekernels; native FP32switchfallthrough preserved",
+    "acceptance": "native noCPUaccuracytest; declared .004absolute+finite versus integer-dot-derived CPUoracle",
+    "internal_repeats": 10
+  },
+  "atol": 0.004,
+  "rtol": 0.0,
+  "ontology": {
+    "path": "ontology/benchmarks/blas-gemmEx.yaml"
+  },
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmEx-julia",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Allcase supportstates and complete supportedmatrices versus integer-dot-derived CPUoracle and sharedreferences",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/blas-gemmEx-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/blas-gemmEx-cuda/utils.h"
+      ],
+      "limitations": [
+        "Vendorlibraryinterop, zero frameworkdevicekernels",
+        "Native fourFP32compute labels actuallyallFP32 due switchfallthrough",
+        "BF16request onV100mayunsupported, explicitstatusretained",
+        "Small exactdyadicfixture doesnotcovergeneralprecisionrounding",
+        "NativeUnifiedMemoryversusJuliaframeworkdeviceallocation outside timedregion"
+      ],
+      "build": [
+        "nvcc",
+        "--expt-relaxed-constexpr",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "-I",
+        "/home/imo/HeCBench_julia/src",
+        "study_native.cu",
+        "-o",
+        "study_native",
+        "-lcublas",
+        "-ldl"
+      ],
+      "command": [
+        "./study_native"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmEx-julia/blas-gemmEx-julia-cuda.jl",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Allcase supportstates and complete supportedmatrices versus integer-dot-derived CPUoracle and sharedreferences",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/blas-gemmEx-julia/study_common.jl"
+      ],
+      "limitations": [
+        "Vendorlibraryinterop, zero frameworkdevicekernels",
+        "Native fourFP32compute labels actuallyallFP32 due switchfallthrough",
+        "BF16request onV100mayunsupported, explicitstatusretained",
+        "Small exactdyadicfixture doesnotcovergeneralprecisionrounding",
+        "NativeUnifiedMemoryversusJuliaframeworkdeviceallocation outside timedregion"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmEx-julia/blas-gemmEx-julia-KA",
+      "structured": true,
+      "verification_method": "all_elements_cpu_and_binary_cross_model",
+      "native_check_description": "Allcase supportstates and complete supportedmatrices versus integer-dot-derived CPUoracle and sharedreferences",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/blas-gemmEx-julia/study_common.jl"
+      ],
+      "limitations": [
+        "Vendorlibraryinterop, zero frameworkdevicekernels",
+        "Native fourFP32compute labels actuallyallFP32 due switchfallthrough",
+        "BF16request onV100mayunsupported, explicitstatusretained",
+        "Small exactdyadicfixture doesnotcovergeneralprecisionrounding",
+        "NativeUnifiedMemoryversusJuliaframeworkdeviceallocation outside timedregion"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ]
+    }
+  },
+  "attempt_accounting": {
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_feedback_repairs": 0,
+      "compiler_check_invocations": 1
+    }
+  },
+  "token_accounting": {
+    "status": "partial_estimated",
+    "full_usage": null,
+    "method": "saved source proxy only; not consumed tokens"
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T175714443149Z_blas-gemmEx/result.json",
+  "reuse_models": [
+    "cuda_jl",
+    "ka"
+  ],
+  "measurement_correction": {
+    "phase": "native_output_instrumentation_residency",
+    "reason": "Avoid directCPUdereference ofmanagedC betweentrials; explicitD2Hcopy plusmanagedA/B/Cdeviceprefetchbeforeeachtrial outside timing",
+    "prior_native_series_status": "nonprimary_residency_not_controlled",
+    "numerical_acceptance_unchanged": true
+  }
+}
