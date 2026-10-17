@@ -21,3 +21,8 @@ Independent analytic witness inverts73*i+19*g modulo1024 to recover the10highest
 
 
 Prospective rawusage intervals include cached/repeatedcontext and coordination; the parentworkflow contains its childphases and must not be summed with them. Exclusive billed translation cost remains unknown; source-size proxies remain separately labeled.
+
+
+## CUDA.jl API classification correction
+
+CUDA.jl uses its own atomics, shuffles, and pointer APIs as native framework operations. Its implementation class is framework_device_kernel; it remains CUDA-specific. KA/JACC calls into CUDA.jl remain backend-specific hybrid_device_intrinsics. This descriptive correction preserves measured sources, execution, timings, and explicit hardware features. The later classification-review usage interval is separate from the original closed translation/workflow windows.
