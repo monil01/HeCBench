@@ -1,0 +1,106 @@
+{
+  "benchmark": "blas-gemmStridedBatched",
+  "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float64 matrix/vector/output, native Dgemm and custom Float64 rowdot",
+    "shape": {
+      "active_m": 32,
+      "n": 1,
+      "active_k": 32,
+      "leading_dimension": 64,
+      "batch": 128
+    },
+    "fixture": "A[i]=Float64(i%31-15)/17,B[i]=Float64((7*i)%17-8)/19, zero-based physicalbufferi;alpha1,beta0;outputpadzero",
+    "internal_repeats": 10,
+    "scope": "One named square32 batchedGEMV case with paddedleading64; native Float16/Float32, dimension sweep/default25000batches unmeasured",
+    "mapping": "Native/CUDAjl actualcuBLAS stridedbatchedGEMM versus KA/JACC one outputrow/thread sequential32-term dot",
+    "library_boundary": "Native cublasDgemmStridedBatched; Julia wrapper selects64-bit variant forcuBLAS12; vendorinternals opaque. Portable targetcustomkernel, notvendorinterop.",
+    "accuracy": "All8192finiteFloat64outputpositions includingzero padding, scalarCPU anddualartifact abs1e-6 rtol0, matches nativeFloat64criterion",
+    "working_set_limitation": "~4.125MiB buffers fit V1006MiBL2; noDRAMbandwidthclaim",
+    "native_reference_build_repair": "Missingnative reference.h supplied through include-path to existing sibling blas-gemmBatched-cuda/reference.h. Native device/library logic unchanged."
+  },
+  "atol": 1e-06,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmStridedBatched-julia",
+      "build": [
+        "nvcc",
+        "-I/home/imo/HeCBench_julia/src/blas-gemmBatched-cuda",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native",
+        "-lcublas"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Everyactiveoutput pluspadding checked against independent scalarFloat64oracle andbothreferencearrays abs1e-6",
+      "source_dependencies": [
+        "../blas-gemmStridedBatched-cuda/main.cu",
+        "../blas-gemmBatched-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Everyactiveoutput pluspadding checked against independent scalarFloat64oracle andbothreferencearrays abs1e-6",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Everyactiveoutput pluspadding checked against independent scalarFloat64oracle andbothreferencearrays abs1e-6",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Everyactiveoutput pluspadding checked against independent scalarFloat64oracle andbothreferencearrays abs1e-6",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T164733973781Z_blas-gemmStridedBatched/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
