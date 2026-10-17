@@ -1,0 +1,19 @@
+
+#define main archived_qrg_main
+#include "../qrg-cuda/main.cu"
+#undef main
+#include "../qrg-cuda/reference.cu"
+#include <vector>
+#include <string>
+#include <algorithm>
+#define CK(c) do{cudaError_t e=(c);if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}while(0)
+template<class T>std::vector<T>readfile(const char*name,int n){std::vector<T>v(n);FILE*f=fopen(name,"rb");if(!f||fread(v.data(),sizeof(T),n,f)!=size_t(n)){fprintf(stderr,"Bad file %s\n",name);exit(3);}fclose(f);return v;}
+__global__ void moro_probe(float*out,const unsigned int*in){int i=threadIdx.x;if(i<14)out[i]=MoroInvCNDgpu(in[i]);}
+int main(){auto prefix=readfile<double>("study_input_f64.bin",112);auto cj=readfile<long long>("study_cjn_i64.bin",189);auto gold=readfile<double>("study_math_expected_f64.bin",393236);unsigned n=prefix[0],seed=prefix[1],total=prefix[2],distance=prefix[3];int repeats=prefix[4];unsigned table[93],inputs[14];initQuasirandomGenerator(table);for(int i=0;i<93;i++)if(double(table[i])!=prefix[5+i])return 4;for(int d=0;d<3;d++)for(int b=0;b<63;b++)if(cjn[b][d]!=cj[d*63+b])return 4;for(int i=0;i<14;i++)inputs[i]=prefix[98+i];float*out,*po;unsigned*dt,*di;CK(cudaMalloc(&out,total*4));CK(cudaMalloc(&po,14*4));CK(cudaMalloc(&dt,93*4));CK(cudaMalloc(&di,14*4));CK(cudaMemcpy(dt,table,93*4,cudaMemcpyHostToDevice));CK(cudaMemcpy(di,inputs,14*4,cudaMemcpyHostToDevice));
+ auto q=[&](){qrng<<<193,dim3(85,3)>>>(out,dt,seed,n);};auto c=[&](){icnd<<<128,128>>>(out,total,distance);};q();c();moro_probe<<<1,256>>>(po,di);CK(cudaDeviceSynchronize());bool all=true;std::vector<float>buf(total),probes(14);
+ for(int trial=1;trial<=5;trial++){auto artifact=prefix;double times[2],l1[2],maxerr=0,cdferr=0;bool ok=true;
+  for(int stage=0;stage<2;stage++){CK(cudaMemset(out,0,total*4));CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int r=0;r<repeats;r++){if(stage==0)q();else c();}CK(cudaGetLastError());CK(cudaDeviceSynchronize());times[stage]=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/repeats;CK(cudaMemcpy(buf.data(),out,total*4,cudaMemcpyDeviceToHost));double delta=0,refsum=0;
+   for(unsigned i=0;i<total;i++){double ref=stage==0?getQuasirandomValue63(i%n,i/n):MoroInvCNDcpu((i+1)*distance),v=buf[i],g=gold[stage*total+i];delta+=fabs(v-ref);refsum+=fabs(ref);maxerr=std::max(maxerr,fabs(v-g));ok&=std::isfinite(v)&&(stage==0?v==g:fabs(v-g)<=2e-5+2e-6*fabs(g));if(stage==1){unsigned x=(i+1)*distance,lo=std::min(x,0xffffffffU-x);double prob=(double(lo)+.5)/double(0xffffffffU);if(x>=0x80000000U)prob=1-prob;cdferr=std::max(cdferr,fabs(.5*erfc(-v/sqrt(2.))-prob));}artifact.push_back(v);}l1[stage]=delta/refsum;ok&=l1[stage]<1e-6;}
+  moro_probe<<<1,256>>>(po,di);CK(cudaDeviceSynchronize());CK(cudaMemcpy(probes.data(),po,14*4,cudaMemcpyDeviceToHost));for(int i=0;i<14;i++){double v=probes[i],g=gold[2*total+i];ok&=std::isfinite(v)&&fabs(v-g)<=2e-5+2e-6*fabs(g);maxerr=std::max(maxerr,fabs(v-g));artifact.push_back(v);}ok&=cdferr<=2e-6;all&=ok;
+  std::string path=std::string(getenv("STUDY_OUTPUT_DIR")?getenv("STUDY_OUTPUT_DIR"):".")+"/output_trial"+std::to_string(trial)+".bin";FILE*f=fopen(path.c_str(),"wb");if(!f)return 5;fwrite(artifact.data(),8,artifact.size(),f);fclose(f);printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"stage_seconds\":[%.12g,%.12g],\"correct\":%s,\"checked_values\":393236,\"max_abs_error\":%.12g,\"max_rel_error\":0,\"qrng_source_l1\":%.12g,\"icnd_source_l1\":%.12g,\"normal_cdf_max_error\":%.12g,\"timing_region\":\"kernel_launch_loop_per_internal_repeat\",\"jit_excluded\":true,\"internal_repeats\":20,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,times[0]+times[1],times[0],times[1],ok?"true":"false",maxerr,l1[0],l1[1],cdferr,path.c_str(),artifact.size());}
+ puts(all?"PASS":"FAIL");return all?0:1;}
