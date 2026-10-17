@@ -1,0 +1,6 @@
+include(joinpath(@__DIR__,"main.jl"))
+include(joinpath(@__DIR__,"..","study_common.jl"))
+insert!(tk,tv,keys,values,n)=(@cuda threads=256 blocks=cld(n,256) hashtable_insert_kernel!(tk,tv,keys,values,n))
+delete!(tk,tv,keys,n)=(@cuda threads=256 blocks=cld(n,256) hashtable_delete_kernel!(tk,tv,keys,n))
+iterate!(tk,tv,ok,ov,count)=(@cuda threads=256 blocks=cld(Int(ST_CAP),256) iterate_hashtable_kernel!(tk,tv,ok,ov,count))
+study_main(insert!,delete!,iterate!,"cuda_jl")
