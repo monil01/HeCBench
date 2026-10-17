@@ -1,0 +1,28 @@
+# lebesgue: verified four-model study observation
+
+RQ IDs: RQ1–RQ5. Experiment IDs: E1–E5. Evidence ID: 20261016T235738731522Z_lebesgue.
+Configuration contract: `{"families": 9, "node_counts": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "evaluation_points": 65, "repeat": 3, "fixture": "Nativepointformulas precomputedPythonmathcos savedidenticalFloat64literalbits all4; grid[-1,1] dyadic", "outputs": "AllglobalLagrangeinterpolationvalues +atomicmaximum foreach90cases; n1trivialhostreturn omitted", "timing": "sum90kernel synchronizedloopmeans excludesallocation/copy/reset"}`.
+Protocol: five_trials_last_four_v1, all five correctness checks retained, timing mean trials2–5.
+Evidence: `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T235738731522Z_lebesgue/result.json`, config.json, timings.csv, raw logs, binary artifacts.
+Ontology: ontology/benchmarks/lebesgue.yaml; SHA256 `8cba85654bb29725b4524884546d09b07d17b0b7353d700335a7e4381703f5fa`. Original inferred ontology labels retained; no retroactive winner-based relabeling.
+
+## Numerical confirmation
+Each variant passes independent full-element CPU oracle checks and direct binary-array comparisons against native CUDA and CUDA.jl on every one of the five trials. Acceptance tolerances and all observed absolute/relative errors are preserved in result.json. NaN/nonfinite and shape/count checks are performed by the runner. Native device kernels are included unchanged; historical CUDA.jl original_main.jl and original_Makefile are retained. Parent compatibility entrypoints execute the historical original source. Study drivers change only explicitly recorded reference inputs/measurement handling, a separate phase from original translation.
+
+The study covers all nine native node families and n=2 through 11 (90 kernel cases), with 65 evaluation points and three internal repeats. The n=1 host-only return of one is excluded from kernel timing. Point formulas are evaluated once and saved as identical Float64 bits in fixture_nodes.jl and fixture_nodes.h, avoiding cross-library cosine differences. All 38,115 outputs, comprising every native global Lagrange interpolation value and each atomic maximum, match CPU and both GPU references exactly in all five trials. This strengthens the original maximum-only check. Historical CUDA.jl used local interpolation and a separate maximum reduction; its study reference is separately corrected to the native global interpolation writes and atomic maximum. Native CAS-based Float64 maximum versus Atomix lowering remains an implementation confound. KA candidate one failed parsing because whitespace before comprehension for was missing (B2, bundle235103298768Z); candidate two passes (235435334388Z). The reference required the same driver repair. JACC reuses the fixed driver and succeeds on candidate one. Timing is the sum of 90 synchronized kernel loop means, excluding allocation, resets and copies.
+
+## Runtime: microseconds
+Each trial records the synchronized launch-loop mean per internal repeat. This includes host dispatch and excludes JIT/compilation, setup, allocations, transfers, input reset, CPU checking and artifact writing. Each trial starts with the same inputs. A device warmup precedes trial1. All timing commands are serialized on GPU6 via the shared lock. Native CUDA, CUDA.jl, KA and JACC are measured under the same named contract. Julia environments pin CUDA runtime12.0; exact package/hardware evidence lives in setup and run bundles.
+
+| Model | Trials1–5 (us) | Mean2–5 (us) |
+|---|---|---|
+| cuda | 1335.0607, 1330.6797, 1333.3213, 1326.0990, 1343.0273 | 1333.2818 |
+| cuda_jl | 2235.5673, 2302.5803, 2231.5930, 2222.9903, 2219.1573 | 2244.0802 |
+| ka | 2307.1007, 2350.0330, 2330.8273, 2338.9177, 2324.4860 | 2336.0660 |
+| jacc | 2463.8397, 2415.6670, 2411.2477, 2407.0320, 2404.5113 | 2409.6145 |
+
+## Attempts, tokens and feature support
+KA has two source candidates/two compiler checks/one B2 parser repair. JACC has one candidate/one check/zero feedback repairs. Actual runner build/JIT invocations are recorded separately from timing trials; tool/reuse/setup failures are infrastructure events, not translation candidates. A five-trial timing series is not five translation attempts. Token accounting is partial source-text characters/4, with unavailable conversation/tool/reasoning/cached usage explicitly unknown; these estimates do not establish total billed cost or an abstraction cost ranking. Shared infrastructure/reference correction/paper work are separate phases. KA-first and JACC reuse make this incremental production effort, not independent translations. No unsupported framework feature was observed for this selected configuration.
+
+## Ontology explanation and paper follow-up
+Use the existing operation/access classifications as grouping evidence, with implementation choices above recorded separately. Any runtime gap is an observation. Potential launch/configuration overhead, memory access behavior, compiler output and changed specialization are competing explanations, not demonstrated causes. No measured memory traffic, occupancy or roofline position was collected in this pass. Profiling and size scaling remain pending; this small configuration cannot support broad abstraction-selection recommendations. RQ1 is answered for this contract; RQ2 cost completeness is partial; RQ3 has matched measurements; RQ4 mechanisms and RQ5 generalization remain unresolved. Coordinator must export a portable snapshot and connect this observation to claims/figures/sections.
