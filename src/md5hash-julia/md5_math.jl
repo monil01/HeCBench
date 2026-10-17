@@ -1,0 +1,167 @@
+# Copyright(c)2011UT-Battelle,LLC; source terms retained in LICENSE.
+# Native64round expressions translated once; UInt32wraparound and rotations explicit.
+@inline function study_md5(W0::UInt32,W1::UInt32,len::Int32)
+ h0=0x67452301;h1=0xefcdab89;h2=0x98badcfe;h3=0x10325476
+ a=h0;b=h1;c=h2;d=h3;WL=UInt32(len)*UInt32(8)
+ if len<4;W0|=UInt32(0x80)<<(8len);else;W1|=UInt32(0x80)<<(8(len-4));end
+ a=a+((b&c)|((~b)&d))+0xd76aa478+W0
+ tmp=d;d=c;c=b;b=b+((a<<7)|(a>>25));a=tmp
+ a=a+((b&c)|((~b)&d))+0xe8c7b756+W1
+ tmp=d;d=c;c=b;b=b+((a<<12)|(a>>20));a=tmp
+ a=a+((b&c)|((~b)&d))+0x242070db+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<17)|(a>>15));a=tmp
+ a=a+((b&c)|((~b)&d))+0xc1bdceee+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<22)|(a>>10));a=tmp
+ a=a+((b&c)|((~b)&d))+0xf57c0faf+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<7)|(a>>25));a=tmp
+ a=a+((b&c)|((~b)&d))+0x4787c62a+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<12)|(a>>20));a=tmp
+ a=a+((b&c)|((~b)&d))+0xa8304613+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<17)|(a>>15));a=tmp
+ a=a+((b&c)|((~b)&d))+0xfd469501+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<22)|(a>>10));a=tmp
+ a=a+((b&c)|((~b)&d))+0x698098d8+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<7)|(a>>25));a=tmp
+ a=a+((b&c)|((~b)&d))+0x8b44f7af+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<12)|(a>>20));a=tmp
+ a=a+((b&c)|((~b)&d))+0xffff5bb1+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<17)|(a>>15));a=tmp
+ a=a+((b&c)|((~b)&d))+0x895cd7be+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<22)|(a>>10));a=tmp
+ a=a+((b&c)|((~b)&d))+0x6b901122+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<7)|(a>>25));a=tmp
+ a=a+((b&c)|((~b)&d))+0xfd987193+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<12)|(a>>20));a=tmp
+ a=a+((b&c)|((~b)&d))+0xa679438e+WL
+ tmp=d;d=c;c=b;b=b+((a<<17)|(a>>15));a=tmp
+ a=a+((b&c)|((~b)&d))+0x49b40821+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<22)|(a>>10));a=tmp
+ a=a+((b&d)|((~d)&c))+0xf61e2562+W1
+ tmp=d;d=c;c=b;b=b+((a<<5)|(a>>27));a=tmp
+ a=a+((b&d)|((~d)&c))+0xc040b340+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<9)|(a>>23));a=tmp
+ a=a+((b&d)|((~d)&c))+0x265e5a51+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<14)|(a>>18));a=tmp
+ a=a+((b&d)|((~d)&c))+0xe9b6c7aa+W0
+ tmp=d;d=c;c=b;b=b+((a<<20)|(a>>12));a=tmp
+ a=a+((b&d)|((~d)&c))+0xd62f105d+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<5)|(a>>27));a=tmp
+ a=a+((b&d)|((~d)&c))+0x02441453+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<9)|(a>>23));a=tmp
+ a=a+((b&d)|((~d)&c))+0xd8a1e681+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<14)|(a>>18));a=tmp
+ a=a+((b&d)|((~d)&c))+0xe7d3fbc8+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<20)|(a>>12));a=tmp
+ a=a+((b&d)|((~d)&c))+0x21e1cde6+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<5)|(a>>27));a=tmp
+ a=a+((b&d)|((~d)&c))+0xc33707d6+WL
+ tmp=d;d=c;c=b;b=b+((a<<9)|(a>>23));a=tmp
+ a=a+((b&d)|((~d)&c))+0xf4d50d87+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<14)|(a>>18));a=tmp
+ a=a+((b&d)|((~d)&c))+0x455a14ed+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<20)|(a>>12));a=tmp
+ a=a+((b&d)|((~d)&c))+0xa9e3e905+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<5)|(a>>27));a=tmp
+ a=a+((b&d)|((~d)&c))+0xfcefa3f8+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<9)|(a>>23));a=tmp
+ a=a+((b&d)|((~d)&c))+0x676f02d9+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<14)|(a>>18));a=tmp
+ a=a+((b&d)|((~d)&c))+0x8d2a4c8a+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<20)|(a>>12));a=tmp
+ a=a+(b⊻c⊻d)+0xfffa3942+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<4)|(a>>28));a=tmp
+ a=a+(b⊻c⊻d)+0x8771f681+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<11)|(a>>21));a=tmp
+ a=a+(b⊻c⊻d)+0x6d9d6122+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<16)|(a>>16));a=tmp
+ a=a+(b⊻c⊻d)+0xfde5380c+WL
+ tmp=d;d=c;c=b;b=b+((a<<23)|(a>>9));a=tmp
+ a=a+(b⊻c⊻d)+0xa4beea44+W1
+ tmp=d;d=c;c=b;b=b+((a<<4)|(a>>28));a=tmp
+ a=a+(b⊻c⊻d)+0x4bdecfa9+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<11)|(a>>21));a=tmp
+ a=a+(b⊻c⊻d)+0xf6bb4b60+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<16)|(a>>16));a=tmp
+ a=a+(b⊻c⊻d)+0xbebfbc70+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<23)|(a>>9));a=tmp
+ a=a+(b⊻c⊻d)+0x289b7ec6+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<4)|(a>>28));a=tmp
+ a=a+(b⊻c⊻d)+0xeaa127fa+W0
+ tmp=d;d=c;c=b;b=b+((a<<11)|(a>>21));a=tmp
+ a=a+(b⊻c⊻d)+0xd4ef3085+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<16)|(a>>16));a=tmp
+ a=a+(b⊻c⊻d)+0x04881d05+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<23)|(a>>9));a=tmp
+ a=a+(b⊻c⊻d)+0xd9d4d039+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<4)|(a>>28));a=tmp
+ a=a+(b⊻c⊻d)+0xe6db99e5+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<11)|(a>>21));a=tmp
+ a=a+(b⊻c⊻d)+0x1fa27cf8+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<16)|(a>>16));a=tmp
+ a=a+(b⊻c⊻d)+0xc4ac5665+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<23)|(a>>9));a=tmp
+ a=a+(c⊻(b|(~d)))+0xf4292244+W0
+ tmp=d;d=c;c=b;b=b+((a<<6)|(a>>26));a=tmp
+ a=a+(c⊻(b|(~d)))+0x432aff97+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<10)|(a>>22));a=tmp
+ a=a+(c⊻(b|(~d)))+0xab9423a7+WL
+ tmp=d;d=c;c=b;b=b+((a<<15)|(a>>17));a=tmp
+ a=a+(c⊻(b|(~d)))+0xfc93a039+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<21)|(a>>11));a=tmp
+ a=a+(c⊻(b|(~d)))+0x655b59c3+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<6)|(a>>26));a=tmp
+ a=a+(c⊻(b|(~d)))+0x8f0ccc92+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<10)|(a>>22));a=tmp
+ a=a+(c⊻(b|(~d)))+0xffeff47d+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<15)|(a>>17));a=tmp
+ a=a+(c⊻(b|(~d)))+0x85845dd1+W1
+ tmp=d;d=c;c=b;b=b+((a<<21)|(a>>11));a=tmp
+ a=a+(c⊻(b|(~d)))+0x6fa87e4f+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<6)|(a>>26));a=tmp
+ a=a+(c⊻(b|(~d)))+0xfe2ce6e0+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<10)|(a>>22));a=tmp
+ a=a+(c⊻(b|(~d)))+0xa3014314+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<15)|(a>>17));a=tmp
+ a=a+(c⊻(b|(~d)))+0x4e0811a1+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<21)|(a>>11));a=tmp
+ a=a+(c⊻(b|(~d)))+0xf7537e82+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<6)|(a>>26));a=tmp
+ a=a+(c⊻(b|(~d)))+0xbd3af235+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<10)|(a>>22));a=tmp
+ a=a+(c⊻(b|(~d)))+0x2ad7d2bb+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<15)|(a>>17));a=tmp
+ a=a+(c⊻(b|(~d)))+0xeb86d391+UInt32(0)
+ tmp=d;d=c;c=b;b=b+((a<<21)|(a>>11));a=tmp
+ (h0+a,h1+b,h2+c,h3+d)
+end
+@inline function study_words(index::Int32,base::Int32)
+ v=index
+ b0=UInt32(v%base);v÷=base
+ b1=UInt32(v%base);v÷=base
+ b2=UInt32(v%base);v÷=base
+ b3=UInt32(v%base);v÷=base
+ b4=UInt32(v%base);v÷=base
+ b5=UInt32(v%base);v÷=base
+ b6=UInt32(v%base);v÷=base
+ b7=UInt32(v%base);v÷=base
+ (b0|(b1<<8)|(b2<<16)|(b3<<24),b4|(b5<<8)|(b6<<16)|(b7<<24))
+end
+@inline function study_search_thread!(tid,fi,fk,fd,n,len,base,sd0,sd1,sd2,sd3)
+ start=Int32(tid)*base;w0,w1=study_words(start,base);j=Int32(0)
+ while j<base&&start+j<n
+  input0=w0+UInt32(j);z=study_md5(input0,w1,len)
+  if z[1]==sd0&&z[2]==sd1&&z[3]==sd2&&z[4]==sd3
+   @inbounds fi[1]=start+j
+   for k in 0:3;@inbounds fk[k+1]=UInt8((input0>>(8k))&UInt32(0xff));fk[k+5]=UInt8((w1>>(8k))&UInt32(0xff));fd[k+1]=z[k+1];end
+  end
+  j+=Int32(1)
+ end
+ nothing
+end
+@inline function study_probe_thread!(i,w0,w1,lens,out,n)
+ if i<=n
+  @inbounds z=study_md5(w0[i],w1[i],lens[i])
+  for k in 1:4;@inbounds out[4(i-1)+k]=z[k];end
+ end
+ nothing
+end

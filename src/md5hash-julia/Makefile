@@ -1,12 +1,2 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
-main:
-	@true
-
-clean:
-	@true
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1 1
+all:
+	$(MAKE) -C md5hash-julia-cuda.jl
