@@ -25,7 +25,7 @@ function main()
     for _ in 1:mod(repeats,4)
         expected=reverse(permutedims(expected),dims=1)
     end
-    device=CuArray(host); spec=JACC.launch_spec(;threads=256,sync=false)
+    device=CuArray(host); spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     launch!()=JACC.parallel_for(spec,n÷2,rotate_jacc!,device,Int32(n))
     OwnedStudy.run_trials!(launch!,()->copyto!(device,host),()->Array(device),vec(expected),repeats)
 end
