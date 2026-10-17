@@ -1,0 +1,13 @@
+#include "study_vendor_bridge.cu"
+#include <fstream>
+#include <iomanip>
+#include <stdexcept>
+#include <vector>
+void check(cudaError_t e){if(e!=cudaSuccess)throw std::runtime_error(cudaGetErrorString(e));}
+struct Case{int n;int*vec;int*res;std::vector<int>zero,want;};
+int main(){cudaStream_t stream;check(cudaError_t(study_create_stream(&stream)));std::cout<<"PinnedThrustVersion "<<study_thrust_version()<<std::endl;std::vector<Case>cases;std::vector<int>prefix;
+ for(int n:{1025,65535}){Case c;c.n=n;c.zero.assign(n,0);check(cudaMalloc(&c.vec,n*sizeof(int)));check(cudaMalloc(&c.res,n*sizeof(int)));prefix.insert(prefix.end(),2*n,0);for(int x:{n,3,0,1})prefix.push_back(x);for(int i=0;i<n;++i)c.want.push_back(i);for(int i=0;i<n;++i)c.want.push_back(int((int64_t(i)*(i+1))/2));int sum=int((int64_t(n)*(n-1))/2);for(int x:{sum,sum,0})c.want.push_back(x);cases.push_back(std::move(c));}
+ auto run=[&](Case&c,std::vector<int>&out,bool&ok){check(cudaMemcpy(c.vec,c.zero.data(),c.n*sizeof(int),cudaMemcpyHostToDevice));check(cudaMemcpy(c.res,c.zero.data(),c.n*sizeof(int),cudaMemcpyHostToDevice));check(cudaDeviceSynchronize());int result[3];auto start=std::chrono::steady_clock::now();for(int i=0;i<3;++i)if(study_nosync(c.vec,c.res,c.n,stream,result))throw std::runtime_error("pipelinefailed");check(cudaDeviceSynchronize());double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/3;std::vector<int>got(2*c.n);check(cudaMemcpy(got.data(),c.vec,c.n*sizeof(int),cudaMemcpyDeviceToHost));check(cudaMemcpy(got.data()+c.n,c.res,c.n*sizeof(int),cudaMemcpyDeviceToHost));got.insert(got.end(),result,result+3);ok=ok&&(got==c.want);out.insert(out.end(),got.begin(),got.end());return elapsed;};
+ for(auto&c:cases){std::vector<int>out;bool ok=true;run(c,out,ok);if(!ok)return 3;}
+ for(int trial=1;trial<=5;++trial){auto out=prefix;bool ok=true;double elapsed=0;for(auto&c:cases)elapsed+=run(c,out,ok);std::string name="trial_"+std::to_string(trial)+".bin";std::ofstream f(name,std::ios::binary);f.write((char*)out.data(),out.size()*sizeof(int));f.close();std::cout<<std::setprecision(17)<<"STUDY_TRIAL {\"trial\":"<<trial<<",\"time_seconds\":"<<elapsed<<",\"correct\":"<<(ok?"true":"false")<<",\"checked_values\":"<<out.size()<<",\"max_abs_error\":0,\"timing_region\":\"sum_two_preallocated_three_thrust_pipeline_means\",\"jit_excluded\":true,\"internal_repeats\":3,\"output_artifact\":{\"path\":\""<<name<<"\",\"dtype\":\"int32\",\"count\":"<<out.size()<<",\"byte_order\":\"little\"}}"<<std::endl;if(!ok)return 2;}
+ for(auto&c:cases){check(cudaFree(c.vec));check(cudaFree(c.res));}check(cudaError_t(study_destroy_stream(stream)));}
