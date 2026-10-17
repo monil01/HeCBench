@@ -1,0 +1,78 @@
+{
+  "benchmark": "laplace",
+  "configuration_id": "corrected_fourface_FVM_fp32_N256_SOR185_updateRMS1e-6_v1",
+  "gpu": 6,
+  "timeout": 900,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "native_reference_repaired": true,
+  "reference_provenance": {
+    "original_source": "/home/imo/HeCBench_julia/src/laplace-cuda/main.cu",
+    "original_source_sha256": "6d69deed092dab01e8b75f4cf237005abc76712963d19dfdeb797789089a8cb8",
+    "repair": "Only study coefficient constructor accumulates every wall contribution SP-= instead of overwriting SP=. Source kernels unchanged except named NUM256. Original files retained.",
+    "independent_witness": "source_boundary_witness.cpp; single-cell four-face T=.25 vs original1; ordinary corners aP .06 vsoriginal.04",
+    "study_corrected_builder": "/home/imo/HeCBench_julia/src/laplace-julia/corrected_coeffs.h",
+    "exclude_from_untouched_native_aggregates": true
+  },
+  "input_contract": {
+    "grid": 256,
+    "precision": "Float32",
+    "omega": 1.85,
+    "source_physics": "L=H=1,k=1,width=.01,TN=1, other walls0; corrected additive cell-centered FVM corner balances",
+    "input_prefix_values": 393216,
+    "computed_values": 67080,
+    "artifact_values": 460296,
+    "stop": "sqrt((sum_red_change2+sum_black_change2)/65536)<1e-6; update norm is not PDE residual",
+    "mapping": "128x2 threads;1x128 blocks; packedred/black130x258; backend reductions host-controlled in all Julia models",
+    "roi": "Full converged solve; source CUB scratchquery/malloc/free inside native ROI; pooled CUDA.sum and two host scalars/iteration in Julia. Initialcoefficients/H2D/reset/CPU+Choleskyoracles/fullD2H outside. No puregenericreductionclaim.",
+    "compiler_condition": "--fmad=false native aligns existing uncontracted Julia arithmetic, explicitly conditional stratum"
+  },
+  "atol": 0.0001,
+  "rtol": 0,
+  "models": {
+    "cuda_jl": {
+      "structured": true,
+      "verification_method": "full_packed_red_black_and_halos_signed_finite_CPU_SOR_plus_independent_Float64_sparse_Cholesky",
+      "native_check_description": "67080 computed packedvalues including zero halos <=1e-4 CPU sourceSOR;393216 sharedcoefficientprefix auditedall20; Julia independent FVMCholesky field <=2e-3, final maximumprinciple; updateRMS1e-6 not absoluteTaccuracy",
+      "cwd": "/home/imo/HeCBench_julia/src/laplace-julia/laplace-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/laplace-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/laplace-julia/laplace-julia-cuda.jl/main.jl",
+        "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml",
+        "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml",
+        "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml"
+      ]
+    },
+    "cuda": {
+      "structured": true,
+      "verification_method": "full_packed_red_black_and_halos_signed_finite_CPU_SOR_plus_independent_Float64_sparse_Cholesky",
+      "native_check_description": "67080 computed packedvalues including zero halos <=1e-4 CPU sourceSOR;393216 sharedcoefficientprefix auditedall20; Julia independent FVMCholesky field <=2e-3, final maximumprinciple; updateRMS1e-6 not absoluteTaccuracy",
+      "cwd": "/home/imo/HeCBench_julia/src/laplace-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "--fmad=false",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/laplace-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/laplace-cuda/kernels.h",
+        "/home/imo/HeCBench_julia/src/laplace-cuda/reference.h",
+        "/home/imo/HeCBench_julia/src/laplace-julia/corrected_coeffs.h",
+        "/home/imo/HeCBench_julia/src/laplace-julia/study_kernels.h"
+      ]
+    }
+  }
+}

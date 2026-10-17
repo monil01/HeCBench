@@ -1,0 +1,9 @@
+# Laplace: conditional finite-volume reference
+
+Originalnative andgenuineCUDAjl preserved. Exactoriginalconstructorwitness source_boundary_witness.cpp shows SP overwrite loses asecondwall atcorner: onecellT1 instead offour-faceFVM.25, normalcornerdiag.04instead.06. Newcorrected_coeffs.h changesonlyfourSPassignments toaccumulation. StudyheaderonlyNUM1024→256, updatekernelbodiesunchanged. Juliaoriginalmain kernelbodiesunchanged; studyenv256 andguard, legacywrapperdefaults1024. Mark native_reference_repaired true, excludeuntouchednativeaggregates. Native--fmad=false explicitlyconditioned, no fasteruncontrolledrerun.
+
+FullconvergedsourceSOR omega1.85, tolupdateRMS1e-6,3187iterations all20trials. All67080packedredblack/halovalues and393216inputcoefficients exact acrossall20artifacts,460296values. IndependentFloat64 sparseCholesky physicalfielderror.00105773361137, equationresidual4.91738308406e-8; finalmaximumprinciple. Predeclared2e-3solutionerrorthreshold differsfrom1e-4sourceCPUagreement and1e-6updatecriterion. UpdateRMSisnotabsoluteTerror. No mesh/conditioninggeneralization.
+
+Timedwholeconvergedsolve, fivefreshstates, allcorrect;discardonlytrial1time,mean2–5. NativeCUBscratchquery/malloc/freeinsideROI, twohostscalars/iteration. CommonJuliahostdriverCUDA.sum usespooledbackendallocations; explicitinteroperability andresourceconfound, notpuregenericwholepipeline. BothKA/JACCgenuineauthoredcolorkernels128x2threads/1x128blocks withsameglobalneighborlayout, no sharedtile. Initialization/H2D/reset/fullD2H/oracles/JIT excluded; launch/hostconvergence included. JACCexplicit0Bshared.
+
+Sourcewitness/constructorrepair/oraclework attributedreferenceonce; KA/JACCmarginalorderedtranslationcosts withreuse. Prospectivewindows include repeatedcachedcontext androotpaper/commitcoordination; unknownhistoricalCUDAjlcostnotbackfilled, overlapnotsummed. NoframeworkunsupportedfeatureinferencefromchosenCUDAbackendreduction.

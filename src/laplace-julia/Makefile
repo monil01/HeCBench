@@ -1,12 +1,10 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=../_julia_ka_env
 LAUNCHER ?=
-
+.PHONY: main run study
 main:
 	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
+run:
 	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl
+study:
+	$(JULIA) $(PROJECT) laplace-julia-cuda.jl/study.jl
