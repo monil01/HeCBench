@@ -21,7 +21,7 @@ function soa_jacc!(index,input,out)
     end
 end
 function factory(input,output,layout)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     kernel=layout=="aos" ? aos_jacc! : soa_jacc!
     return ()->JACC.parallel_for(spec,4096,kernel,input,output)
 end
