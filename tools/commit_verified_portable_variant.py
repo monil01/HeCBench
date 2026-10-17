@@ -16,7 +16,7 @@ for path in a.result:
  if d['benchmark']!=a.benchmark or not d.get('reference_agreement'):raise SystemExit('Benchmark or reference agreement invalid')
  data.append((d,c,path))
 parent=root/'src'/(a.benchmark+'-julia');key={'KA':'ka','JACC':'jacc'}.get(a.variant)
-def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh'] or f.name=='Makefile')
+def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh'] or f.name in ['Makefile','original_Makefile'])
 if a.shared:
  for d,c,path in data:
   for model in ['cuda','cuda_jl']:
