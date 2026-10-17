@@ -1,0 +1,67 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+    "original_path": "/home/imo/HeCBench_julia/src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/original_main.jl",
+    "original_sha256": "422b90032a340ab4b9f07bf9b1bd94bbbb0b1e900c279e86846ee5b283be8e39",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+  "mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 16,
+    "cells": 4096
+  },
+  "traits": {
+    "primary_motif": "elementwise_transcendental_map",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "synchronization": [
+      "host_device_synchronization_at_timing_boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "identical per-cell equations, layout,256-thread launch geometry and FP64"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "synchronized_kernel_loop_mean",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Shared CPU equation oracle is not independent physical validation",
+      "One named4096cell study case only"
+    ],
+    "scientific_intent": {
+      "primary_domain": "PDE/continuum simulation",
+      "secondary_domains": [
+        "hydrology",
+        "porous-media flow"
+      ],
+      "scientific_task": "Convert pressure head to water content, hydraulic conductivity and specific moisture capacity",
+      "governing_method": "van Genuchten constitutive water-retention law and Mualem conductivity closure",
+      "discretization": "independent constitutive evaluations; no spatial derivative, mesh or PDE solver in benchmark",
+      "accuracy_needs": [
+        "saturation branch psi>=0",
+        "finite conductivity and moisture capacity",
+        "nonlinear power sensitivity"
+      ],
+      "input_regime": "4096cells; pressure head -100 to +1, including saturated cells",
+      "precision_sensitivity": "FP64 native/reference; powers near saturation may amplify rounding",
+      "community_use_case": "Constitutive coefficient evaluation within a Richards-equation soil-water simulator",
+      "evidence": [
+        "src/vanGenuchten-cuda/main.cu",
+        "src/vanGenuchten-cuda/reference.h"
+      ],
+      "confidence": "source_reviewed"
+    }
+  },
+  "observation": "This hydrology workload evaluates nonlinear constitutive physics independently per cell. It exercises FP64 powers, square root and saturation branching; its map motif alone does not establish a compute bottleneck without counters. The named fixture uses native input initialization, covers unsaturated and saturated pressure, and compares all three scientific fields. All framework device kernels use native-equivalent256-thread geometry and no shared memory. Native tolerance1e-3 is retained, with stricter finite-value checks."
+}
