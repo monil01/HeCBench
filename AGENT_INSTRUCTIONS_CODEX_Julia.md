@@ -1,6 +1,10 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
 
+### Loaded runtime library provenance
+
+Record actual loaded library paths, resolved file hashes and runtime-reported versions for every vendor path. Compiler/link arguments alone do not prove which shared library the loader selected: RUNPATH, sonames and preloads can change it. A function address can identify an executable PLT stub rather than its implementation DSO. Preserve mistaken provenance as a hash-bound metadata correction; never relabel numerical success as an observed numerical failure. Keep unmatched library/compiler/runtime versions explicit performance covariates. A prescribed library-version control gets a separate diagnostic configuration and effort phase, fresh five trials for changed executions, exact dependency-checked reuse for unchanged models, and exclusion from primary aggregate counts before measurement.
+
 ### Scientific fixture diversity and nonunique answers
 
 Audit supplied data before treating repeated cases as independent evidence. Record identical weight files, repeated sequences, symmetry, zero/constant fields, conditioning and exact input diversity. Retain the supplied contract; add separately named varied fixtures when needed to distinguish plausible translation mistakes. Declare fixture choices and tolerances before collecting target timings, and state which original sizes or modes remain untested. Do not infer trained-model accuracy or scientific prediction quality from an operator check.
