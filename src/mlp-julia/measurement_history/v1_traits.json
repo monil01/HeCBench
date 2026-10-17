@@ -1,0 +1,648 @@
+{
+  "benchmark": "mlp",
+  "primary_motif": "three_layer_dense_affine_fused_bias_relu_inference",
+  "storage_precision": [
+    "float32"
+  ],
+  "compute_precision": [
+    "float32vendorcompute",
+    "float32custommuladd",
+    "float64independentoracle"
+  ],
+  "synchronization": [
+    "ordered3layerdevicepipeline",
+    "blocktileload/readbarriers_custom",
+    "synchronized300warmups",
+    "globalcompletionper10forwardtrial"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "CUDA.jl preserves cuBLASLt source API/descriptor/heuristic sequence; KA/JACC replace opaque vendorGEMM with explicitFP32 tiledkernels matching math and epilogues."
+  },
+  "implementation_class": {
+    "cuda": "vendor_library_interop",
+    "julia": "vendor_library_interop",
+    "julia-ka": "framework_device_kernel",
+    "julia-jacc": "framework_device_kernel"
+  },
+  "timing_scope": "full3layerforwardincludingvendorperlayerdescriptor/heuristicsetup;10forwards/trialmeanperforward",
+  "verification_contract": "raw_numeric_outputs",
+  "keyconfounds": [
+    "Synthetic randomly initialized three-layer feedforward inference, not a trained classifier or dataset accuracy result. Shapes resemble classifier dimensions but no named dataset is established.",
+    "Only original three-layer batch128/input784/hidden512/output10 shape, fourbias/ReLU cases. Epilogue applies to everylayer includingfinal. Other layercounts/shapes and training/backpropagation not covered.",
+    "Native and CUDA.jl retain cuBLASLtFP32 vendor algorithm/heuristic/descriptor lifecycle. KA/JACC use genuine custom16x16x16 shared-memoryFP32 kernels. Algorithm/reduction/tiling/fusedepilogue and hostdescriptor overhead differ; timinggap is not pure frontendabstraction overhead.",
+    "Source cuBLASLt stackdescriptor/layout/preference ABI184/64/64 bytes, modern Julia storage256/112/96 passed active native sizes. Exact pinned12.0 API/library, not genericcrossversion binaryABI portability.",
+    "Vendorinternal tilegeometry/registers/sharedmemory/selectedalgorithm cause unknown. No tensorcore/roofline/DRAM/bottleneck claim from API or timing alone.",
+    "Defaultlegacy stream0 for vendor references versus currenttaskstream for custom kernels. Inputs globally synchronized beforewarmup; orderedfullforward and globalcompletion eachtrial. Only testedNVIDIAbackend, no crossdeviceportability result.",
+    "Source300warmups followedby5trials of10forwards, meanlast4 perforward. Repeatreduction100CLIto10study is measurement repetition only; no layer/update reductions. OriginalCLI fourmodes passedseparately, diagnostic timings not substituted.",
+    "All132352intermediate/finalactivations versusindependentFloat64, sourceabsolute.01 all5trials, exact770058actualinputprefix. Float32vendor/customreduction error differs; no claim of bitexact mathematicalarithmetic.",
+    "Vendorworkspace alloc16MiB but preferenceandpassed4MiB; per-layer init/attributes/layout/heuristic remains insidefullforward clock. Buffercreation/reset/CPUcheck/serialization excluded. Customforward only three kernel launches; documentedhostworkdifference.",
+    "KAshared512Float32=2048B/256lanes, blocks256/256/8; finaloutputtail10features guardedafterallbarriers. JACCsameplus512Float32zerotemplatereads/oneinitialbarrier perblock, explicit2048B andseparateLaunchSpecperlayer.",
+    "Reportedlogicaldenseoperationcount171180032FLOPs/forward (2per multiply-add), optionalbias132352adds; ReLUcomparisons separate. This does notmeasurephysicalFP32instructions, actualmemorytraffic, arithmeticintensityorhardwarecounterroofline.",
+    "Reference restoration and fixture/oracle/LtABI audit separately costed fromone firstcandidate genericdevicekernel pertarget, fourcheckcommands each, zero targetrepairs. FirstJuliareference candidate hadparserwhitespace failure, preserved. Internalcompilerpasses/historicalcostunknown.",
+    "Observedconsumedusage includescontext/cache/reasoning/coordination andbroadwindowoverlapschildren; notexclusive billedtranslationcost, noadditive broad/phase ranking."
+  ],
+  "native_reference_repaired": false,
+  "exclude_untouched_native_aggregates": false,
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "machine_learning",
+    "primary_domain": "synthetic_multilayer_perceptron_inference",
+    "scientific_task": "Evaluate a three-layer FP32 dense feedforward network with optional per-layer bias and ReLU on synthetic random inputs and weights. No learnedmodel/dataset/accuracyexperiment.",
+    "mathematical_operation": "X_next=epilogue(W^T X + optionalbroadcastbias), dimensions784\u2192512\u2192512\u219210, batch128; ReLUmax(0,z) on eachlayerwhenenabled.",
+    "discretization_or_topology": "Column-major feature\u00d7sample activations and inputfeature\u00d7outputfeature weights; three dense bipartite transformations.",
+    "invariants": [
+      "All3layeractivations finite fornamedseed123fixture.",
+      "ReLUall3layersnonnegative whenenabled.",
+      "Every output checked independentlyagainstFloat64densechain; exactactualinputprefix allfourmodels/allfivetrials."
+    ],
+    "accuracy_requirements": [
+      "Original absolute.01 tolerance extendedfromfinaloutputtoall132352activations.",
+      "Allfive artifacts against nativeCUDA andcurrentCUDA.jl, directnumericcomparison, exact770058inputprefix.",
+      "IndependentFloat64oracle, per-layererrors andtrue relativeerror denominatorfloor.01 retained inCPU-onlysavedaudit."
+    ],
+    "precision_sensitivity": "LongFP32dotproducts andthree-layererrorpropagation; vendor/customaccumulationorder producesdifferentroundoff. Synthetic randomweights nottrainedstabilityoraccuracy evidence.",
+    "input_size_regimes": "Originalshape3layers/batch128/784/512/10, fourbias/ReLUcombinations, noothernetwork/productiondatasetregimes.",
+    "community_use_case": "Dense inference primitive in machine learning; no sourceidentifiedscientificapplication ortrainedmodelqualityclaim.",
+    "uncertainty": "Opaquevendoralgorithm versuscustomtile confound; performancecannotisolatefrontendcost. Physicalrooflineposition and gapcauses unprofiled.",
+    "provenance": [
+      {
+        "path": "src/mlp-cuda/main.cu",
+        "sha256": "6fb48076322b2d2a2335549a64c94383aacb1e577889643e345331fbe6bab9c3",
+        "source_locations": "shapeCLI/randomseed/draworder/timers/checker"
+      },
+      {
+        "path": "src/mlp-cuda/mlp.h",
+        "sha256": "d592fe64fb658b281d0b7e4a9a4230341e814608043267a42586641b0e67a63e",
+        "source_locations": "sourceLtper-layerdescriptors/heuristic/epilogue/stream/workspace"
+      },
+      {
+        "path": "src/mlp-cuda/reference.h",
+        "sha256": "51d13aaeefa57fa44b9b12bbc5cf81b7987de1de4046ea776d7443e126643d1a",
+        "source_locations": "CPUreference and source Float32comparison"
+      },
+      {
+        "path": "src/mlp-julia/generate_study_oracles.py",
+        "sha256": "c3c2adffb3c06a460474500614bb80b01dcfdbad8072677566fcaee5585732ed",
+        "source_locations": "independentFloat64alllayers"
+      }
+    ],
+    "reviewed_at": "2026-10-17T22:25:50.897178+00:00",
+    "review_phase": "prospectivepostverificationannotation"
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified",
+      "algorithm": "Three-layer sourcecuBLASLt vendorforward",
+      "mapping": "OpaquevendorGEMM3calls/forward; no assumeddevicegrid",
+      "layout": "Columnmajorweights[k+ifeat*m],input[k+ifeat*n],output[m+ofeat*n], contiguousFloat32vectors.",
+      "precision": {
+        "storage": "Float32input/weights/bias/allactivations",
+        "compute": "CUBLAS_COMPUTE_32F opaquevendorreduction",
+        "oracle": "IndependentFloat64NumPymatrixchain,sourceabsolute.01, all3stages"
+      },
+      "implementation_detail": "SourcecuBLASLtstackInit_internal activeABI184/64/64, FP32compute/columnmajorTAweights/TBidentity, fusedepilogue, perlayertimedheuristiconealgorithm, stream0.",
+      "memory": "Sourceworkspace16MiBallocated/4MiBactivepref",
+      "synchronization": [
+        "ordered3layerdevicepipeline",
+        "blocktileload/readbarriers_custom",
+        "synchronized300warmups",
+        "globalcompletionper10forwardtrial"
+      ],
+      "atomic_operations": [],
+      "implementation_class": "vendor_library_interop",
+      "library_boundary": "DirectsourcecuBLASLt vendor API, actual12.0.2.224/path/hashrecorded; internalalgorithmunknown",
+      "host_control_boundary": "Perforward vendorinit/attributes/layouts/preference/heuristic includedintimer",
+      "resource_policy": {
+        "threads_per_block": "unknown_vendor",
+        "blocks_per_layer": "unknown_vendor",
+        "shared_bytes_per_block": "unknown_vendor",
+        "jacc_initial_template_reads_barrier": false,
+        "registers_spills_occupancy": "unknown"
+      },
+      "fidelity_status": "SourcevendorAPIsequenceandalllayers matched",
+      "configuration_traits": {
+        "mlp_3x128_784_512_10_b0_r0_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r0_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b0_r1_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r1_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        }
+      },
+      "provenance": [
+        {
+          "path": "src/mlp-julia/mlp-julia-cuda.jl/main.jl",
+          "sha256": "a12548a652f0bf163d93c69a06a38c405bc1594768f90a98f88f7651e901dda4",
+          "source_locations": "actualpermodelentry/launch/kernelmapping"
+        },
+        {
+          "path": "src/mlp-julia/study_lt.jl",
+          "sha256": "cb2d87c80f4f0177dc9c4eb8129d4d509108ad42120efe6a9fde502ce579658c",
+          "source_locations": "actualsourceLtFFI/ABI/calls"
+        }
+      ],
+      "attempt_count_policy": "Reference2programcandidates/5checkcommands/1parserrepair/0authoreddevicekernels; historicalunknown",
+      "configuration_id": "mlp_3x128_784_512_10_b1_r1_fp32_v1"
+    },
+    "ka": {
+      "status": "verified",
+      "algorithm": "Three-layercustomtiledFP32dense+fusedbias/ReLU",
+      "mapping": "One256laneCTAper16feature\u00d716sampletile,grid256/256/8forthreelayers,Ktile16,guardedtailafterbarriers.",
+      "layout": "Columnmajorweights[k+ifeat*m],input[k+ifeat*n],output[m+ofeat*n], contiguousFloat32vectors.",
+      "precision": {
+        "storage": "Float32input/weights/bias/allactivations",
+        "compute": "Float32scalarserialKmuladdwithsharedtiles,Float32bias/max",
+        "oracle": "IndependentFloat64NumPymatrixchain,sourceabsolute.01, all3stages"
+      },
+      "implementation_detail": "KA256lanes,16x16output/Ktile16,@localmem512Float32,@synchronize, scalarFP32muladd,bias/ReLUfused, full3layerlaunches.",
+      "memory": "512Float32shared=2048B/CTA, no vendorworkspace",
+      "synchronization": [
+        "ordered3layerdevicepipeline",
+        "blocktileload/readbarriers_custom",
+        "synchronized300warmups",
+        "globalcompletionper10forwardtrial"
+      ],
+      "atomic_operations": [],
+      "implementation_class": "framework_device_kernel",
+      "library_boundary": "Ownframeworkdevicekernel/shared/barrier APIs, noforeignCUDAdevicecall/nooperatorvendorlibrary; CUDAhostallocation/completion onlytestedNVIDIA.",
+      "host_control_boundary": "Threeownframeworklaunches perforward includedintimer; no vendorheuristicsetup",
+      "resource_policy": {
+        "threads_per_block": 256,
+        "blocks_per_layer": [
+          256,
+          256,
+          8
+        ],
+        "shared_bytes_per_block": 2048,
+        "jacc_initial_template_reads_barrier": false,
+        "registers_spills_occupancy": "unknown"
+      },
+      "fidelity_status": "Source3layermath/epilogues matched, vendoralgorithm replacedexplicitly; notfrontend-onlytimingcomparison.",
+      "configuration_traits": {
+        "mlp_3x128_784_512_10_b0_r0_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r0_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b0_r1_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r1_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        }
+      },
+      "provenance": [
+        {
+          "path": "src/mlp-julia/mlp-julia-KA/main.jl",
+          "sha256": "aa9791c05e074fb589c2c3afcc5ede300862b8d09f5f313b442ca852088fad4d",
+          "source_locations": "actualpermodelentry/launch/kernelmapping"
+        }
+      ],
+      "attempt_count_policy": "1candidate/4checkcommands/1genericdevicekernel/0repairs; internalcompilerpassesunknown",
+      "configuration_id": "mlp_3x128_784_512_10_b1_r1_fp32_v1"
+    },
+    "jacc": {
+      "status": "verified",
+      "algorithm": "Three-layercustomtiledFP32dense+fusedbias/ReLU",
+      "mapping": "One256laneCTAper16feature\u00d716sampletile,grid256/256/8forthreelayers,Ktile16,guardedtailafterbarriers.",
+      "layout": "Columnmajorweights[k+ifeat*m],input[k+ifeat*n],output[m+ofeat*n], contiguousFloat32vectors.",
+      "precision": {
+        "storage": "Float32input/weights/bias/allactivations",
+        "compute": "Float32scalarserialKmuladdwithsharedtiles,Float32bias/max",
+        "oracle": "IndependentFloat64NumPymatrixchain,sourceabsolute.01, all3stages"
+      },
+      "implementation_detail": "JACCownshared512Float32template/sync_workgroup,256lanes,16x16output/Ktile16, scalarFP32muladd,fusedbias/ReLU, explicit2048B,separatespecsperlayer.",
+      "memory": "512Float32shared=2048B/CTA, no vendorworkspace",
+      "synchronization": [
+        "ordered3layerdevicepipeline",
+        "blocktileload/readbarriers_custom",
+        "synchronized300warmups",
+        "globalcompletionper10forwardtrial"
+      ],
+      "atomic_operations": [],
+      "implementation_class": "framework_device_kernel",
+      "library_boundary": "Ownframeworkdevicekernel/shared/barrier APIs, noforeignCUDAdevicecall/nooperatorvendorlibrary; CUDAhostallocation/completion onlytestedNVIDIA.",
+      "host_control_boundary": "Threeownframeworklaunches perforward includedintimer; no vendorheuristicsetup",
+      "resource_policy": {
+        "threads_per_block": 256,
+        "blocks_per_layer": [
+          256,
+          256,
+          8
+        ],
+        "shared_bytes_per_block": 2048,
+        "jacc_initial_template_reads_barrier": true,
+        "registers_spills_occupancy": "unknown"
+      },
+      "fidelity_status": "Source3layermath/epilogues matched, vendoralgorithm replacedexplicitly; notfrontend-onlytimingcomparison.",
+      "configuration_traits": {
+        "mlp_3x128_784_512_10_b0_r0_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r0_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": false,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b0_r1_fp32_v1": {
+          "bias_enabled": false,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        },
+        "mlp_3x128_784_512_10_b1_r1_fp32_v1": {
+          "bias_enabled": true,
+          "relu_enabled": true,
+          "vendor_custom_algorithm_confound": true,
+          "full_original_CLI_general_shapes_certified": false,
+          "all3layers_verified": true
+        }
+      },
+      "provenance": [
+        {
+          "path": "src/mlp-julia/mlp-julia-JACC/main.jl",
+          "sha256": "c12da9a401c16c7d0157ecf5262b341464a302b7f22942f5c05a9caa25538811",
+          "source_locations": "actualpermodelentry/launch/kernelmapping"
+        }
+      ],
+      "attempt_count_policy": "1candidate/4checkcommands/1genericdevicekernel/0repairs; internalcompilerpassesunknown",
+      "configuration_id": "mlp_3x128_784_512_10_b1_r1_fp32_v1"
+    }
+  },
+  "configuration_results": {
+    "b0_r0": {
+      "configuration_id": "mlp_3x128_784_512_10_b0_r0_fp32_v1",
+      "result": ".porting-state/portable_julia/runs/20261017T221940916129Z_mlp/result.json",
+      "mean_seconds": {
+        "cuda": 5.410775e-05,
+        "cuda_jl": 5.0490925e-05,
+        "ka": 0.00022297885,
+        "jacc": 0.000406450675
+      },
+      "checked_values_each_trial": 902410,
+      "output_values": 132352,
+      "stage_output_values": [
+        65536,
+        65536,
+        1280
+      ],
+      "input_prefix_count": 770058,
+      "max_abs_error_vs_independent_cpu": {
+        "cuda": 0.001599085293491953,
+        "cuda_jl": 0.001599085293491953,
+        "ka": 0.004944871637235337,
+        "jacc": 0.004944871637235337
+      },
+      "bias": false,
+      "relu": false,
+      "internal_repeats": 10,
+      "native_reference_repaired": false
+    },
+    "b1_r0": {
+      "configuration_id": "mlp_3x128_784_512_10_b1_r0_fp32_v1",
+      "result": ".porting-state/portable_julia/runs/20261017T222039700239Z_mlp/result.json",
+      "mean_seconds": {
+        "cuda": 5.8300525e-05,
+        "cuda_jl": 7.50354e-05,
+        "ka": 0.000225974025,
+        "jacc": 0.0004148255
+      },
+      "checked_values_each_trial": 902410,
+      "output_values": 132352,
+      "stage_output_values": [
+        65536,
+        65536,
+        1280
+      ],
+      "input_prefix_count": 770058,
+      "max_abs_error_vs_independent_cpu": {
+        "cuda": 0.0015778819777096942,
+        "cuda_jl": 0.0015778819777096942,
+        "ka": 0.004722805604615132,
+        "jacc": 0.004722805604615132
+      },
+      "bias": true,
+      "relu": false,
+      "internal_repeats": 10,
+      "native_reference_repaired": false
+    },
+    "b0_r1": {
+      "configuration_id": "mlp_3x128_784_512_10_b0_r1_fp32_v1",
+      "result": ".porting-state/portable_julia/runs/20261017T222108145284Z_mlp/result.json",
+      "mean_seconds": {
+        "cuda": 5.8148525e-05,
+        "cuda_jl": 4.4229650000000004e-05,
+        "ka": 0.0002274958,
+        "jacc": 0.0004421415
+      },
+      "checked_values_each_trial": 902410,
+      "output_values": 132352,
+      "stage_output_values": [
+        65536,
+        65536,
+        1280
+      ],
+      "input_prefix_count": 770058,
+      "max_abs_error_vs_independent_cpu": {
+        "cuda": 0.0006808632988395402,
+        "cuda_jl": 0.0006808632988395402,
+        "ka": 0.001673127164849575,
+        "jacc": 0.001673127164849575
+      },
+      "bias": false,
+      "relu": true,
+      "internal_repeats": 10,
+      "native_reference_repaired": false
+    },
+    "b1_r1": {
+      "configuration_id": "mlp_3x128_784_512_10_b1_r1_fp32_v1",
+      "result": ".porting-state/portable_julia/runs/20261017T222159973177Z_mlp/result.json",
+      "mean_seconds": {
+        "cuda": 5.576025e-05,
+        "cuda_jl": 4.148035e-05,
+        "ka": 0.000222634,
+        "jacc": 0.000406843425
+      },
+      "checked_values_each_trial": 902410,
+      "output_values": 132352,
+      "stage_output_values": [
+        65536,
+        65536,
+        1280
+      ],
+      "input_prefix_count": 770058,
+      "max_abs_error_vs_independent_cpu": {
+        "cuda": 0.0005731915654791919,
+        "cuda_jl": 0.0005731915654791919,
+        "ka": 0.00216847447723012,
+        "jacc": 0.00216847447723012
+      },
+      "bias": true,
+      "relu": true,
+      "internal_repeats": 10,
+      "native_reference_repaired": false
+    }
+  },
+  "configuration_overrides": {
+    "mlp_3x128_784_512_10_b0_r0_fp32_v1": {
+      "bias_enabled": false,
+      "relu_enabled": false,
+      "vendor_custom_algorithm_confound": true,
+      "full_original_CLI_general_shapes_certified": false,
+      "all3layers_verified": true
+    },
+    "mlp_3x128_784_512_10_b1_r0_fp32_v1": {
+      "bias_enabled": true,
+      "relu_enabled": false,
+      "vendor_custom_algorithm_confound": true,
+      "full_original_CLI_general_shapes_certified": false,
+      "all3layers_verified": true
+    },
+    "mlp_3x128_784_512_10_b0_r1_fp32_v1": {
+      "bias_enabled": false,
+      "relu_enabled": true,
+      "vendor_custom_algorithm_confound": true,
+      "full_original_CLI_general_shapes_certified": false,
+      "all3layers_verified": true
+    },
+    "mlp_3x128_784_512_10_b1_r1_fp32_v1": {
+      "bias_enabled": true,
+      "relu_enabled": true,
+      "vendor_custom_algorithm_confound": true,
+      "full_original_CLI_general_shapes_certified": false,
+      "all3layers_verified": true
+    }
+  },
+  "performance_variability_by_configuration": {
+    "mlp_3x128_784_512_10_b0_r0_fp32_v1": {
+      "cuda": {
+        "retained_trial_seconds": [
+          5.46405e-05,
+          5.40315e-05,
+          5.38275e-05,
+          5.39315e-05
+        ],
+        "stddev": 3.6480165843921333e-07,
+        "CV": 0.00674213321454345,
+        "outliers_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          5.21874e-05,
+          4.67344e-05,
+          4.98534e-05,
+          5.31885e-05
+        ],
+        "stddev": 2.86780151030367e-06,
+        "CV": 0.05679835555208525,
+        "outliers_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.0002243421,
+          0.0002225661,
+          0.0002225001,
+          0.0002225071
+        ],
+        "stddev": 9.093152643610451e-07,
+        "CV": 0.0040780336985370815,
+        "outliers_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.0004145138,
+          0.0004056406,
+          0.0004054287,
+          0.0004002196
+        ],
+        "stddev": 5.931299318797409e-06,
+        "CV": 0.01459291295013204,
+        "outliers_removed": false
+      }
+    },
+    "mlp_3x128_784_512_10_b1_r0_fp32_v1": {
+      "cuda": {
+        "retained_trial_seconds": [
+          5.84015e-05,
+          5.81846e-05,
+          5.91735e-05,
+          5.74425e-05
+        ],
+        "stddev": 7.122562290589911e-07,
+        "CV": 0.012216977961330384,
+        "outliers_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          8.31847e-05,
+          7.31246e-05,
+          7.34056e-05,
+          7.04267e-05
+        ],
+        "stddev": 5.596386061855754e-06,
+        "CV": 0.074583277517755,
+        "outliers_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.0002374041,
+          0.000223638,
+          0.000221461,
+          0.000221393
+        ],
+        "stddev": 7.69105133705183e-06,
+        "CV": 0.03403511238538071,
+        "outliers_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.0004158168,
+          0.0004130807,
+          0.0004166748,
+          0.0004137297
+        ],
+        "stddev": 1.6978114206236286e-06,
+        "CV": 0.004092832819158004,
+        "outliers_removed": false
+      }
+    },
+    "mlp_3x128_784_512_10_b0_r1_fp32_v1": {
+      "cuda": {
+        "retained_trial_seconds": [
+          5.81066e-05,
+          5.77275e-05,
+          5.76365e-05,
+          5.91235e-05
+        ],
+        "stddev": 6.811181022162487e-07,
+        "CV": 0.011713420111967564,
+        "outliers_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          4.80544e-05,
+          4.41034e-05,
+          4.24374e-05,
+          4.23234e-05
+        ],
+        "stddev": 2.6764778316536315e-06,
+        "CV": 0.06051320396280846,
+        "outliers_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.0002379281,
+          0.000224845,
+          0.000223695,
+          0.0002235151
+        ],
+        "stddev": 6.979772609954184e-06,
+        "CV": 0.03068088558098296,
+        "outliers_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.0005079656,
+          0.0004242198,
+          0.0004195238,
+          0.0004168568
+        ],
+        "stddev": 4.398816461686028e-05,
+        "CV": 0.09948888447897399,
+        "outliers_removed": false
+      }
+    },
+    "mlp_3x128_784_512_10_b1_r1_fp32_v1": {
+      "cuda": {
+        "retained_trial_seconds": [
+          5.68365e-05,
+          5.56475e-05,
+          5.52975e-05,
+          5.52595e-05
+        ],
+        "stddev": 7.384476397596955e-07,
+        "CV": 0.013243262714204035,
+        "outliers_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          4.41724e-05,
+          4.17884e-05,
+          3.79683e-05,
+          4.19923e-05
+        ],
+        "stddev": 2.5780235329931846e-06,
+        "CV": 0.062150476864182305,
+        "outliers_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.000222282,
+          0.000220189,
+          0.000219929,
+          0.000228136
+        ],
+        "stddev": 3.816235405038152e-06,
+        "CV": 0.017141296500256704,
+        "outliers_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.0004093837,
+          0.0004059926,
+          0.0004066017,
+          0.0004053957
+        ],
+        "stddev": 1.763636291633473e-06,
+        "CV": 0.0043349263703437585,
+        "outliers_removed": false
+      }
+    }
+  }
+}
