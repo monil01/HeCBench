@@ -1,0 +1,82 @@
+{
+  "reference_audit": {
+    "finding": "Historical Julia only touches a256-element Float32array and prints fixed0errors/PASS, without RNG or atomic table updates. Genuine UInt64HPCCjumpahead plus atomicXOR nowimplemented.",
+    "phase": "reference_correctness",
+    "original_path": "/home/imo/HeCBench_julia/src/randomAccess-julia/randomAccess-julia-cuda.jl/original_main.jl",
+    "original_sha256": "8d4bf56cc178151d6934aa19a188545a80905e23c905d978b7208457b558873c",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "HPCCrandomaccessLFSRjumpahead partitionedinto128substreams, each512atomicXORupdates aftertableinitialization",
+  "mapping": "256threadinitgrid64blocks,128threadsingleupdateblock, private64wordjumpaheadmatrix perworkitem",
+  "launch_geometry": {
+    "init_threads": 256,
+    "init_blocks": 64,
+    "update_threads": 128,
+    "update_blocks": 1
+  },
+  "traits": {
+    "primary_motif": "random_index_atomic_xor",
+    "storage_precision": [
+      "UInt64"
+    ],
+    "compute_precision": [
+      "UInt64",
+      "Int64",
+      "Int32"
+    ],
+    "synchronization": [
+      "global_atomic_XOR",
+      "init_update_kernel_boundary",
+      "host_device_after_ten_pairs"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Originaljumpaheadmatrix construction,128substream partition andatomicXOR retained; MVector64private storage replacesCarray"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "mean_init_plus_random_atomic_updates",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Smaller2^14table changeslocality/contention",
+      "Only128updateworkitems asnative",
+      "Privatearraycompilerplacement unprofiled"
+    ],
+    "scientific_intent": {
+      "primary_family": "hardware_data_movement",
+      "primary_domain": "irregular atomic memory benchmark",
+      "scientific_task": "Measure pseudorandom tableupdates with exactXORalgebra",
+      "governing_method": "HPCCRandomAccessLFSRstream andparalleljumpahead",
+      "discretization": "16384UInt64words,65536updates,128substreams",
+      "accuracy_needs": [
+        "exact64bitstate andindices",
+        "fulltablematches sequentialstream"
+      ],
+      "input_regime": "OriginalfixedPOLY7sequence andpow2mask",
+      "precision_sensitivity": "Integeroverflow/wrap,bitshifts,atomicXOR exactness; nofloatingpoint",
+      "community_use_case": "Irregularscientific-memoryaccess proxy; no specificphysicalmodel in source",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/randomAccess-cuda/main.cu",
+          "sha256": "907916c715761cfd2c2cb0a298f77ec907bb0af9054866a262129d3e6cdf177e"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "resource_policy": "No shared memory; private64UInt64jumpaheadmatrix512bytes perworkitem; actualregister/localplacement unprofiled"
+    },
+    "ka": {
+      "resource_policy": "No shared memory; private64UInt64jumpaheadmatrix512bytes perworkitem; actualregister/localplacement unprofiled"
+    },
+    "jacc": {
+      "resource_policy": "No shared memory; private64UInt64jumpaheadmatrix512bytes perworkitem; actualregister/localplacement unprofiled"
+    }
+  },
+  "observation": "An independent serial traversal of the original LFSR stream predicts every final UInt64tableword, while GPUversions retain128jumpaheadsubstreams and atomicXOR. Exactcomparison strengthens the original allowed1percent residual criterion. Smaller tableextent changes cachelocality andcollisionrates, so performance describes this named random-access regime. No floatingpoint or scientificfieldaccuracy is involved."
+}
