@@ -1,0 +1,80 @@
+{
+  "benchmark": "dense-embedding",
+  "configuration_id": "fp32_rows512_batch16_dim768_threads256_k2_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      512,
+      16,
+      768
+    ],
+    "fixture": "input=Float32((17*i)%257-128)/128,dense=Float32((13*i)%127-63)/64; segmentrows=2+b%7 zero-basedi,b",
+    "internal_repeats": 10,
+    "kernel": "k2",
+    "coverage": "all3 nativekernels atdim768/block256; otherdims2048/12288, block128/512/1024unmeasured",
+    "initialization": "All output allocation zero initialized eachtrial, including unvisited suffix; originalnative main left suffix undefined"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/dense-embedding-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native",
+        "k2"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU raggeddense broadcast-add, all393216 outputs including initializedzero suffix finite abs<=1e-3",
+      "source_dependencies": [
+        "../dense-embedding-cuda/main.cu"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/dense-embedding-julia/dense-embedding-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl",
+        "k2"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU raggeddense broadcast-add, all393216 outputs including initializedzero suffix finite abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/dense-embedding-julia/dense-embedding-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl",
+        "k2"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU raggeddense broadcast-add, all393216 outputs including initializedzero suffix finite abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  }
+}
