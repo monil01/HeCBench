@@ -1,12 +1,12 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
+PROJECT ?= --project=../_julia_ka_env
 LAUNCHER ?=
-
+.PHONY: main run study clean
 main:
 	@true
-
-clean:
-	rm -f *.dat
-
 run: main
 	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1024 16384 64 100
+study:
+	$(JULIA) $(PROJECT) thomas-julia-cuda.jl/study.jl
+clean:
+	rm -f *.dat
