@@ -1,0 +1,175 @@
+{
+  "reference_audit": {
+    "finding": "Historical Julia emits a zero-key PASS after a one-element marker kernel; actual concurrent B-link insertion, node splitting, allocator and query computation are absent.",
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_repair",
+    "original_path": "/home/imo/HeCBench_julia/src/btree-julia/btree-julia-cuda.jl/original_main.jl",
+    "original_sha256": "e74c3ccf9e89478a64ec888a9200aa5dcfb3c9823ff01b0fe31f8b43ffb600dd",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Warp-cooperative B-link tree insertion and split/lock/retry traversal followed by warp-cooperative exact key search.",
+  "mapping": "Native 256-thread blocks, one cooperative warp queue handles up to32 keys; same32-word node layout, flags, side links, root splits and atomic node allocation.",
+  "launch_geometry": {
+    "threads": 256,
+    "cases": [
+      256,
+      4096
+    ],
+    "node_words": 32,
+    "shared_bytes": 0
+  },
+  "traits": {
+    "primary_motif": "concurrent_warp_Blink_tree_insert_split_lock_search",
+    "storage_precision": [
+      "UInt32 keys/values/nodes/atomic allocator"
+    ],
+    "compute_precision": [
+      "UInt32 integer bit masks/keys/values",
+      "Int32 lane indices/control"
+    ],
+    "timed_compute_precision": [
+      "UInt32 integer bit masks/keys/values",
+      "Int32 lane indices/control"
+    ],
+    "host_oracle_precision": [
+      "Exact integer dictionary and sort"
+    ],
+    "artifact_encoding": [
+      "UInt32 input and query values plus canonical leaf records"
+    ],
+    "synchronization": [
+      "Warp ballots and shuffles",
+      "Atomic OR/AND spin locks",
+      "Global memory fence on lock acquire/release",
+      "AtomicAdd node allocator",
+      "Host synchronization after build and search"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Preserve native node words, lane reversal, lock protocol, node/root split operations and warp work queues; same bounded pool through generic allocator interface."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "hybrid_device_intrinsics",
+      "jacc": "hybrid_device_intrinsics"
+    },
+    "timing_scope": "two_case_build_and_search_kernel_pairs",
+    "verification_contract": "all_queries_and_canonical_complete_leaf_dictionary",
+    "keyconfounds": [
+      "Named kernels-only scope excludes original main allocation/copy/free region",
+      "Generic allocator bounded to1MiB rather than original4GiB; same capacity in all4",
+      "Tree shape/allocation IDs/slot order may vary, semantic leaf dictionary canonicalized",
+      "Backend CUDA warp/fence/atomic APIs required by KA/JACC",
+      "Query counts aligned to32; native final partial warp unguarded write is unmeasured"
+    ],
+    "scientific_intent": {
+      "primary_family": "graph_irregular",
+      "primary_domain": "Concurrent indexed data structures",
+      "scientific_task": "Build and search an ordered GPU associative map; infrastructure primitive usable for irregular indexing, not a complete scientific application.",
+      "governing_method": "Concurrent B-link tree with warp-cooperative nodes and lock-based splits",
+      "accuracy_needs": [
+        "Every inserted key maps to its original value",
+        "All absent queries return zero",
+        "No lost or duplicated leaf key records"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/btree-cuda/main.cu",
+          "sha256": "fe4f19aed7354cd7eebea1a78b0b4c1e1acdc36e02386dd9fc9f4ed853086df3"
+        },
+        {
+          "path": "src/btree-cuda/map/kernels/map_warps.cu",
+          "sha256": "b4eff9621c4336e68cec2a9b6e0c5ce5ea242365061a9a248ca607add189614e"
+        }
+      ]
+    }
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 3,
+      "compiler_checks": 3,
+      "runtime_feedback_repairs": 1,
+      "compiler_feedback_repairs": 0,
+      "diagnostic_candidates": 1
+    },
+    "ka": {
+      "candidate_attempts": 2,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "execution_checks": 2,
+      "device_candidates": 1,
+      "host_setup_repairs": 1
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "backend_extensions": [
+        "CUDA.jl warp ballot/shuffle, atomic OR/AND/Add, threadfence"
+      ],
+      "resource_policy": "256 threads, explicit zero dynamic shared memory",
+      "storage_layout": "Native contiguous32-word node array and atomic allocator counter",
+      "translated_device_kernels": 3
+    },
+    "ka": {
+      "implementation_class": "hybrid_device_intrinsics",
+      "backend_extensions": [
+        "CUDA.jl warp ballot/shuffle, atomic OR/AND/Add, threadfence"
+      ],
+      "resource_policy": "256 threads, explicit zero dynamic shared memory",
+      "storage_layout": "Native contiguous32-word node array and atomic allocator counter",
+      "translated_device_kernels": 3
+    },
+    "jacc": {
+      "implementation_class": "hybrid_device_intrinsics",
+      "backend_extensions": [
+        "CUDA.jl warp ballot/shuffle, atomic OR/AND/Add, threadfence"
+      ],
+      "resource_policy": "256 threads, explicit zero dynamic shared memory",
+      "storage_layout": "Native contiguous32-word node array and atomic allocator counter",
+      "translated_device_kernels": 3
+    }
+  },
+  "observation": "An ordered-index primitive needs a complete dictionary witness, not only a PASS string. Exhaustive hit/miss queries and every canonical leaf key/value pair distinguish an actual tree from a smoke marker. Tree shape and allocation order are nondeterministic implementation details, so they are inspected separately rather than forced into cross-model byte identity. This named kernel timing does not measure full application indexing overhead.",
+  "effort_observation": "Shared verification required two host canonicalizer repairs before native five-trial success: include the final leaf pair and exclude the reserved key1 sentinel. CUDA.jl required one semantic signed-ballot-shift runtime repair; three full candidate/check processes include a diagnostic bounds variant of the same defect. KA first process failed a backend namespace lookup before device compilation; second process passed its first device candidate/JIT. JACC passed its first candidate/check. Auxiliary CPU witness initially used the unsaved artifact path, then was corrected to saved_path; an unsaved metadata helper lookup also failed. These shared tool/annotation events remain benchmark effort, not target compiler failures. Prospective windows include same-benchmark evidence bookkeeping.",
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "R1 illegal node access",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T221737748639Z_btree/cuda_jl_run1.log"
+      },
+      {
+        "candidate_id": 2,
+        "check_id": 2,
+        "outcome": "R1 bounds diagnostic, same signed ballot defect",
+        "diagnostic_only": true,
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T221857684236Z_btree/cuda_jl_run1.log"
+      }
+    ],
+    "ka": [
+      {
+        "event_id": "btree_ka_backend_namespace_01",
+        "benchmark_id": "btree",
+        "implementation_model": "ka",
+        "phase": "host_setup",
+        "taxonomy_code": "B3",
+        "is_failure": true,
+        "candidate_id": 1,
+        "check_id": 1,
+        "symptom": "UndefVarError CUDABackend in KernelAbstractions before any device compilation.",
+        "cause": "Installed CUDA6.2.1 exports the backend constructor from CUDA, not KernelAbstractions.",
+        "resolution": "Use CUDA.CUDABackend(); device algorithms unchanged.",
+        "final_outcome": "repair_pending_check",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T222103245324Z_btree/ka_run1.log"
+      }
+    ]
+  }
+}

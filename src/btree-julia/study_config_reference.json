@@ -1,0 +1,81 @@
+{
+  "benchmark": "btree",
+  "configuration_id": "btree_warp_blink_256_4096_build_search_full_leaf_dictionary_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 17416,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "cases": [
+      256,
+      4096
+    ],
+    "keys": "Permutation (i*197+53)%N; values=(key*104729+97)%10000019+11",
+    "queries": "Permutation (i*313+19)%(2N), exhaustively hits and misses",
+    "algorithm": "Unchanged native warp B-link insertion/splits/locks and search kernels; all kernel source included",
+    "threads": 256,
+    "node_words": 32,
+    "allocator_words": 262144,
+    "allocator_adaptation": "Same pointer arithmetic and atomicAdd allocation; configured smaller capacity through original generic allocator interface, no device-kernel edits.",
+    "timing": "Sum of two build+search kernel pairs with end sync; allocation/H2D/tree initialization/reset/D2H/canonicalization excluded. Native main end-to-end allocations are not claimed.",
+    "input_prefix_count": 17416,
+    "output_words": 17408,
+    "checked_values": 34824,
+    "scope": "Unique 31-bit safe keys/values, 256 and4096 keys, warp-aligned query counts. Native unused delete/range modes not covered. Partial query warp write guard issue remains outside fixture.",
+    "output_contract": "All query values plus canonicalized complete leaf key/value dictionary; allocator IDs/tree shape/slot order not compared."
+  },
+  "atol": 0,
+  "rtol": 0,
+  "numerical_evidence_strength": "all_queries_plus_canonical_complete_leaf_dictionary",
+  "models": {
+    "cuda": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/btree-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/btree-cuda/GpuBTree.h",
+        "/home/imo/HeCBench_julia/src/btree-cuda/utils.cuh",
+        "/home/imo/HeCBench_julia/src/btree-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/btree-cuda/global.cuh",
+        "/home/imo/HeCBench_julia/src/btree-cuda/allocator/pool_allocator.cuh",
+        "/home/imo/HeCBench_julia/src/btree-cuda/map/map.cuh",
+        "/home/imo/HeCBench_julia/src/btree-cuda/map/host.cu",
+        "/home/imo/HeCBench_julia/src/btree-cuda/map/kernels/map_kernels.cu",
+        "/home/imo/HeCBench_julia/src/btree-cuda/map/kernels/map_warps.cu"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "verification_method": "all_queries_and_complete_leaf_dictionary_vs_independent_map",
+      "native_check_description": "Every existing/missing query and canonical full leaf dictionary against independently generated integer map."
+    },
+    "cuda_jl": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/btree-julia/btree-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/btree-julia/study_tree_body.jl",
+        "/home/imo/HeCBench_julia/src/btree-julia/study_common.jl"
+      ],
+      "verification_method": "all_queries_and_complete_leaf_dictionary_vs_independent_map",
+      "native_check_description": "All hit/miss query values and complete canonical leaf key/value dictionary versus independent integer map."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T221704771378Z_btree/result.json",
+  "reuse_models": [
+    "cuda"
+  ]
+}
