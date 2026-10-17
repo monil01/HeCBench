@@ -1,0 +1,72 @@
+--- original/kernels.h
++++ native_corrected/kernels.h
+@@ -87,7 +87,7 @@
+     int32_t current_y = y_top + ((y_bottom - y_top) >> 1) + threadOffset;
+ 
+     // Are we a '1' or '0' with respect to A[x] <= B[x]
+-    if(current_x >= (int32_t)A_length || current_y < 0) {
++    if(current_x > (int32_t)A_length || current_y < 0) {
+       oneorzero[threadIdx.x] = 0;
+     } else if(current_y >= (int32_t)B_length || current_x < 1) {
+       oneorzero[threadIdx.x] = 1;
+@@ -204,41 +204,37 @@
+     B_shared[sharedX] = Btemp[sharedX];
+     
+     // Make sure this is before the sync
+-    vec_t *Ctemp = C + x_block_top + y_block_top;
++    uint32_t c_start=x_block_top+y_block_top;
++    uint32_t c_stop=diagonal_path_intersections[blockIdx.x+1]+diagonal_path_intersections[blockIdx.x+gridDim.x+2];
++    vec_t *Ctemp = C + c_start;
+ 
+     __syncthreads();
+ 
+     // Binary search diagonal in the local window for path
+-    int32_t offset = threadIdX4 >> 1;
+-    uint32_t Ax = offset + 1;
+-    vec_t * BSm1 = B_shared + threadIdX4p2;
+-    vec_t * BS = BSm1 + 1;
+-    while(true) {
+-      offset = ((offset+1) >> 1);
+-      if(A_shared[Ax] > BSm1[~Ax]) {
+-        if(A_shared[Ax-1] <= BS[~Ax]) {
+-          //Found it
+-          break;
+-        }
+-        Ax -= offset;
+-      } else {
+-        Ax += offset;
+-      }
+-    }
+-
+-    uint32_t Bx = threadIdX4p2 - Ax;
++    // Corrected bounded local co-rank search. Original unbounded unsigned Ax
++    // search underflows on legal sorted inputs when one window is exhausted.
++    int32_t rank = threadIdX4;
++    int32_t left = 0, right = rank;
++    uint32_t Ax = 1, Bx = 1;
++    while(left <= right) {
++      int32_t x = left + (right-left)/2;
++      int32_t y = rank-x;
++      if(x>0 && A_shared[x] > B_shared[y+1]) right=x-1;
++      else if(y>0 && B_shared[y] >= A_shared[x+1]) left=x+1;
++      else {Ax=x+1;Bx=y+1;break;}
++    }
+ 
+     // Merge four elements starting at the found path intersection
+     vec_t Ai, Bi, Ci;
+     Ai = A_shared[Ax];
+     Bi = B_shared[Bx];
+     if(Ai > Bi) {Ci = Bi; Bx++; Bi = B_shared[Bx];} else {Ci = Ai; Ax++; Ai = A_shared[Ax];}
+-    Ctemp[threadIdX4] = Ci;
++    if(c_start+threadIdX4<c_stop && c_start+threadIdX4<C_length) Ctemp[threadIdX4] = Ci;
+     if(Ai > Bi) {Ci = Bi; Bx++; Bi = B_shared[Bx];} else {Ci = Ai; Ax++; Ai = A_shared[Ax];}
+-    Ctemp[threadIdX4p1] = Ci;
++    if(c_start+threadIdX4p1<c_stop && c_start+threadIdX4p1<C_length) Ctemp[threadIdX4p1] = Ci;
+     if(Ai > Bi) {Ci = Bi; Bx++; Bi = B_shared[Bx];} else {Ci = Ai; Ax++; Ai = A_shared[Ax];}
+-    Ctemp[threadIdX4p2] = Ci;
+-    Ctemp[threadIdX4p3] = Ai > Bi ? Bi : Ai;
++    if(c_start+threadIdX4p2<c_stop && c_start+threadIdX4p2<C_length) Ctemp[threadIdX4p2] = Ci;
++    if(c_start+threadIdX4p3<c_stop && c_start+threadIdX4p3<C_length) Ctemp[threadIdX4p3] = Ai > Bi ? Bi : Ai;
+ 
+     // Update for next window
+     if(threadIdx.x == 127) {
