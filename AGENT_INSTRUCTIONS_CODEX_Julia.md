@@ -24,6 +24,8 @@ A host allocation or initialization correction is still a native reference inter
 
 **Reported error metrics:** an uncomputed metric is null/unknown, never a zero placeholder. Define each denominator and floor explicitly; a residual divided by an absolute tolerance is a scaled absolute error, not a relative error. If an archived adapter mislabeled a diagnostic, preserve raw source/trials and attach a hash-bound `reported_metric_definition_erratum` with actual saved-artifact recomputation. This contextual supplement cannot change execution, acceptance, timings, or repair failed checks. Central cross-reference errors and independent mathematical-oracle errors are different comparisons.
 
+**Configuration strata and benchmark denominators:** a benchmark can have an untouched base configuration and a corrected optimized configuration (for example, meanshift). Report configuration-specific eligibility and distinct benchmark unions. When checkpoint stratum name sets overlap, list overlapping names and label the counts non-additive; do not sum them as a disjoint census or discard valid unchanged configurations. A per-model status table using one conservative outcome per benchmark must state that aggregation policy.
+
 ### Meaning of Julia version and separate implementation records
 
 Here, implementation versions mean **CUDA.jl, KA, and JACC**. Also record the actual Julia language release, CUDA.jl/KA/JACC package versions, manifests, driver/toolkit, GPU, and source/configuration hashes independently. Package/model comparisons are not evidence of differences between Julia language releases. A claim about runtime release changes requires an explicit matched release experiment.

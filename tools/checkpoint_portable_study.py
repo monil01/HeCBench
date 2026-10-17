@@ -66,6 +66,17 @@ strata = {
     'corrected_native_reference_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']}),
     'multiple_or_other_device_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
     'untouched_native_single_gpu_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
+stratum_memberships = {
+    'known_native_scientific_defect_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']},
+    'corrected_native_reference_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']},
+    'multiple_or_other_device_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'},
+    'untouched_native_single_gpu_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']}}
+strata_overlaps = {b:[name for name,names in stratum_memberships.items() if b in names]
+                   for b in sorted(set().union(*stratum_memberships.values()))
+                   if sum(b in names for names in stratum_memberships.values())>1}
+strata_interpretation = {'strata_counts_are_additive':not bool(strata_overlaps),
+    'names_in_multiple_strata':strata_overlaps,
+    'meaning':'A benchmark may have both an untouched base and a corrected configuration. These counts describe names with each kind of evidence; sum is not a disjoint benchmark census. Matched total is a distinct-name union.'}
 # Preserve only activity marker identities and state, never cumulative counters or stream paths.
 usage_segments=[]
 for marker_file in sorted((local/'usage_boundaries_300').glob('*/*.jsonl')):
@@ -117,7 +128,7 @@ payload = {
     'cohort': str(cohort_path.relative_to(root)), 'target_benchmarks': target,
     'frozen_baseline': str((local/'baseline_300.json').relative_to(root)),
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
-    'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
+    'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'active_work': read(local/'active_work_300.json', {}),
     'active_work_path': str((local/'active_work_300.json').relative_to(root)),
@@ -150,7 +161,7 @@ out.write_text('# Translation and scientific-paper checkpoint\n\n'
 latest = {'checkpoint_id': stamp, 'path': str(out.relative_to(root)),
           'created_at': now.isoformat(), 'status': status, 'verified_pairs': pairs,
           'verified_portable_versions': versions, 'target_pairs': target,
-          'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
+          'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
           'performance_protocol': 'five_trials_last_four_v1',
           'source_head': heads['source'], 'paper_head': heads['paper']}
 tmp = folder/'LATEST.json.tmp'
