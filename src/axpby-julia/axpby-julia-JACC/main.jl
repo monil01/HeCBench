@@ -25,7 +25,7 @@ function axpby_jacc!(index,out,x,y,lengths,offsets,nt,chunk)
     end
     return
 end
-const AXPBY_SPEC=JACC.launch_spec(threads=512,sync=false)
+const AXPBY_SPEC=JACC.launch_spec(threads=512,shmem_size=0,sync=false)
 function launch_jacc!(out,x,y,lengths,offsets,nt,chunk,blocks)
     JACC.parallel_for(AXPBY_SPEC,blocks*512,axpby_jacc!,out,x,y,lengths,offsets,nt,chunk)
 end
