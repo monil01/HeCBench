@@ -15,7 +15,7 @@ function permutation_jacc!(index,buffer,lg::UInt32,n::UInt32)
     end
 end
 function factory(buffer,lg,n)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,n,permutation_jacc!,buffer,UInt32(lg),UInt32(n))
 end
 permutation_study(factory)
