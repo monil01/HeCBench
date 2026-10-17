@@ -1,0 +1,100 @@
+{
+  "reference_audit": {
+    "finding": "HistoricalJuliaexplicitlysimplifiesAES tosingleSBox/XORround androundtrip; omits native10rounds,ShiftRows,MixColumns,expandedkeys and4threadsharedstate. GenuineAES128reference nowrestoresnativealgorithm andmapping withindependentOpenSSL/NISTfullbytewitness.",
+    "phase": "reference_correctness",
+    "original_path": "/home/imo/HeCBench_julia/src/aes-julia/aes-julia-cuda.jl/original_main.jl",
+    "original_sha256": "b23d4d1a56491228794d5bc24b3e29aee29db2284d9d5b95f8717108003ddeab",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "NativeAES12810roundencryption/decryption, SBoxlookup, rowrotation, GF256MixColumns, roundkeyXOR",
+  "mapping": "Fourthreads alongy cooperateon4bytewords of16bytecipherblock;16x16grid; twoscratch16bytearrays combinedinto32bytearray",
+  "launch_geometry": {
+    "threads": [
+      1,
+      4
+    ],
+    "blocks": [
+      16,
+      16
+    ],
+    "cipher_blocks": 256,
+    "shared_bytes": 32
+  },
+  "traits": {
+    "primary_motif": "cooperative_block_cipher",
+    "storage_precision": [
+      "UInt8"
+    ],
+    "compute_precision": [
+      "UInt8",
+      "Int32"
+    ],
+    "synchronization": [
+      "18blockbarrierspermode",
+      "host_device_after_ten_launches"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same4threadrowownership,10rounds,2barriersperinnerround and32bytesharedstate; NTuple4UInt8 replacesuchar4"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_encrypt_decrypt_bulk_kernel_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Small64x64post-grayscale fixture",
+      "FixedknownkeyAES128only",
+      "JACCsharedtemplateinitextracopy/barrier"
+    ],
+    "scientific_intent": {
+      "primary_family": "discrete_crypto",
+      "primary_domain": "blockcipheralgorithm benchmark",
+      "scientific_task": "Encryptanddecryptindependent128bitblocks",
+      "governing_method": "AES12810roundsubstitution/permutation/GF256lineartransform",
+      "discretization": "256blocks of16bytes,4cooperatingthreads perblock",
+      "accuracy_needs": [
+        "exactallbytes",
+        "independentknownanswer andfullcipheroutputs",
+        "expandedkey/state-layoutcorrectness"
+      ],
+      "input_regime": "Deterministic4096bytefixture withNISTfirstblock, key000102...0f",
+      "precision_sensitivity": "ExactUInt8Galoisfieldarithmetic andbitshifts, nofloatingpoint",
+      "community_use_case": "Cryptographiccomputationprimitive; notsecuritycertificationorphysicalmodelaccuracy",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/aes-cuda/kernels.cu",
+          "sha256": "1adf0e9e0384e229b1b7381f8c7b4ef483db28744dddabdbdf388594053b285d"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "resource_policy": "Static8NTuple4UInt8slots32bytes; native2separate16bytearrays"
+    },
+    "ka": {
+      "resource_policy": "Static8NTuple4UInt8slots32bytes"
+    },
+    "jacc": {
+      "resource_policy": "Explicit32dynamicsharedbytes plusentire8tupletemplatecopy bythreadY1andextraJACCsharedbarrier",
+      "synchronization": [
+        "18AESroundblockbarriers",
+        "oneJACCsharedinitializationbarrier",
+        "host_device_after_ten_launches"
+      ],
+      "shared_initialization_source_evidence": "JACC1.4.0 CUDAExt.shared(vector) guards threadIdx.y==1; withthreads1x4 only one lane copies8tuplewords thenoneextraallblockbarrier"
+    }
+  },
+  "observation": "The historicalone-roundsubstitute is replaced by the realten-roundAES128algorithm andnativefour-threadcooperation. IndependentOpenSSL computes everycipherblock after explicitnative-state transpose; astandardknown-answervector checks the firstblock. Both encryptionanddecryption bytearrays areverified, beyond self-roundtrip. This namedpost-grayscale fixture avoids missingbitmapdependency without timinghostpreprocessing; it doesnotcertifysecurity.",
+  "prospective_usage_scope": {
+    "workflow": "Prospective sharedbenchmark_workflow begin before firstsourceaudit; contains allsubphases, do notadd childtotals toparent",
+    "shared_reference": "Prospective beginbeforefirstartifactdraft, includes independentOpenSSLfixture andNISTsourcecitationaudit, native/CUDAjlverification",
+    "ka": "Separate beginafterreferencevalidation, beforeKAfirstdraft",
+    "other_benchmark_interleaving": "none",
+    "jacc": "Separate beginafterKAverified, beforefirstJACCartifactdraft"
+  }
+}
