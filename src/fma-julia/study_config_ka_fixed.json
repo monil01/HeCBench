@@ -1,0 +1,90 @@
+{
+  "benchmark": "fma",
+  "configuration_id": "fma_fp32_basic_rowwise_na1024_nc2048_c64_ops1024_r20_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "atol": 0.001,
+  "rtol": 0,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "na": 1024,
+    "nc": 2048,
+    "channels": 64,
+    "ops": 1024,
+    "repeats": 20,
+    "precision": "Float32 only; Float16/BFloat16/Float64 unmeasured",
+    "fixture": "dyadic signedA/B, nontrivial deterministic gather and unique scattered output rows",
+    "scope": "Both basic and rowwise cases with zero fills inside each repeat allmodels. Native shared/vectorized mapping vs inheritedJulia scalar globalmapping; KA rowwise oneop/thread."
+  },
+  "ontology": {
+    "path": "ontology/benchmarks/fma.yaml",
+    "reviewed_motifs": [
+      "gather-scatter",
+      "indexed-map"
+    ],
+    "limitations": [
+      "NamedFP32 only; historical BF16 label incorrectly executesFloat32 and is not evidence ofBF16support.",
+      "Native sharedB/vector loads differ CUDA.jl/KA/JACCglobal scalarB loads; adaptation confound."
+    ]
+  },
+  "models": {
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/fma-julia/fma-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/fma-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/_portable_study/OwnedStudy.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "All262144outputs including unwrittenrows compare against independently indexedCPU product; dualreference artifacts."
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/fma-julia/fma-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/fma-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/_portable_study/OwnedStudy.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "All262144outputs including unwrittenrows compare against independently indexedCPU product; dualreference artifacts."
+    },
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/fma-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/fma-cuda/kernels.h",
+        "/home/imo/HeCBench_julia/src/fma-julia/study_original_fp32.cuh"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "Original native templatedkernels and dispatch unchanged; all262144outputs CPUchecked."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T235249480469Z_fma/result.json",
+  "reuse_models": [
+    "cuda_jl",
+    "ka"
+  ]
+}
