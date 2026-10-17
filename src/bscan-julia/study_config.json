@@ -1,0 +1,110 @@
+{
+  "benchmark": "bscan",
+  "configuration_id": "bscan_independent_oneblock_allsixN_32to1024_repeat10_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "atol": 0,
+  "rtol": 0,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "sizes": [
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "fixture": "Int32((i*37+11)%101-50), i0based",
+    "repeat": 10,
+    "scope": "All6 blocksize cases, ONEblock/case forALLmodels. Original30240blocks concurrentlywrite sameoutputaddresses (globalwrite race); named independentblockprimitive study avoids that race; not originalredundantgrid performance."
+  },
+  "ontology": {
+    "path": "ontology/benchmarks/bscan.yaml",
+    "reviewed_motifs": [
+      "exclusive-binary-prefix-scan",
+      "workgroup-collective"
+    ],
+    "limitations": [
+      "Originalnative redundantgrid globaloutputrace notadmitted; onlysingleblockpercase verified/timed.",
+      "Native warpballot/volatilewarp scan assumeswarpordering; V100numericalverification doesnotprove crossarchitecturememorymodelcorrectness.",
+      "HistoricalJulia perthread quadraticprefix vsnewKA/JACC HillisSteele workgroup scan, nativewarpprefix; algorithmadaptationexplicit.",
+      "KA allocatesstatic1024Int32elements allcases; JACC dynamic4*Nbytes+templatecopy; not resourceidentical."
+    ]
+  },
+  "models": {
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/bscan-julia/bscan-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/bscan-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/_portable_study/OwnedStudy.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "All2016exclusivebinaryprefixvalues exactCPU+bothrefs; mixedpositive/negative/zero input, allsixcases."
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/bscan-julia/bscan-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/bscan-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/_portable_study/OwnedStudy.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "All2016exclusivebinaryprefixvalues exactCPU+bothrefs; mixedpositive/negative/zero input, allsixcases."
+    },
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/bscan-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/bscan-cuda/main.cu"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "Originalbinaryscan devicecode unchanged, originalracyredundantgrid replacednamedONEblock/case consistentlyallmodels."
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/bscan-julia/bscan-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/bscan-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/_portable_study/OwnedStudy.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_cpu_and_binary_artifacts",
+      "native_check_description": "All2016exclusivebinaryprefixvalues exactCPU+bothrefs; mixedpositive/negative/zero input, allsixcases."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T001413651067Z_bscan/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
