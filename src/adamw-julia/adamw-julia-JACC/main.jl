@@ -1,0 +1,30 @@
+using CUDA,JACC
+include(joinpath(@__DIR__,"..","study_common.jl"))
+function kernel!(index,p,g,ms,vs,m,v,template,c2,ss)
+ t=mod(index-1,64)+1;group=div(index-1,64)+1;shared=JACC.shared(template)
+ i=(group-1)*64+t
+ pl,pr,ml,mr,vl,vr=update(i,group,p,g,ms,vs,m,v,c2,ss)
+ @inbounds begin
+  p[2i-1]=pl;p[2i]=pr;shared[t]=max(ml,mr);shared[t+64]=max(vl,vr)
+ end
+ JACC.sync_workgroup()
+ stride=32
+ while stride>=1
+  if t<=stride
+   @inbounds shared[t]=max(shared[t],shared[t+stride]);shared[t+64]=max(shared[t+64],shared[t+64+stride])
+  end
+  JACC.sync_workgroup()
+  stride>>=1
+ end
+ @inbounds em=shared[1];vm=shared[65]
+ if t==1;@inbounds ms[group]=em;vs[group]=vm;end
+ JACC.sync_workgroup()
+ @inbounds m[i]=pack_native(quant(EM,EC,ml/em),quant(EM,EC,mr/em));v[i]=pack_native(quant(VM,VC,vl/vm),quant(VM,VC,vr/vm))
+end
+function run!(args...)
+ for (_,c2,ss) in PARAMS
+  JACC.parallel_for(JACC.launch_spec(threads=64,blocks=64,shmem_size=512,sync=false),4096,kernel!,args...,c2,ss)
+ end
+ return
+end
+study(run!)
