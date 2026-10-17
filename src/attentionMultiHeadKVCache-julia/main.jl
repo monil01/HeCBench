@@ -1,1 +1,1 @@
-include("../mcpr-julia/main.jl")
+include(joinpath(@__DIR__,"attentionMultiHeadKVCache-julia-cuda.jl","study.jl"))
