@@ -3,18 +3,23 @@
   "benchmark_id": "mdh",
   "scientific_intent": {
     "primary_family": "particle_molecular",
-    "application_domain": "Biomolecular electrostatics",
-    "scientific_task": "Evaluate grid potentials from atom charges and radii",
-    "mathematical_method": "Multiple Debye-Huckel screened electrostatic interaction; source explicitly inspired by APBS",
-    "accuracy_requirements": "Singular-distance handling, screening exponential, sum order and all grid values",
-    "community_use_case": "Electrostatic field operators used in molecular analysis; not validation of a Poisson-Boltzmann solver",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-grounded scientific intent and operator review only; full model-specific numerical fidelity remains separately audited.",
-    "evidence": [
+    "primary_domain": "screened molecular electrostatic potentials",
+    "scientific_task": "Evaluate Multiple Debye-Huckel screened atom potentials on gridpoints",
+    "governing_method": "Sum q/r exp(-kappa(r-size))/(1+kappa size) with scalarpre1",
+    "discretization": "129atoms,1024gridpoints,4lanes perworkitem",
+    "accuracy_needs": [
+      "finite positive potential for positive charges",
+      "avoid source-grid singularities",
+      "three math/layoutvariants agree"
+    ],
+    "input_regime": "Separated dyadic atom/grid positions, positivecharges, pre1=1,xkappa=.125,size.125to.5",
+    "precision_sensitivity": "Float32distance, exp or fast-exp, accumulation; Float64CPUoracle separately",
+    "community_use_case": "APBS-inspired molecular electrostatic field evaluation, not full Poisson-Boltzmann solver validation",
+    "review_status": "source_reviewed",
+    "source_hash_evidence": [
       {
         "path": "src/mdh-cuda/main.cu",
-        "sha256": "bc9611fd45f571de16b134f769a9e04586eaad9a8ccebae5b6a05c715f29d121",
-        "scope": "Source declarations, comments and mathematical operator structure; not validation of the original application."
+        "sha256": "bc9611fd45f571de16b134f769a9e04586eaad9a8ccebae5b6a05c715f29d121"
       }
     ]
   },
@@ -24,5 +29,25 @@
     "status": "inferred base; not measured evidence"
   },
   "historical_pass_method": "native_pass_trusted",
-  "historical_pass_is_strengthened_verification": false
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [],
+  "scientific_witness_evidence": {
+    "path": ".porting-state/portable_julia/scientific_witnesses_300/mdh.json",
+    "sha256": "dc7237a8035e204bd85171a1d7a41934a918a76acbea6a3efff89215bcc5f7e7",
+    "summary": {
+      "benchmark": "mdh",
+      "witness": "source_derived_default_exponential_range",
+      "natom": 5877,
+      "size_assignment": "size[i]=(float)natom",
+      "coordinate_bounds": "allatomandgridcoordinatecomponentsin[0,1]",
+      "max_distance": 1.7320508075688772,
+      "xkappa": 0.0735516324639,
+      "min_exponential_argument": 432.13554882593314,
+      "log_float32_max": 88.72283905206835,
+      "conclusion": "Default exponential term necessarilyoverflowsFloat32forpositivecharges; originalfabsf(inf-inf)>tol isfalse, so PASS alone cannot confirm finite accuracy. Source-derived range proof, not observed GPU default failure.",
+      "source_sha256": "bc9611fd45f571de16b134f769a9e04586eaad9a8ccebae5b6a05c715f29d121"
+    },
+    "model_trial_summary": [],
+    "interpretation": "Additional scoped mathematical/invariant evidence; complements full dual-reference checks, not a proof over all inputs."
+  }
 }

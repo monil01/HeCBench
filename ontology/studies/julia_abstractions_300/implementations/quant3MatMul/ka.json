@@ -14,9 +14,65 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Load256-value vector tile, decode3-bit column weights, accumulate and globalatomicadd.",
+    "mapping": "Grid16x4 blocks256, one output column perlane,256-row serial inner loop.",
+    "layout": "PackedUInt32 words stored throughInt32 array, column-contiguous packed rows; Float32 vector/scales/zeros/output.",
+    "precision": {
+      "storage": [
+        "packed uint32 3bit",
+        "float32"
+      ],
+      "compute": "uint32 decode,float32 accumulation"
+    },
+    "implementation_detail": "Static256Float32 tile, portable bit-offset loop, Atomix output merge.",
+    "memory": "1024B local vector tile.",
+    "synchronization": [
+      "one vector-tile load barrier"
+    ],
+    "atomic_operations": [
+      "float32 global add"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/quant3MatMul-julia/quant3MatMul-julia-KA/main.jl",
+        "sha256": "dfab0a61905b4b7f6efefe23d2092f15d688dbbbc509f83b6023a5e40bc76e8e",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Load256-value vector tile, decode3-bit column weights, accumulate and globalatomicadd.",
+    "work_item_mapping": "Grid16x4 blocks256, one output column perlane,256-row serial inner loop.",
+    "layout": "PackedUInt32 words stored throughInt32 array, column-contiguous packed rows; Float32 vector/scales/zeros/output.",
+    "storage_precision": [
+      "packed uint32 3bit",
+      "float32"
+    ],
+    "compute_precision": "uint32 decode,float32 accumulation",
+    "memory_hierarchy_and_access": "1024B local vector tile.",
+    "synchronization": [
+      "one vector-tile load barrier"
+    ],
+    "atomics_and_reductions": [
+      "float32 global add"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "quant3MatMul",
     "primary_motif": "packed3bit_dequantized_matvec",
@@ -52,7 +108,144 @@
     ],
     "jacc_shared_memory_policy": "explicit_required_1024_bytes",
     "observation": "research/observations/quant3MatMul.md",
-    "ontology_sha256": "e86d9a247a8220b323f83b0987d1ddfb17c2b0ed483a28e3c239e4dea6f0a0fd"
+    "ontology_sha256": "e86d9a247a8220b323f83b0987d1ddfb17c2b0ed483a28e3c239e4dea6f0a0fd",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "gptq_packed3bit_matrix_vector_product",
+      "scientific_task": "Decode packed3-bit weights, apply column scale/zero and multiply by vector.",
+      "mathematical_operation": "y[c]=sum_r (scale[c]*q[r,c]-zero[c])*x[r].",
+      "discretization_or_topology": "4096x1024 weight matrix;3-bit codes straddle32-bit words;256-row tiles.",
+      "invariants": [
+        "All decoded codes in0..7.",
+        "Output reset each timed operation before atomic tile accumulation."
+      ],
+      "accuracy_requirements": [
+        "All1024 Float32 outputs absolute1e-3 CPU and dual checked; varied codes/scales/zeros."
+      ],
+      "precision_sensitivity": "UInt32 cross-word bit decoding, Float32 accumulation and atomics; native half2 faster variant unmeasured.",
+      "input_size_regimes": "Reduced shared4096x1024,10 repeats; original49152x12288 OPT-175B FC2 shape unmeasured.",
+      "community_use_case": "Native source explicitly cites GPTQ test_kernel.py and OPT-175B FC2 matvec; selected reduced case preserves packed operation.",
+      "uncertainty": "No model inference or full original matrix size measured.",
+      "provenance": [
+        {
+          "path": "src/quant3MatMul-cuda/main.cu",
+          "sha256": "a53f13eb75d4a66f9d2633753cdc8d158d527dc66e14a35c97d8554906575730",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/quant3MatMul-julia/study_common.jl",
+          "sha256": "28401f70213a9034bcbf17388f81007973a4c9672f9356db713a0ccf0e22321b",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:18:45.330115+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Load256-value vector tile, decode3-bit column weights, accumulate and globalatomicadd.",
+        "mapping": "Grid16x4 blocks256, one output column perlane,256-row serial inner loop.",
+        "layout": "PackedUInt32 words stored throughInt32 array, column-contiguous packed rows; Float32 vector/scales/zeros/output.",
+        "precision": {
+          "storage": [
+            "packed uint32 3bit",
+            "float32"
+          ],
+          "compute": "uint32 decode,float32 accumulation"
+        },
+        "implementation_detail": "Repaired real decode loop replaces original constant-pattern shortcut; dynamic vector tile.",
+        "memory": "1024B shared vector tile.",
+        "synchronization": [
+          "one vector-tile load barrier"
+        ],
+        "atomic_operations": [
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/quant3MatMul-julia/quant3MatMul-julia-cuda.jl/main.jl",
+            "sha256": "fc6a679d3ba700d79fdbe73bd4eab4e2402f9d02cdc90cbf9e5778074276999a",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Load256-value vector tile, decode3-bit column weights, accumulate and globalatomicadd.",
+        "mapping": "Grid16x4 blocks256, one output column perlane,256-row serial inner loop.",
+        "layout": "PackedUInt32 words stored throughInt32 array, column-contiguous packed rows; Float32 vector/scales/zeros/output.",
+        "precision": {
+          "storage": [
+            "packed uint32 3bit",
+            "float32"
+          ],
+          "compute": "uint32 decode,float32 accumulation"
+        },
+        "implementation_detail": "Static256Float32 tile, portable bit-offset loop, Atomix output merge.",
+        "memory": "1024B local vector tile.",
+        "synchronization": [
+          "one vector-tile load barrier"
+        ],
+        "atomic_operations": [
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/quant3MatMul-julia/quant3MatMul-julia-KA/main.jl",
+            "sha256": "dfab0a61905b4b7f6efefe23d2092f15d688dbbbc509f83b6023a5e40bc76e8e",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Load256-value vector tile, decode3-bit column weights, accumulate and globalatomicadd.",
+        "mapping": "Grid16x4 blocks256, one output column perlane,256-row serial inner loop.",
+        "layout": "PackedUInt32 words stored throughInt32 array, column-contiguous packed rows; Float32 vector/scales/zeros/output.",
+        "precision": {
+          "storage": [
+            "packed uint32 3bit",
+            "float32"
+          ],
+          "compute": "uint32 decode,float32 accumulation"
+        },
+        "implementation_detail": "JACC.shared view stages256 input values, same bit-offset loop, JACC atomic merge.",
+        "memory": "1024B dynamic shared vector tile.",
+        "synchronization": [
+          "one vector-tile load barrier"
+        ],
+        "atomic_operations": [
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/quant3MatMul-julia/quant3MatMul-julia-JACC/main.jl",
+            "sha256": "c461cad843416588cf463644b823c945f6842fd6986c3b551991f77ab5172134",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -89,10 +282,12 @@
       "run_id": "20261017T001709457419Z_quant3MatMul",
       "result": ".porting-state/portable_julia/runs/20261017T001709457419Z_quant3MatMul/result.json",
       "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
       "reference_provenance": null,
+      "configuration_classification_adjudication": null,
       "result_sha256": "3f71f80bc74f523dde7daa3971f9239573d692460f54bef7453e964f7f5784f0",
       "source_hash": "231c25190580b18ee81c4b34f9d8b31cffbcfebce9b7eb8ff7b03e3482a62dda",
       "declared_environment": null,
@@ -129,7 +324,48 @@
     }
   ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "quant3MatMul-ka-P1-retrospective-implementation",
+        "benchmark_id": "quant3MatMul",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/quant3MatMul.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "quant3MatMul-ka-P1-retrospective-implementation",
+          "benchmark": "quant3MatMul",
+          "model": "ka",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native unrolled decode versus portable bit-offset loop; output reset included in allfour timed operations; half2 variant unported.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/quant3MatMul-cuda/main.cu",
+              "sha256": "a53f13eb75d4a66f9d2633753cdc8d158d527dc66e14a35c97d8554906575730",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/quant3MatMul-julia/quant3MatMul-julia-KA/main.jl",
+              "sha256": "dfab0a61905b4b7f6efefe23d2092f15d688dbbbc509f83b6023a5e40bc76e8e",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
     "history_completeness": "partial",
     "missing_history_is_zero": false
@@ -154,7 +390,8 @@
         "src/quant3MatMul-julia/quant3MatMul-julia-KA/main.jl"
       ],
       "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
-    }
+    },
+    "observed_harness_activity_windows": []
   },
   "source_commit": "d85b8175d6e3db8bf4041e79b71494e39e5eaf01",
   "explicit_outcome_evidence": null

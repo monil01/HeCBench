@@ -14,9 +14,73 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Per-thread strided loss/weight partials followed by thread0 serial256-partial reduction.",
+    "mapping": "Single block256;16 sample positions per lane before ignored-label filtering.",
+    "layout": "Flat row-major Float32 scores, Int32 labels, Float32 classweights, two scalar outputs.",
+    "precision": {
+      "storage": [
+        "float32",
+        "int32 labels"
+      ],
+      "compute": "float32 accumulation and division"
+    },
+    "implementation_detail": "Static512Float32 scratch, namedcase shape/ignore32 fixed in body.",
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 1,
+      "shared_bytes": 2048
+    },
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+    "provenance": [
+      {
+        "path": "src/nlll-julia/nlll-julia-KA/main.jl",
+        "sha256": "ee21d51b83a3baf5f9f8e881c7fb13775300da07b4fcc2b01458be2f24e4017d",
+        "source_locations": "actual kernel, precision stages and launch policy"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+    "memory": "Static2048B shared partials",
+    "synchronization": [
+      "one shared-partials barrier"
+    ],
+    "atomic_operations": []
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Per-thread strided loss/weight partials followed by thread0 serial256-partial reduction.",
+    "work_item_mapping": "Single block256;16 sample positions per lane before ignored-label filtering.",
+    "layout": "Flat row-major Float32 scores, Int32 labels, Float32 classweights, two scalar outputs.",
+    "storage_precision": [
+      "float32",
+      "int32 labels"
+    ],
+    "compute_precision": "float32 accumulation and division",
+    "memory_hierarchy_and_access": "Static2048B shared partials",
+    "synchronization": [
+      "one shared-partials barrier"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1,
+      "shared_bytes": 2048
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 1,
+      "shared_bytes": 2048
+    },
+    "library_backend_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "fidelity_status_and_scope": "Verified named scope; model-specific adaptation disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "nlll",
     "primary_motif": "reduction",
@@ -50,7 +114,146 @@
     ],
     "jacc_shared_memory_policy": "explicit_required_2048_bytes",
     "observation": "research/observations/nlll.md",
-    "ontology_sha256": "488e47c4dafcad5978ffcea0ea2742d96d2976a1517c81d89063978006ce576a"
+    "ontology_sha256": "488e47c4dafcad5978ffcea0ea2742d96d2976a1517c81d89063978006ce576a",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "weighted_classification_loss",
+      "scientific_task": "Compute class-weighted mean negative log-likelihood and total contributing weight.",
+      "mathematical_operation": "-sum_i weight[target_i]*input[i,target_i]/sum_i weight[target_i], ignoring target32; also return totalweight.",
+      "discretization_or_topology": "4096 samples x64 classes, labels and class weights.",
+      "invariants": [
+        "Ignored labels contribute neither loss nor weight.",
+        "Positive totalweight required for the selected mean reduction."
+      ],
+      "accuracy_requirements": [
+        "Both finite Float32 outputs checked at absolute1e-5; selected dyadic fixture, full dual-reference evidence."
+      ],
+      "precision_sensitivity": "Float32 weighted sums and final division; Float16/native other thread-count cases unmeasured.",
+      "input_size_regimes": "4096x64,ignore32,one256-thread block,size_average=true,ten repeats.",
+      "community_use_case": "Weighted classification-loss primitive; no specific dataset or learning task beyond the operator is identified.",
+      "uncertainty": "Fixture inputs are synthetic negative values, not independently validated normalized log-probabilities.",
+      "provenance": [
+        {
+          "path": "src/nlll-cuda/main.cu",
+          "sha256": "4bd2cc2d9f16ff98fb07eb7d2eaf9f013d3dfab3dbec5375ba9338cbff1ce075",
+          "source_locations": "native operation, launch and original scope"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:13:28.209022+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-thread strided loss/weight partials followed by thread0 serial256-partial reduction.",
+        "mapping": "Single block256;16 sample positions per lane before ignored-label filtering.",
+        "layout": "Flat row-major Float32 scores, Int32 labels, Float32 classweights, two scalar outputs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32 labels"
+          ],
+          "compute": "float32 accumulation and division"
+        },
+        "implementation_detail": "Two dynamic shared256Float32 arrays, generic size_average/ignore/thread-count parameters.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1,
+          "shared_bytes": 2048
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/nlll-julia/nlll-julia-cuda.jl/main.jl",
+            "sha256": "6da159f11d1628fc8c6be7cb84246861231fd48aba8c7cc636d91ab73fb6a207",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Dynamic2048B shared partials",
+        "synchronization": [
+          "one shared-partials barrier"
+        ],
+        "atomic_operations": []
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-thread strided loss/weight partials followed by thread0 serial256-partial reduction.",
+        "mapping": "Single block256;16 sample positions per lane before ignored-label filtering.",
+        "layout": "Flat row-major Float32 scores, Int32 labels, Float32 classweights, two scalar outputs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32 labels"
+          ],
+          "compute": "float32 accumulation and division"
+        },
+        "implementation_detail": "Static512Float32 scratch, namedcase shape/ignore32 fixed in body.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1,
+          "shared_bytes": 2048
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/nlll-julia/nlll-julia-KA/main.jl",
+            "sha256": "ee21d51b83a3baf5f9f8e881c7fb13775300da07b4fcc2b01458be2f24e4017d",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Static2048B shared partials",
+        "synchronization": [
+          "one shared-partials barrier"
+        ],
+        "atomic_operations": []
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-thread strided loss/weight partials followed by thread0 serial256-partial reduction.",
+        "mapping": "Single block256;16 sample positions per lane before ignored-label filtering.",
+        "layout": "Flat row-major Float32 scores, Int32 labels, Float32 classweights, two scalar outputs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32 labels"
+          ],
+          "compute": "float32 accumulation and division"
+        },
+        "implementation_detail": "Writes512Float32 global workspace, barrier, then JACC.shared stages allpartials into dynamic2048B scratch before serial reduction.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1,
+          "shared_bytes": 2048
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/nlll-julia/nlll-julia-JACC/main.jl",
+            "sha256": "50a1d03702547380b79c55bac5abae8d8af68fec2081986a3a4d6636d652677c",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Global512Float32 workspace plus dynamic2048B shared staging",
+        "synchronization": [
+          "globalworkspace visibility barrier",
+          "JACC.shared load barrier"
+        ],
+        "atomic_operations": []
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -84,10 +287,12 @@
       "run_id": "20261016T233833596114Z_nlll",
       "result": ".porting-state/portable_julia/runs/20261016T233833596114Z_nlll/result.json",
       "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
       "reference_provenance": null,
+      "configuration_classification_adjudication": null,
       "result_sha256": "2149ff6e0428f56778b3db36dd23ee707e8c9b330d3f8391a02da3a3c34429b7",
       "source_hash": "346b03a414bb3c5ab8883160cfe41b75272351936f9ad6b33120179ac262615e",
       "declared_environment": null,
@@ -149,7 +354,8 @@
         "src/nlll-julia/nlll-julia-KA/main.jl"
       ],
       "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
-    }
+    },
+    "observed_harness_activity_windows": []
   },
   "source_commit": "4b5f05fcbc72ba764eef1806f8752ab47a3b2396",
   "explicit_outcome_evidence": null

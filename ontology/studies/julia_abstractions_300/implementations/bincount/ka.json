@@ -14,9 +14,65 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Global atomic histogram or shared block histogram followed by global atomic merge.",
+    "mapping": "1024 blocks of256, one sample per lane in named scope.",
+    "layout": "Contiguous Float32 samples and Int32 bin counters.",
+    "precision": {
+      "storage": [
+        "float32",
+        "int32"
+      ],
+      "compute": "float32 bin selection and int32 counters"
+    },
+    "implementation_detail": "Fixed768 bins and262144 samples; static local histogram and Atomix operations.",
+    "memory": "Global buffers; static3072B local memory in local mode.",
+    "synchronization": [
+      "shared-mode initialization and merge barriers"
+    ],
+    "atomic_operations": [
+      "int32 shared and global add"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/bincount-julia/bincount-julia-KA/main.jl",
+        "sha256": "7acb39c8e11fed06785513f1aac7aced6627b1fe81317044a594c74d397ad0e6",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Global atomic histogram or shared block histogram followed by global atomic merge.",
+    "work_item_mapping": "1024 blocks of256, one sample per lane in named scope.",
+    "layout": "Contiguous Float32 samples and Int32 bin counters.",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": "float32 bin selection and int32 counters",
+    "memory_hierarchy_and_access": "Global buffers; static3072B local memory in local mode.",
+    "synchronization": [
+      "shared-mode initialization and merge barriers"
+    ],
+    "atomics_and_reductions": [
+      "int32 shared and global add"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "bincount",
     "primary_motif": "atomic_histogram",
@@ -51,7 +107,144 @@
     ],
     "jacc_shared_memory_policy": "global explicit_zero; shared explicit_required_3072_bytes",
     "observation": "research/observations/bincount.md",
-    "ontology_sha256": "fd92c6916364070742d30a391cd8a3431f834022e327967074c50daf48a01ee7"
+    "ontology_sha256": "fd92c6916364070742d30a391cd8a3431f834022e327967074c50daf48a01ee7",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "histogram_statistics_primitive",
+      "scientific_task": "Accumulate an inclusive-range histogram.",
+      "mathematical_operation": "bin=trunc((x-min)*768/(max-min)), with maximum mapped to last bin; integer atomic count increments.",
+      "discretization_or_topology": "262144 scalar samples,768 bins; global and block-local histogram variants.",
+      "invariants": [
+        "Total counts equal number of in-range samples times10 repetitions.",
+        "Exact integer counts independent of atomic update order in bounded fixture."
+      ],
+      "accuracy_requirements": [
+        "All768 Int32 counts exact against CPU and both references."
+      ],
+      "precision_sensitivity": "Float32 bin arithmetic determines interval boundaries; bounded counters avoid overflow.",
+      "input_size_regimes": "768 bins,262144 samples,256 threads,10 accumulations; other bin counts/contended distributions unmeasured.",
+      "community_use_case": "Histogram/statistics primitive applicable to many data-analysis workflows; source does not identify a scientific dataset.",
+      "uncertainty": "Synthetic bounded distribution, not a representative application histogram.",
+      "provenance": [
+        {
+          "path": "src/bincount-cuda/main.cu",
+          "sha256": "e788877491c2b0adfec74e27f748ab134b758a7d693c95a581233a1206b4e9ea",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/bincount-julia/study_common.jl",
+          "sha256": "a0f32b721a3a64d39bd0a1b05cb8f17fae7768c21b145301167437e0d4fe1614",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:17:45.830975+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Global atomic histogram or shared block histogram followed by global atomic merge.",
+        "mapping": "1024 blocks of256, one sample per lane in named scope.",
+        "layout": "Contiguous Float32 samples and Int32 bin counters.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 bin selection and int32 counters"
+        },
+        "implementation_detail": "Generic grid-stride kernels; dynamic shared histogram for shared mode.",
+        "memory": "Global buffers; dynamic3072B shared in local mode.",
+        "synchronization": [
+          "shared-mode initialization and merge barriers"
+        ],
+        "atomic_operations": [
+          "int32 shared and global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/bincount-julia/bincount-julia-cuda.jl/main.jl",
+            "sha256": "22a57e498f896d812c9007c55a747a19329f9c599dc57a8efe1f3a18f8911870",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Global atomic histogram or shared block histogram followed by global atomic merge.",
+        "mapping": "1024 blocks of256, one sample per lane in named scope.",
+        "layout": "Contiguous Float32 samples and Int32 bin counters.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 bin selection and int32 counters"
+        },
+        "implementation_detail": "Fixed768 bins and262144 samples; static local histogram and Atomix operations.",
+        "memory": "Global buffers; static3072B local memory in local mode.",
+        "synchronization": [
+          "shared-mode initialization and merge barriers"
+        ],
+        "atomic_operations": [
+          "int32 shared and global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/bincount-julia/bincount-julia-KA/main.jl",
+            "sha256": "7acb39c8e11fed06785513f1aac7aced6627b1fe81317044a594c74d397ad0e6",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Global atomic histogram or shared block histogram followed by global atomic merge.",
+        "mapping": "1024 blocks of256, one sample per lane in named scope.",
+        "layout": "Contiguous Float32 samples and Int32 bin counters.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 bin selection and int32 counters"
+        },
+        "implementation_detail": "JACC atomic global/shared updates; shared mode stages immutable zero template.",
+        "memory": "Global buffers;3072B shared template staging in local mode.",
+        "synchronization": [
+          "shared-mode initialization and merge barriers"
+        ],
+        "atomic_operations": [
+          "int32 shared and global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/bincount-julia/bincount-julia-JACC/main.jl",
+            "sha256": "97d4eefbc1ce5f7ebc8439379c1b715d5cf54938ad5107eca6b0128e8b7731e8",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -92,10 +285,12 @@
       "run_id": "20261016T235207502660Z_bincount",
       "result": ".porting-state/portable_julia/runs/20261016T235207502660Z_bincount/result.json",
       "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
       "reference_provenance": null,
+      "configuration_classification_adjudication": null,
       "result_sha256": "a9579d5ec8f10f76d6e541479f5caa480e07a6c20cbf2342eca114262ff4dce8",
       "source_hash": "e28d563c4528bae6510f0d3e8c138e1cb1e4dedc63a7abb77ea610b8691b1057",
       "declared_environment": null,
@@ -134,10 +329,12 @@
       "run_id": "20261016T235215943020Z_bincount",
       "result": ".porting-state/portable_julia/runs/20261016T235215943020Z_bincount/result.json",
       "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
       "reference_provenance": null,
+      "configuration_classification_adjudication": null,
       "result_sha256": "fa29bc0db8a3d1152186549afcb18bbb17efbde926b5e8d173bd32c7a1c8879f",
       "source_hash": "e28d563c4528bae6510f0d3e8c138e1cb1e4dedc63a7abb77ea610b8691b1057",
       "declared_environment": null,
@@ -173,7 +370,48 @@
     }
   ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "bincount-ka-P1-retrospective-implementation",
+        "benchmark_id": "bincount",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/bincount.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "bincount-ka-P1-retrospective-implementation",
+          "benchmark": "bincount",
+          "model": "ka",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "JACC reads immutable zero template whereas native/Julia/KA initialize shared counters with stores; only768-bin scope measured.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/bincount-cuda/main.cu",
+              "sha256": "e788877491c2b0adfec74e27f748ab134b758a7d693c95a581233a1206b4e9ea",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/bincount-julia/bincount-julia-KA/main.jl",
+              "sha256": "7acb39c8e11fed06785513f1aac7aced6627b1fe81317044a594c74d397ad0e6",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
     "history_completeness": "partial",
     "missing_history_is_zero": false
@@ -198,7 +436,8 @@
         "src/bincount-julia/bincount-julia-KA/main.jl"
       ],
       "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
-    }
+    },
+    "observed_harness_activity_windows": []
   },
   "source_commit": "4bcd264d1dec32230272d3e8402ef61f9646a1fd",
   "explicit_outcome_evidence": null

@@ -122,7 +122,12 @@ def main():
     statuses=[];all_events=[];all_reference_events=[];domain_rows=[]
     for b in cohort['benchmarks']:
         traits=read(STATE/'traits'/(b+'.json'),{})
-        intent=domains.get(b) or traits.get('scientific_intent')
+        # A completed operator audit supersedes an earlier header-level review.
+        audited_intent=traits.get('scientific_intent')
+        if audited_intent and 'provisional' not in audited_intent.get('review_status','provisional'):
+            intent=audited_intent
+        else:
+            intent=domains.get(b) or audited_intent
         if not intent:intent={'primary_family':LOOKUP.get(b,'unclassified'), 'review_status':'provisional_category_requires_source_review','scientific_task':None,'community_use_case':None,'evidence':[],'classification_method':'Curated name/motif grouping to organize source review; not validated application provenance.'}
         domain={'schema_version':2,'benchmark_id':b,'scientific_intent':intent,
                 'base_ontology':{'path':base[b].get('ontology_path'),'frozen_sha256':base[b].get('ontology_sha256'),'status':'inferred base; not measured evidence'},

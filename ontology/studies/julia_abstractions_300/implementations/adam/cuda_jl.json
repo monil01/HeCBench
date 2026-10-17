@@ -14,9 +14,51 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Per-element serial optimizer recurrence, register-cached state in Julia family.",
+    "mapping": "256 blocks256 threads, one parameter per lane in namedcase.",
+    "layout": "Four separate contiguous Float32 arrays p,m,v,g.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 with floating-power bias correction"
+    },
+    "implementation_detail": "Caches p,m,v,g per lane across timestep loop, writes state after loop.",
+    "memory": "Global state loaded/stored, loop-carried scalar registers.",
+    "synchronization": [],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/adam-julia/adam-julia-cuda.jl/main.jl",
+        "sha256": "3bdc704920f3663156d56fd042ef1faf7642f550a949af766a9971efdd80f191",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Per-element serial optimizer recurrence, register-cached state in Julia family.",
+    "work_item_mapping": "256 blocks256 threads, one parameter per lane in namedcase.",
+    "layout": "Four separate contiguous Float32 arrays p,m,v,g.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 with floating-power bias correction",
+    "memory_hierarchy_and_access": "Global state loaded/stored, loop-carried scalar registers.",
+    "synchronization": [],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "adam",
     "primary_motif": "iterative_optimizer_map",
@@ -47,7 +89,123 @@
     ],
     "jacc_shared_memory_policy": "explicit_zero",
     "observation": "research/observations/adam.md",
-    "ontology_sha256": "621398c61cdaf39d2d613be8599b2f098ada62f8c8abda7f1c1a35f3704bc260"
+    "ontology_sha256": "621398c61cdaf39d2d613be8599b2f098ada62f8c8abda7f1c1a35f3704bc260",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "adaptive_gradient_optimizer_primitive",
+      "scientific_task": "Update parameters and first/second gradient moments with ADAM_MODE_0 and decay.",
+      "mathematical_operation": "m=b1*m+(1-b1)*g/scale; v=b2*v+(1-b2)*(g/scale)^2; bias-correct; p-=step*(mhat/sqrt(vhat+eps)+decay*p).",
+      "discretization_or_topology": "65536 independent parameter/moment/gradient entries;4 time steps per launch.",
+      "invariants": [
+        "Second moment remains nonnegative for selected positive initial moments.",
+        "Each launch restarts bias-correction t at1 as original source."
+      ],
+      "accuracy_requirements": [
+        "All196608 parameter/m/v Float32 values, absolute1e-3 vs CPU and dual references."
+      ],
+      "precision_sensitivity": "powf versus Julia floating-power lowering, sqrt and bias correction; repeated updates retain Float32 error.",
+      "input_size_regimes": "40 updates per outertrial from10 launches of4 steps; mode1 and other time-step regimes unmeasured.",
+      "community_use_case": "Adaptive training optimizer primitive; no particular trained model, data, or scientific inverse problem identified.",
+      "uncertainty": "Fixed gradients and restarted bias-correction schedule are benchmark semantics, not full training dynamics.",
+      "provenance": [
+        {
+          "path": "src/adam-cuda/main.cu",
+          "sha256": "7dbcfa9bf76329e6648ca15a622e49856c91b5fe8efdea07184d07f9397d9142",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/adam-julia/study_common.jl",
+          "sha256": "7658472c1197afe50a51f79e1e207aa38675a860d343dd662d50b9cd8e824adf",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:17:45.830975+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-element serial optimizer recurrence, register-cached state in Julia family.",
+        "mapping": "256 blocks256 threads, one parameter per lane in namedcase.",
+        "layout": "Four separate contiguous Float32 arrays p,m,v,g.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 with floating-power bias correction"
+        },
+        "implementation_detail": "Caches p,m,v,g per lane across timestep loop, writes state after loop.",
+        "memory": "Global state loaded/stored, loop-carried scalar registers.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adam-julia/adam-julia-cuda.jl/main.jl",
+            "sha256": "3bdc704920f3663156d56fd042ef1faf7642f550a949af766a9971efdd80f191",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-element serial optimizer recurrence, register-cached state in Julia family.",
+        "mapping": "256 blocks256 threads, one parameter per lane in namedcase.",
+        "layout": "Four separate contiguous Float32 arrays p,m,v,g.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 with floating-power bias correction"
+        },
+        "implementation_detail": "Same recurrence and register caching, fixed totalThreads65536.",
+        "memory": "Global state and scalar registers.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adam-julia/adam-julia-KA/main.jl",
+            "sha256": "65050990ed913d10f35326a0d020531bdc1447460ebe965a0453fdca6279a493",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-element serial optimizer recurrence, register-cached state in Julia family.",
+        "mapping": "256 blocks256 threads, one parameter per lane in namedcase.",
+        "layout": "Four separate contiguous Float32 arrays p,m,v,g.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 with floating-power bias correction"
+        },
+        "implementation_detail": "Linear callback same recurrence and caching; current explicitshmem0.",
+        "memory": "Global state and scalar registers; explicit0 shared.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adam-julia/adam-julia-JACC/main.jl",
+            "sha256": "d7fb840e9729ddf5051135387b33a08cf3a8e071d9fdcd9433d013fdeeebb86b",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -77,10 +235,12 @@
       "run_id": "20261017T000410414447Z_adam",
       "result": ".porting-state/portable_julia/runs/20261017T000410414447Z_adam/result.json",
       "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
       "hardware_stratum": "single_v100",
       "untouched_single_gpu_aggregate_eligible": true,
       "reference_provenance": null,
+      "configuration_classification_adjudication": null,
       "result_sha256": "0dfc947910dbf674acb7b0663e28027939c1bd5f22be3dd0c3322048834f7a38",
       "source_hash": "55b71a3ef81713fb60786aa32f1b03941fed267ebad177f5fc211e7c6d14323d",
       "declared_environment": null,
@@ -115,9 +275,50 @@
     }
   ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "adam-cuda_jl-P1-retrospective-implementation",
+        "benchmark_id": "adam",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/adam.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "adam-cuda_jl-P1-retrospective-implementation",
+          "benchmark": "adam",
+          "model": "cuda_jl",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native source expresses moment state through array accesses in timestep loop; Julia caches state in scalars; compiler traffic and pow lowering unmeasured.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/adam-cuda/main.cu",
+              "sha256": "7dbcfa9bf76329e6648ca15a622e49856c91b5fe8efdea07184d07f9397d9142",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/adam-julia/adam-julia-cuda.jl/main.jl",
+              "sha256": "3bdc704920f3663156d56fd042ef1faf7642f550a949af766a9971efdd80f191",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -126,7 +327,8 @@
     "compiler_feedback_repairs": null,
     "runtime_repairs": null,
     "numerical_repairs": null,
-    "translation_tokens": null
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
   },
   "source_commit": null,
   "explicit_outcome_evidence": null
