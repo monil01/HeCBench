@@ -11,7 +11,7 @@ function apd_jacc!(gx,gy,distance,data,instances::Int32,attributes::Int32)
     end
 end
 function factory(output,input,instances,attributes)
-    spec=JACC.launch_spec(;threads=(1,1),sync=false)
+    spec=JACC.launch_spec(;threads=(1,1),shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,(instances,instances),apd_jacc!,output,input,Int32(instances),Int32(attributes))
 end
 apd_study(factory)
