@@ -7,7 +7,9 @@ def effective_config(result_path,config):
     result_path=Path(result_path);raw_result=result_path.read_bytes();result=json.loads(raw_result)
     sidecar=ROOT/'src'/(result['benchmark']+'-julia')/'study_adjudications.json'
     if not sidecar.exists():return config
-    raw_sidecar=sidecar.read_bytes();entries=json.loads(raw_sidecar).get('run_adjudications',[])
+    raw_sidecar=sidecar.read_bytes();document=json.loads(raw_sidecar)
+    if not isinstance(document.get('run_adjudications'),list):raise ValueError('Classification supplement requires a run_adjudications list: '+str(sidecar))
+    entries=document['run_adjudications']
     entries=[e for e in entries if e['run_id']==result['run_id']]
     if not entries:return config
     if len(entries)!=1:raise ValueError('Ambiguous run classification supplement: '+str(sidecar))
