@@ -17,7 +17,7 @@ function main()
     refx=T[(ox-lon[i])*km*cos(((lat[i]+oy)/T(2))*rad) for i in 1:n]
     refy=T[(oy-lat[i])*km for i in 1:n]
     a=CuArray(lon);b=CuArray(lat);x=CUDA.zeros(T,n);y=CUDA.zeros(T,n)
-    spec=JACC.launch_spec(;threads=256,sync=false)
+    spec=JACC.launch_spec(;threads=256,shmem_size=0,sync=false)
     launch!()=JACC.parallel_for(spec,n,coordinates_jacc!,a,b,x,y,Int32(n),ox,oy,rad,km)
     reset!()=(fill!(x,zero(T));fill!(y,zero(T)))
     OwnedStudy.run_trials!(launch!,reset!,()->vcat(Array(x),Array(y)),vcat(refx,refy),repeats;atol=1e-3,rtol=0.)
