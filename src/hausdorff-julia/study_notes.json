@@ -1,0 +1,79 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl smoke marker prints hardcoded PASS and no point-distance computation. Study reference implements genuine nearest-point loops and CAS maxima. Native CPU comparator is not a valid three-way ordering; study oracle uses direct max/min folds without altering GPU kernels.",
+    "original_path": "/home/imo/HeCBench_julia/src/hausdorff-julia/hausdorff-julia-cuda.jl/original_main.jl",
+    "original_sha256": "b1bfcfd2ee6a646ca9f92e9040e0e2ac37897564664765754942c2165c1c5c91",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Two directional min squared-Euclidean distances, maximum across querypoints using Float32 raw-bit CAS; symmetricresult ismaxof2",
+  "mapping": "One256-thread workitem per querypoint, sequentialtargetpointloop, nativeAoS2layout",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks_a": 2,
+    "blocks_b": 3
+  },
+  "traits": {
+    "primary_motif": "nearest_neighbor_distance_atomic_max",
+    "storage_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "synchronization": [
+      "global_CAS_max",
+      "host_device_after_two_directional_kernels"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Sameperquerysequentialnearestloop andrawbitCASglobalmax; rawUInt32storage reinterpretsFloat32atomics"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "mean_two_directional_kernels_excluding_reset",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Only2nativeGPUoutputscalars",
+      "InvalidnativeCPUcomparator replacedbydirectfold",
+      "Dyadicfixture avoidsroundingambiguity"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "geometric point-set distance primitive",
+      "scientific_task": "Measure maximum nearest-neighbor separation of two2Dpointsets",
+      "governing_method": "Symmetric squared Hausdorff distance via directed min/max",
+      "discretization": "Unstructured finite2Dpointsets, no mesh connectivity",
+      "accuracy_needs": [
+        "nearestpoint minimum",
+        "globaldirectional maximum",
+        "nonnegative finite squared distances"
+      ],
+      "input_regime": "512Apoints and768Bpoints; dyadic coordinates",
+      "precision_sensitivity": "Squared coordinate differences and max/min decisions",
+      "community_use_case": "Shape or point-cloudcomparison in scientific imaging; no specificapplication dataset in source",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/hausdorff-cuda/main.cu",
+          "sha256": "97b0f763270a313cba6db9d1f1c152507fb5c44e1eb333fd8f5bc5778391ec52"
+        }
+      ]
+    }
+  },
+  "observation": "The native routine computes squared Hausdorff distance and returns two directional scalar reductions. The study confirms both complete outputs against exhaustive CPU nearest-neighbor folds, avoiding the original invalid qsort comparator. Native device kernels are unchanged. Dyadic inputs guarantee shared input bits; general point-set precision and the unsquared metric remain outside this named contract.",
+  "native_reference_build_phase": {
+    "compiler_checks": 2,
+    "failed_checks": 1,
+    "taxonomy_code": "B4",
+    "failure": "std::numeric_limits<float>::max and std::min constexpr host functions rejected from native global kernel without relaxed-constexpr flag",
+    "resolution": "Add --expt-relaxed-constexpr, as native compiler diagnostic requests; source unchanged",
+    "first_bundle": "20261017T164520371406Z_hausdorff",
+    "target_checks_unchanged": true
+  }
+}
