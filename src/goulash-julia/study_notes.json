@@ -1,0 +1,103 @@
+{
+  "reference_audit": {
+    "finding": "Historical Julia main prints hardcoded count/time/PASS and performs no gate computation. Native main verifies only a copy captured after warmup, not finaltimedoutput; studyharness preserveskernel and verifiesfinal10stepstate.",
+    "original_path": "/home/imo/HeCBench_julia/src/goulash-julia/goulash-julia-cuda.jl/original_main.jl",
+    "original_sha256": "0bb974a9b1441b189a82aabcb3edfdb240080057eb11fe8cfe0fe43183a04f0f",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Horner rational steady-state gate and18term relaxation polynomial followed by exponential stateupdate",
+  "mapping": "one work item per independent cell, coalesced Float64gate andVm arrays",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 16,
+    "updates": 10
+  },
+  "traits": {
+    "primary_motif": "cellwise_polynomial_recurrence",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "synchronization": [
+      "ordered_same_stream_kernel_updates",
+      "host_device_at_timing_boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "identical Hornercoefficients/order and recurrence;256thread geometry"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "total_ten_updates_from_zero_reset",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Namedvaryingvoltagefixture replaceszeroVm",
+      "Nativeoldcheckeronlywarmstate repaired",
+      "Polynomial approximations notindependentlyvalidated physiologicalmodel"
+    ],
+    "scientific_intent": {
+      "primary_domain": "PDE/continuum simulation",
+      "secondary_domains": [
+        "computational electrophysiology"
+      ],
+      "scientific_task": "Independent cellular gate relaxation driven by membranevoltage",
+      "governing_method": "Rational/polynomial steady-state and rateapproximation plus exponentialrelaxation",
+      "discretization": "Localcellstateupdate, no diffusioncoupling ormesh solver",
+      "accuracy_needs": [
+        "persistentstate overmultipleupdates",
+        "FP64Hornerpolynomialaccuracy",
+        "finalstateconfirmation"
+      ],
+      "input_regime": "4096cells voltage[-80,0],10timedupdates fromexactzero",
+      "precision_sensitivity": "Rationaldenominator and18term polynomial may amplify roundoff",
+      "community_use_case": "Localionicgating phase in electrophysiology simulation; exactbiologicalgate identity notstatedinsource",
+      "evidence": [
+        "src/goulash-cuda/main.cu",
+        "src/goulash-cuda/utils.h"
+      ],
+      "confidence": "source_reviewed_with_biological_identity_unspecified"
+    }
+  },
+  "observation": "This cell-gating proxy requires state persistence over repeated nonlinear updates. Native originalverification capturesonlywarmupstate, so apparent PASS fails tocertifytimedrecurrence. Studycomparesfinalcomplete state after10updates fromexactzero againstoriginalCPUrecurrence; namedvaryingvoltage tests morethanoriginalallzeroVm without changingdevicekernel. Polynomialandexp costs requirecounters beforebottleneckclaims.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "measurement_adapter_repairs": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "measurement_adapter_repairs": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "measurement_adapter_repairs": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "effort_observation": "One unchanged device-kernel candidate permodel; two successful process checks each across initial warm-state fixture and corrected bit-exactzero fixture. First series remains non-primary because cross-host exp-derived initialbits were not established identical. Measurement contract correction separate from kerneltranslation repair.",
+  "measurement_phase": {
+    "initial_result": ".porting-state/portable_julia/runs/20261017T161632108608Z_goulash/result.json",
+    "initial_status": "non_primary_input_bit_identity_unestablished",
+    "new_configuration": "gate_fp64_n4096_varyingVm_10steps_zero_reset_v2",
+    "reason": "CPU exp recomputation notsufficient evidence ofidentical inputbits; resettoexactzero establishesbitidentity",
+    "kernel_candidate_unchanged": true,
+    "reuse_guard_rejection": {
+      "error": "reuse source/config/incomplete mismatch: cuda",
+      "cause": "Changed descriptive native_check_description string, allcommands/source/inputunchanged",
+      "resolution": "Preserveexactreusedspecs andexplainactual10stepcontractintop-leveldescription_correction",
+      "gpu_executed": false,
+      "compiler_check": false
+    }
+  }
+}
