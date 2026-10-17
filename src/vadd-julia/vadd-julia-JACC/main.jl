@@ -17,8 +17,8 @@ function tv_jacc!(i,a,b,c,m,n,bx)
     end
     return
 end
-const VADD_SPEC=JACC.launch_spec(threads=256,sync=false)
-const TV_SPEC=JACC.launch_spec(threads=128,sync=false)
+const VADD_SPEC=JACC.launch_spec(threads=256,shmem_size=0,sync=false)
+const TV_SPEC=JACC.launch_spec(threads=128,shmem_size=0,sync=false)
 function launch_jacc!(::Val{M},a,b,c,m,n) where M
     if M==3
         bx=cld(n,256);by=cld(m,16)
