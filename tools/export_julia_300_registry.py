@@ -117,7 +117,7 @@ def main():
         c=effective_config(p,read(p.with_name('config.json'),{}));cid=c.get('configuration_id')
         if disp.get(cid,{}).get('role',c.get('configuration_role','primary')) not in ['primary','corrected_reference_secondary']:continue
         for model in MODELS:
-            good=(d.get('reference_agreement') and all(d.get('models',{}).get(m,{}).get('complete') and d.get('models',{}).get(m,{}).get('status')=='native_check_pass' for m in ['cuda','cuda_jl'])) if model=='cuda_jl' else d.get('variant_verified',{}).get(model)
+            good=(d.get('reference_agreement') and all(d.get('models',{}).get(m,{}).get('complete') and d.get('models',{}).get(m,{}).get('status')=='native_check_pass' for m in ['cuda','cuda_jl'])) if model=='cuda_jl' else (d.get('variant_verified',{}).get(model) and d.get('reference_agreement') and all(d.get('comparisons',{}).get(model,{}).get(ref,{}).get('status') in ('direct_artifact_pass','numeric_summary_pass') and len(d.get('comparisons',{}).get(model,{}).get(ref,{}).get('trials',[]))==5 and all(x.get('status')=='pass' for x in d['comparisons'][model][ref]['trials']) for ref in ('cuda','cuda_jl')))
             if good:latest[(d['benchmark'],model,cid)]=(d,c,p)
     domains=read(STATE/'scientific_domains_300.json',{})
     statuses=[];all_events=[];all_reference_events=[];all_infrastructure_events=[];domain_rows=[]

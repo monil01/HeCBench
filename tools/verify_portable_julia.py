@@ -190,14 +190,21 @@ def verify(config):
     reuse_result=None
     reuse_config=None
     reuse_configuration_transition=None
+    prefix_validation_transition=None
     if config.get('reuse_result'):
         reuse_path=Path(config['reuse_result'])
         reuse_result=json.loads(reuse_path.read_text())
         reuse_config=json.loads((reuse_path.parent/'config.json').read_text())
         if reuse_result['benchmark']!=bench or reuse_result['protocol']!=PROTOCOL or reuse_result.get('input_contract')!=config.get('input_contract'):
             raise ValueError('reuse benchmark/protocol/input contract mismatch')
-        for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified','input_prefix_count'):
+        for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified'):
             if reuse_config.get(key)!=config.get(key): raise ValueError('reuse config mismatch: '+key)
+        old_prefix_count=reuse_config.get('input_prefix_count',0)
+        if old_prefix_count!=prefix_count:
+            reason=config.get('reuse_prefix_revalidation_reason')
+            if prefix_count<old_prefix_count or not isinstance(reason,str) or not reason.strip():
+                raise ValueError('Strengthened input-prefix validation on reused captures requires a nonempty reuse_prefix_revalidation_reason; weakening is forbidden.')
+            prefix_validation_transition={'source_run_id':reuse_result['run_id'],'old_count':old_prefix_count,'new_count':prefix_count,'reason':reason.strip(),'scope':'Saved artifacts rechecked under stronger byte-prefix acceptance; archived configs and executions unchanged.'}
         if reuse_config.get('configuration_id')!=config.get('configuration_id'):
             reason=config.get('cross_configuration_reuse_reason')
             if config.get('allow_cross_configuration_reuse') is not True or not isinstance(reason,str) or not reason.strip():
@@ -344,15 +351,13 @@ def verify(config):
     variant_verified={}
     for model in ('ka','jacc'):
         comparisons_ok=all(v['status'] in ('direct_artifact_pass','numeric_summary_pass') for v in comparisons[model].values())
-        trusted_native=(config.get('inputs_shared_verified') is True and
-            all(results[m]['status']=='native_check_pass' and config.get('models',{}).get(m,{}).get('native_check_description') for m in ('cuda','cuda_jl',model)))
-        variant_verified[model]=not reference_disagreement and all(results[m]['status']=='native_check_pass' for m in ('cuda','cuda_jl',model)) and (comparisons_ok or trusted_native)
+        variant_verified[model]=reference_agreement and comparisons_ok and all(results[m]['status']=='native_check_pass' for m in ('cuda','cuda_jl',model))
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
-    matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and not reference_disagreement
+    matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and reference_agreement and all(variant_verified.values())
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
             'input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
-            'attempt_accounting':config.get('attempt_accounting'),'reuse_configuration_transition':reuse_configuration_transition,'events':events}
+            'attempt_accounting':config.get('attempt_accounting'),'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     db=sqlite3.connect(STATE/'results.db',timeout=60)
     db.execute('PRAGMA journal_mode=WAL')

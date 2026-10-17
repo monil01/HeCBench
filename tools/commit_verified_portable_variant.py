@@ -15,6 +15,7 @@ for path in a.result:
  if not path.is_absolute():path=root/path
  d=json.loads(path.read_text());c=effective_config(path,json.loads(path.with_name('config.json').read_text()))
  if d['benchmark']!=a.benchmark or not d.get('reference_agreement'):raise SystemExit('Benchmark or reference agreement invalid')
+ if len(d.get('reference_checks',[]))!=5 or not all(x.get('status')=='pass' for x in d['reference_checks']):raise SystemExit('Reference agreement requires five explicit passing comparisons')
  data.append((d,c,path))
 parent=root/'src'/(a.benchmark+'-julia');key={'KA':'ka','JACC':'jacc'}.get(a.variant)
 def allowed(f):return f.is_file() and (f.suffix in ['.jl','.cu','.cuh','.h','.hpp','.cpp','.toml','.md','.json','.sh','.py'] or f.name in ['Makefile','original_Makefile'])
@@ -35,6 +36,9 @@ else:
  child=parent/(a.benchmark+'-julia-'+a.variant);proof=[]
  for d,c,path in data:
   if not d['variant_verified'].get(key):raise SystemExit('Variant not verified against both references')
+  for ref in ('cuda','cuda_jl'):
+   comparison=d.get('comparisons',{}).get(key,{}).get(ref,{})
+   if comparison.get('status') not in ('direct_artifact_pass','numeric_summary_pass') or len(comparison.get('trials',[]))!=5 or not all(x.get('status')=='pass' for x in comparison['trials']):raise SystemExit('Each reference requires five explicit passing target comparisons; own checks cannot override mismatch')
   if verifier.digest_tree(child)!=d['models'][key]['source_hash']:raise SystemExit('Variant source changed since verification')
   changed=[]
   for model,m in d['models'].items():
