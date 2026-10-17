@@ -1,0 +1,75 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl operates one grayscale byte and drops RGB luminance weights, BGRA struct layout and alpha output; study reference now matches native four-channel operation.",
+    "original_path": "/home/imo/HeCBench_julia/src/gamma-correction-julia/gamma-correction-julia-cuda.jl/original_main.jl",
+    "original_sha256": "89236c3a03f6cc28729ca36b67cf8e431f1df3ff83837e2abded4b386d76779c",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Weighted luminance .3r+.59g+.11b, normalize255, square gamma2, quantizeUInt8 and replicate BGRA",
+  "mapping": "one work item per AoS BGRA pixel",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 16
+  },
+  "traits": {
+    "primary_motif": "elementwise_image_map",
+    "storage_precision": [
+      "UInt8"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "host_device_per_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "same4-byteAoSpixel and arithmetic; named colored fixture"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "mean_individually_synchronized_kernel_excluding_reset",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Fractal image generation not benchmarked; named colored fixture used"
+    ],
+    "scientific_intent": {
+      "primary_domain": "signal/image processing",
+      "scientific_task": "Color to grayscale gamma correction",
+      "governing_method": "Weighted luminance then square transfer function",
+      "discretization": "independent pixels in64x64image",
+      "accuracy_needs": [
+        "exact quantization",
+        "allBGRA channels"
+      ],
+      "input_regime": "4096coloredpixels",
+      "precision_sensitivity": "FP32 nearinteger quantization boundaries can alterUInt8",
+      "community_use_case": "Image intensity preprocessing in scientific visualization",
+      "evidence": [
+        "src/gamma-correction-cuda/main.cu",
+        "src/gamma-correction-cuda/utils/ImgPixel.hpp"
+      ],
+      "confidence": "source_reviewed"
+    }
+  },
+  "observation": "Named colored64x64BGRA fixture exercises weighted luminance and alpha semantics missing from historical single-channel Julia code. All output bytes are compared exactly. Host transfers reset in-place image before every kernel and are excluded symmetrically; each invocation synchronizes as native original loop.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "measurement_adapter_repairs": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "measurement_adapter_repairs": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "effort_observation": "One device-kernel candidate for each model; CUDA.jl and KA each required two process checks because a shared host fixture comprehension had a B2 parser error, repaired before numerical trials. JACC inherits the repaired fixture and requires one check. Shared measurement repair is separate from device-kernel compiler repair."
+}
