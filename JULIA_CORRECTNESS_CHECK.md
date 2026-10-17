@@ -299,3 +299,10 @@ At 2026-10-16T23:02Z, **20/100 benchmark pairs** have passing five-trial full-ou
 - Costs: pervariant source/summaryproxies partial, unknownactual counts null. Exactparent sessioncounters are mixedsharedwork, not perbenchmark attributable. Compilerchecks/repairs separatefromtimingtrials.
 - Unsupportedfeatures: no adjudicated framework-unsupportedresult in current20pairs. This doesnot establish coverageoutside these cases. Deferredreference disagreements andenvironmentfailures remain distinct.
 - Paper: realdata figures, RQ1–RQ5 results evolving; exploratoryreversecounterprofiles all4 collected; no floating-point measuredroofline yet. Resume via paper research/checkpoints/LATEST.json.
+
+
+### Active study resource-policy checkpoint (2026-10-16)
+
+For kernels without shared data, explicitly set JACC `launch_spec(shmem_size=0, ...)`. Installed JACC1.4.0 uses automatic maximum dynamic shared allocation when omitted; a controlled triad experiment measured49152B/block and a shared-memory occupancy limit2, versus0B/limit32 after this change, with unchanged geometry/registers and allfive fulloutput checks passing. Kernels requiring shared arrays must request their actual required bytes, never blindly zero them. Treat this as a measured configuration-specific resource-policy finding, not universal framework overhead.
+
+Keep original verified default-resource source/results as an ablation. A changed launch-resource policy is a separately named `performance_tuning` configuration, with tuning attempts/tokens separate from original translation. Reuse unchanged validated reference/KA bundles under exact source, command, input and protocol checks. Any nonsemantic dependency exception requires explicit old/new SHA256 and a reviewed reason; the current exception only adds Int64 artifact typing after timing, leaving Float32/64/Int32 paths unchanged. Rawfive samples and allcorrectness verdicts remain retained. The paper's `research/data/configuration_dispositions.json` selects primary configurations without counting old/new resource-policy versions as independent benchmarks.

@@ -155,3 +155,15 @@ identical repeated outputs. Both artifact byte sizes/counts are checked. Integer
 storage is finite by construction. Nonidentical bytes use the numerical
 absolute/relative comparison, preserving signed-zero and tolerance behavior.
 This avoids repeated large Python allocations without weakening checks.
+
+## Source stability while queued
+
+The runner hashes model source and explicitly declared adapter dependencies
+before launching. It checks those exact hashes before/after native compilation
+and, after acquiring the GPU lock, before/after each execution. Changes reject
+the affected model as `provenance_invalid`; its logs and mutation event remain,
+but its trial rows cannot establish numerical verification or matched timing.
+Do not edit a benchmark or its dependencies until its entire runner process
+has completed. This detects a mutation even when the new file happens to pass
+numerical checks. It does not infer unlisted dependencies: declare every
+included support file in `source_dependencies`.

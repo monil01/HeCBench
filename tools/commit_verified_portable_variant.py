@@ -50,7 +50,7 @@ if key:
  if m.exists():
   manifest=json.loads(m.read_text());
   if a.performance_tuning:
-   manifest.setdefault('original_translation_commit',manifest.get('source_commit'));manifest.setdefault('performance_tuning_commits',[]).append({'commit':sha,'run_ids':[d['run_id'] for d,_,_ in data]})
+   manifest.setdefault('original_translation_commit',manifest.get('source_commit'));manifest.setdefault('performance_tuning_commits',[]).append({'commit':sha,'run_ids':[d['run_id'] for d,_,_ in data]});manifest.setdefault('performance_tuning_results',[]).extend({'configuration_id':c['configuration_id'],'run_id':d['run_id'],'commit':sha,'five_trial_seconds':[t['time_seconds'] for t in d['models'][key]['trials']],'mean_last_four_seconds':d['models'][key]['mean_seconds'],'attempt_accounting':c.get('attempt_accounting'),'token_accounting':c.get('token_accounting')} for d,c,_ in data);manifest['original_translation_fields_scope']='Original candidate/compiler/token and top-level timing fields retain initial translation evidence; later resourcepolicy results are separate performance_tuning_results.'
   manifest['source_commit']=sha;manifest['commit_status']='committed';temp=m.with_suffix('.json.tmp');temp.write_text(json.dumps(manifest,indent=2)+'\n');temp.replace(m)
 subprocess.run([sys.executable,str(root/'tools/checkpoint_portable_study.py')],cwd=root,check=True)
 print(json.dumps({'benchmark':a.benchmark,'phase':'shared' if a.shared else a.variant,'commit':sha}))

@@ -203,13 +203,22 @@ def verify(config):
             if not old.get('complete') or old.get('source_hash')!=source_hash or reuse_config.get('models',{}).get(model)!=spec:
                 raise ValueError('reuse source/config/incomplete mismatch: '+model)
             old_files=old.get('adapter_file_hashes')
+            reviewed_changes=[]
             if old_files is not None and old_files!=adapter_file_hashes:
-                raise ValueError('reuse adapter dependency changed: '+model)
+                allowed=config.get('reuse_reviewed_dependency_changes',[])
+                for filename in set(old_files)|set(adapter_file_hashes):
+                    previous=old_files.get(filename);current=adapter_file_hashes.get(filename)
+                    if previous==current:continue
+                    review=next((r for r in allowed if Path(r['path']).resolve()==Path(filename).resolve() and r.get('old_sha256')==previous and r.get('new_sha256')==current and r.get('reason','').strip()),None)
+                    if review is None:raise ValueError('reuse adapter dependency changed without exact-hash review: '+model+' '+filename)
+                    reviewed_changes.append(review)
+
             if old_files is None and not config.get('reuse_legacy_adapter_unchanged_verified'):
                 raise ValueError('legacy bundle lacks individual adapter hashes: explicitly audit unchanged adapters first')
             results[model]=dict(old)
             results[model]['reused_from_run_id']=reuse_result['run_id']
             results[model]['adapter_file_hashes']=adapter_file_hashes
+            if reviewed_changes:results[model]['reviewed_dependency_changes']=reviewed_changes
             if reuse_configuration_transition is not None:
                 reuse_configuration_transition['unchanged_models'].append(EXPORT_MODEL_IDS[model])
                 results[model]['reused_from_configuration_id']=reuse_config['configuration_id']
@@ -236,25 +245,40 @@ def verify(config):
                     resolved.append(str(candidate))
                 else: resolved.append(arg)
             return resolved
-        build_ok=True
-        if spec.get('build'):
+        provenance_valid=True
+        provenance_checks=[]
+        def sources_stable():
+            nonlocal provenance_valid
+            stable=digest_tree(paths[model])==source_hash and all(Path(name).is_file() and hashlib.sha256(Path(name).read_bytes()).hexdigest()==sha for name,sha in adapter_file_hashes.items())
+            provenance_valid=provenance_valid and stable
+            provenance_checks.append({'unchanged':stable})
+            return stable
+        build_ok=sources_stable()
+        if build_ok and spec.get('build'):
             # ARCH supplied from hardware capability, never inherited sm120.
             query=subprocess.run(['nvidia-smi','-i',env['CUDA_VISIBLE_DEVICES'],'--query-gpu=compute_cap','--format=csv,noheader'],capture_output=True,text=True)
             arch='sm_'+query.stdout.strip().replace('.','')
             command=resolve_args([s.replace('{arch}',arch) for s in spec['build']],True)
             code,text=run_command(command,cwd,model_env,timeout,out/f'{model}_build.log')
             events.append({'model':model,'phase':'build','command':command,'returncode':code,'source_hash':source_hash})
-            build_ok=code==0
+            stable_after_build=sources_stable()
+            build_ok=code==0 and stable_after_build
+            if code==0 and not build_ok:events.append({'model':model,'phase':'source_provenance','status':'invalid','reason':'source changed during build'})
         trials=[]
         if build_ok:
             count=1 if spec.get('structured',False) else 5
             with open('/tmp/hecbench-julia-study-gpu.lock','w') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX)
                 for n in range(1,count+1):
+                    if not sources_stable():
+                        events.append({'model':model,'phase':'source_provenance','status':'invalid','reason':'source changed while queued before execution'});break
                     command=resolve_args(spec['command'])
                     code,text=run_command(command,cwd,model_env,timeout,out/f'{model}_run{n}.log')
                     events.append({'model':model,'phase':'execution_device_jit','command':spec['command'],'returncode':code,'source_hash':source_hash})
-                    if code: break
+                    stable_after_execution=sources_stable()
+                    if not stable_after_execution:
+                        events.append({'model':model,'phase':'source_provenance','status':'invalid','reason':'source changed during execution'})
+                    if code or not stable_after_execution: break
                     try:
                         rows=parse_records(text,spec,None if count==1 else n)
                         save_artifacts(rows,cwd,out,model)
@@ -264,11 +288,12 @@ def verify(config):
                         break
         if temp: temp.cleanup()
         indices=[r.get('trial') for r in trials]
-        complete=indices==[1,2,3,4,5]
+        complete=provenance_valid and indices==[1,2,3,4,5]
         correct=complete and all(r.get('correct') is True for r in trials)
         times=[r.get('time_seconds') for r in trials]
         timing_valid=complete and all(isinstance(t,(int,float)) and math.isfinite(t) and t>0 for t in times) and all(r.get('jit_excluded') is True for r in trials)
-        results[model]={'status':'native_check_pass' if correct else 'unverified','trials':trials,
+        results[model]={'status':'native_check_pass' if correct else 'provenance_invalid' if not provenance_valid else 'unverified','trials':trials if provenance_valid else [],
+                        'provenance_valid':provenance_valid,'provenance_checks':provenance_checks,
                         'complete':complete,'timing_valid':timing_valid,'mean_seconds':statistics.mean(times[1:]) if timing_valid else None,
                         'source_hash':source_hash,'source_path':paths[model],'adapter_hash':adapter_hash,'adapter_source_path':str(source_cwd),'adapter_file_hashes':adapter_file_hashes,'export_model_id':EXPORT_MODEL_IDS[model], 'verification_method':spec.get('verification_method','unspecified'),
                         'native_check_description':spec.get('native_check_description'), 'limitations':spec.get('limitations',[])}
@@ -294,7 +319,7 @@ def verify(config):
         comparisons_ok=all(v['status'] in ('direct_artifact_pass','numeric_summary_pass') for v in comparisons[model].values())
         trusted_native=(config.get('inputs_shared_verified') is True and
             all(results[m]['status']=='native_check_pass' and config.get('models',{}).get(m,{}).get('native_check_description') for m in ('cuda','cuda_jl',model)))
-        variant_verified[model]=not reference_disagreement and results[model]['status']=='native_check_pass' and (comparisons_ok or trusted_native)
+        variant_verified[model]=not reference_disagreement and all(results[m]['status']=='native_check_pass' for m in ('cuda','cuda_jl',model)) and (comparisons_ok or trusted_native)
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and not reference_disagreement
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
