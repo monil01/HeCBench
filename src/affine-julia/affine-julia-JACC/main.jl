@@ -61,7 +61,7 @@ function affine_jacc!(xi,yi,src,dst)
 end
 
 function factory(input,output)
-    spec=JACC.launch_spec(;threads=(16,16),sync=false)
+    spec=JACC.launch_spec(;threads=(16,16),shmem_size=0,sync=false)
     return ()->JACC.parallel_for(spec,(512,512),affine_jacc!,input,output)
 end
 affine_study(factory,affine_reference)
