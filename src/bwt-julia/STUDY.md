@@ -1,0 +1,5 @@
+# Verified cyclic BWT GPU pipeline
+
+Named1021-byte deterministic ATCG sequence, padded1024-entry table, no included NUL sentinel (matching actual native main string construction). Complete three-kernel algorithm: generate indices,55 bitonic stages, reconstruct bytes. Independent CPU materialized rotations are unique and lexically sorted. Exact all1021 bytes plus1024 table entries compared against nativeCUDA and genuineCUDA.jl in five warmed trials, mean2–5, three internal repeats.
+
+Historical marker/PASS program preserved in bwt-julia-cuda.jl/original_main.jl; genuine reference repair separately costed. KA/JACC are actual device pipelines with identical57 ordered launches and no shared memory/atomics. Timed region is GPU pipeline only, consistently excluding original native end-to-end allocation/transfer/string lifecycle. Million-size default and other length regimes unmeasured. UInt8 output is widened toInt32 solely for artifacts after timing; index table remainsInt32. See study_config.json, ontology traits and local manifests for evidence and scope.
