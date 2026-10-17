@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "heat",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/heat.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,28 +14,459 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_reviewed",
+    "actual_algorithm": "ForwardEuler fivepoint diffusion; zerooutsidegrid; factoredsumneighbors; odd/even pointer swaps preserve finalandpreviousstates",
+    "work_item_mapping": "Onecellperlinearworkitem;256threads andcld(n*n,256) blocks",
+    "data_layout": "Two flat row-major Float64fields; i fast, j rowstride",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "memory_access": "Globalcenter+fourneighbors, no sharedtile or atomics",
+    "synchronization": [
+      "Same-streamorderedsteps",
+      "Synchronizedtrialboundaries"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "dynamic_shared_bytes": 0,
+      "JACC_spec": "Distinct explicit precomputed spec for each n63/127/255; no cross-extent mutable-spec reuse",
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": "n63:16blocks,n127:64blocks,n255:255blocks;256threads each",
+    "library_boundary": "CUDAbackendruntime and commonCuArrayallocationdriver; no GPUmath/solverlibrary; no customCUDAdeviceintrinsic",
+    "host_control_boundary": "Fixture/zeros/reset outside; trialloops3grids with17/18/19launches; pointer swaps included; output andalloracles outside. JACCspecsetup outside; dictionarylookup included.",
+    "native_to_model_mapping": {
+      "status": "retained",
+      "reason": "Same256threadlinearflatgrid and onecellperlane; native separatelyweightedneighbors vs allJulia factoredneighborsums, accepted FP64drift <=2e-15."
+    },
+    "fidelity_scope": "Sourcephysicalconstants andhomogeneousPDE unchanged; namedgrids only; originalGPUinitializer replaced byteidentical hostsampled sine fixture outsideROI; no changing tolerance/physics to forcePASS",
+    "source_evidence": {
+      "path": "src/heat-julia/heat-julia-JACC/main.jl",
+      "sha256": "27a481308e96eb6d2a552bcf72e948f51b10e041233af8269c0a80dd9307d5be"
+    },
+    "study_entrypoint": null,
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "profiling_status": "Source-reviewed only; no profiled memorytraffic/registers or causal mechanism claim"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "ForwardEuler fivepoint diffusion; zerooutsidegrid; factoredsumneighbors; odd/even pointer swaps preserve finalandpreviousstates",
+    "work_item_mapping": "Onecellperlinearworkitem;256threads andcld(n*n,256) blocks",
+    "layout": "Two flat row-major Float64fields; i fast, j rowstride",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "memory_hierarchy_and_access": "Globalcenter+fourneighbors, no sharedtile or atomics",
+    "synchronization": [
+      "Same-streamorderedsteps",
+      "Synchronizedtrialboundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 256,
+      "dynamic_shared_bytes": 0,
+      "JACC_spec": "Distinct explicit precomputed spec for each n63/127/255; no cross-extent mutable-spec reuse",
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": "n63:16blocks,n127:64blocks,n255:255blocks;256threads each",
+    "library_backend_boundary": "CUDAbackendruntime and commonCuArrayallocationdriver; no GPUmath/solverlibrary; no customCUDAdeviceintrinsic",
+    "host_control_boundary": "Fixture/zeros/reset outside; trialloops3grids with17/18/19launches; pointer swaps included; output andalloracles outside. JACCspecsetup outside; dictionarylookup included.",
+    "fidelity_status_and_scope": "Sourcephysicalconstants andhomogeneousPDE unchanged; namedgrids only; originalGPUinitializer replaced byteidentical hostsampled sine fixture outsideROI; no changing tolerance/physics to forcePASS",
+    "source_review_evidence": {
+      "path": "src/heat-julia/heat-julia-JACC/main.jl",
+      "sha256": "27a481308e96eb6d2a552bcf72e948f51b10e041233af8269c0a80dd9307d5be"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "heat",
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "application_domain": "Heat diffusion",
+      "scientific_task": "Advance homogeneous two-dimensional heat equation with sampled sine eigenmode and zeroDirichlet boundary",
+      "mathematical_method": "Explicit forward-Euler five-point finite differences; exact continuous and discrete sine-mode comparisons",
+      "accuracy_requirements": [
+        "Fullactualfinal/previousfields and correct odd/evenpointerparity",
+        "Separate FP64portdrift from spatial/time discretizationerror",
+        "Energydecay and maximumprinciple in chosen stabledomain, no validationoutside r<=.25"
+      ],
+      "community_use_case": "Diffusion timestepping and manufactured-solution verification; kernel fixture, not fullthermal application validation",
+      "review_status": "source_reviewed",
+      "input_size_regime": "n63/127/255 with17/18/19 steps; physicalsourceconstants unchanged, r1.2e-5..1.72e-4",
+      "correction_to_earlier_intent_review": "No forcing term is present in actualsource; earlier shallow header-based description called it manufactured forcing. This deeperoperator audit supersedes that wording.",
+      "evidence": [
+        {
+          "path": "src/heat-cuda/heat.cu",
+          "sha256": "97fd81c5bda4eee421666137f546c474e43513164e16215641107e1b7107f3c9"
+        },
+        {
+          "path": "src/heat-julia/study_common.jl",
+          "sha256": "bb289e38d4686a62c6043844c436342f4cbb49326d9a642e5a8abd0a02a2728c"
+        }
+      ]
+    },
+    "primary_motif": "explicit_2D_homogeneous_diffusion_timestep",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "synchronization": [
+      "ordered_same_stream_updates",
+      "hostsync_before_after_composite_trial"
+    ],
+    "native_to_julia_mapping": {
+      "status": "retained",
+      "reason": "Same256threadlinearflatgrid and onecellperlane; native separatelyweightedneighbors vs allJulia factoredneighborsums, accepted FP64drift <=2e-15."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Composite3gridcomplete solves dividedby54totalsteps; excludesreset/H2D/D2H/CPUoracles/JIT/initialization; no pergrid performance claim",
+    "verification_contract": "Fullbothlevelarrays, identicalinputprefix, sourceCPU+discreteeigenmode+continuousMMS/energy/maximumprinciple",
+    "keyconfounds": [
+      "Namedgridsnotoriginaldefault1000",
+      "Compositeaverageperstep, notper-size time-to-solution",
+      "Native32bitlinearindex vsJulia modelglobalindexwidths",
+      "Nativeweightedadds vsJuliafactoredneighbors differ by FP64rounding",
+      "Unprofiledregisters/cache/spills; no bottleneck claim"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "ForwardEuler fivepoint diffusion; zerooutsidegrid; factoredsumneighbors; odd/even pointer swaps preserve finalandpreviousstates",
+        "work_item_mapping": "Onecellperlinearworkitem;256threads andcld(n*n,256) blocks",
+        "data_layout": "Two flat row-major Float64fields; i fast, j rowstride",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Globalcenter+fourneighbors, no sharedtile or atomics",
+        "synchronization": [
+          "Same-streamorderedsteps",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": null,
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "n63:16blocks,n127:64blocks,n255:255blocks;256threads each",
+        "library_boundary": "CUDAbackendruntime and commonCuArrayallocationdriver; no GPUmath/solverlibrary; no customCUDAdeviceintrinsic",
+        "host_control_boundary": "Fixture/zeros/reset outside; trialloops3grids with17/18/19launches; pointer swaps included; output andalloracles outside. JACCspecsetup outside; dictionarylookup included.",
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same256threadlinearflatgrid and onecellperlane; native separatelyweightedneighbors vs allJulia factoredneighborsums, accepted FP64drift <=2e-15."
+        },
+        "fidelity_scope": "Sourcephysicalconstants andhomogeneousPDE unchanged; namedgrids only; originalGPUinitializer replaced byteidentical hostsampled sine fixture outsideROI; no changing tolerance/physics to forcePASS",
+        "source_evidence": {
+          "path": "src/heat-julia/heat-julia-cuda.jl/main.jl",
+          "sha256": "2104a16f0b165a6c315ef4a177bfde9f53b822920603b40f3ac39bad9d7ab2a4"
+        },
+        "study_entrypoint": {
+          "path": "src/heat-julia/heat-julia-cuda.jl/study.jl",
+          "sha256": "eea5f911034c46692b466d59f80de0defd342482be0af4f2ad8790a75fc0c1ad"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no profiled memorytraffic/registers or causal mechanism claim"
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "ForwardEuler fivepoint diffusion; zerooutsidegrid; factoredsumneighbors; odd/even pointer swaps preserve finalandpreviousstates",
+        "work_item_mapping": "Onecellperlinearworkitem;256threads andcld(n*n,256) blocks",
+        "data_layout": "Two flat row-major Float64fields; i fast, j rowstride",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Globalcenter+fourneighbors, no sharedtile or atomics",
+        "synchronization": [
+          "Same-streamorderedsteps",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": null,
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "n63:16blocks,n127:64blocks,n255:255blocks;256threads each",
+        "library_boundary": "CUDAbackendruntime and commonCuArrayallocationdriver; no GPUmath/solverlibrary; no customCUDAdeviceintrinsic",
+        "host_control_boundary": "Fixture/zeros/reset outside; trialloops3grids with17/18/19launches; pointer swaps included; output andalloracles outside. JACCspecsetup outside; dictionarylookup included.",
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same256threadlinearflatgrid and onecellperlane; native separatelyweightedneighbors vs allJulia factoredneighborsums, accepted FP64drift <=2e-15."
+        },
+        "fidelity_scope": "Sourcephysicalconstants andhomogeneousPDE unchanged; namedgrids only; originalGPUinitializer replaced byteidentical hostsampled sine fixture outsideROI; no changing tolerance/physics to forcePASS",
+        "source_evidence": {
+          "path": "src/heat-julia/heat-julia-KA/main.jl",
+          "sha256": "5b69de7fe7980400d91ecbbdcb0e1639831fb3101672b3ab3b5b6a5ab7e528ee"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no profiled memorytraffic/registers or causal mechanism claim"
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "ForwardEuler fivepoint diffusion; zerooutsidegrid; factoredsumneighbors; odd/even pointer swaps preserve finalandpreviousstates",
+        "work_item_mapping": "Onecellperlinearworkitem;256threads andcld(n*n,256) blocks",
+        "data_layout": "Two flat row-major Float64fields; i fast, j rowstride",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Globalcenter+fourneighbors, no sharedtile or atomics",
+        "synchronization": [
+          "Same-streamorderedsteps",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "dynamic_shared_bytes": 0,
+          "JACC_spec": "Distinct explicit precomputed spec for each n63/127/255; no cross-extent mutable-spec reuse",
+          "registers": null,
+          "spills": null
+        },
+        "launch_geometry": "n63:16blocks,n127:64blocks,n255:255blocks;256threads each",
+        "library_boundary": "CUDAbackendruntime and commonCuArrayallocationdriver; no GPUmath/solverlibrary; no customCUDAdeviceintrinsic",
+        "host_control_boundary": "Fixture/zeros/reset outside; trialloops3grids with17/18/19launches; pointer swaps included; output andalloracles outside. JACCspecsetup outside; dictionarylookup included.",
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same256threadlinearflatgrid and onecellperlane; native separatelyweightedneighbors vs allJulia factoredneighborsums, accepted FP64drift <=2e-15."
+        },
+        "fidelity_scope": "Sourcephysicalconstants andhomogeneousPDE unchanged; namedgrids only; originalGPUinitializer replaced byteidentical hostsampled sine fixture outsideROI; no changing tolerance/physics to forcePASS",
+        "source_evidence": {
+          "path": "src/heat-julia/heat-julia-JACC/main.jl",
+          "sha256": "27a481308e96eb6d2a552bcf72e948f51b10e041233af8269c0a80dd9307d5be"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Source-reviewed only; no profiled memorytraffic/registers or causal mechanism claim"
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/heat-julia/heat-julia-JACC/main.jl",
+    "sha256": "27a481308e96eb6d2a552bcf72e948f51b10e041233af8269c0a80dd9307d5be",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        17
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        15
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp64_MMS_L1000_n63x127x255_steps17x18x19_bothlevels_v1",
+      "run_id": "20261017T184142096640Z_heat",
+      "result": ".porting-state/portable_julia/runs/20261017T184142096640Z_heat/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "cc08b20d20c576f9e8a9b235cbab21597a6fe53761a9030f4a851f717d2f565e",
+      "source_hash": "c605e2e79bb2adbc0dbeaff673205a201ea36959f173bb3ddd32e3cf6c71cab2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T184142096640Z_heat/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        9.62490740741e-06,
+        9.0775e-06,
+        8.91824074074e-06,
+        8.71472222222e-06,
+        8.87581481481e-06
+      ],
+      "mean_last_four_seconds": 8.896569444442501e-06,
+      "contract": {
+        "cases": [
+          [
+            63,
+            17
+          ],
+          [
+            127,
+            18
+          ],
+          [
+            255,
+            19
+          ]
+        ],
+        "alpha": 0.1,
+        "domain_length": 1000.0,
+        "total_time": 0.5,
+        "fixture": {
+          "path": "/home/imo/HeCBench_julia/src/heat-julia/study_initial.bin",
+          "sha256": "776420810ef2382650792269ce593b122e127922e87b44c9ca6303710f2c43d3",
+          "dtype": "Float64",
+          "values": 85123
+        },
+        "scope": "Source homogeneous 2Dheat, noforcing, zeroDirichlet outside interiorgrid. Hostsampled source sine initializer shared exactly; setup excluded. Fullbothlevelarrays, same256threads. Namedgrids notoriginaldefault1000; composite3case solvetimes dividedby54steps, no per-size performance conclusion.",
+        "numerics": "Source constants preserved, r<<.25stable; originalJulia factored neighbor sum retained andnative sequentialweightedadds retained;1e-12dual tolerance.",
+        "accuracy": "Differentiate port drift/discrete stencil error from continuousMMS discretizationerror; no tolerance chosen to erase scientific error."
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "ce0264590369f49e04ea",
+        "benchmark_id": "heat",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/heat.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "implementation_model": "jacc",
+          "origin_model": "jacc",
+          "error_tag": "N3",
+          "phase": "numerical_verification",
+          "is_failure": false,
+          "cause": "Nativeweightedneighboradds andJuliafactoredsum yieldacceptedFP64rounding drift",
+          "max_abs_error": 1.9984014443252818e-15,
+          "atol": 1e-12,
+          "outcome": "accepted_named_domain",
+          "result": ".porting-state/portable_julia/runs/20261017T184142096640Z_heat/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "prospective_activity_window_plus_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/heat/jacc_translation.jsonl",
+          "event_id": "2296ad4398e095bd9fd287ec",
+          "delta_usage": {
+            "input_tokens": 978881,
+            "cached_input_tokens": 973184,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3283,
+            "reasoning_output_tokens": 1487,
+            "total_tokens": 982164
+          },
+          "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+        }
+      ],
+      "estimated_saved_source_tokens": 153,
+      "method": "Savedsourcechars/4 ispartialproxy only. Observedactivitywindows separately retaincached/repeatedcontext andinterleavedcoordination; noexclusive/billedcostranking. Cachedinputandreasoning subsets, overlapsnotadditive. HistoricalCUDAjlunknown."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "2296ad4398e095bd9fd287ec",
+        "begin_event_id": "d63f16c3f7745bded4f4556e",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T18:43:11.437590+00:00",
+        "usage_event_timestamp": "2026-10-17T18:42:49.863Z",
+        "elapsed_usage_event_start": "2026-10-17T18:40:53.945Z",
+        "delta_usage": {
+          "input_tokens": 978881,
+          "cached_input_tokens": 973184,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3283,
+          "reasoning_output_tokens": 1487,
+          "total_tokens": 982164
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 21.57459,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "e952320913a2fcc3a0e256abe69f84b9b718800adc6266238e1201b2e6b933bd",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "First JACC candidate/check passed allfive and bothrefs; exactCUDAjl/KA, max1.999e-15 vsnative. Distinct explicit extent-specific specs used, no feedbackrepair; prior FWT LaunchSpec finding prevented a known pitfall. Floydwarshall commit/checkpoint coordination interleaved window.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 19.125268,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/heat/jacc_translation.jsonl",
+        "evidence_sha256": "2061e8758aff7eca42e11c868848fdbde81b3dd3ebc755651b6c7b9655b7e0e5",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "01c22614c1192c2c2729354484bd8f1bacb0b3d9",
+  "explicit_outcome_evidence": {
+    "benchmark": "heat",
+    "model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T184142096640Z_heat/result.json",
+    "evidence": [
+      {
+        "path": "src/heat-julia/heat-julia-JACC/main.jl",
+        "sha256": "27a481308e96eb6d2a552bcf72e948f51b10e041233af8269c0a80dd9307d5be"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T184142096640Z_heat/result.json",
+        "sha256": "cc08b20d20c576f9e8a9b235cbab21597a6fe53761a9030f4a851f717d2f565e"
+      }
+    ]
+  }
 }

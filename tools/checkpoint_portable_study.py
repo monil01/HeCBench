@@ -119,6 +119,8 @@ payload = {
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
     'verification_strata': strata, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
+    'active_work': read(local/'active_work_300.json', {}),
+    'active_work_path': str((local/'active_work_300.json').relative_to(root)),
     'model_status_inventory': str((local/'study_300_status.json').relative_to(root)),
     'open_prospective_usage_segments': usage_segments,
     'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',

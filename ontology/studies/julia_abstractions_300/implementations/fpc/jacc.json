@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "fpc",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/fpc.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,28 +14,799 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Separate short-circuit branch and separately evaluated mask classifiers; shared atomic bytecount then one global merge perblock.",
+    "mapping": "1024 blocks256 threads, one word/lane; lane0 zeros shared counter and lane255 merges after barriers.",
+    "layout": "Contiguous UInt64 word containers;4-byte shared UInt32 and global UInt32 result; global reset each repetition.",
+    "precision": {
+      "storage": [
+        "uint64 containers",
+        "uint32 counters"
+      ],
+      "compute": [
+        "uint32 bit operations",
+        "int32 signed interpretation",
+        "uint32 atomics"
+      ],
+      "artifact": "int32 positive scalar, lossless for selected524288"
+    },
+    "implementation_detail": "Two callbacks with JACC.shared4-byte immutable template, original zero/barrier logic and JACC atomics; linear index recovers lane.",
+    "memory": "4B explicitly allocated dynamic shared plus4B read-only zero-template global buffer.",
+    "synchronization": [
+      "source two block barriers",
+      "JACC initial template staging barrier"
+    ],
+    "atomic_operations": [
+      "one UInt32 shared add perword",
+      "one UInt32 global add perblock"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU counter reset plus one classifier kernel per timed repetition; device allocation, H2D, scalar D2H, fixture/oracle checks and artifact writes excluded.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/fpc-julia/fpc-julia-JACC/main.jl",
+        "sha256": "14ceac46a348534e52cc5df4be8ae506e597d7fab58b806497540ff118631a87",
+        "source_locations": "actual implementation, launch policy and precision"
+      },
+      {
+        "path": "src/fpc-julia/study_pattern_math.jl",
+        "sha256": "e98456c05a7c0e88ba273be63b92aaa75322eb53b8951b24f5d7e4c79deb0af9",
+        "source_locations": "actual classifier predicates and priority"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "timing_scope": "counter_reset_and_fpc_kernel_per_internal_repeat",
+    "resource_geometry": {
+      "blocks": 1024,
+      "threads": 256,
+      "shared_bytes": 4,
+      "input_words": 262144,
+      "registers": null
+    },
+    "verification_detail": {
+      "checked_native_observables": 1,
+      "input_word_count": 262144,
+      "full_observable": true,
+      "serialized_bitstream_exists": false
+    },
+    "configuration_ids": [
+      "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+      "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1"
+    ],
+    "feedback_reuse": "KA successful mapping and reference classifier helpers reused before first draft.",
+    "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Separate short-circuit branch and separately evaluated mask classifiers; shared atomic bytecount then one global merge perblock.",
+    "work_item_mapping": "1024 blocks256 threads, one word/lane; lane0 zeros shared counter and lane255 merges after barriers.",
+    "layout": "Contiguous UInt64 word containers;4-byte shared UInt32 and global UInt32 result; global reset each repetition.",
+    "storage_precision": [
+      "uint64 containers",
+      "uint32 counters"
+    ],
+    "compute_precision": [
+      "uint32 bit operations",
+      "int32 signed interpretation",
+      "uint32 atomics"
+    ],
+    "memory_hierarchy_and_access": "4B explicitly allocated dynamic shared plus4B read-only zero-template global buffer.",
+    "synchronization": [
+      "source two block barriers",
+      "JACC initial template staging barrier"
+    ],
+    "atomics_and_reductions": [
+      "one UInt32 shared add perword",
+      "one UInt32 global add perblock"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": {
+      "blocks": 1024,
+      "threads": 256,
+      "shared_bytes": 4,
+      "input_words": 262144,
+      "registers": null
+    },
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU counter reset plus one classifier kernel per timed repetition; device allocation, H2D, scalar D2H, fixture/oracle checks and artifact writes excluded.",
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "fpc",
+    "primary_motif": "word_pattern_classification_shared_atomic_bytecount",
+    "storage_precision": [
+      "uint64_container_low32_word",
+      "uint32_counter"
+    ],
+    "compute_precision": [
+      "uint32_bitwise",
+      "int32_signed_magnitude",
+      "uint32_atomic_add"
+    ],
+    "synchronization": [
+      "shared_counter_initialization_barrier",
+      "shared_counter_completion_barrier"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched_with_backend_adaptation",
+      "reason": "Separate source branch/mask classifiers,256 lanes,4-byte shared atomic counter,thread255 global atomic merge; JACC stages4-byte template before source initialization."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "counter_reset_and_fpc_kernel_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Only scalar payload-byte estimation is implemented by the source; no compressed bitstream, metadata encoding, decompression or application compression quality measured.",
+      "Named balanced16-pattern fixture uses262144 UInt64 containers holding32-bit words; original random generator and larger wordcount regimes unmeasured.",
+      "Device input is2MiB and fits V100 L2; no DRAM bandwidth or application scaling claim.",
+      "GPU reset+classifier/atomic kernel region excludes original native allocations,H2D,scalarD2H andfree.",
+      "JACC adds4-byte shared-template staging and one initialization barrier; code generation and atomic contention have not been profiled.",
+      "JACC translation reuses KA mapping and shared reference arithmetic; consumed usage includes cached context/coordination and is not independent billed source cost.",
+      "Large retained host-clock timing variation in jacc: all four samples retained in required mean; cause unmeasured, do not interpret inflated mean as stable device-kernel cost.",
+      "Both JACC series contain a retained millisecond-scale trial amid tens-of-microseconds samples; all4 retained in means, cause unknown. KA branch retained CV0.516; no preferred rerun."
+    ],
+    "jacc_shared_memory_policy": "explicit_required_4_bytes",
+    "observation": "research/observations/fpc.md",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "frequent_pattern_word_compression_size_estimation",
+      "scientific_task": "Estimate payload bytes from common32-bit word patterns without producing a compressed bitstream.",
+      "mathematical_operation": "Classify each low32-bit word by ordered zero/signed-byte/signed-halfword/zero-lowhalf/two-bytehalves/repeated-byte/default predicates; sum selected1,2or4 bytes.",
+      "discretization_or_topology": "262144 independent UInt64 containers with16 balanced literal low32-bit patterns;1024 groups256 lanes reduce to one UInt32 counter.",
+      "invariants": [
+        "Exact byte total524288 for hand-enumerated per-pattern costs.",
+        "Branch and predicate-mask variants preserve the same ordered category priority.",
+        "No counter overflow occurs at selected size; UInt64 high32bits are zero in the fixture."
+      ],
+      "accuracy_requirements": [
+        "Full native observable: one UInt32 bytecount, losslessly emitted Int32, exact vs independently tabulated16-pattern costs and both references on all5trials."
+      ],
+      "precision_sensitivity": "Bit patterns and signed interpretation determine categories; INT_MIN unsigned-magnitude handling included. Not a floating-point codec.",
+      "input_size_regimes": "2MiB device input,1MiB semantic32-bit uncompressed words,0.5MiB estimated payload;16-category-balanced fixture,10 reset/kernel repetitions. Original wgs256 selects4Mwords rather than this262144-word fixture.",
+      "community_use_case": "Generic frequent-pattern compression size estimator; no particular scientific dataset or application provenance established by source.",
+      "uncertainty": "No actual serialization, metadata cost, decompressor, throughput on scientific distributions, or lossless round-trip certification.",
+      "provenance": [
+        {
+          "path": "src/fpc-cuda/main.cu",
+          "sha256": "e4b34581650f58d8d23a80d9ce859b2d8081a38e9afbed236ee848dc7a453baa",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/fpc-julia/study_common.jl",
+          "sha256": "0b3428962abbbd047edd1974df673477a085c3cd90dd7f6143500ed1e8c55c89",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T18:25:06.525658+00:00",
+      "review_phase": "prospective source annotation after matched four-model verification"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Separate short-circuit branch and separately evaluated mask classifiers; shared atomic bytecount then one global merge perblock.",
+        "mapping": "1024 blocks256 threads, one word/lane; lane0 zeros shared counter and lane255 merges after barriers.",
+        "layout": "Contiguous UInt64 word containers;4-byte shared UInt32 and global UInt32 result; global reset each repetition.",
+        "precision": {
+          "storage": [
+            "uint64 containers",
+            "uint32 counters"
+          ],
+          "compute": [
+            "uint32 bit operations",
+            "int32 signed interpretation",
+            "uint32 atomics"
+          ],
+          "artifact": "int32 positive scalar, lossless for selected524288"
+        },
+        "implementation_detail": "Two distinct CUDA.jl kernels restore source fpc/fpc2 classifiers and original shared-atomic reduction; archived old reference labeled same branch kernel twice and used shared tree.",
+        "memory": "4B static shared counter; input2MiB and4B global output.",
+        "synchronization": [
+          "source two block barriers",
+          "JACC initial template staging barrier"
+        ],
+        "atomic_operations": [
+          "one UInt32 shared add perword",
+          "one UInt32 global add perblock"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU counter reset plus one classifier kernel per timed repetition; device allocation, H2D, scalar D2H, fixture/oracle checks and artifact writes excluded.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fpc-julia/fpc-julia-cuda.jl/main.jl",
+            "sha256": "48448b0cc6e964f775ca8931e4fe0a006f56c6e399da2279e756af2f02b5462e",
+            "source_locations": "actual implementation, launch policy and precision"
+          },
+          {
+            "path": "src/fpc-julia/study_pattern_math.jl",
+            "sha256": "e98456c05a7c0e88ba273be63b92aaa75322eb53b8951b24f5d7e4c79deb0af9",
+            "source_locations": "actual classifier predicates and priority"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "timing_scope": "counter_reset_and_fpc_kernel_per_internal_repeat",
+        "resource_geometry": {
+          "blocks": 1024,
+          "threads": 256,
+          "shared_bytes": 4,
+          "input_words": 262144,
+          "registers": null
+        },
+        "verification_detail": {
+          "checked_native_observables": 1,
+          "input_word_count": 262144,
+          "full_observable": true,
+          "serialized_bitstream_exists": false
+        },
+        "configuration_ids": [
+          "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+          "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1"
+        ],
+        "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Separate short-circuit branch and separately evaluated mask classifiers; shared atomic bytecount then one global merge perblock.",
+        "mapping": "1024 blocks256 threads, one word/lane; lane0 zeros shared counter and lane255 merges after barriers.",
+        "layout": "Contiguous UInt64 word containers;4-byte shared UInt32 and global UInt32 result; global reset each repetition.",
+        "precision": {
+          "storage": [
+            "uint64 containers",
+            "uint32 counters"
+          ],
+          "compute": [
+            "uint32 bit operations",
+            "int32 signed interpretation",
+            "uint32 atomics"
+          ],
+          "artifact": "int32 positive scalar, lossless for selected524288"
+        },
+        "implementation_detail": "Two @kernel definitions with4-byte @localmem, Atomix shared/global atomic additions and explicit barriers.",
+        "memory": "4B static local counter; same input and output.",
+        "synchronization": [
+          "source two block barriers",
+          "JACC initial template staging barrier"
+        ],
+        "atomic_operations": [
+          "one UInt32 shared add perword",
+          "one UInt32 global add perblock"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU counter reset plus one classifier kernel per timed repetition; device allocation, H2D, scalar D2H, fixture/oracle checks and artifact writes excluded.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fpc-julia/fpc-julia-KA/main.jl",
+            "sha256": "ca5ca281928ebbe64ff9222f84d05e61b4550eeb0b1c0864a5b865e16d235ce0",
+            "source_locations": "actual implementation, launch policy and precision"
+          },
+          {
+            "path": "src/fpc-julia/study_pattern_math.jl",
+            "sha256": "e98456c05a7c0e88ba273be63b92aaa75322eb53b8951b24f5d7e4c79deb0af9",
+            "source_locations": "actual classifier predicates and priority"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "timing_scope": "counter_reset_and_fpc_kernel_per_internal_repeat",
+        "resource_geometry": {
+          "blocks": 1024,
+          "threads": 256,
+          "shared_bytes": 4,
+          "input_words": 262144,
+          "registers": null
+        },
+        "verification_detail": {
+          "checked_native_observables": 1,
+          "input_word_count": 262144,
+          "full_observable": true,
+          "serialized_bitstream_exists": false
+        },
+        "configuration_ids": [
+          "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+          "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1"
+        ],
+        "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Separate short-circuit branch and separately evaluated mask classifiers; shared atomic bytecount then one global merge perblock.",
+        "mapping": "1024 blocks256 threads, one word/lane; lane0 zeros shared counter and lane255 merges after barriers.",
+        "layout": "Contiguous UInt64 word containers;4-byte shared UInt32 and global UInt32 result; global reset each repetition.",
+        "precision": {
+          "storage": [
+            "uint64 containers",
+            "uint32 counters"
+          ],
+          "compute": [
+            "uint32 bit operations",
+            "int32 signed interpretation",
+            "uint32 atomics"
+          ],
+          "artifact": "int32 positive scalar, lossless for selected524288"
+        },
+        "implementation_detail": "Two callbacks with JACC.shared4-byte immutable template, original zero/barrier logic and JACC atomics; linear index recovers lane.",
+        "memory": "4B explicitly allocated dynamic shared plus4B read-only zero-template global buffer.",
+        "synchronization": [
+          "source two block barriers",
+          "JACC initial template staging barrier"
+        ],
+        "atomic_operations": [
+          "one UInt32 shared add perword",
+          "one UInt32 global add perblock"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU counter reset plus one classifier kernel per timed repetition; device allocation, H2D, scalar D2H, fixture/oracle checks and artifact writes excluded.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fpc-julia/fpc-julia-JACC/main.jl",
+            "sha256": "14ceac46a348534e52cc5df4be8ae506e597d7fab58b806497540ff118631a87",
+            "source_locations": "actual implementation, launch policy and precision"
+          },
+          {
+            "path": "src/fpc-julia/study_pattern_math.jl",
+            "sha256": "e98456c05a7c0e88ba273be63b92aaa75322eb53b8951b24f5d7e4c79deb0af9",
+            "source_locations": "actual classifier predicates and priority"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "timing_scope": "counter_reset_and_fpc_kernel_per_internal_repeat",
+        "resource_geometry": {
+          "blocks": 1024,
+          "threads": 256,
+          "shared_bytes": 4,
+          "input_words": 262144,
+          "registers": null
+        },
+        "verification_detail": {
+          "checked_native_observables": 1,
+          "input_word_count": 262144,
+          "full_observable": true,
+          "serialized_bitstream_exists": false
+        },
+        "configuration_ids": [
+          "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+          "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1"
+        ],
+        "feedback_reuse": "KA successful mapping and reference classifier helpers reused before first draft.",
+        "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1"
+      }
+    },
+    "configuration_results": {
+      "fpc": {
+        "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T182213940945Z_fpc/result.json",
+        "mean_seconds": {
+          "cuda": 8.094575e-06,
+          "cuda_jl": 9.061575e-06,
+          "ka": 1.8152425e-05,
+          "jacc": 0.0016128954249999999
+        },
+        "checked_values_per_trial": 1
+      },
+      "fpc2": {
+        "configuration_id": "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T182249706462Z_fpc/result.json",
+        "mean_seconds": {
+          "cuda": 7.666575e-06,
+          "cuda_jl": 1.0072125e-05,
+          "ka": 1.3218875e-05,
+          "jacc": 0.00135529525
+        },
+        "checked_values_per_trial": 1
+      }
+    },
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          9.3441e-06,
+          7.72e-06,
+          7.7601e-06,
+          7.5541e-06
+        ],
+        "minimum": 7.5541e-06,
+        "maximum": 9.3441e-06,
+        "sample_standard_deviation": 8.37776005763672e-07,
+        "coefficient_of_variation": 0.10349845492365838,
+        "max_to_min_ratio": 1.2369574138547277,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          1.05971e-05,
+          8.882e-06,
+          8.4211e-06,
+          8.3461e-06
+        ],
+        "minimum": 8.3461e-06,
+        "maximum": 1.05971e-05,
+        "sample_standard_deviation": 1.050745276379263e-06,
+        "coefficient_of_variation": 0.11595614188253843,
+        "max_to_min_ratio": 1.2697068091683543,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          3.21483e-05,
+          1.46531e-05,
+          1.29342e-05,
+          1.28741e-05
+        ],
+        "minimum": 1.28741e-05,
+        "maximum": 3.21483e-05,
+        "sample_standard_deviation": 9.366969973040019e-06,
+        "coefficient_of_variation": 0.5160175553976958,
+        "max_to_min_ratio": 2.4971298964587816,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          8.71068e-05,
+          0.0062297766,
+          7.11647e-05,
+          6.35336e-05
+        ],
+        "minimum": 6.35336e-05,
+        "maximum": 0.0062297766,
+        "sample_standard_deviation": 0.003077936451879469,
+        "coefficient_of_variation": 1.9083298298024929,
+        "max_to_min_ratio": 98.05483397761184,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    },
+    "configuration_timing_dispersion": {
+      "fpc": {
+        "cuda": {
+          "retained_trial_seconds": [
+            9.3441e-06,
+            7.72e-06,
+            7.7601e-06,
+            7.5541e-06
+          ],
+          "coefficient_of_variation": 0.10349845492365838,
+          "outlier_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            1.05971e-05,
+            8.882e-06,
+            8.4211e-06,
+            8.3461e-06
+          ],
+          "coefficient_of_variation": 0.11595614188253843,
+          "outlier_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            3.21483e-05,
+            1.46531e-05,
+            1.29342e-05,
+            1.28741e-05
+          ],
+          "coefficient_of_variation": 0.5160175553976958,
+          "outlier_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            8.71068e-05,
+            0.0062297766,
+            7.11647e-05,
+            6.35336e-05
+          ],
+          "coefficient_of_variation": 1.9083298298024929,
+          "outlier_removed": false
+        }
+      },
+      "fpc2": {
+        "cuda": {
+          "retained_trial_seconds": [
+            7.5861e-06,
+            7.502e-06,
+            7.4041e-06,
+            8.1741e-06
+          ],
+          "coefficient_of_variation": 0.045186727722222646,
+          "outlier_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            1.16332e-05,
+            1.00551e-05,
+            9.5491e-06,
+            9.0511e-06
+          ],
+          "coefficient_of_variation": 0.11105150644970296,
+          "outlier_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            2.18592e-05,
+            1.06881e-05,
+            1.04531e-05,
+            9.8751e-06
+          ],
+          "coefficient_of_variation": 0.43652257780628767,
+          "outlier_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            0.0052291103,
+            6.97396e-05,
+            6.14785e-05,
+            6.08526e-05
+          ],
+          "coefficient_of_variation": 1.9055232003356484,
+          "outlier_removed": false
+        }
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/fpc-julia/fpc-julia-JACC/main.jl",
+    "sha256": "14ceac46a348534e52cc5df4be8ae506e597d7fab58b806497540ff118631a87",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        27
+      ],
+      "local_storage": [],
+      "barrier": [
+        8,
+        10,
+        18,
+        20
+      ],
+      "atomic": [
+        9,
+        11,
+        19,
+        21
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+      "run_id": "20261017T182213940945Z_fpc",
+      "result": ".porting-state/portable_julia/runs/20261017T182213940945Z_fpc/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "17fb51d85005c4727c8e8b535d40a2a48d583b7047d9661451ddf175dec9fa8c",
+      "source_hash": "57df2daa7258eaf8c89a921efe385d6107aafeed683ea246eb023ea264e36bc2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T182213940945Z_fpc/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        7.33367e-05,
+        8.71068e-05,
+        0.0062297766,
+        7.11647e-05,
+        6.35336e-05
+      ],
+      "mean_last_four_seconds": 0.0016128954249999999,
+      "contract": "262144UInt64containers carryinglow32-bitwords;16balancedliteralpatternscoverzero,signedbyte/halfword,lowhalfzero,twohalfbytes,repeatedbyte/default/INT_MIN;exactpayload524288bytes. OneactualobservableUInt32bytecounter(artifactInt32),noserializedcodec;GPU-onlyreset+classifier/sharedatomic/globalatomic,10repeats. Originalnativeend-to-endoffloadtimingunmeasured.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1",
+      "run_id": "20261017T182249706462Z_fpc",
+      "result": ".porting-state/portable_julia/runs/20261017T182249706462Z_fpc/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "2b2c0e84edf766d19853f2865498281e7e55d2d876aa569a6fe8a9c1bf98f7d2",
+      "source_hash": "57df2daa7258eaf8c89a921efe385d6107aafeed683ea246eb023ea264e36bc2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T182249706462Z_fpc/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.90977e-05,
+        0.0052291103,
+        6.97396e-05,
+        6.14785e-05,
+        6.08526e-05
+      ],
+      "mean_last_four_seconds": 0.00135529525,
+      "contract": "262144UInt64containers carryinglow32-bitwords;16balancedliteralpatternscoverzero,signedbyte/halfword,lowhalfzero,twohalfbytes,repeatedbyte/default/INT_MIN;exactpayload524288bytes. OneactualobservableUInt32bytecounter(artifactInt32),noserializedcodec;GPU-onlyreset+classifier/sharedatomic/globalatomic,10repeats. Originalnativeend-to-endoffloadtimingunmeasured.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "fpc-jacc-P1-retrospective-implementation",
+        "benchmark_id": "fpc",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/fpc.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "fpc-jacc-P1-retrospective-implementation",
+          "benchmark": "fpc",
+          "model": "jacc",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "JACC initial4-byte template load/barrier; native offload setup/copies/free deliberately excluded from all4 named GPU timings.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/fpc-cuda/main.cu",
+              "sha256": "e4b34581650f58d8d23a80d9ce859b2d8081a38e9afbed236ee848dc7a453baa",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/fpc-julia/fpc-julia-JACC/main.jl",
+              "sha256": "14ceac46a348534e52cc5df4be8ae506e597d7fab58b806497540ff118631a87",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2541,
+      "output_tokens": 281,
+      "cached_tokens": null,
+      "total_tokens": 2822,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/fpc-cuda/main.cu",
+        "src/fpc-julia/fpc-julia-cuda.jl/main.jl",
+        "src/fpc-julia/fpc-julia-KA/main.jl",
+        "src/fpc-julia/fpc-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/fpc/jacc_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "740eea1b6704308d6a5aaa11",
+        "begin_event_id": "fdff50b6314fd77575fd0668",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T18:23:28.219353+00:00",
+        "usage_event_timestamp": "2026-10-17T18:23:20.165Z",
+        "elapsed_usage_event_start": "2026-10-17T18:21:48.507Z",
+        "delta_usage": {
+          "input_tokens": 360054,
+          "cached_input_tokens": 355328,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1956,
+          "reasoning_output_tokens": 191,
+          "total_tokens": 362010
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 8.054353,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "a28f7ad4b5e15f0e5ecdd7ff430605a79f00c5db3632f8484f85d41e66bcc68f",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Both JACC configurations passed candidate1; two actual checks and no target repairs; phase metadata saved in preceding round.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 6.854374,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/fpc/jacc_translation.jsonl",
+        "evidence_sha256": "3099616448cdc468828fe44b1dd8eeb49dcba6ab91df0754c98b9b8098e0d67c",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "590d84da1848ba429ac73358f4c2c02ded68bc81",
+  "explicit_outcome_evidence": {
+    "benchmark": "fpc",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T182213940945Z_fpc/result.json",
+      ".porting-state/portable_julia/runs/20261017T182249706462Z_fpc/result.json"
+    ],
+    "contract": "262144UInt64containers carryinglow32-bitwords;16balancedliteralpatternscoverzero,signedbyte/halfword,lowhalfzero,twohalfbytes,repeatedbyte/default/INT_MIN;exactpayload524288bytes. OneactualobservableUInt32bytecounter(artifactInt32),noserializedcodec;GPU-onlyreset+classifier/sharedatomic/globalatomic,10repeats. Originalnativeend-to-endoffloadtimingunmeasured.",
+    "limitations": [
+      "Only scalar payload-byte estimation is implemented by the source; no compressed bitstream, metadata encoding, decompression or application compression quality measured.",
+      "Named balanced16-pattern fixture uses262144 UInt64 containers holding32-bit words; original random generator and larger wordcount regimes unmeasured.",
+      "Device input is2MiB and fits V100 L2; no DRAM bandwidth or application scaling claim.",
+      "GPU reset+classifier/atomic kernel region excludes original native allocations,H2D,scalarD2H andfree.",
+      "JACC adds4-byte shared-template staging and one initialization barrier; code generation and atomic contention have not been profiled.",
+      "JACC translation reuses KA mapping and shared reference arithmetic; consumed usage includes cached context/coordination and is not independent billed source cost."
+    ],
+    "configuration_results": {
+      "fpc": {
+        "configuration_id": "fpc_branch_uint64_low32_patterns16_n262144_reset_kernel_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T182213940945Z_fpc/result.json",
+        "mean_seconds": {
+          "cuda": 8.094575e-06,
+          "cuda_jl": 9.061575e-06,
+          "ka": 1.8152425e-05,
+          "jacc": 0.0016128954249999999
+        },
+        "checked_values_per_trial": 1
+      },
+      "fpc2": {
+        "configuration_id": "fpc_masks_uint64_low32_patterns16_n262144_reset_kernel_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T182249706462Z_fpc/result.json",
+        "mean_seconds": {
+          "cuda": 7.666575e-06,
+          "cuda_jl": 1.0072125e-05,
+          "ka": 1.3218875e-05,
+          "jacc": 0.00135529525
+        },
+        "checked_values_per_trial": 1
+      }
+    }
+  }
 }
