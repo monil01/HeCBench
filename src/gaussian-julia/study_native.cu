@@ -1,0 +1,17 @@
+#define main original_hecbench_main
+#include "../gaussian-cuda/gaussianElim.cu"
+#undef main
+#include <vector>
+#include <cmath>
+#include <chrono>
+int main(int argc,char**argv){
+const int n=128,repeats=1;std::vector<float>host(n*n),expected_a(n*n),expected_b(n,1.f),expected_m(n*n,0.f),expected_x(n);FILE*input=fopen("/home/imo/HeCBench_julia/src/gaussian-julia/study_input_f32.bin","rb");if(!input||fread(host.data(),4,n*n,input)!=(size_t)n*n)return 7;fclose(input);expected_a=host;gaussian_reference(expected_a.data(),expected_b.data(),expected_m.data(),expected_x.data(),n);std::vector<float>expected;expected.insert(expected.end(),expected_a.begin(),expected_a.end());expected.insert(expected.end(),expected_b.begin(),expected_b.end());expected.insert(expected.end(),expected_m.begin(),expected_m.end());expected.insert(expected.end(),expected_x.begin(),expected_x.end());float*a,*bv,*m;cudaMalloc(&a,n*n*4);cudaMalloc(&bv,n*4);cudaMalloc(&m,n*n*4);std::vector<float>ones(n,1.f);cudaMemcpy(a,host.data(),n*n*4,cudaMemcpyHostToDevice);cudaMemcpy(bv,ones.data(),n*4,cudaMemcpyHostToDevice);cudaMemset(m,0,n*n*4);
+ auto launch=[&](){for(int t=0;t<n-1;t++){fan1<<<1,256>>>(a,m,n,t);fan2<<<dim3(8,8),dim3(16,16)>>>(a,bv,m,n,t);}};launch();if(cudaDeviceSynchronize()!=cudaSuccess)return 4;
+ bool allok=true;for(int trial=1;trial<=5;trial++){
+ cudaMemcpy(a,host.data(),n*n*4,cudaMemcpyHostToDevice);cudaMemcpy(bv,ones.data(),n*4,cudaMemcpyHostToDevice);cudaMemset(m,0,n*n*4);cudaDeviceSynchronize();auto start=std::chrono::steady_clock::now();for(int j=0;j<repeats;j++)launch();auto status=cudaDeviceSynchronize();double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/repeats;
+ std::vector<float>aa(n*n),bb(n),mm(n*n),xx(n),got;cudaMemcpy(aa.data(),a,n*n*4,cudaMemcpyDeviceToHost);cudaMemcpy(bb.data(),bv,n*4,cudaMemcpyDeviceToHost);cudaMemcpy(mm.data(),m,n*n*4,cudaMemcpyDeviceToHost);BackSub(aa.data(),bb.data(),xx.data(),n);got.insert(got.end(),aa.begin(),aa.end());got.insert(got.end(),bb.begin(),bb.end());got.insert(got.end(),mm.begin(),mm.end());for(size_t i=0;i<got.size();i++)if(!std::isfinite(got[i])||fabs(double(got[i])-expected[i])>1e-4)return 8;got.insert(got.end(),xx.begin(),xx.end());double scaled=0,xnorm=0,anorm=0;for(int i=0;i<n;i++){double s=0,rowsum=0;for(int j=0;j<n;j++){s+=double(host[i*n+j])*xx[j];rowsum+=fabs(host[i*n+j]);}scaled=fmax(scaled,fabs(s-1));anorm=fmax(anorm,rowsum);xnorm=fmax(xnorm,fabs(xx[i]));}scaled/=anorm*xnorm+1;printf("STUDY_SCALED_RESIDUAL %.12g\n",scaled);if(!std::isfinite(scaled)||scaled>=1e-5)return 9;
+ bool ok=status==cudaSuccess;double error=0,relative=0;for(size_t j=0;j<got.size();j++){double e=fabs((double)got[j]-expected[j]);error=fmax(error,e);relative=fmax(relative,e/fmax(fabs((double)expected[j]),0.001));ok&=std::isfinite((double)got[j])&&e<=0.001;}allok&=ok;
+ char filename[80];snprintf(filename,sizeof(filename),"output_trial%d.bin",trial);FILE*f=fopen(filename,"wb");if(!f)return 5;fwrite(got.data(),sizeof(float),got.size(),f);fclose(f);
+ printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":%.12g,\"max_rel_error\":%.12g,\"timing_region\":\"kernel_launch_loop_per_internal_repeat\",\"jit_excluded\":true,\"internal_repeats\":%d,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,seconds,ok?"true":"false",got.size(),error,relative,repeats,filename,got.size());
+ }return allok?0:1;
+}
