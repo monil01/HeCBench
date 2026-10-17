@@ -1,0 +1,131 @@
+{
+  "reference_audit": {
+    "finding": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+    "original_path": "/home/imo/HeCBench_julia/src/scatter-julia/scatter-julia-cuda.jl/original_main.jl",
+    "original_sha256": "04d91de81cbba5a2ddba2ed4cb76a01b1e11e93c785c59a332effa89d327e627",
+    "original_preserved": true,
+    "phase": "reference_correctness",
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+  "mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": 16
+  },
+  "traits": {
+    "primary_motif": "irregular_scatter_reduction",
+    "storage_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64"
+    ],
+    "synchronization": [
+      "atomic_compare_exchange_retry",
+      "host_device_perkernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native hardwareatomicorCAS peroperation replaced withall-CAScomposition; genericTensorInfo specializedto1D"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_twenty_individually_synchronized_kernel_means_excluding_reset",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "All-CASmappingchoice vsnative hardwareatomics",
+      "\u00b11order-independentfixture",
+      "LosslessFloat64export onlygivenboundedfixture"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "irregular numerical reduction primitive",
+      "scientific_task": "Combine sourcevalues at indexed destinations",
+      "governing_method": "Atomic scatter withfive reductionoperators",
+      "discretization": "Irregularindexmap, no scientificmesh represented",
+      "accuracy_needs": [
+        "no lostupdates",
+        "identity preservation",
+        "integerdivision semantics",
+        "floatingorderdependence explicitlyscoped"
+      ],
+      "input_regime": "4096sources,2048destinations,exactly2collisions each",
+      "precision_sensitivity": "\u00b11fixture avoidsorder-dependentrounding; broaderinputsemantics unmeasured",
+      "community_use_case": "Indexedaccumulation in graph or particlemeshcodes; no specificapplication dataset",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/scatter-cuda/main.cu",
+          "sha256": "21edd46691a5c988e100918b87f605a17f8df5716f7667f24fc3322d248df6b6"
+        }
+      ]
+    }
+  },
+  "observation": "All twenty native type/operator cases are retained. The named \u00b11 fixture makes multiplication and division order-independent and permits exact full-output checks. Julia uses a uniform raw-bit CAS implementation, an explicit agent algorithm choice rather than evidence that native atomic operations are unavailable. Comparisons therefore include this mapping change and cannot isolate abstraction overhead.",
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 3,
+      "measurement_adapter_repairs": 2,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 3,
+      "measurement_adapter_repairs": 2,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "effort_observation": "Device kernel candidate1 compiled/warmed all twenty specializations. Shared host fixture required two repairs: B2 comprehension spacing, then R1 host reset copy from ReinterpretArray falling back to forbidden GPU scalar indexing. Materialize the host reinterpret buffer with collect; never enable scalar GPU fallback. Three process checks each for CUDA.jl/KA; JACC inherits fixed fixture.",
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "implementation_model": "cuda_jl",
+        "phase": "measurement",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "B2_shared_case_generator_parser",
+        "evidence": ".porting-state/portable_julia/runs/20261017T163151165990Z_scatter/cuda_jl_run1.log"
+      },
+      {
+        "implementation_model": "cuda_jl",
+        "phase": "measurement",
+        "candidate_id": 1,
+        "check_id": 2,
+        "outcome": "R1_host_reset_scalar_indexing_abort",
+        "device_warmup_specializations_succeeded": 20,
+        "evidence": ".porting-state/portable_julia/runs/20261017T163317819168Z_scatter/cuda_jl_run1.log"
+      }
+    ],
+    "ka": [
+      {
+        "implementation_model": "ka",
+        "phase": "measurement",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "B2_shared_case_generator_parser",
+        "evidence": ".porting-state/portable_julia/runs/20261017T163151165990Z_scatter/ka_run1.log"
+      },
+      {
+        "implementation_model": "ka",
+        "phase": "measurement",
+        "candidate_id": 1,
+        "check_id": 2,
+        "outcome": "R1_host_reset_scalar_indexing_abort",
+        "device_warmup_specializations_succeeded": 20,
+        "evidence": ".porting-state/portable_julia/runs/20261017T163317819168Z_scatter/ka_run1.log"
+      }
+    ]
+  }
+}
