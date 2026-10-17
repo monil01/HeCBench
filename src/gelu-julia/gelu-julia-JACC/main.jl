@@ -41,7 +41,7 @@ function gelu_vec2_jacc!(global_x,global_y,src, bias, width::Int32, height::Int3
 end
 
 function factory(src,bias,mode,width,height,batch)
-    spec=JACC.launch_spec(;threads=(128,1),sync=false)
+    spec=JACC.launch_spec(;threads=(128,1),shmem_size=0,sync=false)
     kernel=mode=="base" ? gelu_base_jacc! : gelu_vec2_jacc!
     return ()->JACC.parallel_for(spec,(height*128,batch),kernel,src,bias,Int32(width),Int32(height))
 end
