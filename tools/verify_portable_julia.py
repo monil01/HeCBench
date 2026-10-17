@@ -123,6 +123,32 @@ def save_artifacts(rows, cwd, out, model):
         artifact['saved_path']=str(saved)
         artifact['sha256']=hashlib.sha256(saved.read_bytes()).hexdigest()
 
+def preserve_rejected_records(text, cwd, out, model, events, returncode, reason):
+    """Keep diagnostics from failed execution; never feed them to acceptance."""
+    def diagnostic_json(value):
+        if isinstance(value,float) and not math.isfinite(value):return repr(value)
+        if isinstance(value,list):return [diagnostic_json(x) for x in value]
+        if isinstance(value,dict):return {k:diagnostic_json(v) for k,v in value.items()}
+        return value
+    rejected=[]
+    for line in text.splitlines():
+        if not line.startswith('STUDY_TRIAL '):continue
+        try:
+            row=json.loads(line[len('STUDY_TRIAL '):])
+            if not isinstance(row,dict):raise ValueError('Structured trial must be an object')
+        except (ValueError,TypeError) as error:
+            events.append({'model':model,'phase':'rejected_evidence_parse','error':str(error),'raw_record':line})
+            continue
+        try:
+            save_artifacts([row],cwd,out,model)
+        except (OSError,ValueError,TypeError,KeyError) as error:
+            row['rejected_artifact_capture_error']=str(error)
+        row['rejection_context']={'returncode':returncode,'reason':reason,
+            'acceptance_eligible':False,'raw_record':line,
+            'nonfinite_diagnostic_scalars':'Represented as strings; original tokens remain in raw_record/log. Artifact bytes are unchanged.'}
+        rejected.append(diagnostic_json(row))
+    return rejected
+
 def compare(ref, got, atol, rtol):
     if not finite_values(ref) or not finite_values(got) or len(ref)!=len(got):
         return {'status':'unverified','reason':'missing/nonfinite/mismatched numerical values'}
@@ -299,6 +325,7 @@ def verify(config):
             build_ok=code==0 and stable_after_build
             if code==0 and not build_ok:events.append({'model':model,'phase':'source_provenance','status':'invalid','reason':'source changed during build'})
         trials=[]
+        rejected_trials=[]
         if build_ok:
             count=1 if spec.get('structured',False) else 5
             with open('/tmp/hecbench-julia-study-gpu.lock','w') as lock:
@@ -312,13 +339,17 @@ def verify(config):
                     stable_after_execution=sources_stable()
                     if not stable_after_execution:
                         events.append({'model':model,'phase':'source_provenance','status':'invalid','reason':'source changed during execution'})
-                    if code or not stable_after_execution: break
+                    if code or not stable_after_execution:
+                        reason='execution_nonzero_exit' if code else 'source_provenance_invalid'
+                        rejected_trials.extend(preserve_rejected_records(text,cwd,out,model,events,code,reason))
+                        break
                     try:
                         rows=parse_records(text,spec,None if count==1 else n)
                         save_artifacts(rows,cwd,out,model)
                         trials.extend(rows)
                     except (ValueError, OSError, KeyError) as error:
                         events.append({'model':model,'phase':'evidence_parse','error':str(error)})
+                        rejected_trials.extend(preserve_rejected_records(text,cwd,out,model,events,code,'accepted_evidence_parse_failed'))
                         break
         if temp: temp.cleanup()
         indices=[r.get('trial') for r in trials]
@@ -327,6 +358,7 @@ def verify(config):
         times=[r.get('time_seconds') for r in trials]
         timing_valid=complete and all(isinstance(t,(int,float)) and math.isfinite(t) and t>0 for t in times) and all(r.get('jit_excluded') is True for r in trials)
         results[model]={'status':'native_check_pass' if correct else 'provenance_invalid' if not provenance_valid else 'unverified','trials':trials if provenance_valid else [],
+                        'rejected_trials':rejected_trials,'rejected_trial_policy':'Diagnostic only; excluded from trials, completeness, numerical comparisons, timing means and verification.',
                         'provenance_valid':provenance_valid,'provenance_checks':provenance_checks,
                         'complete':complete,'timing_valid':timing_valid,'mean_seconds':statistics.mean(times[1:]) if timing_valid else None,
                         'source_hash':source_hash,'source_path':paths[model],'adapter_hash':adapter_hash,'adapter_source_path':str(source_cwd),'adapter_file_hashes':adapter_file_hashes,'export_model_id':EXPORT_MODEL_IDS[model], 'verification_method':spec.get('verification_method','unspecified'),

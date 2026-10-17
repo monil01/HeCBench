@@ -1,6 +1,10 @@
 # PASC27 Julia translation paper — writing instructions
 
 
+### Rejected execution evidence
+
+Retain structured records and binary artifacts from nonzero exits, timeouts and invalid-provenance executions under `rejected_trials`, with return code, source validity, raw diagnostics and capture errors. These records never establish accepted-trial completeness, reference comparisons, timing means or verification. Preserve nonfinite diagnostic values without corrupting the result JSON; keep original raw tokens and artifact bytes. A lost historical capture remains an explicit evidence gap. A later localization run has its own diagnostic configuration and scope; it cannot replace an earlier failed series or retroactively repair acceptance. Preserve failed candidates and original tolerances before any revised scientific contract.
+
 ### Loaded runtime library provenance
 
 Record actual loaded library paths, resolved file hashes and runtime-reported versions for every vendor path. Compiler/link arguments alone do not prove which shared library the loader selected: RUNPATH, sonames and preloads can change it. A function address can identify an executable PLT stub rather than its implementation DSO. Preserve mistaken provenance as a hash-bound metadata correction; never relabel numerical success as an observed numerical failure. Keep unmatched library/compiler/runtime versions explicit performance covariates. A prescribed library-version control gets a separate diagnostic configuration and effort phase, fresh five trials for changed executions, exact dependency-checked reuse for unchanged models, and exclusion from primary aggregate counts before measurement.
