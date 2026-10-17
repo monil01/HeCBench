@@ -1,0 +1,133 @@
+{
+  "benchmark": "moe-align",
+  "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+  "gpu": 6,
+  "timeout": 600,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 3778,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "cases": [
+      {
+        "tokens": 3,
+        "experts": 32,
+        "topk": 3,
+        "mapped_invalid": false,
+        "N": 9,
+        "maxpad": 288,
+        "small": true,
+        "output_count": 298
+      },
+      {
+        "tokens": 127,
+        "experts": 64,
+        "topk": 4,
+        "mapped_invalid": false,
+        "N": 508,
+        "maxpad": 2496,
+        "small": true,
+        "output_count": 2575
+      },
+      {
+        "tokens": 3,
+        "experts": 128,
+        "topk": 3,
+        "mapped_invalid": false,
+        "N": 9,
+        "maxpad": 288,
+        "small": false,
+        "output_count": 427
+      },
+      {
+        "tokens": 600,
+        "experts": 32,
+        "topk": 3,
+        "mapped_invalid": false,
+        "N": 1800,
+        "maxpad": 2816,
+        "small": false,
+        "output_count": 2938
+      },
+      {
+        "tokens": 257,
+        "experts": 128,
+        "topk": 4,
+        "mapped_invalid": true,
+        "N": 1028,
+        "maxpad": 5024,
+        "small": false,
+        "output_count": 5311
+      }
+    ],
+    "block_size": 32,
+    "expert_map": "Final general case maps multiples7 to-1, othersE-1-e; input>=E every17thignored. Othersmapnull. Nonnegative inputIDs only.",
+    "input_prefix_count": 3778,
+    "output_count": 11549,
+    "checked_values": 15327,
+    "timing": "3 complete kernel pipeline repeats/case, sum5case means; all scratch allocation outside, unlike original general wrapper malloc/free.",
+    "small_mapping": "Native256fill threads+max(E,32)count threads, exact prefix tables; Julia fill threads stay alive through all3barriers for portable control flow.",
+    "general_mapping": "Native1024thread2block histogram/fill +CUBexclusive scan +256thread2D atomic scatter; Julia portable1024word Blellochscan explicit P1 algorithm/resource adaptation.",
+    "output_contract": "All sorted token slots/padding, expert labels, paddedtotal and general final mutatedcumsum; canonicalize only within-expert token ordering, not counts/labels/padding.",
+    "scope": "5cases spanning thresholds/32,64,128 experts; null tokenmask and singlemodeloffset0 only; smallinvalid>=E inputs nottested."
+  },
+  "atol": 0,
+  "rtol": 0,
+  "models": {
+    "cuda": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/moe-align-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/moe-align-cuda/main.cu"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "verification_method": "canonical_complete_token_partition_padding_labels_prefix_vs_cpu_groups",
+      "native_check_description": "Every input token and padding slot plus expert label/total/finalgeneralprefix checked against independent host grouping."
+    },
+    "cuda_jl": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/moe-align-julia/study_reference_kernels.jl",
+        "/home/imo/HeCBench_julia/src/moe-align-julia/study_common.jl"
+      ],
+      "verification_method": "canonical_complete_token_partition_padding_labels_prefix_vs_cpu_groups",
+      "native_check_description": "Both small/general modes; every canonical token/padding/expert/total/finalgeneralprefix against independent grouping."
+    },
+    "ka": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-KA/study_kernels.jl",
+        "/home/imo/HeCBench_julia/src/moe-align-julia/study_common.jl"
+      ],
+      "verification_method": "canonical_complete_token_partition_padding_labels_prefix_vs_cpu_groups",
+      "native_check_description": "Full small/general output partition and exact prefix states; explicit compile-time shared capacities and portable Atomix."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T231056748872Z_moe-align/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl"
+  ]
+}

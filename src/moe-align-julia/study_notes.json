@@ -1,0 +1,187 @@
+{
+  "reference_audit": {
+    "finding": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+    "taxonomy_code": "P1",
+    "phase": "reference_algorithm_mapping_alignment",
+    "original_path": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl/original_main.jl",
+    "original_sha256": "a96803efc7d269ab8ccd80fca6eb215b0c27e3c774d20234d599204e8d984c8f",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+  "mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+  "launch_geometry": {
+    "small_threads": [
+      288,
+      320
+    ],
+    "small_shared_bytes": [
+      4356,
+      16900
+    ],
+    "general_threads": 1024,
+    "general_groups": 2,
+    "general_counts_shared_bytes": [
+      128,
+      512
+    ],
+    "julia_general_scan_shared_bytes": 4096,
+    "scatter_threads": 256,
+    "scatter_grid_axis": "Y",
+    "block_size": 32
+  },
+  "traits": {
+    "primary_motif": "MoE_token_routing_histogram_prefix_scan_padded_partition_atomic_scatter",
+    "storage_precision": [
+      "Int32 expert IDs/token IDs/counts/prefix/labels"
+    ],
+    "compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "timed_compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer grouping/multiset/padding"
+    ],
+    "artifact_encoding": [
+      "Int32 exact input/output words"
+    ],
+    "synchronization": [
+      "Small3block barriers with fill threads kept alive in Julia",
+      "General histogram barriers and20-stage Blelloch scan barriers",
+      "Atomix portable shared/globalInt32 atomics",
+      "Sequential kernel stream and context-wide completion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native small prefix structure retained; fill-only threads idle rather than exit after first barrier. Native CUB1024 scan replaced with explicit Blelloch shared scan, changing algorithm/resource cost. Original host prefix roundtrip removed in named reference."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_pipeline_only_scratch_preallocated_sum_five_three_call_means",
+    "verification_contract": "canonical_complete_token_partition_padding_labels_total_and_general_finalprefix",
+    "keyconfounds": [
+      "CUB versus Blelloch scan algorithm/resource change, not pure API difference",
+      "Small fill threads participate in later barriers in Julia",
+      "Scratch allocation outside named ROI, unlike original general host wrapper",
+      "Within-expert atomic output order removed by canonicalization",
+      "JACC shared template copy/initial barrier extra API work",
+      "Singlemodeloffset0, tokenmasknull; small out-of-range IDs unmeasured"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "Mixture-of-experts neural network inference preprocessing",
+      "scientific_task": "Group routed token assignments by expert and pad each group to matrix block size for downstream expert matrix multiplication.",
+      "governing_method": "Integer histogram, exclusive prefix, per-expert ceil-to32 padding and token permutation/scatter.",
+      "accuracy_needs": [
+        "Every eligible assignment appears exactly once under its mapped expert",
+        "Excluded expert IDs never appear",
+        "All padding/labels/total counts exact",
+        "All general atomic final prefix endpoints exact"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/moe-align-cuda/main.cu",
+          "sha256": "deeacc4d160028496080b6d2fbfee8bc70afc1a77f611f248a8bc06bd689655c"
+        }
+      ]
+    }
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 3,
+      "compiler_checks": 2,
+      "execution_checks": 3,
+      "device_candidate_count": 1,
+      "host_setup_repairs": 2
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "backend_extensions": [
+        "Atomix portable shared/globalInt32atomic update"
+      ],
+      "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+      "timed_compute_precision": [
+        "Int32 integer histograms/atomic ranks/padding/prefix"
+      ],
+      "host_oracle_precision": [
+        "Exact Python integer grouping/multiset/padding"
+      ],
+      "artifact_encoding": [
+        "Int32 exact input/output words"
+      ],
+      "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+      "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers."
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "backend_extensions": [
+        "Atomix portable shared/globalInt32atomic update"
+      ],
+      "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+      "timed_compute_precision": [
+        "Int32 integer histograms/atomic ranks/padding/prefix"
+      ],
+      "host_oracle_precision": [
+        "Exact Python integer grouping/multiset/padding"
+      ],
+      "artifact_encoding": [
+        "Int32 exact input/output words"
+      ],
+      "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+      "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers."
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 3,
+      "backend_extensions": [
+        "Atomix portable shared/globalInt32atomic update"
+      ],
+      "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+      "timed_compute_precision": [
+        "Int32 integer histograms/atomic ranks/padding/prefix"
+      ],
+      "host_oracle_precision": [
+        "Exact Python integer grouping/multiset/padding"
+      ],
+      "artifact_encoding": [
+        "Int32 exact input/output words"
+      ],
+      "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+      "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers."
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "candidate_id": 1,
+        "outcome": "B2 shared host macro map shadow beforedeviceJIT",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T230815491648Z_moe-align/cuda_jl_run1.log"
+      },
+      {
+        "candidate_id": 2,
+        "outcome": "B3 mixed integer gridtuple launch afterdeviceJIT",
+        "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T230942438793Z_moe-align/cuda_jl_run1.log"
+      }
+    ]
+  },
+  "observation": "MoE alignment is an exact combinatorial contract: counts, excluded IDs, padded group capacities and token multiset matter independently of within-group ordering. Tiny sparse routing can amplify active slots by32x, while denser groups amortize padding. This corpus measures routing preprocessing, not the downstream GEMM benefit. Native CUB versus portable Blelloch and barrier participation are explicit mapping confounds, not established framework bottlenecks.",
+  "effort_observation": "Shared host CUDA launch macro map-name capture failed before device JIT; renamed mapping. Then CUDA.jl mixed Int64/Int32 grid tuple failed scatter launch after compilation; converted host dimension type, actual geometry unchanged. These are host API/macro repairs, not device compiler failures. Actual final target outcomes recorded after execution."
+}
