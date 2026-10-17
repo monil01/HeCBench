@@ -1,0 +1,190 @@
+{
+  "reference_audit": {
+    "finding": "HistoricalJulia computescorrectLoRAoperator butserialdotoneoutputperthread atonly256threads,ignoringnative6blockreduction/vector8mapping. P1mappingdifference, notestablishedwrongscientificoperator. Newreference preservesoneblockperoutput,6blocksizes,scalar/vector8shrink,expand overwrite/add; CUBreplacedbysharedbinarytree.",
+    "taxonomy_code": "P1",
+    "phase": "reference_mapping_repair",
+    "original_path": "/home/imo/HeCBench_julia/src/bgmv-julia/bgmv-julia-cuda.jl/original_main.jl",
+    "original_sha256": "1531d24bce81e864b65ae554cfba1b1a2a9c605bfb2e2c90a5f18d271f8a95f8",
+    "original_preserved": true,
+    "historical_compiler_attempts": null
+  },
+  "algorithm": "GatherLoRAindexpertoken,mixedFP16/FP32dotproducts,blockreduction,scaledshrinkaccumulationorFP16expandoverwrite/add",
+  "mapping": "Oneblockper(token,outputchannel),thread-strideddotpartial,logical8halfvector variant,sharedbinarytree replacingCUB",
+  "launch_geometry": {
+    "block_sizes": [
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "grid_shrink": [
+      4,
+      16
+    ],
+    "grid_expand": [
+      4,
+      72
+    ],
+    "shared_bytes": "4*block_size"
+  },
+  "traits": {
+    "primary_motif": "batched_gather_matrix_vector_block_reduce",
+    "storage_precision": [
+      "Float16",
+      "Float32",
+      "Int32indices"
+    ],
+    "compute_precision": [
+      "Float32dot/reduction",
+      "Float16expandoutputrounding",
+      "Int32indexing"
+    ],
+    "synchronization": [
+      "blockbarriertree",
+      "hostsyncbulkboundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Preserveblockperoutput,threadstridesandlogicalvector8;replaceCUBblockreducewithsharedbinarytree"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_six_blocks_four_modes_kernel_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "CUBvssharedbinarytree",
+      "JACCsharedtemplatecopyperblock",
+      "NTuple8actualinstructionwidthunprofiled",
+      "SmallLoRAshapes/exactfixture",
+      "24casecompositetime",
+      "JACCflattens2Dgrid to1Dafterregisterlimitfailures"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "LoRAadapterbatchedgatherprojection",
+      "scientific_task": "Token-specificlowrankadaptation shrink/expand withmixedprecision",
+      "governing_method": "GatheradapterweightsbytokenLoRAid, matrix-vectordotandblocksum",
+      "discretization": "4tokens,72hidden,16rank,3adapters;all6blocksizesand4modes",
+      "accuracy_needs": [
+        "Correctadapterindexing",
+        "FP16input/outputconversion",
+        "Shrinkaccumulation",
+        "RepeatedaddFP16rounding"
+      ],
+      "input_regime": "Exactdyadicinputs,all3adapterindices,vectordimensionmultiple8",
+      "precision_sensitivity": "FP32reductionorder andFP16expandrounding; namedfixturedoesnotstressillconditionedfullmodel",
+      "community_use_case": "Parameter-efficientmodelservingprimitive; notendtoendmodelqualityevaluation",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/bgmv-cuda/kernels.h",
+          "sha256": "7fc86c4e587d40336604913545373fc2494da100bda94b58ced4f45c73f84fc5"
+        }
+      ]
+    }
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 1,
+      "authored_kernel_templates": 1,
+      "compiled_device_kernel_specializations": 24,
+      "resource_policy": "4*block_sizebytes sharedbinarytreereduction",
+      "vector_load_claim": "Logical8halfgroup; actualmemoryinstructionwidthunmeasured"
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 1,
+      "authored_kernel_templates": 1,
+      "compiled_device_kernel_specializations": 24,
+      "resource_policy": "4*block_sizebytes sharedbinarytreereduction",
+      "vector_load_claim": "Logical8halfgroup; actualmemoryinstructionwidthunmeasured"
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "translated_device_kernels": 1,
+      "authored_kernel_templates": 1,
+      "compiled_device_kernel_specializations": 24,
+      "resource_policy": "4*block_size dynamicsharedbytes plusfulltemplatecopyperblock",
+      "vector_load_claim": "Logical8halfgroup; actualmemoryinstructionwidthunmeasured",
+      "work_item_mapping": "Flattennative2Dgrid to1Dlinearblockorder,tokenfastest; oneblockperoutputandallBS unchanged; Int32indices",
+      "launch_geometry": {
+        "block_sizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "grid_shrink": 64,
+        "grid_expand": 288,
+        "grid_topology": "flattened1D,tokenfastest",
+        "shared_bytes": "4*block_size"
+      }
+    }
+  },
+  "observation": "LoRAgatherprojectionsrequirepertokenadapterselectionandmixedprecisionstateupdates. Unlikehistoricalserialperoutputmapping, allversionsnowretainnativeoneblockperoutputandall6blocksizes/4modes. PortabletreeadaptationreplacesCUB; JACCaddsfullsharedtemplatecopy. Independentinteger-dotandFP16recurrencechecksvalidateactualpostrepeatstates. Mapping/reductioncostsandshapechangesconfoundanyabstraction-onlyperformanceinterpretation; notrainedmodelaccuracyclaim.",
+  "counts": {
+    "ka": {
+      "candidate_attempts": 2,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "numerical_feedback_repairs": 1,
+      "diagnostic_processes": 1
+    },
+    "jacc": {
+      "candidate_attempts": 3,
+      "compiler_checks": 3,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 2
+    }
+  },
+  "prior_attempts": {
+    "ka": [
+      {
+        "implementation_model": "ka",
+        "phase": "translation_verification",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "numerical_failure",
+        "taxonomy_code": "N1",
+        "result_path": ".porting-state/portable_julia/runs/20261017T184130697030Z_bgmv/result.json",
+        "log_reference": ".porting-state/portable_julia/runs/20261017T184130697030Z_bgmv/ka_run1.log"
+      },
+      {
+        "implementation_model": "ka",
+        "phase": "untimed_diagnostic",
+        "candidate_id": 1,
+        "outcome": "all24casesoutputzero",
+        "log_reference": ".porting-state/portable_julia/diagnostics/bgmv_ka_diagnostic.log"
+      }
+    ],
+    "jacc": [
+      {
+        "implementation_model": "jacc",
+        "phase": "translation_verification",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "runtime_launch_register_limit",
+        "taxonomy_code": "R1",
+        "result_path": ".porting-state/portable_julia/runs/20261017T184556571958Z_bgmv/result.json",
+        "log_reference": ".porting-state/portable_julia/runs/20261017T184556571958Z_bgmv/jacc_run1.log"
+      },
+      {
+        "implementation_model": "jacc",
+        "phase": "translation_verification",
+        "candidate_id": 2,
+        "check_id": 2,
+        "outcome": "runtime_launch_register_limit66regs_perthread",
+        "taxonomy_code": "R1",
+        "result_path": ".porting-state/portable_julia/runs/20261017T184704343301Z_bgmv/result.json"
+      }
+    ]
+  },
+  "effort_observation": "KA candidate1compiledbutall24caseoutputsremainedzero; anuntimeddiagnosticisolatedthispattern. Candidate2preservesonebasedindexvariablesacrossbarriers andcomputesderivedzerooffsetswithoutmutatingtheindexbinding. Numericallycorrectivecheckkeepsreferencearrays/timingsunchanged. Othermodelattemptsrecordedindependently. JACCcandidate1hit1024threadregisterlimit74regs/thread; candidate2narrowsknownsmallglobalindices toInt32withoutchangingblockgeometry, fixtureoroperator; finaloutcomerecordedseparately."
+}
