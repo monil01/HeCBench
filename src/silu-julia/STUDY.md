@@ -12,6 +12,10 @@ Configuration `silu_all5_fp32_n4096_bs256_r10_v1`, result `/home/imo/HeCBench_ju
 
 ## Cost and failures
 
-One saved candidate and one compiler/JIT process per target model; no observed target repair. Historical CUDA.jl attempts unknown. Reference S1 semantic repair separate from target translation. Exact consumed tokens unavailable; final-source proxies are partial, never total costs.
+One saved candidate and one compiler/JIT process per target model; no observed target repair. Historical CUDA.jl attempts unknown. Reference P1 mapping correction is separate from target translation; scalar aliases had equivalent mathematical outputs. Exact consumed tokens unavailable; final-source proxies are partial, never total costs.
 
 Reproduce: `python3 tools/verify_portable_julia.py --config src/silu-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Taxonomy adjudication
+
+Historical forward2/backward3 scalar aliases compute the same mathematical outputs as vector variants. The defect is benchmark variant/mapping fidelity, not wrong scientific computation. The earlier S1 label is superseded by P1; its event ID remains an alias for provenance. No source or numerical result changed.
