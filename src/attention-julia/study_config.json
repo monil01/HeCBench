@@ -1,0 +1,99 @@
+{
+  "benchmark": "attention",
+  "configuration_id": "fp32_impl0_n1024_d64_reset_three_kernels_allintermediates_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      1024,
+      64
+    ],
+    "fixture": "key=((17*i)%31-15)/128;value=((19*i)%127-63)/64;query=((13*j)%17-8)/64 Float32",
+    "internal_repeats": 10,
+    "implementation": 0,
+    "coverage": "Naiveimpl0 only; fusedblock/warp/mixed impl1/2/3 unported/unmeasured; existingJulia ignores implselector",
+    "timing_operation": "resetexp_sum + dot/exp_atomic + softmaxscores + weightedvalues; reset API differencecudaMemset/fill! included"
+  },
+  "atol": 0.001,
+  "rtol": 1e-06,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/attention-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU full dot_products,exp_sum,scores,outputs all2113 finiteFloat32values atol1e-3+rtol1e-6; stronger than originaloutputonly/selfrepeat",
+      "source_dependencies": [
+        "../attention-cuda/main.cu",
+        "../attention-cuda/kernels.h",
+        "../attention-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/attention-julia/attention-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU full dot_products,exp_sum,scores,outputs all2113 finiteFloat32values atol1e-3+rtol1e-6; stronger than originaloutputonly/selfrepeat",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/attention-julia/attention-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU full dot_products,exp_sum,scores,outputs all2113 finiteFloat32values atol1e-3+rtol1e-6; stronger than originaloutputonly/selfrepeat",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/attention-julia/attention-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU full dot_products,exp_sum,scores,outputs all2113 finiteFloat32values atol1e-3+rtol1e-6; stronger than originaloutputonly/selfrepeat",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T001136467960Z_attention/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
