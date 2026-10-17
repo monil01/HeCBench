@@ -1,12 +1,4 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+run:
+	$(MAKE) -C f8cast-julia-cuda.jl run
 main:
 	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 268435456 100
