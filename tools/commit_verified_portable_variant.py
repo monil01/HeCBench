@@ -27,8 +27,12 @@ if a.shared:
  paths=[f for f in parent.iterdir() if allowed(f)]+[f for f in (parent/(a.benchmark+'-julia-cuda.jl')).rglob('*') if allowed(f)]
  for _,config,_ in data:
   for spec in config['models'].values():
+   dependency_cwd=Path(spec.get('cwd',str(root)))
+   if not dependency_cwd.is_absolute():dependency_cwd=root/dependency_cwd
    for name in spec.get('source_dependencies',[]):
     f=Path(name)
+    if not f.is_absolute():f=dependency_cwd/f
+    f=f.resolve()
     if f.is_relative_to(parent) and f.is_file() and allowed(f) and not any(part in [a.benchmark+'-julia-KA',a.benchmark+'-julia-JACC'] for part in f.parts):paths.append(f)
  paths=list(dict.fromkeys(paths))
  title='Align '+a.benchmark+' study fixtures and verified references'
