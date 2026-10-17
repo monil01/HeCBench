@@ -1,0 +1,99 @@
+{
+  "benchmark": "stddev",
+  "configuration_id": "fp32_d256_n4096_sample_norm_reset_sop_sqrt_repeat10_v1",
+  "gpu": 6,
+  "timeout": 300,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "precision": "float32",
+    "shape": [
+      4096,
+      256
+    ],
+    "fixture": "Float32(i%1024)/1024 zero-basedi",
+    "internal_repeats": 10,
+    "sample": true,
+    "coverage": "Originalalgorithm sqrt(sum(x*x)/(N-1)), no mean subtraction; do not reinterpret as centered statisticalstandarddeviation",
+    "timing_operation": "zerooutput + sop atomics + normalization/sqrt; nativecudaMemset vs Juliafill! included",
+    "mapping": "Samegrid128x8,256threads/group; JACC128B sharedtemplate staging addsreads"
+  },
+  "atol": 0.001,
+  "rtol": 0.0,
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/stddev-julia",
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU original uncentered squared-norm formula, all256 finite outputs abs<=1e-3",
+      "source_dependencies": [
+        "../stddev-cuda/main.cu",
+        "../stddev-cuda/reference.h"
+      ]
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/stddev-julia/stddev-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "study.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU original uncentered squared-norm formula, all256 finite outputs abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl",
+        "main.jl"
+      ]
+    },
+    "ka": {
+      "cwd": "/home/imo/HeCBench_julia/src/stddev-julia/stddev-julia-KA",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU original uncentered squared-norm formula, all256 finite outputs abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    },
+    "jacc": {
+      "cwd": "/home/imo/HeCBench_julia/src/stddev-julia/stddev-julia-JACC",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "structured": true,
+      "verification_method": "full_array_cpu_and_dual_artifacts",
+      "native_check_description": "Independent CPU original uncentered squared-norm formula, all256 finite outputs abs<=1e-3",
+      "source_dependencies": [
+        "../study_common.jl",
+        "../../_portable_study/OwnedStudy.jl"
+      ]
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T000355821797Z_stddev/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
