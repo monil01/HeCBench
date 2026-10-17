@@ -3,37 +3,383 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "bezier-surface",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/bezier-surface.json",
   "environment": {
     "julia_release": "1.12.6",
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Float32tensorproductcubicBezierpointsum with serial16controlpoints",
+    "mapping": "One workitem/outputrow; serial512columns;2blocks256",
+    "layout": "XYZ AoS3Float32contiguous12B, rowmajoroutput; losslessartifactflattenoutsideclock",
+    "precision": {
+      "storage": "float32XYZ",
+      "compute": "float32 basis/power/accumulation",
+      "index_control": "Int32kernelarguments with explicitInt64bezier_blend helperconversions"
+    },
+    "memory": "Global192Bcontrolnet reused; globaloutputstores, no sharedscratch",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 2,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "JACC CUDA backend math/runtime",
+    "host_control_boundary": "OneGPUkernel launch persurface evaluation; CPUoracle/relativeL1checks excluded",
+    "fidelity_status": "aligned_namedscope, multiplicationassociationadapted",
+    "configuration_id": "fp32_cubic_control16_out512_repeat3_aligned_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Float32tensorproductcubicBezierpointsum with serial16controlpoints",
+    "work_item_mapping": "One workitem/outputrow; serial512columns;2blocks256",
+    "layout": "XYZ AoS3Float32contiguous12B, rowmajoroutput; losslessartifactflattenoutsideclock",
+    "storage_precision": "float32XYZ",
+    "compute_precision": "float32 basis/power/accumulation",
+    "memory_hierarchy_and_access": "Global192Bcontrolnet reused; globaloutputstores, no sharedscratch",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 2,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 2,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "JACC CUDA backend math/runtime",
+    "host_control_boundary": "OneGPUkernel launch persurface evaluation; CPUoracle/relativeL1checks excluded",
+    "fidelity_status_and_scope": "aligned_namedscope, multiplicationassociationadapted",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "bezier-surface",
+    "primary_motif": "tensor_product_polynomial_surface_evaluation",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32",
+      "integerindex/control"
+    ],
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "One row/thread and serialcolumns retained; historicalJulia computes p*(bi*bj) instead of native(p*bi)*bj association. Same mathematicalBezierpatch, fulltolerancechecked."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "SurfaceGPUkernel launchloop perinternalrepeat, noCPUconstruction/transfer/artifactoperations",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Nativeif(i>RESOLUTIONI) partialblockguard includesi==resolution; aligned512rows avoid issue withoutchangingnative. Default300unsafe boundary unmeasured",
+      "Onlycubic4x4controlpatch and512x512output Float32 verified; nativeFloat64 compilemode unmeasured",
+      "Only2workgroups launched; limited globaldeviceparallelism is a sourcegeometryfact, no counters/bottleneck diagnosis claimed",
+      "Nativeleft-associatedp*bi*bj vs Julia p*(bi*bj) causes permittedFloat32roundingdifferences",
+      "One sharedaccuracyadapter syntaxrepair is instrumentationcost, not KA/JACCdevicecompilerfailure"
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "computational_geometry",
+      "scientific_task": "Sample a3D tensorproduct Bezier surface from a4x4controlpoint net",
+      "mathematical_operation": "Sum Cartesiancontrolpoints weighted by products ofcubic Bernstein polynomials overuniform(u,v)parametergrid",
+      "discretization_or_topology": "Structured2Dparameter lattice embedded in3D; geometricrepresentation, not a PDE/FEM solve",
+      "invariants": [
+        "Parametercornersequalcorrespondingcontrolpoints",
+        "Bernsteinbasis nonnegative and partitionofunity on[0,1], hence componentwise convexhull bounds"
+      ],
+      "accuracy_requirements": [
+        "Original relativeL1<1e-6 againstFloat32sourceCPU retained forallmodels",
+        "Additionalall786432finitecomponents abs1e-5 against independentFloat64Bernsteinoracle andbothGPUreferences"
+      ],
+      "precision_sensitivity": "Powerevaluation, coefficientformation and multiplicationassociation/accumulation inFloat32; no geometricapplicationerrorbudget isprovided",
+      "input_size_regimes": "Degree3x3 patch,512x512queries;512fullrows chosen toavoidpartialblockguardbug; otherdegrees/resolutions unmeasured",
+      "community_use_case": "Parametric geometrysurface primitive relevant to geometricmodeling; source doesnot identify an end-to-end CAD/scientificsimulation application",
+      "provenance": [
+        {
+          "path": "src/bezier-surface-cuda/main.cu",
+          "sha256": "7df5e0d48f826322e14f75d1942e2956e11523b682c4b15ddc4d864d7d9e8d09",
+          "source_locations": "BezierBlend/BezierCPU/BezierGPU definitions"
+        },
+        {
+          "path": "src/bezier-surface-cuda/input/control.txt",
+          "sha256": "d65d7be2890025160cd1e95b4084b6914fe56527d9b06ae5ae982a826397103c",
+          "source_locations": "original16 cubiccontrolpoints"
+        }
+      ],
+      "uncertainty": "Geometricmodeling role follows Bernstein/Bezieroperation; particularapplication andmesherrorrequirements unknown"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Float32tensorproductcubicBezierpointsum with serial16controlpoints",
+        "mapping": "One workitem/outputrow; serial512columns;2blocks256",
+        "layout": "XYZ AoS3Float32contiguous12B, rowmajoroutput; losslessartifactflattenoutsideclock",
+        "precision": {
+          "storage": "float32XYZ",
+          "compute": "float32 basis/power/accumulation",
+          "index_control": "Int32kernelarguments with explicitInt64bezier_blend helperconversions"
+        },
+        "memory": "Global192Bcontrolnet reused; globaloutputstores, no sharedscratch",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 2,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "CUDAbackend runtime/mathlowering, no vendorBezierlibrary",
+        "host_control_boundary": "OneGPUkernel launch persurface evaluation; CPUoracle/relativeL1checks excluded",
+        "fidelity_status": "aligned_namedscope, multiplicationassociationadapted",
+        "configuration_id": "fp32_cubic_control16_out512_repeat3_aligned_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Float32tensorproductcubicBezierpointsum with serial16controlpoints",
+        "mapping": "One workitem/outputrow; serial512columns;2blocks256",
+        "layout": "XYZ AoS3Float32contiguous12B, rowmajoroutput; losslessartifactflattenoutsideclock",
+        "precision": {
+          "storage": "float32XYZ",
+          "compute": "float32 basis/power/accumulation",
+          "index_control": "Int32kernelarguments with explicitInt64bezier_blend helperconversions"
+        },
+        "memory": "Global192Bcontrolnet reused; globaloutputstores, no sharedscratch",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 2,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend math/runtime",
+        "host_control_boundary": "OneGPUkernel launch persurface evaluation; CPUoracle/relativeL1checks excluded",
+        "fidelity_status": "aligned_namedscope, multiplicationassociationadapted",
+        "configuration_id": "fp32_cubic_control16_out512_repeat3_aligned_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Float32tensorproductcubicBezierpointsum with serial16controlpoints",
+        "mapping": "One workitem/outputrow; serial512columns;2blocks256",
+        "layout": "XYZ AoS3Float32contiguous12B, rowmajoroutput; losslessartifactflattenoutsideclock",
+        "precision": {
+          "storage": "float32XYZ",
+          "compute": "float32 basis/power/accumulation",
+          "index_control": "Int32kernelarguments with explicitInt64bezier_blend helperconversions"
+        },
+        "memory": "Global192Bcontrolnet reused; globaloutputstores, no sharedscratch",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 2,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend math/runtime",
+        "host_control_boundary": "OneGPUkernel launch persurface evaluation; CPUoracle/relativeL1checks excluded",
+        "fidelity_status": "aligned_namedscope, multiplicationassociationadapted",
+        "configuration_id": "fp32_cubic_control16_out512_repeat3_aligned_v1"
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/bezier-surface-julia/bezier-surface-julia-JACC/main.jl",
+    "sha256": "e428ecc14e066f624bfad856643d8aee728fa5391cafb4d12205414eb174141e",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        28
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        28
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_cubic_control16_out512_repeat3_aligned_v1",
+      "run_id": "20261017T163105927414Z_bezier-surface",
+      "result": ".porting-state/portable_julia/runs/20261017T163105927414Z_bezier-surface/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "result_sha256": "c4102bb0f4be97ecdeaf8e07555c4b4c8fc3c3149ac2a2915f1f681d76176f19",
+      "source_hash": "00f8f6688cac94a5b9b2f7fba17048d7d2f3ebe25056bfefa13e8b81bca69bb3",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T163105927414Z_bezier-surface/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00894253833333,
+        0.00894869833333,
+        0.008916428,
+        0.00896918166667,
+        0.00802860033333
+      ],
+      "mean_last_four_seconds": 0.0087157270833325,
+      "contract": {
+        "precision": "float32XYZ AoS, flattenedlosslessfloat32 payloadonly outside timer",
+        "shape": {
+          "control": [
+            4,
+            4
+          ],
+          "output": [
+            512,
+            512,
+            3
+          ]
+        },
+        "fixture": "Exact16 controlpoints from trackednative input/control.txt embedded identically Float32",
+        "internal_repeats": 3,
+        "scope": "Cubic surface originalone-row/thread serialcolumn mapping; aligned512rows avoids nativepartialblock i>RESOLUTIONI guard bug. Original300default not validated. Float64build unmeasured.",
+        "mapping": "2blocks256,one outputrow/workitem,serial512columns and16controlpoints",
+        "accuracy": "Full786432finitecomponents CPU Float64Bernstein oracle/dualartifacts abs1e-5, plus originalsourceCPU relativeL1<1e-6 allmodels",
+        "arithmetic_difference": "Native p*bi*bj vs historicalCUDAjl/KA/JACC p*(bi*bj), tolerancechecked"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "bezier-surface-jacc-N3-float32drift",
+        "benchmark_id": "bezier-surface",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/bezier-surface.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "bezier-surface-jacc-N3-float32drift",
+          "benchmark": "bezier-surface",
+          "model": "jacc",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "is_failed_attempt": false,
+          "symptom": "Full Float32 outputs differ within tolerance; maxabsoluteerror1.7881393432617188e-07",
+          "comparison": "native CUDA artifact",
+          "root_cause": "Floating-point implementation differences observed; exact instruction-level cause not separately diagnosed",
+          "resolution": "Accept explicitly declared tolerance with complete finite output checks; retain raw artifacts",
+          "final_outcome": "verified_tolerated_drift",
+          "max_abs_error": 1.7881393432617188e-07,
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T163105927414Z_bezier-surface/result.json"
+          ],
+          "evidence_sha256": "c4102bb0f4be97ecdeaf8e07555c4b4c8fc3c3149ac2a2915f1f681d76176f19"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 4175,
+      "output_tokens": 270,
+      "cached_tokens": null,
+      "total_tokens": 4445,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/bezier-surface-cuda/main.cu",
+        "src/bezier-surface-julia/bezier-surface-julia-cuda.jl/main.jl",
+        "src/bezier-surface-julia/bezier-surface-julia-KA/main.jl",
+        "src/bezier-surface-julia/bezier-surface-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    }
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "6147cbc427c336b3a5773702e9cb81da675ebe39",
+  "explicit_outcome_evidence": {
+    "benchmark": "bezier-surface",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T163105927414Z_bezier-surface/result.json"
+    ],
+    "contract": {
+      "precision": "float32XYZ AoS, flattenedlosslessfloat32 payloadonly outside timer",
+      "shape": {
+        "control": [
+          4,
+          4
+        ],
+        "output": [
+          512,
+          512,
+          3
+        ]
+      },
+      "fixture": "Exact16 controlpoints from trackednative input/control.txt embedded identically Float32",
+      "internal_repeats": 3,
+      "scope": "Cubic surface originalone-row/thread serialcolumn mapping; aligned512rows avoids nativepartialblock i>RESOLUTIONI guard bug. Original300default not validated. Float64build unmeasured.",
+      "mapping": "2blocks256,one outputrow/workitem,serial512columns and16controlpoints",
+      "accuracy": "Full786432finitecomponents CPU Float64Bernstein oracle/dualartifacts abs1e-5, plus originalsourceCPU relativeL1<1e-6 allmodels",
+      "arithmetic_difference": "Native p*bi*bj vs historicalCUDAjl/KA/JACC p*(bi*bj), tolerancechecked"
+    },
+    "limitations": [
+      "Nativeif(i>RESOLUTIONI) partialblockguard includesi==resolution; aligned512rows avoid issue withoutchangingnative. Default300unsafe boundary unmeasured",
+      "Onlycubic4x4controlpatch and512x512output Float32 verified; nativeFloat64 compilemode unmeasured",
+      "Only2workgroups launched; limited globaldeviceparallelism is a sourcegeometryfact, no counters/bottleneck diagnosis claimed",
+      "Nativeleft-associatedp*bi*bj vs Julia p*(bi*bj) causes permittedFloat32roundingdifferences",
+      "One sharedaccuracyadapter syntaxrepair is instrumentationcost, not KA/JACCdevicecompilerfailure"
+    ]
+  }
 }

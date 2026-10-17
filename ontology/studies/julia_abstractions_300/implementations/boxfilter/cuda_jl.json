@@ -3,45 +3,479 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "boxfilter",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/boxfilter.json",
   "environment": {
     "julia_release": "1.12.6",
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Shared horizontal box sum and quantization, then per-column sliding vertical sum and quantization; row0leftzero.",
+    "mapping": "Row512groups90threads, each64outputs plus halos; column4groups64threads, one serial128row column/thread.",
+    "layout": "PackedUInt32 pixels; fourUInt8 channels unpacked to Float32 local tuple registers.",
+    "precision": {
+      "storage": "uint32 packedRGBA8",
+      "compute": "float32 channel sums/scale; uint32 truncation/packing",
+      "artifact": "losslessint64 widening outside timer"
+    },
+    "memory": "Global image/intermediate/output,360B row scratch; no column shared scratch.",
+    "synchronization": [
+      "one row workgroup barrier",
+      "two ordered kernel launches"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "row_threads": [
+        90,
+        1
+      ],
+      "row_blocks": [
+        4,
+        128
+      ],
+      "row_shared_bytes": 360,
+      "row_shared_allocation": "static",
+      "column_threads": 64,
+      "column_blocks": 4,
+      "column_dynamic_shared_bytes": 0
+    },
+    "library_boundary": "CUDA backend custom kernels/math, no vendor filtering library.",
+    "host_control_boundary": "One horizontal+vertical pipeline/evaluation; initialization and output conversion excluded.",
+    "fidelity_status": "Complete nativeobservableoutput with known firstrow defect; not full idealboxfilter correctness.",
+    "configuration_id": "rgba8_radius10_w256_h128_repeat10_nativeboundary_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Shared horizontal box sum and quantization, then per-column sliding vertical sum and quantization; row0leftzero.",
+    "work_item_mapping": "Row512groups90threads, each64outputs plus halos; column4groups64threads, one serial128row column/thread.",
+    "layout": "PackedUInt32 pixels; fourUInt8 channels unpacked to Float32 local tuple registers.",
+    "storage_precision": "uint32 packedRGBA8",
+    "compute_precision": "float32 channel sums/scale; uint32 truncation/packing",
+    "memory_hierarchy_and_access": "Global image/intermediate/output,360B row scratch; no column shared scratch.",
+    "synchronization": [
+      "one row workgroup barrier",
+      "two ordered kernel launches"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "row_threads": [
+        90,
+        1
+      ],
+      "row_blocks": [
+        4,
+        128
+      ],
+      "row_shared_bytes": 360,
+      "row_shared_allocation": "static",
+      "column_threads": 64,
+      "column_blocks": 4,
+      "column_dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "row_threads": [
+        90,
+        1
+      ],
+      "row_blocks": [
+        4,
+        128
+      ],
+      "row_shared_bytes": 360,
+      "row_shared_allocation": "static",
+      "column_threads": 64,
+      "column_blocks": 4,
+      "column_dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "CUDA backend custom kernels/math, no vendor filtering library.",
+    "host_control_boundary": "One horizontal+vertical pipeline/evaluation; initialization and output conversion excluded.",
+    "fidelity_status_and_scope": "Complete nativeobservableoutput with known firstrow defect; not full idealboxfilter correctness.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "boxfilter",
+    "primary_motif": "separable_rgba_box_filter",
+    "storage_precision": [
+      "uint8 RGBA packed in uint32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "row_workgroup_barrier",
+      "kernel_boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native shared-tile row90threads/64outputs and64thread column sliding mapping retained; static versus dynamic shared allocation differs, and JACC.shared adds template initialization."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Both original GPU passes per internalrepeat; no PPMIO, CPU oracle or transfer/artifact work.",
+    "verification_contract": "raw_numeric_outputs_native_observable_boundary_contract",
+    "keyconfounds": [
+      "Native column kernel never stores outputrow0; GPU resetzero retained. Original CPU writes that row while original GPU verifier excludes radiusborder. Full native-output equivalence is not ideal-box-filter boundary correctness.",
+      "Horizontal zero padding differs from vertical edge replication; RGBA8 quantization occurs between passes.",
+      "JACC shared template90UInt32 preload and extra initialization barrier are measured overhead absent in native/CUDA.jl/KA.",
+      "Only synthetic256x128radius10 fixture; PPM decoding and otherimage dimensions unmeasured."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "signal_image",
+      "primary_domain": "rgba_image_smoothing",
+      "scientific_task": "Apply a separable21x21 box smoothing operation to packed RGBA images.",
+      "mathematical_operation": "Per-channel horizontal21-sample average quantized to8bits, followed by vertical21-sample sliding average quantized again.",
+      "discretization_or_topology": "2D image lattice with radius10 stencil; horizontal zero-extension and vertical edge replication.",
+      "invariants": [
+        "Uniform interior colors retained modulo integer quantization.",
+        "Channels processed independently; alpha participates as a fourth color channel."
+      ],
+      "accuracy_requirements": [
+        "All32768 packed pixels must agree exactly with native GPU and repaired CUDA.jl outputs.",
+        "Independent Julia CPU direct stencil and native CPU oracle use an explicit row0zero policy to match native observable defect.",
+        "Original unmasked CPU boundary correctness is separately reported, not silently certified."
+      ],
+      "precision_sensitivity": "Float32 sums of8bit channel integers then reciprocal21 scaling/truncation. Intermediate8bit quantization is semantically required; replacing it with fullprecision convolution changes results.",
+      "input_size_regimes": "Synthetic256x128 packed image, radius10, ten internalrepeats; original PPM workloads not newlymeasured.",
+      "community_use_case": "Image smoothing primitive from NVIDIA sample source. No particular medical, astronomical or other scientific image dataset is identified.",
+      "uncertainty": "Native firstrow defect limits application-level mathematical correctness despite complete source-output equivalence.",
+      "provenance": [
+        {
+          "path": "src/boxfilter-cuda/main.cu",
+          "sha256": "816d5c740cfc2c431075bd6befc58bf55816fef5cd7a4fdca18938a79b54d7ea",
+          "source_locations": "shared row kernel, sliding column and original interior-only verifier"
+        },
+        {
+          "path": "src/boxfilter-sycl/reference.cpp",
+          "sha256": "a64c701a7f8871ed662da1cae6548c5550fba141aa621d46abbd474ab3823592",
+          "source_locations": "CPU oracle explicitly writes row0"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Shared horizontal box sum and quantization, then per-column sliding vertical sum and quantization; row0leftzero.",
+        "mapping": "Row512groups90threads, each64outputs plus halos; column4groups64threads, one serial128row column/thread.",
+        "layout": "PackedUInt32 pixels; fourUInt8 channels unpacked to Float32 local tuple registers.",
+        "precision": {
+          "storage": "uint32 packedRGBA8",
+          "compute": "float32 channel sums/scale; uint32 truncation/packing",
+          "artifact": "losslessint64 widening outside timer"
+        },
+        "memory": "Global image/intermediate/output,360B row scratch; no column shared scratch.",
+        "synchronization": [
+          "one row workgroup barrier",
+          "two ordered kernel launches"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "row_threads": [
+            90,
+            1
+          ],
+          "row_blocks": [
+            4,
+            128
+          ],
+          "row_shared_bytes": 360,
+          "row_shared_allocation": "static",
+          "column_threads": 64,
+          "column_blocks": 4,
+          "column_dynamic_shared_bytes": 0
+        },
+        "library_boundary": "CUDA backend custom kernels/math, no vendor filtering library.",
+        "host_control_boundary": "One horizontal+vertical pipeline/evaluation; initialization and output conversion excluded.",
+        "fidelity_status": "Complete nativeobservableoutput with known firstrow defect; not full idealboxfilter correctness.",
+        "configuration_id": "rgba8_radius10_w256_h128_repeat10_nativeboundary_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Shared horizontal box sum and quantization, then per-column sliding vertical sum and quantization; row0leftzero.",
+        "mapping": "Row512groups90threads, each64outputs plus halos; column4groups64threads, one serial128row column/thread.",
+        "layout": "PackedUInt32 pixels; fourUInt8 channels unpacked to Float32 local tuple registers.",
+        "precision": {
+          "storage": "uint32 packedRGBA8",
+          "compute": "float32 channel sums/scale; uint32 truncation/packing",
+          "artifact": "losslessint64 widening outside timer"
+        },
+        "memory": "Global image/intermediate/output,360B row scratch; no column shared scratch.",
+        "synchronization": [
+          "one row workgroup barrier",
+          "two ordered kernel launches"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "row_threads": [
+            90,
+            1
+          ],
+          "row_blocks": [
+            4,
+            128
+          ],
+          "row_shared_bytes": 360,
+          "row_shared_allocation": "static",
+          "column_threads": 64,
+          "column_blocks": 4,
+          "column_dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend custom kernels; no vendor filtering library.",
+        "host_control_boundary": "One horizontal+vertical pipeline/evaluation; initialization and output conversion excluded.",
+        "fidelity_status": "Complete nativeobservableoutput with known firstrow defect; not full idealboxfilter correctness.",
+        "configuration_id": "rgba8_radius10_w256_h128_repeat10_nativeboundary_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Shared horizontal box sum and quantization, then per-column sliding vertical sum and quantization; row0leftzero.",
+        "mapping": "Row512groups90threads, each64outputs plus halos; column4groups64threads, one serial128row column/thread.",
+        "layout": "PackedUInt32 pixels; fourUInt8 channels unpacked to Float32 local tuple registers.",
+        "precision": {
+          "storage": "uint32 packedRGBA8",
+          "compute": "float32 channel sums/scale; uint32 truncation/packing",
+          "artifact": "losslessint64 widening outside timer"
+        },
+        "memory": "Global images,360B dynamic row scratch, extra90UInt32 zero-template load before halo overwrite.",
+        "synchronization": [
+          "one JACC.shared initialization barrier",
+          "one post-halo row barrier",
+          "two ordered kernel launches"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "row_threads": [
+            90,
+            1
+          ],
+          "row_blocks": [
+            4,
+            128
+          ],
+          "row_shared_bytes": 360,
+          "row_shared_allocation": "dynamic",
+          "column_threads": 64,
+          "column_blocks": 4,
+          "column_dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend custom kernels; no vendor filtering library.",
+        "host_control_boundary": "One horizontal+vertical pipeline/evaluation; initialization and output conversion excluded.",
+        "fidelity_status": "Complete nativeobservableoutput with known firstrow defect; not full idealboxfilter correctness.",
+        "configuration_id": "rgba8_radius10_w256_h128_repeat10_nativeboundary_v1"
+      }
+    },
+    "native_boundary_defect_evidence": {
+      "comparison": "unmasked original CPU firstrow versus savednativeGPU artifact",
+      "compared_pixels": 256,
+      "mismatched_pixels": 256,
+      "actual_firstrow_allzero": true,
+      "expected_first_pixel": 959583787,
+      "actual_first_pixel": 0,
+      "native_artifact": ".porting-state/portable_julia/runs/20261017T165422001441Z_boxfilter/cuda_trial1_output_trial1.bin",
+      "native_artifact_sha256": "41640edd62f315d1e80c79c81f46ce4a814a7c40d8819b76074ae954f66ef2bc",
+      "source_evidence": [
+        {
+          "path": "src/boxfilter-cuda/main.cu",
+          "sha256": "816d5c740cfc2c431075bd6befc58bf55816fef5cd7a4fdca18938a79b54d7ea",
+          "source_locations": "shared row kernel, sliding column and original interior-only verifier"
+        },
+        {
+          "path": "src/boxfilter-sycl/reference.cpp",
+          "sha256": "a64c701a7f8871ed662da1cae6548c5550fba141aa621d46abbd474ab3823592",
+          "source_locations": "CPU oracle explicitly writes row0"
+        }
+      ],
+      "oracle": "Independent direct Python channel sums with exactFloat32 reciprocal/multiply rounding; same original CPU firstrow formula.",
+      "diagnostic_only": true,
+      "in_scope": false,
+      "is_failure": false,
+      "original_validation_contract_failed": false
+    },
+    "application_correctness_status": "Original interior-only contract and full nativeobservable equivalence pass; ideal firstrow comparison is out-of-scope diagnostic only."
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/boxfilter-julia/main.jl",
-    "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+    "path": "src/boxfilter-julia/boxfilter-julia-cuda.jl/main.jl",
+    "sha256": "649140ce12d38afb9b90cbcf7cee5d7edebb51c37f9a3cb9e70a44518470e9ad",
     "syntax_features": {
-      "cuda_kernel_launch": [],
+      "cuda_kernel_launch": [
+        48,
+        49
+      ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
       "local_storage": [],
-      "barrier": [],
+      "barrier": [
+        12
+      ],
       "atomic": [],
       "vendor_library": [],
       "explicit_zero_dynamic_shared": []
     },
     "placeholder_signals": {
-      "include_alias": true,
-      "tiny_source": true
+      "include_alias": false,
+      "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "rgba8_radius10_w256_h128_repeat10_nativeboundary_v1",
+      "run_id": "20261017T165549646780Z_boxfilter",
+      "result": ".porting-state/portable_julia/runs/20261017T165549646780Z_boxfilter/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "result_sha256": "d3559feaa22dbaa32965d8c0fdcf2250cab139ce9ddad4c9f50012672757c967",
+      "source_hash": "3b852d16f5039521080af3bf8be6c5cc056465214b248a67c7ab41c0c1c331aa",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T165549646780Z_boxfilter/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0057016288,
+        5.20664e-05,
+        4.82684e-05,
+        4.85155e-05,
+        4.96204e-05
+      ],
+      "mean_last_four_seconds": 4.9617674999999996e-05,
+      "contract": {
+        "precision": "RGBA8packedUInt32, Float32perchannel sums/scale; artifactlosslessUInt32->Int64 outsideclock",
+        "shape": [
+          256,
+          128
+        ],
+        "fixture": "packedchannels r=(13*x+7*y)%256,g=(3*x+11*y)%256,b=(17*x+5*y)%256,a=(19*x+23*y)%256",
+        "internal_repeats": 10,
+        "radius": 10,
+        "scope": "Fulloriginalrow+columnGPUpipeline; row0retainsresetzero because nativecol omitsstore. Notclaimingidealboxfilterboundarycorrectness. PPMIOexcluded.",
+        "mapping": "Row90threads(16lefthalo+64outputs+10right),4x128groups,360Bsharedtile; column4groups64threads,1thread/columnserialheight",
+        "boundary_policy": "Horizontalzeropad; verticalreplication, packed8bitquantizationBETWEENpasses; outputrow0zero asnativeobservabledefect",
+        "accuracy": "Exactall32768packedpixelsagainstnativeCPUoraclewithexplicitrow0mask andindependentdirectJuliaCPUstencil plusbothGPUartifacts",
+        "native_known_boundary_defect": "NativeCPUwritesrow0 but GPUdoesnot; originalverifierexcludesradius-border. Study preservesanddisclosesobservedGPUcontract.",
+        "reference_repair": "HistoricalJulia mcpralias preservedoriginal_main.jl; replacedwithactualtwo-passsharedtile/slidingcolumnCUDAjl."
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "boxfilter-cuda_jl-S1-mcpr-alias",
+        "benchmark_id": "boxfilter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/boxfilter.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "boxfilter-cuda_jl-S1-mcpr-alias",
+          "benchmark": "boxfilter",
+          "model": "cuda_jl",
+          "phase": "reference_repair",
+          "code": "S1",
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": 1,
+          "symptom": "Historical Julia includes unrelated mcpr benchmark.",
+          "root_cause": "Alias placeholder, not a box-filter implementation.",
+          "resolution": "Preserve alias source and implement native two-pass shared-tile/sliding-column CUDA.jl pipeline; first genuine candidate compiled and verified.",
+          "final_outcome": "reference_repaired",
+          "shared_phase_id": "boxfilter_genuine_reference_repair",
+          "source_evidence": [
+            {
+              "path": "src/boxfilter-julia/boxfilter-julia-cuda.jl/original_main.jl",
+              "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+              "source_locations": "historical mcpr include alias"
+            },
+            {
+              "path": "src/boxfilter-julia/boxfilter-julia-cuda.jl/main.jl",
+              "sha256": "649140ce12d38afb9b90cbcf7cee5d7edebb51c37f9a3cb9e70a44518470e9ad",
+              "source_locations": "genuine two-pass CUDA.jl reference repair"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "boxfilter-cuda_jl-N2-native-firstrow",
+        "benchmark_id": "boxfilter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N2",
+        "phase": "native_semantic_audit",
+        "origin_model": "cuda",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/boxfilter.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "boxfilter-cuda_jl-N2-native-firstrow",
+          "benchmark": "boxfilter",
+          "model": "cuda_jl",
+          "origin_model": "cuda",
+          "phase": "native_semantic_audit",
+          "code": "N2",
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "is_target_framework_failure": false,
+          "symptom": "Original nativeGPU differs from unmaskedCPU oracle on 256/256 firstrow pixels; original verifier excludes thisborder.",
+          "root_cause": "Missing row0 store in native col_kernel.",
+          "resolution": "Expose defect and preserve sourceobservable row0zero contract for four-model comparison; no ideal-boundarycorrectness claim.",
+          "final_outcome": "out_of_scope_boundary_diagnostic_disclosed",
+          "shared_phase_id": "boxfilter_native_unwritten_row0",
+          "evidence": {
+            "comparison": "unmasked original CPU firstrow versus savednativeGPU artifact",
+            "compared_pixels": 256,
+            "mismatched_pixels": 256,
+            "actual_firstrow_allzero": true,
+            "expected_first_pixel": 959583787,
+            "actual_first_pixel": 0,
+            "native_artifact": ".porting-state/portable_julia/runs/20261017T165422001441Z_boxfilter/cuda_trial1_output_trial1.bin",
+            "native_artifact_sha256": "41640edd62f315d1e80c79c81f46ce4a814a7c40d8819b76074ae954f66ef2bc",
+            "source_evidence": [
+              {
+                "path": "src/boxfilter-cuda/main.cu",
+                "sha256": "816d5c740cfc2c431075bd6befc58bf55816fef5cd7a4fdca18938a79b54d7ea",
+                "source_locations": "shared row kernel, sliding column and original interior-only verifier"
+              },
+              {
+                "path": "src/boxfilter-sycl/reference.cpp",
+                "sha256": "a64c701a7f8871ed662da1cae6548c5550fba141aa621d46abbd474ab3823592",
+                "source_locations": "CPU oracle explicitly writes row0"
+              }
+            ],
+            "oracle": "Independent direct Python channel sums with exactFloat32 reciprocal/multiply rounding; same original CPU firstrow formula."
+          },
+          "diagnostic_only": true,
+          "in_scope": false,
+          "is_failure": false,
+          "original_validation_contract": "Interior-only; excludes radius border, so firstrow discrepancy does not violate original validation contract.",
+          "diagnostic_comparison": "Unmasked ideal/sourceCPU firstrow versus nativeobservable reset-zero row, outside original validated region."
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -53,5 +487,62 @@
     "translation_tokens": null
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "boxfilter",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T165549646780Z_boxfilter/result.json"
+    ],
+    "contract": {
+      "precision": "RGBA8packedUInt32, Float32perchannel sums/scale; artifactlosslessUInt32->Int64 outsideclock",
+      "shape": [
+        256,
+        128
+      ],
+      "fixture": "packedchannels r=(13*x+7*y)%256,g=(3*x+11*y)%256,b=(17*x+5*y)%256,a=(19*x+23*y)%256",
+      "internal_repeats": 10,
+      "radius": 10,
+      "scope": "Fulloriginalrow+columnGPUpipeline; row0retainsresetzero because nativecol omitsstore. Notclaimingidealboxfilterboundarycorrectness. PPMIOexcluded.",
+      "mapping": "Row90threads(16lefthalo+64outputs+10right),4x128groups,360Bsharedtile; column4groups64threads,1thread/columnserialheight",
+      "boundary_policy": "Horizontalzeropad; verticalreplication, packed8bitquantizationBETWEENpasses; outputrow0zero asnativeobservabledefect",
+      "accuracy": "Exactall32768packedpixelsagainstnativeCPUoraclewithexplicitrow0mask andindependentdirectJuliaCPUstencil plusbothGPUartifacts",
+      "native_known_boundary_defect": "NativeCPUwritesrow0 but GPUdoesnot; originalverifierexcludesradius-border. Study preservesanddisclosesobservedGPUcontract.",
+      "reference_repair": "HistoricalJulia mcpralias preservedoriginal_main.jl; replacedwithactualtwo-passsharedtile/slidingcolumnCUDAjl."
+    },
+    "limitations": [
+      "Native column kernel never stores outputrow0; GPU resetzero retained. Original CPU writes that row while original GPU verifier excludes radiusborder. Full native-output equivalence is not ideal-box-filter boundary correctness.",
+      "Horizontal zero padding differs from vertical edge replication; RGBA8 quantization occurs between passes.",
+      "JACC shared template90UInt32 preload and extra initialization barrier are measured overhead absent in native/CUDA.jl/KA.",
+      "Only synthetic256x128radius10 fixture; PPM decoding and otherimage dimensions unmeasured."
+    ],
+    "application_correctness_status": "Original interior-only contract and full nativeobservable equivalence pass; ideal firstrow comparison is out-of-scope diagnostic only.",
+    "native_boundary_defect_evidence": {
+      "comparison": "unmasked original CPU firstrow versus savednativeGPU artifact",
+      "compared_pixels": 256,
+      "mismatched_pixels": 256,
+      "actual_firstrow_allzero": true,
+      "expected_first_pixel": 959583787,
+      "actual_first_pixel": 0,
+      "native_artifact": ".porting-state/portable_julia/runs/20261017T165422001441Z_boxfilter/cuda_trial1_output_trial1.bin",
+      "native_artifact_sha256": "41640edd62f315d1e80c79c81f46ce4a814a7c40d8819b76074ae954f66ef2bc",
+      "source_evidence": [
+        {
+          "path": "src/boxfilter-cuda/main.cu",
+          "sha256": "816d5c740cfc2c431075bd6befc58bf55816fef5cd7a4fdca18938a79b54d7ea",
+          "source_locations": "shared row kernel, sliding column and original interior-only verifier"
+        },
+        {
+          "path": "src/boxfilter-sycl/reference.cpp",
+          "sha256": "a64c701a7f8871ed662da1cae6548c5550fba141aa621d46abbd474ab3823592",
+          "source_locations": "CPU oracle explicitly writes row0"
+        }
+      ],
+      "oracle": "Independent direct Python channel sums with exactFloat32 reciprocal/multiply rounding; same original CPU firstrow formula.",
+      "diagnostic_only": true,
+      "in_scope": false,
+      "is_failure": false,
+      "original_validation_contract_failed": false
+    }
+  }
 }

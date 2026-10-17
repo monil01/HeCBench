@@ -10,12 +10,79 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "One sequential 4096-field checksum per record, explicit UInt32 accumulation.",
+    "mapping": "4096 workitems in 16 blocks of 256; AoS lane stride 16384B or SoA lane stride 4B.",
+    "layout": "Int32 AoS record-major or transposed SoA field-major buffers, Int32 output.",
+    "precision": {
+      "storage": "int32",
+      "compute": "uint32 wrapping sum; integer indexing"
+    },
+    "implementation_detail": "Separate AoS/SoA KA kernels with generated linear index.",
+    "memory": "Global input/output, no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "KernelAbstractions CUDABackend",
+    "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+    "implementation_class": "framework_device_kernel",
+    "fidelity_status": "matched named scope",
+    "provenance": [
+      {
+        "path": "src/layout-julia/layout-julia-KA/main.jl",
+        "sha256": "bffb6dd1fcf2ee0d9c7fb22b92184716bd373c2af77a430337051aca635d4475",
+        "source_locations": "actual device implementation and dispatch"
+      }
+    ],
+    "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+    "configuration_layouts": {
+      "aos": {
+        "lane_input_stride_bytes": 16384
+      },
+      "soa": {
+        "lane_input_stride_bytes": 4
+      }
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "One sequential 4096-field checksum per record, explicit UInt32 accumulation.",
+    "work_item_mapping": "4096 workitems in 16 blocks of 256; AoS lane stride 16384B or SoA lane stride 4B.",
+    "layout": "Int32 AoS record-major or transposed SoA field-major buffers, Int32 output.",
+    "storage_precision": "int32",
+    "compute_precision": "uint32 wrapping sum; integer indexing",
+    "memory_hierarchy_and_access": "Global input/output, no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "KernelAbstractions CUDABackend",
+    "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+    "fidelity_status_and_scope": "matched named scope",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "layout",
     "primary_motif": "reduction",
@@ -77,7 +144,164 @@
         "resource_baseline_configuration": "actual_loads_soa_4096x4096_repeat10_v1"
       }
     },
-    "jacc_shared_memory_policy": "automatic_kernel_maximum_default"
+    "jacc_shared_memory_policy": "automatic_kernel_maximum_default",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "hardware_data_movement",
+      "primary_domain": "synthetic_memory_layout_proxy",
+      "scientific_task": "Compare input access patterns for per-record sums under AoS and SoA layouts.",
+      "mathematical_operation": "4096 independent sums of 4096 signed Int32 payloads with explicit UInt32 wrap semantics.",
+      "discretization_or_topology": "4096 records by 4096 fields, two physical memory layouts. No physical simulation topology.",
+      "invariants": [
+        "Each layout represents identical logical values.",
+        "Outputs equal full scalar modulo-2^32 sums."
+      ],
+      "accuracy_requirements": [
+        "Exact 4096 Int32 outputs for each layout; actual input reads are part of the required work."
+      ],
+      "precision_sensitivity": "Integer wrapping and byte strides, not floating-point accuracy.",
+      "input_size_regimes": "Two 64 MiB input layouts, 4096x4096; ten repeats.",
+      "community_use_case": "Synthetic coalescing/layout proxy; AppleTree struct names do not establish an agricultural science application.",
+      "uncertainty": "No application domain is evidenced beyond generic memory-layout performance.",
+      "provenance": [
+        {
+          "path": "src/layout-cuda/main.cu",
+          "sha256": "4c9be5825f1b1165127047dfd70e57304f9a6bfa522eab876a5a42b5958774a3",
+          "source_locations": "native kernels and launch configuration"
+        }
+      ],
+      "reviewed_at": "2026-10-17T16:42:41.767560+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "One sequential 4096-field checksum per record, explicit UInt32 accumulation.",
+        "mapping": "4096 workitems in 16 blocks of 256; AoS lane stride 16384B or SoA lane stride 4B.",
+        "layout": "Int32 AoS record-major or transposed SoA field-major buffers, Int32 output.",
+        "precision": {
+          "storage": "int32",
+          "compute": "uint32 wrapping sum; integer indexing"
+        },
+        "implementation_detail": "Corrected explicit input-loading kernels; original arithmetic-only surrogate preserved separately.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "Custom CUDA.jl kernel/runtime",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/layout-julia/layout-julia-cuda.jl/main.jl",
+            "sha256": "f2490a5a122a08efa6b103b5a3468c5fdf2286e2d63d6ee426ec16bc2ada7597",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "configuration_layouts": {
+          "aos": {
+            "lane_input_stride_bytes": 16384
+          },
+          "soa": {
+            "lane_input_stride_bytes": 4
+          }
+        }
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "One sequential 4096-field checksum per record, explicit UInt32 accumulation.",
+        "mapping": "4096 workitems in 16 blocks of 256; AoS lane stride 16384B or SoA lane stride 4B.",
+        "layout": "Int32 AoS record-major or transposed SoA field-major buffers, Int32 output.",
+        "precision": {
+          "storage": "int32",
+          "compute": "uint32 wrapping sum; integer indexing"
+        },
+        "implementation_detail": "Separate AoS/SoA KA kernels with generated linear index.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/layout-julia/layout-julia-KA/main.jl",
+            "sha256": "bffb6dd1fcf2ee0d9c7fb22b92184716bd373c2af77a430337051aca635d4475",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "configuration_layouts": {
+          "aos": {
+            "lane_input_stride_bytes": 16384
+          },
+          "soa": {
+            "lane_input_stride_bytes": 4
+          }
+        }
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "One sequential 4096-field checksum per record, explicit UInt32 accumulation.",
+        "mapping": "4096 workitems in 16 blocks of 256; AoS lane stride 16384B or SoA lane stride 4B.",
+        "layout": "Int32 AoS record-major or transposed SoA field-major buffers, Int32 output.",
+        "precision": {
+          "storage": "int32",
+          "compute": "uint32 wrapping sum; integer indexing"
+        },
+        "implementation_detail": "Separate AoS/SoA JACC callbacks with passed linear index.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/layout-julia/layout-julia-JACC/main.jl",
+            "sha256": "88b7ea3bb005a948a49ef7adeeb302c7fbab385b960dfdbb1aa2af5bee402649",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "resource_policy": {
+          "current_controlled_configuration": "explicit shmem_size0",
+          "historical_baseline": "automatic kernel maximum; per-benchmark byte count unknown without individual counters"
+        },
+        "configuration_layouts": {
+          "aos": {
+            "lane_input_stride_bytes": 16384
+          },
+          "soa": {
+            "lane_input_stride_bytes": 4
+          }
+        }
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -107,8 +331,15 @@
       "configuration_id": "actual_loads_aos_4096x4096_repeat10_v1_shmem0_v2",
       "run_id": "20261016T235529142117Z_layout",
       "result": ".porting-state/portable_julia/runs/20261016T235529142117Z_layout/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "e856e79ca7905392e13b4b603171b2ff9520ee6ccd53cfeda413cbff1e895219",
       "source_hash": "92a057007d72e5c593c402290a155a5e52bbab1cc0d5710b1fda0c3fba73c6a8",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235529142117Z_layout/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -141,8 +372,15 @@
       "configuration_id": "actual_loads_soa_4096x4096_repeat10_v1_shmem0_v2",
       "run_id": "20261016T235641641785Z_layout",
       "result": ".porting-state/portable_julia/runs/20261016T235641641785Z_layout/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "04bc7c0451d1852e3424e6e33cb0f85b213d85c2828e3d59f433c3ecf2390725",
       "source_hash": "92a057007d72e5c593c402290a155a5e52bbab1cc0d5710b1fda0c3fba73c6a8",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235641641785Z_layout/hardware.txt",
       "trials_correct": [
         true,
         true,

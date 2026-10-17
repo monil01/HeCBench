@@ -3,37 +3,222 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "bh",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "reference_blocked",
   "scientific_intent_record": "../../domains/bh.json",
   "environment": {
     "julia_release": "1.12.6",
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "reference_blocked",
+    "algorithm": null,
+    "mapping": null,
+    "layout": null,
+    "precision": null,
+    "resource_geometry": null,
+    "fidelity_status": "unimplemented"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "work_item_mapping": null,
+    "layout": null,
+    "storage_precision": null,
+    "compute_precision": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": null,
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "unimplemented",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "status_review_recorded_no_implementation_source",
+  "shared_benchmark_traits": {
+    "benchmark": "bh",
+    "primary_motif": "hierarchical_nbody_tree_traversal",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "particle_molecular",
+      "primary_domain": "astrophysical_gravitational_nbody",
+      "scientific_task": "Evolve a selfgravitating starcluster using Barnes-Hut octree forceapproximation",
+      "mathematical_operation": "Treecell monopolegravitationalforces with openingtheta0.5, softenedr^-3 interactions eps0.05, velocity/position timeintegration dt0.025",
+      "discretization_or_topology": "Moving3Dparticles with adaptiveoctree and warpcooperative treewalk; no regularspatialmesh",
+      "invariants": [
+        "Particle masses unchanged byintegration",
+        "Finite positions/velocities required; energy/momentumaccuracy needs a documented tolerance, not exactconservationassumption"
+      ],
+      "accuracy_requirements": [
+        "NativeCLI does not supply independentaccuracycheck or physicalerrorthreshold",
+        "Matching fulltreepipeline and a fixedsnapshot/fullstate contract required before acceptingcrossmodelperformance"
+      ],
+      "precision_sensitivity": "Float32 force and centersofmass; approximatecellaggregation/openingcriterion and reduction/insertionorder can affect forces beyond floatingroundoff",
+      "input_size_regimes": "NativeCLI bodies x timesteps with minimumtreecapacity; no newmatchedconfiguration or scalingmeasurement completed",
+      "community_use_case": "Source ECL-BHv4.5 explicitly describes gravitationalforces in a starcluster and credits Barnes-Hut GPUpublication",
+      "uncertainty": "No application-specific astrophysicalerrortolerance or energybudget isgiven; genericphysicalinvariants do notverify this translation",
+      "provenance": [
+        {
+          "path": "src/bh-cuda/main.cu",
+          "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c",
+          "source_locations": "headerstarclusterphysics; treepipeline hostlines898-927 and ForceCalculationKernel540-663"
+        },
+        {
+          "path": "src/bh-julia/main.jl",
+          "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+          "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "reference_algorithm_disagreement",
+        "algorithm": "Direct O(N\u00b2)force plus fusedintegration; no octree orcellopeningcriterion",
+        "mapping": "Onebody/thread gridstride, innerloop overallbodies; samekernel mutatespositionsreadbyotherthreads",
+        "layout": "SeparateFloat32position,mass,velocity,acceleration arrays",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32force/integration,Float64hostinitialization"
+        },
+        "memory": "GlobalSoA source/targetpositions samebuffers",
+        "synchronization": [
+          "kernel_boundary only; no globalbarrier between force andpositionwrites"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": "ceil(nbodies/256)",
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "CUDA.jl customkernel/runtime",
+        "host_control_boundary": "Onefusedkernel/step, differsnative8kernel treepipeline",
+        "fidelity_status": "S1wrongalgorithm; sourceproveninplace-read/write hazard",
+        "provenance": [
+          {
+            "path": "src/bh-julia/main.jl",
+            "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+            "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
+          }
+        ]
+      },
+      "ka": {
+        "status": "reference_blocked",
+        "algorithm": null,
+        "mapping": null,
+        "layout": null,
+        "precision": null,
+        "resource_geometry": null,
+        "fidelity_status": "unimplemented"
+      },
+      "jacc": {
+        "status": "reference_blocked",
+        "algorithm": null,
+        "mapping": null,
+        "layout": null,
+        "precision": null,
+        "resource_geometry": null,
+        "fidelity_status": "unimplemented"
+      }
+    },
+    "keyconfounds": [
+      "Historical CUDA.jl replaces native Barnes-Hut octree approximation pipeline with directallpairs force summation fused with positionintegration; no originalnumericalverifier. Not a faithful algorithmicreference.",
+      "Native treeopeningapproximation and historicaldenseforce have different complexity/accuracy contracts",
+      "Juliafused read/writehazard sourceinspection only; no fabricatedobserved runtimefailure"
+    ]
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": null,
   "configurations": [],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "bh-ka-S1-reference-directsum",
+        "benchmark_id": "bh",
+        "implementation_model": "ka",
+        "taxonomy_code": "S1",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/bh.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "bh-ka-S1-reference-directsum",
+          "benchmark": "bh",
+          "model": "ka",
+          "origin_model": "cuda_jl",
+          "phase": "reference_audit",
+          "code": "S1",
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "is_target_framework_failure": false,
+          "is_new_translation_attempt": false,
+          "symptom": "Historical CUDA.jl replaces native Barnes-Hut octree approximation pipeline with directallpairs force summation fused with positionintegration; no originalnumericalverifier. Not a faithful algorithmicreference.",
+          "minimal_trigger": "Compare nativeoctree/treewalk hostpipeline andForceCalculationKernel withJulia direct_step_kernel! allbodyloop",
+          "root_cause": "Algorithmreplacement plusfused update, rather than tree-based original",
+          "resolution": "Repair CUDA.jl with actual native treebuild/summarization/sorting/warpopening force and separateintegration, preserve oldsource, define matchedfixture plus fullstate/CPUphysics validationcontract, then KA andJACC. No frameworkunsupported claim.",
+          "final_outcome": "reference_blocked",
+          "evidence": [
+            {
+              "path": "src/bh-cuda/main.cu",
+              "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c",
+              "source_locations": "headerstarclusterphysics; treepipeline hostlines898-927 and ForceCalculationKernel540-663"
+            },
+            {
+              "path": "src/bh-julia/main.jl",
+              "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+              "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
+            }
+          ],
+          "shared_phase_id": "bh_historical_reference_semantic_audit"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null
+    "candidate_attempts": 0,
+    "compiler_checks": 0,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 0,
+      "total_tokens": null,
+      "status": "unknown",
+      "method": "No targetsourcegenerated; sharedreferenceaudit actualtokenusageunavailable"
+    }
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "bh",
+    "model": "ka",
+    "status": "reference_blocked",
+    "reason": "Historical CUDA.jl replaces native Barnes-Hut octree approximation pipeline with directallpairs force summation fused with positionintegration; no originalnumericalverifier. Not a faithful algorithmicreference.",
+    "evidence": [
+      "src/bh-julia/STUDY.md",
+      {
+        "path": "src/bh-cuda/main.cu",
+        "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c",
+        "source_locations": "headerstarclusterphysics; treepipeline hostlines898-927 and ForceCalculationKernel540-663"
+      },
+      {
+        "path": "src/bh-julia/main.jl",
+        "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+        "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
+      }
+    ],
+    "contract": "NativeBarnes-Hut treepipeline; directallpairs substitute notaccepted",
+    "condition_for_resumption": "Repair CUDA.jl with actual native treebuild/summarization/sorting/warpopening force and separateintegration, preserve oldsource, define matchedfixture plus fullstate/CPUphysics validationcontract, then KA andJACC. No frameworkunsupported claim."
+  }
 }

@@ -10,12 +10,98 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+    "status": "verified",
+    "actual_algorithm": "Device hex decoding with a workgroup barrier, then one active thread processes the original cipher sample; private per64-byte state is reconstructed.",
+    "kernel_ownership": "Authored model-specific device entrypoints.",
+    "work_item_mapping": "One256-thread block; cipher computation active only on thread1.",
+    "storage_precision": [
+      "UInt8",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "data_layout": "UInt8 key/nonce/reference/cipher bytes and private UInt32/UInt64 cipher state.",
+    "resource_policy": "Private fixed-size state arrays; no shared memory.",
+    "synchronization": [
+      "workgroup_barrier"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "adapted",
+      "reason": "Device decoding and one active cipher thread retained with explicit barrier and per-block private state reconstruction."
+    },
+    "host_device_boundary": "Output reset, device decoding and cipher execution included; native memset versus Julia fill implementation differs.",
+    "timing_scope": "timed output reset + device decoding/serial cipher kernel loop mean",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native implicit decode ordering versus explicit workgroup barrier",
+      "Private per64-byte state construction versus native counter object",
+      "Native cudaMemset versus Julia fill kernel inside timed region",
+      "Only the original known-answer sample",
+      "Historical parallel-per-block cipher reference corrected to serial cipher mapping"
+    ],
+    "source_revision": {
+      "path": "src/chacha20-julia/chacha20-julia-KA/main.jl",
+      "sha256": "54fbce18c2c36b55117e2c8d677a87c14162ddca224c8ecaab55ddd21111bf3c"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "failure_history": {
+      "records": [
+        ".porting-state/porting_logs/chacha20-julia-ka/manifest.json",
+        ".porting-state/porting_logs/chacha20-julia-ka/compiler_attempts.jsonl"
+      ],
+      "unknown_historical_counts": null,
+      "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+    },
+    "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Device hex decoding with a workgroup barrier, then one active thread processes the original cipher sample; private per64-byte state is reconstructed.",
+    "work_item_mapping": "One256-thread block; cipher computation active only on thread1.",
+    "layout": "UInt8 key/nonce/reference/cipher bytes and private UInt32/UInt64 cipher state.",
+    "storage_precision": [
+      "UInt8",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "workgroup_barrier"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Private fixed-size state arrays; no shared memory.",
+    "launch_geometry": null,
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/chacha20-julia/chacha20-julia-KA/main.jl",
+      "sha256": "54fbce18c2c36b55117e2c8d677a87c14162ddca224c8ecaab55ddd21111bf3c"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "chacha20",
     "audited_at": "2026-10-17T00:28:12.638015+00:00",
@@ -57,6 +143,202 @@
         "src/chacha20-julia/chacha20-julia-JACC/main.jl": "77ab1d442cc9a785b50728872af5e8c1b1be549679bb2c22dd0ab483dca7625c",
         "src/chacha20-julia/chacha20-julia-cuda.jl/main.jl": "3884b8ff097fdbf129054fc9a7200a9281c2bddd858989377d9fc99abd720fc2"
       }
+    },
+    "scientific_intent": {
+      "primary_family": "discrete_crypto",
+      "primary_domain": "discrete crypto",
+      "scientific_task": "Evaluate a known-answer stream-cipher sample",
+      "governing_method": "Device hex decoding followed by one active cipher thread.",
+      "discretization": "Array, key or workgroup structure; no physical spatial mesh.",
+      "community_use_case": "Cryptographic arithmetic proxy, one known-answer sample rather than security certification.",
+      "accuracy_needs": [
+        "Exact named integer/permutation or accepted full numerical output; retain source-specific scope."
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/chacha20-cuda/chacha20.h",
+          "sha256": "324c0cf394c00daf5f92cc6ef979ee503293a789fbe0bd5971d23878774d73f1"
+        },
+        {
+          "path": "src/chacha20-cuda/main.cu",
+          "sha256": "f36a13b7eddeff23fd65970bc3f48481c38802d396aa1898621177ee15af2828"
+        }
+      ],
+      "confidence": "source-reviewed operator/probe; application relevance is potential, not source dataset provenance"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Device hex decoding with a workgroup barrier, then one active thread processes the original cipher sample; private per64-byte state is reconstructed.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "One256-thread block; cipher computation active only on thread1.",
+        "storage_precision": [
+          "UInt8",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "data_layout": "UInt8 key/nonce/reference/cipher bytes and private UInt32/UInt64 cipher state.",
+        "resource_policy": "Private fixed-size state arrays; no shared memory.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Device decoding and one active cipher thread retained with explicit barrier and per-block private state reconstruction."
+        },
+        "host_device_boundary": "Output reset, device decoding and cipher execution included; native memset versus Julia fill implementation differs.",
+        "timing_scope": "timed output reset + device decoding/serial cipher kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native implicit decode ordering versus explicit workgroup barrier",
+          "Private per64-byte state construction versus native counter object",
+          "Native cudaMemset versus Julia fill kernel inside timed region",
+          "Only the original known-answer sample",
+          "Historical parallel-per-block cipher reference corrected to serial cipher mapping"
+        ],
+        "source_revision": {
+          "path": "src/chacha20-julia/chacha20-julia-cuda.jl/main.jl",
+          "sha256": "3884b8ff097fdbf129054fc9a7200a9281c2bddd858989377d9fc99abd720fc2"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Device hex decoding with a workgroup barrier, then one active thread processes the original cipher sample; private per64-byte state is reconstructed.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "One256-thread block; cipher computation active only on thread1.",
+        "storage_precision": [
+          "UInt8",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "data_layout": "UInt8 key/nonce/reference/cipher bytes and private UInt32/UInt64 cipher state.",
+        "resource_policy": "Private fixed-size state arrays; no shared memory.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Device decoding and one active cipher thread retained with explicit barrier and per-block private state reconstruction."
+        },
+        "host_device_boundary": "Output reset, device decoding and cipher execution included; native memset versus Julia fill implementation differs.",
+        "timing_scope": "timed output reset + device decoding/serial cipher kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native implicit decode ordering versus explicit workgroup barrier",
+          "Private per64-byte state construction versus native counter object",
+          "Native cudaMemset versus Julia fill kernel inside timed region",
+          "Only the original known-answer sample",
+          "Historical parallel-per-block cipher reference corrected to serial cipher mapping"
+        ],
+        "source_revision": {
+          "path": "src/chacha20-julia/chacha20-julia-KA/main.jl",
+          "sha256": "54fbce18c2c36b55117e2c8d677a87c14162ddca224c8ecaab55ddd21111bf3c"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/chacha20-julia-ka/manifest.json",
+            ".porting-state/porting_logs/chacha20-julia-ka/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Device hex decoding with a workgroup barrier, then one active thread processes the original cipher sample; private per64-byte state is reconstructed.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "One256-thread block; cipher computation active only on thread1.",
+        "storage_precision": [
+          "UInt8",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "data_layout": "UInt8 key/nonce/reference/cipher bytes and private UInt32/UInt64 cipher state.",
+        "resource_policy": "Private fixed-size state arrays; no shared memory. Explicit dynamic shared0.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Device decoding and one active cipher thread retained with explicit barrier and per-block private state reconstruction."
+        },
+        "host_device_boundary": "Output reset, device decoding and cipher execution included; native memset versus Julia fill implementation differs.",
+        "timing_scope": "timed output reset + device decoding/serial cipher kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native implicit decode ordering versus explicit workgroup barrier",
+          "Private per64-byte state construction versus native counter object",
+          "Native cudaMemset versus Julia fill kernel inside timed region",
+          "Only the original known-answer sample",
+          "Historical parallel-per-block cipher reference corrected to serial cipher mapping"
+        ],
+        "source_revision": {
+          "path": "src/chacha20-julia/chacha20-julia-JACC/main.jl",
+          "sha256": "77ab1d442cc9a785b50728872af5e8c1b1be549679bb2c22dd0ab483dca7625c"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/chacha20-julia-jacc/manifest.json",
+            ".porting-state/porting_logs/chacha20-julia-jacc/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      }
     }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
@@ -88,8 +370,15 @@
       "configuration_id": "chacha20_original_sample_devicehex_serialcipher_r10_v1",
       "run_id": "20261017T002322924183Z_chacha20",
       "result": ".porting-state/portable_julia/runs/20261017T002322924183Z_chacha20/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "20c559b02a02a878577523bb26f237fd0c7b18bcec9ec256fd6d160a00b0d49f",
       "source_hash": "64047b7280010b10a339fa9c86437327e8a9238c1d751409ee43c588c233bd06",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T002322924183Z_chacha20/hardware.txt",
       "trials_correct": [
         true,
         true,

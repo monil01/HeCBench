@@ -10,12 +10,94 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "reviewed_at": "2026-10-17T16:56:43.256978+00:00",
+    "status": "verified",
+    "actual_algorithm": "One work item per sampled xfun point writes all Lagrange interpolation basis entries to the global matrix, sums absolute values and atomically updates one Float64 maximum.",
+    "work_item_mapping": "256-thread groups over65 sampled evaluation points for90 node sets.",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Int64"
+    ],
+    "data_layout": "Native-equivalent global vectors or interpolation matrix; actual packing is stated per algorithm.",
+    "synchronization": [
+      "global_atomic_maximum"
+    ],
+    "resource_policy": "Global interpolation matrix plus scalar maximum; no shared memory.",
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "adapted",
+      "reason": "Native global interpolation matrix and scalar atomic maximum retained; historical local-interpolation/separate-reduction reference corrected. Native CAS maximum versus Atomix implementation."
+    },
+    "host_device_boundary": "Input/allocations/reset outside synchronized dispatch-loop measurement; output copies and numerical checks after timing.",
+    "timing_scope": "sum 90 synchronized kernel loop means, allocation/reset/copies excluded",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native CAS versus Atomix Float64 maximum lowering",
+      "Saved common node bits; no independent cosine-library comparison",
+      "Only nfun=65; all nine families and n2..11",
+      "n1 host-only case omitted from kernel timing",
+      "Complete interpolation artifacts stronger than original scalar-only output check"
+    ],
+    "source_revision": {
+      "path": "src/lebesgue-julia/lebesgue-julia-KA/main.jl",
+      "sha256": "84165648c2ae234fc52f8f336b6a7ee53cf067b4e8679b80d64931e5c5deb857"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "failure_history": {
+      "records": [
+        ".porting-state/porting_logs/lebesgue-julia-ka/manifest.json",
+        ".porting-state/porting_logs/lebesgue-julia-ka/compiler_attempts.jsonl"
+      ],
+      "unknown_historical_counts": null,
+      "interpretation": "Native arithmetic/configuration and serialization repairs remain separate from framework compiler failures."
+    },
+    "scope_condition": "Global interpolation matrix is retained rather than replacing it with private work; sampled maxima are not a continuum bound.",
+    "profiling_status": "No new GPU runs; instruction/resource bottlenecks not inferred from source alone."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "One work item per sampled xfun point writes all Lagrange interpolation basis entries to the global matrix, sums absolute values and atomically updates one Float64 maximum.",
+    "work_item_mapping": "256-thread groups over65 sampled evaluation points for90 node sets.",
+    "layout": "Native-equivalent global vectors or interpolation matrix; actual packing is stated per algorithm.",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Int64"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "global_atomic_maximum"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Global interpolation matrix plus scalar maximum; no shared memory.",
+    "launch_geometry": null,
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/lebesgue-julia/lebesgue-julia-KA/main.jl",
+      "sha256": "84165648c2ae234fc52f8f336b6a7ee53cf067b4e8679b80d64931e5c5deb857"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "lebesgue",
     "audited_at": "2026-10-16T23:59:09.410004+00:00",
@@ -55,6 +137,208 @@
         "src/lebesgue-julia/lebesgue-julia-JACC/main.jl": "acc4c1a3d8523e942c30a95cb47ffb74d28cce081dcd1e21b615d052c859488b",
         "src/lebesgue-julia/lebesgue-julia-cuda.jl/main.jl": "a0f518da129dd76ed3268d57c701035641491abfd72ee8c1d8d77abfe4e74079"
       }
+    },
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "numerical analysis primitive",
+      "scientific_task": "Evaluate polynomial interpolation stability",
+      "governing_method": "Lagrange basis values, absolute row sums and a Lebesgue maximum across sampled evaluation points.",
+      "discretization": "Sampled vectors/interpolation nodes; no application mesh.",
+      "accuracy_needs": [
+        "Global interpolation matrix is retained rather than replacing it with private work; sampled maxima are not a continuum bound."
+      ],
+      "community_use_case": "Choosing interpolation nodes and assessing numerical stability of spectral/interpolation operators.",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/lebesgue-cuda/reference.h",
+          "sha256": "f3a22a1a715348c3f4e21e7259dc22195400b7fae0b0548af1b01f908b2c7246"
+        },
+        {
+          "path": "src/lebesgue-cuda/utils.cpp",
+          "sha256": "2a4fc291b3d94e4fcc107e9542675bfa08882ef7dc3c1f8d3fce1af01cf61b73"
+        },
+        {
+          "path": "src/lebesgue-cuda/main.cpp",
+          "sha256": "9c7a6f66d4d9f8e961db9757dc221ac23456abce27a417bba958cf38d4e56d71"
+        },
+        {
+          "path": "src/lebesgue-cuda/lebesgue.h",
+          "sha256": "51d66bb104e850c6b6842a752288eb655b49acf732d71b335228a2089ae8dea6"
+        },
+        {
+          "path": "src/lebesgue-cuda/kernels.cu",
+          "sha256": "9bdcd0e364f94e54309fa32cfec5b101719319b8031f87f22aba9354a49489f2"
+        }
+      ],
+      "confidence": "source-reviewed numerical intent; application examples are illustrative"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T16:56:43.256978+00:00",
+        "status": "verified",
+        "actual_algorithm": "One work item per sampled xfun point writes all Lagrange interpolation basis entries to the global matrix, sums absolute values and atomically updates one Float64 maximum.",
+        "work_item_mapping": "256-thread groups over65 sampled evaluation points for90 node sets.",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Int64"
+        ],
+        "data_layout": "Native-equivalent global vectors or interpolation matrix; actual packing is stated per algorithm.",
+        "synchronization": [
+          "global_atomic_maximum"
+        ],
+        "resource_policy": "Global interpolation matrix plus scalar maximum; no shared memory.",
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native global interpolation matrix and scalar atomic maximum retained; historical local-interpolation/separate-reduction reference corrected. Native CAS maximum versus Atomix implementation."
+        },
+        "host_device_boundary": "Input/allocations/reset outside synchronized dispatch-loop measurement; output copies and numerical checks after timing.",
+        "timing_scope": "sum 90 synchronized kernel loop means, allocation/reset/copies excluded",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native CAS versus Atomix Float64 maximum lowering",
+          "Saved common node bits; no independent cosine-library comparison",
+          "Only nfun=65; all nine families and n2..11",
+          "n1 host-only case omitted from kernel timing",
+          "Complete interpolation artifacts stronger than original scalar-only output check"
+        ],
+        "source_revision": {
+          "path": "src/lebesgue-julia/lebesgue-julia-cuda.jl/main.jl",
+          "sha256": "a0f518da129dd76ed3268d57c701035641491abfd72ee8c1d8d77abfe4e74079"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [],
+          "unknown_historical_counts": null,
+          "interpretation": "Native arithmetic/configuration and serialization repairs remain separate from framework compiler failures."
+        },
+        "scope_condition": "Global interpolation matrix is retained rather than replacing it with private work; sampled maxima are not a continuum bound.",
+        "profiling_status": "No new GPU runs; instruction/resource bottlenecks not inferred from source alone."
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T16:56:43.256978+00:00",
+        "status": "verified",
+        "actual_algorithm": "One work item per sampled xfun point writes all Lagrange interpolation basis entries to the global matrix, sums absolute values and atomically updates one Float64 maximum.",
+        "work_item_mapping": "256-thread groups over65 sampled evaluation points for90 node sets.",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Int64"
+        ],
+        "data_layout": "Native-equivalent global vectors or interpolation matrix; actual packing is stated per algorithm.",
+        "synchronization": [
+          "global_atomic_maximum"
+        ],
+        "resource_policy": "Global interpolation matrix plus scalar maximum; no shared memory.",
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native global interpolation matrix and scalar atomic maximum retained; historical local-interpolation/separate-reduction reference corrected. Native CAS maximum versus Atomix implementation."
+        },
+        "host_device_boundary": "Input/allocations/reset outside synchronized dispatch-loop measurement; output copies and numerical checks after timing.",
+        "timing_scope": "sum 90 synchronized kernel loop means, allocation/reset/copies excluded",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native CAS versus Atomix Float64 maximum lowering",
+          "Saved common node bits; no independent cosine-library comparison",
+          "Only nfun=65; all nine families and n2..11",
+          "n1 host-only case omitted from kernel timing",
+          "Complete interpolation artifacts stronger than original scalar-only output check"
+        ],
+        "source_revision": {
+          "path": "src/lebesgue-julia/lebesgue-julia-KA/main.jl",
+          "sha256": "84165648c2ae234fc52f8f336b6a7ee53cf067b4e8679b80d64931e5c5deb857"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/lebesgue-julia-ka/manifest.json",
+            ".porting-state/porting_logs/lebesgue-julia-ka/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Native arithmetic/configuration and serialization repairs remain separate from framework compiler failures."
+        },
+        "scope_condition": "Global interpolation matrix is retained rather than replacing it with private work; sampled maxima are not a continuum bound.",
+        "profiling_status": "No new GPU runs; instruction/resource bottlenecks not inferred from source alone."
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T16:56:43.256978+00:00",
+        "status": "verified",
+        "actual_algorithm": "One work item per sampled xfun point writes all Lagrange interpolation basis entries to the global matrix, sums absolute values and atomically updates one Float64 maximum.",
+        "work_item_mapping": "256-thread groups over65 sampled evaluation points for90 node sets.",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Int64"
+        ],
+        "data_layout": "Native-equivalent global vectors or interpolation matrix; actual packing is stated per algorithm.",
+        "synchronization": [
+          "global_atomic_maximum"
+        ],
+        "resource_policy": "Global interpolation matrix plus scalar maximum; no shared memory. Explicit shmem_size0.",
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native global interpolation matrix and scalar atomic maximum retained; historical local-interpolation/separate-reduction reference corrected. Native CAS maximum versus Atomix implementation."
+        },
+        "host_device_boundary": "Input/allocations/reset outside synchronized dispatch-loop measurement; output copies and numerical checks after timing.",
+        "timing_scope": "sum 90 synchronized kernel loop means, allocation/reset/copies excluded",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native CAS versus Atomix Float64 maximum lowering",
+          "Saved common node bits; no independent cosine-library comparison",
+          "Only nfun=65; all nine families and n2..11",
+          "n1 host-only case omitted from kernel timing",
+          "Complete interpolation artifacts stronger than original scalar-only output check"
+        ],
+        "source_revision": {
+          "path": "src/lebesgue-julia/lebesgue-julia-JACC/main.jl",
+          "sha256": "acc4c1a3d8523e942c30a95cb47ffb74d28cce081dcd1e21b615d052c859488b"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/lebesgue-julia-jacc/manifest.json",
+            ".porting-state/porting_logs/lebesgue-julia-jacc/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Native arithmetic/configuration and serialization repairs remain separate from framework compiler failures."
+        },
+        "scope_condition": "Global interpolation matrix is retained rather than replacing it with private work; sampled maxima are not a continuum bound.",
+        "profiling_status": "No new GPU runs; instruction/resource bottlenecks not inferred from source alone."
+      }
     }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
@@ -87,8 +371,15 @@
       "configuration_id": "lebesgue_all9families_n2to11_nfun65_r3_v1",
       "run_id": "20261016T235738731522Z_lebesgue",
       "result": ".porting-state/portable_julia/runs/20261016T235738731522Z_lebesgue/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "760b7309e6004b8a65cb9ee3685c7642eb4b72ca76759695f9c360fd96ad6ec6",
       "source_hash": "fe9485684ae88717508d47fb13a0fb85a67b24238c287cbe1704661f3186f4a3",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235738731522Z_lebesgue/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -135,6 +426,7 @@
         "implementation_model": "ka",
         "taxonomy_code": "B2",
         "phase": "Julia_parser",
+        "origin_model": "ka",
         "is_failure": true,
         "evidence_path": ".porting-state/porting_logs/lebesgue-julia-ka/compiler_attempts.jsonl",
         "evidence_line": 1,

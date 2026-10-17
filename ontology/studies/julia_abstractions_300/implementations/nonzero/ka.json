@@ -10,12 +10,59 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "algorithm_and_mapping": "Threecustomkernels: per-elementblockprefix, blockoffsetsum and stablecoordinatescatter;256threads; countcopyDtoHbetweenstages",
+    "storage_precision": "Int32 input/prefix,Int64 count/coordinates",
+    "compute_precision": "Int32/Int64",
+    "source_evidence": {
+      "implementation_model": "ka",
+      "path": "src/nonzero-julia/nonzero-julia-KA/main.jl",
+      "sha256": "e5b374243750c763ab60dff0cf5331a6305f822f2e53e82b2298e23a97029c41"
+    },
+    "study_entrypoint": null,
+    "fidelity_scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+    "native_to_model_confound": {
+      "status": "adapted",
+      "reason": "NativeCUBprimitives vsCUDA.count/findall vsKA/JACCcustom3stageprefix withredundantreads, distinctallocationpolicies."
+    },
+    "timing_scope": "Fullcount+D2Hcount+stablecoordinatepipeline; input/outputallocationsoutsideclock. NativeCUBtemp preallocated; historicalCUDA.findall still internallyallocates, explicitAPIpolicyconfound.",
+    "synchronization": [
+      "orderedpipeline/trialdevicesync"
+    ],
+    "actual_backend": "CUDA",
+    "cuda_specific_device_extensions": [],
+    "profiled_resource_counters": false,
+    "environment": "Julia1.12.6/CUDA.jl6.2.1/KA0.9.45/JACC1.4.0; matchedconfigmanifestauthority"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Threecustomkernels: per-elementblockprefix, blockoffsetsum and stablecoordinatescatter;256threads; countcopyDtoHbetweenstages",
+    "work_item_mapping": "Threecustomkernels: per-elementblockprefix, blockoffsetsum and stablecoordinatescatter;256threads; countcopyDtoHbetweenstages",
+    "layout": null,
+    "storage_precision": "Int32 input/prefix,Int64 count/coordinates",
+    "compute_precision": "Int32/Int64",
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "orderedpipeline/trialdevicesync"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": "CUDA",
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+    "source_review_evidence": {
+      "implementation_model": "ka",
+      "path": "src/nonzero-julia/nonzero-julia-KA/main.jl",
+      "sha256": "e5b374243750c763ab60dff0cf5331a6305f822f2e53e82b2298e23a97029c41"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "nonzero",
     "primary_motif": "stable-compaction-coordinate-map",
@@ -45,7 +92,114 @@
       "Customper-elementblockprefix O(256N) andblockoffset O((N/256)^2), correctscalableatnamedsize butnotoptimizedwork-efficientscan.",
       "NativeCUBworkspacepreallocated outsideclock; CUDA.jl internalfindall allocation remains insideclock. Namedregiondoesnotmeasureoriginaltempallocationoverhead.",
       "Coordinateorderpreserved exactly, never sortedaftertiming tohideunstablecompaction."
-    ]
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "Stable sparse-coordinate extraction",
+      "scientific_task": "Count nonzero values and emit row/column coordinates in stable input order",
+      "community_use_case": "Sparse construction and feature extraction primitive; no application-level sparsity distribution established.",
+      "accuracy_requirements": "Fullrawoutputs,count/IDs/order checkedCPU+dualrefsall5",
+      "review_status": "source_reviewed",
+      "scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+      "evidence": [
+        {
+          "implementation_model": "cuda_jl",
+          "path": "src/nonzero-julia/nonzero-julia-cuda.jl/main.jl",
+          "sha256": "06da05d4034d14dae7e7e856e5811cfbed5712c9b7e4880808e1961f4c48f095"
+        },
+        {
+          "implementation_model": "ka",
+          "path": "src/nonzero-julia/nonzero-julia-KA/main.jl",
+          "sha256": "e5b374243750c763ab60dff0cf5331a6305f822f2e53e82b2298e23a97029c41"
+        },
+        {
+          "implementation_model": "jacc",
+          "path": "src/nonzero-julia/nonzero-julia-JACC/main.jl",
+          "sha256": "e9c9b2aa0010a72fac158f627d02be817fed6883869c2d76a29b8bd4c3385ef1"
+        }
+      ],
+      "application_level_validation": false
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "algorithm_and_mapping": "CUDA.count/findall library primitives then coordinate kernel; libraryinternals/allocations not equivalent tocustomports",
+        "storage_precision": "Int32 input/prefix,Int64 count/coordinates",
+        "compute_precision": "Int32/Int64",
+        "source_evidence": {
+          "implementation_model": "cuda_jl",
+          "path": "src/nonzero-julia/nonzero-julia-cuda.jl/main.jl",
+          "sha256": "06da05d4034d14dae7e7e856e5811cfbed5712c9b7e4880808e1961f4c48f095"
+        },
+        "study_entrypoint": {
+          "path": "src/nonzero-julia/nonzero-julia-cuda.jl/study.jl",
+          "sha256": "91d38904e8c5876e44f0865461c897b6dd638e6b32fd4a570a97d8584924ce9a"
+        },
+        "fidelity_scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+        "native_to_model_confound": {
+          "status": "adapted",
+          "reason": "NativeCUBprimitives vsCUDA.count/findall vsKA/JACCcustom3stageprefix withredundantreads, distinctallocationpolicies."
+        },
+        "timing_scope": "Fullcount+D2Hcount+stablecoordinatepipeline; input/outputallocationsoutsideclock. NativeCUBtemp preallocated; historicalCUDA.findall still internallyallocates, explicitAPIpolicyconfound.",
+        "synchronization": [
+          "orderedpipeline/trialdevicesync"
+        ],
+        "actual_backend": "CUDA",
+        "cuda_specific_device_extensions": [],
+        "profiled_resource_counters": false,
+        "environment": "Julia1.12.6/CUDA.jl6.2.1/KA0.9.45/JACC1.4.0; matchedconfigmanifestauthority"
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "algorithm_and_mapping": "Threecustomkernels: per-elementblockprefix, blockoffsetsum and stablecoordinatescatter;256threads; countcopyDtoHbetweenstages",
+        "storage_precision": "Int32 input/prefix,Int64 count/coordinates",
+        "compute_precision": "Int32/Int64",
+        "source_evidence": {
+          "implementation_model": "ka",
+          "path": "src/nonzero-julia/nonzero-julia-KA/main.jl",
+          "sha256": "e5b374243750c763ab60dff0cf5331a6305f822f2e53e82b2298e23a97029c41"
+        },
+        "study_entrypoint": null,
+        "fidelity_scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+        "native_to_model_confound": {
+          "status": "adapted",
+          "reason": "NativeCUBprimitives vsCUDA.count/findall vsKA/JACCcustom3stageprefix withredundantreads, distinctallocationpolicies."
+        },
+        "timing_scope": "Fullcount+D2Hcount+stablecoordinatepipeline; input/outputallocationsoutsideclock. NativeCUBtemp preallocated; historicalCUDA.findall still internallyallocates, explicitAPIpolicyconfound.",
+        "synchronization": [
+          "orderedpipeline/trialdevicesync"
+        ],
+        "actual_backend": "CUDA",
+        "cuda_specific_device_extensions": [],
+        "profiled_resource_counters": false,
+        "environment": "Julia1.12.6/CUDA.jl6.2.1/KA0.9.45/JACC1.4.0; matchedconfigmanifestauthority"
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "algorithm_and_mapping": "Threeparallel_for stages with256threads/shared0; samehierarchicalprefix and orderedscatter; countDtoHcopy included",
+        "storage_precision": "Int32 input/prefix,Int64 count/coordinates",
+        "compute_precision": "Int32/Int64",
+        "source_evidence": {
+          "implementation_model": "jacc",
+          "path": "src/nonzero-julia/nonzero-julia-JACC/main.jl",
+          "sha256": "e9c9b2aa0010a72fac158f627d02be817fed6883869c2d76a29b8bd4c3385ef1"
+        },
+        "study_entrypoint": null,
+        "fidelity_scope": "Fullcount+hostcounttransfer+coordinates, allocationsoutsideexceptinheritedfindallinternals; customprefix is not work-efficient.",
+        "native_to_model_confound": {
+          "status": "adapted",
+          "reason": "NativeCUBprimitives vsCUDA.count/findall vsKA/JACCcustom3stageprefix withredundantreads, distinctallocationpolicies."
+        },
+        "timing_scope": "Fullcount+D2Hcount+stablecoordinatepipeline; input/outputallocationsoutsideclock. NativeCUBtemp preallocated; historicalCUDA.findall still internallyallocates, explicitAPIpolicyconfound.",
+        "synchronization": [
+          "orderedpipeline/trialdevicesync"
+        ],
+        "actual_backend": "CUDA",
+        "cuda_specific_device_extensions": [],
+        "profiled_resource_counters": false,
+        "environment": "Julia1.12.6/CUDA.jl6.2.1/KA0.9.45/JACC1.4.0; matchedconfigmanifestauthority"
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -76,8 +230,15 @@
       "configuration_id": "nonzero_i32_256x256_stable_coords_count_pipeline_prealloc_v1",
       "run_id": "20261017T002300087832Z_nonzero",
       "result": ".porting-state/portable_julia/runs/20261017T002300087832Z_nonzero/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "a1f03423773a37a778501754adb91d305e97050d02b9da849051a5f0b38f2821",
       "source_hash": "071839ed2f5ffb1de4d3a127e531f07d0963d4797e2d1e457d429eb3621188bc",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T002300087832Z_nonzero/hardware.txt",
       "trials_correct": [
         true,
         true,

@@ -10,7 +10,7 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
@@ -22,7 +22,7 @@
     "source_revision": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
     "status": "verified",
     "algorithm": "Vendor cuBLAS GEMM for Float16/Float32/Float64",
-    "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+    "work_item_mapping": "Vendor cuBLAS internal work-item mapping opaque; host dispatch swaps B/A column-major views to implement native row-major GEMM.",
     "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
     "precision": {
       "storage": [
@@ -31,30 +31,21 @@
         "float64"
       ],
       "compute": [
-        "float16_scalar_GEMM",
-        "float32",
-        "float64"
+        "Vendor cuBLAS FP16/FP32/FP64 compute selection, internal accumulation algorithm not profiled"
       ]
     },
     "memory_access": "vendor-library internal implementation unprofiled",
     "synchronization": [
-      "cuBLAS_dispatch_or_scalar_GEMM_kernel",
-      "device_sync_after_each_GEMM"
+      "vendor cuBLAS dispatch",
+      "device synchronization after GEMM"
     ],
     "resource_policy": {
       "shared_bytes": null,
-      "reason": "vendor internals unprofiled"
+      "reason": "vendor internals not profiled"
     },
     "launch_geometry": {
-      "portable_threads": [
-        16,
-        16
-      ],
-      "portable_blocks": [
-        3,
-        4
-      ],
-      "vendor_launch_geometry": "not profiled"
+      "internal_geometry": null,
+      "reason": "vendor library kernel launch not profiled"
     },
     "backend_extensions": [
       "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
@@ -98,7 +89,41 @@
     "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
     "historical_cost_available": false
   },
-  "implementation_review_status": "worker_source_review",
+  "implementation_ontology_normalized": {
+    "algorithm": "Vendor cuBLAS GEMM for Float16/Float32/Float64",
+    "work_item_mapping": "Vendor cuBLAS internal work-item mapping opaque; host dispatch swaps B/A column-major views to implement native row-major GEMM.",
+    "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
+    "storage_precision": [
+      "float16",
+      "float32",
+      "float64"
+    ],
+    "compute_precision": [
+      "Vendor cuBLAS FP16/FP32/FP64 compute selection, internal accumulation algorithm not profiled"
+    ],
+    "memory_hierarchy_and_access": "vendor-library internal implementation unprofiled",
+    "synchronization": [
+      "vendor cuBLAS dispatch",
+      "device synchronization after GEMM"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": null,
+      "reason": "vendor internals not profiled"
+    },
+    "launch_geometry": {
+      "internal_geometry": null,
+      "reason": "vendor library kernel launch not profiled"
+    },
+    "library_backend_boundary": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "blas-gemm",
     "schema_version": 2,
@@ -113,7 +138,15 @@
       "precision_sensitivity": "Binary input sums bounded by32 give exact FP16 accumulation for this fixture; arbitrary real inputs may not.",
       "community_use_case": "Dense linear operators in numerical solvers and scientific machine learning; illustrative application context.",
       "description": "GEMM multiplies two dense matrices and accumulates their scaled product into an existing matrix. The study preserves the native alpha/beta operation and three precision modes, replacing a historical Julia smoke-only reference with an actual vendor-library GEMM.",
-      "provenance": "Native blas-gemm main.cu and utils.h define the operation and fixture; no specific end-use scientific application is asserted."
+      "provenance": "Native blas-gemm main.cu and utils.h define the operation and fixture; no specific end-use scientific application is asserted.",
+      "primary_family": "linear_algebra",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/blas-gemm-cuda/main.cu",
+          "sha256": "75d171a752c4e3a1361d91294b9a3134e250feb7387b2033e518c0296230b84d"
+        }
+      ]
     },
     "primary_motif": "dense_matrix_multiplication",
     "storage_precision": [
@@ -158,7 +191,7 @@
         "source_revision": "ce90139ab3fcd31f410f22a0d6e87a1dc1afae2a1edc07cf6014f458c44589ae",
         "status": "verified",
         "algorithm": "Vendor cuBLAS GEMM for Float16/Float32/Float64",
-        "work_item_mapping": "KA/JACC one output element per work item,16x16 threads; vendor cuBLAS internal mapping opaque",
+        "work_item_mapping": "Vendor cuBLAS internal work-item mapping opaque; host dispatch swaps B/A column-major views to implement native row-major GEMM.",
         "layout": "Native row-major A[M,K],B[K,N],C[M,N]; CUDA.jl column-major views implement transpose-equivalent swapped B*A",
         "precision": {
           "storage": [
@@ -167,30 +200,21 @@
             "float64"
           ],
           "compute": [
-            "float16_scalar_GEMM",
-            "float32",
-            "float64"
+            "Vendor cuBLAS FP16/FP32/FP64 compute selection, internal accumulation algorithm not profiled"
           ]
         },
         "memory_access": "vendor-library internal implementation unprofiled",
         "synchronization": [
-          "cuBLAS_dispatch_or_scalar_GEMM_kernel",
-          "device_sync_after_each_GEMM"
+          "vendor cuBLAS dispatch",
+          "device synchronization after GEMM"
         ],
         "resource_policy": {
           "shared_bytes": null,
-          "reason": "vendor internals unprofiled"
+          "reason": "vendor internals not profiled"
         },
         "launch_geometry": {
-          "portable_threads": [
-            16,
-            16
-          ],
-          "portable_blocks": [
-            3,
-            4
-          ],
-          "vendor_launch_geometry": "not profiled"
+          "internal_geometry": null,
+          "reason": "vendor library kernel launch not profiled"
         },
         "backend_extensions": [
           "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
@@ -436,8 +460,15 @@
       "configuration_id": "binary_srand2_M64K32N48_FP16FP32FP64_alpha2_betaHalf_reset10_v1",
       "run_id": "20261017T161855946063Z_blas-gemm",
       "result": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "bf9fcf3b9551404ed6c61763c669769f3ebd3dfb489b5df0809a10be394fda5e",
       "source_hash": "bf310d971b3c996967d5a1f172a46792c889eb71801e5f2ac3912fe2ed09cd7a",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T161855946063Z_blas-gemm/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -477,11 +508,12 @@
   "failure_taxonomy": {
     "events": [
       {
-        "event_id": "8d06282fa34ad51da180",
+        "event_id": "blas-gemm:cuda_jl:reference_semantics:S1:01",
         "benchmark_id": "blas-gemm",
         "implementation_model": "cuda_jl",
         "taxonomy_code": "S1",
         "phase": "reference_repair",
+        "origin_model": "cuda_jl",
         "is_failure": true,
         "evidence_path": ".porting-state/portable_julia/failure_events_300/blas-gemm.jsonl",
         "evidence_line": 1,

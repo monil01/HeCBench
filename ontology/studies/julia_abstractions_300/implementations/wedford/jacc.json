@@ -10,12 +10,102 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+    "status": "verified",
+    "actual_algorithm": "Sequential Float32 Welford states and counted merge tree, with native warp shuffle/synchronization emulated through shared words and full-block barriers.",
+    "kernel_ownership": "Authored model-specific device entrypoints.",
+    "work_item_mapping": "Eight512-thread blocks, bs16 ss64 fs8; native32x16threads flattened to512.",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32"
+    ],
+    "data_layout": "Float32 data and mean/variance outputs, UInt32 shared state encoding; no Float64 device arithmetic.",
+    "resource_policy": "Dynamic6144bytes with full1536-word zero-template copy.",
+    "synchronization": [
+      "workgroup_barrier"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "adapted",
+      "reason": "Same sequential Welford and counted merge tree, native shuffle/warp synchronization replaced with shared emulation/full-block barriers. Historical sum/sumsquares reference corrected."
+    },
+    "host_device_boundary": "Setup/reset and D2H checks excluded from synchronized dispatch-loop timing.",
+    "timing_scope": "synchronized complete Welford kernel loop mean",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native640 shared bytes versus portable6144 bytes",
+      "Native shuffle instructions versus shared emulation",
+      "Full-block barriers replace warp synchronization",
+      "JACC additional zero-workspace global-to-shared copy",
+      "Named bs16 ss64 fs8 dyadic fixture; no high-offset stability claim"
+    ],
+    "source_revision": {
+      "path": "src/wedford-julia/wedford-julia-JACC/main.jl",
+      "sha256": "2d49e025995fef3247aea6bb577cc2892b90f0aca9d6c524cdcbb59f61df5b70"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "failure_history": {
+      "records": [
+        ".porting-state/porting_logs/wedford-julia-jacc/manifest.json",
+        ".porting-state/porting_logs/wedford-julia-jacc/compiler_attempts.jsonl"
+      ],
+      "unknown_historical_counts": null,
+      "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+    },
+    "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims.",
+    "oracle_precision": [
+      "Float64"
+    ],
+    "precision_scope": "Float32 device recurrence/merge; independent CPU two-pass oracle usesFloat64 and native tolerance1e-3."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Sequential Float32 Welford states and counted merge tree, with native warp shuffle/synchronization emulated through shared words and full-block barriers.",
+    "work_item_mapping": "Eight512-thread blocks, bs16 ss64 fs8; native32x16threads flattened to512.",
+    "layout": "Float32 data and mean/variance outputs, UInt32 shared state encoding; no Float64 device arithmetic.",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "workgroup_barrier"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Dynamic6144bytes with full1536-word zero-template copy.",
+    "launch_geometry": null,
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/wedford-julia/wedford-julia-JACC/main.jl",
+      "sha256": "2d49e025995fef3247aea6bb577cc2892b90f0aca9d6c524cdcbb59f61df5b70"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "wedford",
     "audited_at": "2026-10-17T00:32:40.298940+00:00",
@@ -61,7 +151,215 @@
     "oracle_precision": [
       "Float64"
     ],
-    "precision_scope": "storage/compute lists describe GPU workload and bit-encoded count workspace; Float64 is CPU oracle/artifact precision, not GPU arithmetic."
+    "precision_scope": "storage/compute lists describe GPU workload and bit-encoded count workspace; Float64 is CPU oracle/artifact precision, not GPU arithmetic.",
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "domain neutral primitives",
+      "scientific_task": "Compute stable online means and variances",
+      "governing_method": "Sequential Float32 Welford updates plus counted partial-state merges.",
+      "discretization": "Array, key or workgroup structure; no physical spatial mesh.",
+      "community_use_case": "Statistics primitive relevant to simulation/analysis; high-offset conditioning is unmeasured.",
+      "accuracy_needs": [
+        "Exact named integer/permutation or accepted full numerical output; retain source-specific scope."
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/wedford-cuda/reference.h",
+          "sha256": "e4e4abe11305b7846b74089451dcac156761eaad62046755557b7aa60e08988a"
+        },
+        {
+          "path": "src/wedford-cuda/main.cu",
+          "sha256": "50193393e5356b8a56e00a36762d19edde8e069a4010425e5128647e1bccf2ec"
+        }
+      ],
+      "confidence": "source-reviewed operator/probe; application relevance is potential, not source dataset provenance"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Sequential Float32 Welford states and counted merge tree, with native warp shuffle/synchronization emulated through shared words and full-block barriers.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Eight512-thread blocks, bs16 ss64 fs8; native32x16threads flattened to512.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int32"
+        ],
+        "data_layout": "Float32 data and mean/variance outputs, UInt32 shared state encoding; no Float64 device arithmetic.",
+        "resource_policy": "Static UInt32[1536] shared words,6144bytes; Float32 mean/M2 and Int32 count bit encoding.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Same sequential Welford and counted merge tree, native shuffle/warp synchronization replaced with shared emulation/full-block barriers. Historical sum/sumsquares reference corrected."
+        },
+        "host_device_boundary": "Setup/reset and D2H checks excluded from synchronized dispatch-loop timing.",
+        "timing_scope": "synchronized complete Welford kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native640 shared bytes versus portable6144 bytes",
+          "Native shuffle instructions versus shared emulation",
+          "Full-block barriers replace warp synchronization",
+          "JACC additional zero-workspace global-to-shared copy",
+          "Named bs16 ss64 fs8 dyadic fixture; no high-offset stability claim"
+        ],
+        "source_revision": {
+          "path": "src/wedford-julia/wedford-julia-cuda.jl/main.jl",
+          "sha256": "2003b0353371bc69fafb9f9399c6a13156b6392af8b803708e596818f9e9d472"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims.",
+        "oracle_precision": [
+          "Float64"
+        ],
+        "precision_scope": "Float32 device recurrence/merge; independent CPU two-pass oracle usesFloat64 and native tolerance1e-3."
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Sequential Float32 Welford states and counted merge tree, with native warp shuffle/synchronization emulated through shared words and full-block barriers.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Eight512-thread blocks, bs16 ss64 fs8; native32x16threads flattened to512.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int32"
+        ],
+        "data_layout": "Float32 data and mean/variance outputs, UInt32 shared state encoding; no Float64 device arithmetic.",
+        "resource_policy": "Static @localmem UInt32[1536],6144bytes; no native shuffle instruction.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Same sequential Welford and counted merge tree, native shuffle/warp synchronization replaced with shared emulation/full-block barriers. Historical sum/sumsquares reference corrected."
+        },
+        "host_device_boundary": "Setup/reset and D2H checks excluded from synchronized dispatch-loop timing.",
+        "timing_scope": "synchronized complete Welford kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native640 shared bytes versus portable6144 bytes",
+          "Native shuffle instructions versus shared emulation",
+          "Full-block barriers replace warp synchronization",
+          "JACC additional zero-workspace global-to-shared copy",
+          "Named bs16 ss64 fs8 dyadic fixture; no high-offset stability claim"
+        ],
+        "source_revision": {
+          "path": "src/wedford-julia/wedford-julia-KA/main.jl",
+          "sha256": "7d1787476fb054b4c09aa4e5f5733b0fa5258d357289786c3902f09127d4799b"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/wedford-julia-ka/manifest.json",
+            ".porting-state/porting_logs/wedford-julia-ka/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims.",
+        "oracle_precision": [
+          "Float64"
+        ],
+        "precision_scope": "Float32 device recurrence/merge; independent CPU two-pass oracle usesFloat64 and native tolerance1e-3."
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Sequential Float32 Welford states and counted merge tree, with native warp shuffle/synchronization emulated through shared words and full-block barriers.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Eight512-thread blocks, bs16 ss64 fs8; native32x16threads flattened to512.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int32"
+        ],
+        "data_layout": "Float32 data and mean/variance outputs, UInt32 shared state encoding; no Float64 device arithmetic.",
+        "resource_policy": "Dynamic6144bytes with full1536-word zero-template copy.",
+        "synchronization": [
+          "workgroup_barrier"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Same sequential Welford and counted merge tree, native shuffle/warp synchronization replaced with shared emulation/full-block barriers. Historical sum/sumsquares reference corrected."
+        },
+        "host_device_boundary": "Setup/reset and D2H checks excluded from synchronized dispatch-loop timing.",
+        "timing_scope": "synchronized complete Welford kernel loop mean",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native640 shared bytes versus portable6144 bytes",
+          "Native shuffle instructions versus shared emulation",
+          "Full-block barriers replace warp synchronization",
+          "JACC additional zero-workspace global-to-shared copy",
+          "Named bs16 ss64 fs8 dyadic fixture; no high-offset stability claim"
+        ],
+        "source_revision": {
+          "path": "src/wedford-julia/wedford-julia-JACC/main.jl",
+          "sha256": "2d49e025995fef3247aea6bb577cc2892b90f0aca9d6c524cdcbb59f61df5b70"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/wedford-julia-jacc/manifest.json",
+            ".porting-state/porting_logs/wedford-julia-jacc/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims.",
+        "oracle_precision": [
+          "Float64"
+        ],
+        "precision_scope": "Float32 device recurrence/merge; independent CPU two-pass oracle usesFloat64 and native tolerance1e-3."
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -96,8 +394,15 @@
       "configuration_id": "wedford_true_welford_bs16_ss64_fs8_r10_v1",
       "run_id": "20261017T003003745416Z_wedford",
       "result": ".porting-state/portable_julia/runs/20261017T003003745416Z_wedford/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "7bd274e17890e9a894cfde95dc45115bed36b00c00d844461c9ac3ef06a125c4",
       "source_hash": "409d7822eb604bf8a25a5f18446cdf8be470744737b5a13326c79bc73676544f",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T003003745416Z_wedford/hardware.txt",
       "trials_correct": [
         true,
         true,

@@ -10,12 +10,73 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "actual_algorithm": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+    "work_item_mapping": "Basic one op/channel per Global Linear item; rowwise one operation peritem with channel loop,workgroupsize256",
+    "layout": "Flattened source/output row arrays, one channel weight vector, Int32 input/output index vectors",
+    "precision": {
+      "storage": [
+        "Float32"
+      ],
+      "compute": [
+        "Float32"
+      ],
+      "indexing": "See hashed source and named configuration"
+    },
+    "memory_hierarchy": "global arrays; no cooperative scratch in measured Julia kernels",
+    "synchronization": [
+      "Ordered same-stream launches",
+      "device synchronization at matched timing boundaries"
+    ],
+    "resource_policy": "No shared-data allocation in reviewed kernels",
+    "backend_boundary": "CUDA.jl backend/runtime; no vendor math library",
+    "source_evidence": {
+      "implementation_model": "ka",
+      "path": "src/fma-julia/fma-julia-KA/main.jl",
+      "sha256": "97488da450b890a4b40ec3e2e5f65f393be46ea0532b837bed474c9e0c75e847"
+    },
+    "fidelity_scope": "FP32basic+rowwise,namedfixture,timedzero fills+bothkernels;native vector/sharedB mapping differs",
+    "native_mapping_confound": {
+      "status": "adapted",
+      "reason": "Native sharedB+vectorized basic; originalJl scalarbasic/rowwisealias; KA/JACC scalarbasic+oneop/threadrowwise."
+    },
+    "profile_evidence": null,
+    "environment": "Julia1.12.6, CUDA.jl6.2.1, KA0.9.45, JACC1.4.0; language releasecomparison notperformed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+    "work_item_mapping": "Basic one op/channel per Global Linear item; rowwise one operation peritem with channel loop,workgroupsize256",
+    "layout": "Flattened source/output row arrays, one channel weight vector, Int32 input/output index vectors",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "memory_hierarchy_and_access": "global arrays; no cooperative scratch in measured Julia kernels",
+    "synchronization": [
+      "Ordered same-stream launches",
+      "device synchronization at matched timing boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "No shared-data allocation in reviewed kernels",
+    "launch_geometry": null,
+    "library_backend_boundary": "CUDA.jl backend/runtime; no vendor math library",
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "FP32basic+rowwise,namedfixture,timedzero fills+bothkernels;native vector/sharedB mapping differs",
+    "source_review_evidence": {
+      "implementation_model": "ka",
+      "path": "src/fma-julia/fma-julia-KA/main.jl",
+      "sha256": "97488da450b890a4b40ec3e2e5f65f393be46ea0532b837bed474c9e0c75e847"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "fma",
     "primary_motif": "gather-scatter-indexed-map",
@@ -46,7 +107,150 @@
       "Nativevectorization/sharedreuse differsscalarframeworkmaps",
       "ExactnativeFP32bodyexcerptwithhashesforCUDA12/sm70headercompatibility"
     ],
-    "review_status": "sourceaudited; notprofiledbottleneck"
+    "review_status": "sourceaudited; notprofiledbottleneck",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "primary_domain": "Indexed numerical linear algebra",
+      "scientific_task": "Gather source rows, multiply by channel weights and accumulate into selected output rows",
+      "mathematical_method": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+      "accuracy_requirements": [
+        "Output-index uniqueness in namedfixture avoids conflicting nonatomic updates",
+        "All262144FP32 outputs inclzeros; arbitrary duplicate-output indices not certified",
+        "BF16 labels of historical CLI not certified"
+      ],
+      "community_use_case": "Compare elementwise versus row-per-worker mappings relevant to sparse feature updates without general sparse-matrix guarantees",
+      "review_status": "source_reviewed",
+      "confidence": "Source algorithm and measured scope reviewed; no application-level validation claimed",
+      "evidence": [
+        {
+          "implementation_model": "cuda_jl",
+          "path": "src/fma-julia/fma-julia-cuda.jl/main.jl",
+          "sha256": "45a25c8b0801f73fc6045af79788d3e76246586ad933b889203976839199a36c"
+        },
+        {
+          "implementation_model": "ka",
+          "path": "src/fma-julia/fma-julia-KA/main.jl",
+          "sha256": "97488da450b890a4b40ec3e2e5f65f393be46ea0532b837bed474c9e0c75e847"
+        },
+        {
+          "implementation_model": "jacc",
+          "path": "src/fma-julia/fma-julia-JACC/main.jl",
+          "sha256": "ba1dee4aadc374f56888aa37a1f88d69cf91e9f39f504990bcb47f81c5458829"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+        "work_item_mapping": "Two launches of inherited scalar gridstride op/channel kernel,256threads; rowwise label remains a scalar alias in measured CUDA.jl adapter. New KA/JACC use a genuine row-per-item mapping for second variant.",
+        "layout": "Flattened source/output row arrays, one channel weight vector, Int32 input/output index vectors",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32"
+          ],
+          "indexing": "See hashed source and named configuration"
+        },
+        "memory_hierarchy": "Global scalar arrays; both CUDA.jl launches use same inherited basic kernel, no cooperative B staging",
+        "synchronization": [
+          "Ordered same-stream launches",
+          "device synchronization at matched timing boundaries"
+        ],
+        "resource_policy": "No shared-data allocation in reviewed kernels",
+        "backend_boundary": "CUDA.jl backend/runtime; no vendor math library",
+        "source_evidence": {
+          "implementation_model": "cuda_jl",
+          "path": "src/fma-julia/fma-julia-cuda.jl/main.jl",
+          "sha256": "45a25c8b0801f73fc6045af79788d3e76246586ad933b889203976839199a36c"
+        },
+        "fidelity_scope": "FP32basic+rowwise,namedfixture,timedzero fills+bothkernels;native vector/sharedB mapping differs",
+        "native_mapping_confound": {
+          "status": "adapted",
+          "reason": "Native sharedB+vectorized basic; originalJl scalarbasic/rowwisealias; KA/JACC scalarbasic+oneop/threadrowwise."
+        },
+        "profile_evidence": null,
+        "environment": "Julia1.12.6, CUDA.jl6.2.1, KA0.9.45, JACC1.4.0; language releasecomparison notperformed",
+        "adapter_evidence": {
+          "path": "src/fma-julia/fma-julia-cuda.jl/study.jl",
+          "sha256": "2561abc60efffdeaa405625077d2d1c78a479de75300e5ce3ce82905068aac12"
+        },
+        "study_entrypoint": {
+          "path": "src/fma-julia/fma-julia-cuda.jl/study.jl",
+          "sha256": "2561abc60efffdeaa405625077d2d1c78a479de75300e5ce3ce82905068aac12"
+        }
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+        "work_item_mapping": "Basic one op/channel per Global Linear item; rowwise one operation peritem with channel loop,workgroupsize256",
+        "layout": "Flattened source/output row arrays, one channel weight vector, Int32 input/output index vectors",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32"
+          ],
+          "indexing": "See hashed source and named configuration"
+        },
+        "memory_hierarchy": "global arrays; no cooperative scratch in measured Julia kernels",
+        "synchronization": [
+          "Ordered same-stream launches",
+          "device synchronization at matched timing boundaries"
+        ],
+        "resource_policy": "No shared-data allocation in reviewed kernels",
+        "backend_boundary": "CUDA.jl backend/runtime; no vendor math library",
+        "source_evidence": {
+          "implementation_model": "ka",
+          "path": "src/fma-julia/fma-julia-KA/main.jl",
+          "sha256": "97488da450b890a4b40ec3e2e5f65f393be46ea0532b837bed474c9e0c75e847"
+        },
+        "fidelity_scope": "FP32basic+rowwise,namedfixture,timedzero fills+bothkernels;native vector/sharedB mapping differs",
+        "native_mapping_confound": {
+          "status": "adapted",
+          "reason": "Native sharedB+vectorized basic; originalJl scalarbasic/rowwisealias; KA/JACC scalarbasic+oneop/threadrowwise."
+        },
+        "profile_evidence": null,
+        "environment": "Julia1.12.6, CUDA.jl6.2.1, KA0.9.45, JACC1.4.0; language releasecomparison notperformed"
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Basic elementwise indexed multiply-add and rowwise variant with reset outputs",
+        "work_item_mapping": "Same two distinct work maps via parallel_for,threads256,explicit0dynamicshared",
+        "layout": "Flattened source/output row arrays, one channel weight vector, Int32 input/output index vectors",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32"
+          ],
+          "indexing": "See hashed source and named configuration"
+        },
+        "memory_hierarchy": "global arrays; no cooperative scratch in measured Julia kernels",
+        "synchronization": [
+          "Ordered same-stream launches",
+          "device synchronization at matched timing boundaries"
+        ],
+        "resource_policy": "JACC explicit0 dynamic shared for maps without scratch",
+        "backend_boundary": "CUDA.jl backend/runtime; no vendor math library",
+        "source_evidence": {
+          "implementation_model": "jacc",
+          "path": "src/fma-julia/fma-julia-JACC/main.jl",
+          "sha256": "ba1dee4aadc374f56888aa37a1f88d69cf91e9f39f504990bcb47f81c5458829"
+        },
+        "fidelity_scope": "FP32basic+rowwise,namedfixture,timedzero fills+bothkernels;native vector/sharedB mapping differs",
+        "native_mapping_confound": {
+          "status": "adapted",
+          "reason": "Native sharedB+vectorized basic; originalJl scalarbasic/rowwisealias; KA/JACC scalarbasic+oneop/threadrowwise."
+        },
+        "profile_evidence": null,
+        "environment": "Julia1.12.6, CUDA.jl6.2.1, KA0.9.45, JACC1.4.0; language releasecomparison notperformed"
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -76,8 +280,15 @@
       "configuration_id": "fma_fp32_basic_rowwise_na1024_nc2048_c64_ops1024_r20_v1",
       "run_id": "20261016T235833595600Z_fma",
       "result": ".porting-state/portable_julia/runs/20261016T235833595600Z_fma/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "e5ce97c81d2989addc97989022eba5daedb473657ab4f0637b1079c7418ae2cd",
       "source_hash": "68cb9f812888cf2186e1b7630fda71eb4faac5b1de82ef1a55e5108316b99088",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235833595600Z_fma/hardware.txt",
       "trials_correct": [
         true,
         true,

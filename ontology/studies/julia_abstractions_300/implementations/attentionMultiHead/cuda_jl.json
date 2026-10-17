@@ -10,7 +10,7 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
@@ -40,7 +40,36 @@
     "source_shape_boundary": "Local265 scratch fixed for original256feature/head and9tokens; otherCLI shapes not claimed",
     "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1"
   },
-  "implementation_review_status": "worker_source_review",
+  "implementation_ontology_normalized": {
+    "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+    "work_item_mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+    "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+    "storage_precision": "float32",
+    "compute_precision": "float32",
+    "memory_hierarchy_and_access": "global Q/K/V, shared265Float32",
+    "synchronization": [
+      "three explicit workgroup barriers"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 64,
+      "shared_bytes": 1060,
+      "shared_allocation": "dynamic"
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 64,
+      "shared_bytes": 1060,
+      "shared_allocation": "dynamic"
+    },
+    "library_backend_boundary": "CUDA backend/runtime; no vendorattention library",
+    "host_control_boundary": "One host launch per attention evaluation",
+    "fidelity_status_and_scope": "same_math_defaultshape_reduction_mapping_adapted",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "attentionMultiHead",
     "primary_motif": "fused_attention_dot_softmax_weighted_sum",
@@ -73,7 +102,7 @@
     ],
     "scientific_intent": {
       "review_status": "source_audited",
-      "primary_family": "machine_learning_attention",
+      "primary_family": "machine_learning",
       "primary_domain": "machine_learning",
       "scientific_task": "Compute multi-head query attention over already-decoded keys and values for each beam candidate",
       "mathematical_operation": "Perhead QK dot scaled1/sqrt256; thresholdclamped stable softmax; weighted value sum",
@@ -211,8 +240,15 @@
       "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1",
       "run_id": "20261017T161545216029Z_attentionMultiHead",
       "result": ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "5a8ee680d453ec27ebac8d5b826d85489684d085016dbe1370a7e20a58304d67",
       "source_hash": "6c9331a2e70c8f27c5c01ffe7ee0a0dd66ff8e2271d690c8850800266424f069",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -249,11 +285,12 @@
   "failure_taxonomy": {
     "events": [
       {
-        "event_id": "6389e08e45aa1c3db806",
+        "event_id": "attentionMultiHead-cuda_jl-P1-reductionmapping",
         "benchmark_id": "attentionMultiHead",
         "implementation_model": "cuda_jl",
         "taxonomy_code": "P1",
         "phase": "reference_audit",
+        "origin_model": "cuda_jl",
         "is_failure": false,
         "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHead.jsonl",
         "evidence_line": 1,
@@ -280,11 +317,12 @@
         "classification_basis": "explicit event code or explicit coded status; no count imputation"
       },
       {
-        "event_id": "97fe195357ef70300ce6",
+        "event_id": "attentionMultiHead-cuda_jl-N3-float32drift",
         "benchmark_id": "attentionMultiHead",
         "implementation_model": "cuda_jl",
         "taxonomy_code": "N3",
         "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
         "is_failure": false,
         "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHead.jsonl",
         "evidence_line": 5,

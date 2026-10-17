@@ -3,24 +3,229 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "black-scholes",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/black-scholes.json",
   "environment": {
     "julia_release": "1.12.6",
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Analytic call/put pricing, short inherited Float32 erf approximation; put reconstructed by parity.",
+    "mapping": "One option per thread, 1024 workgroups of 256.",
+    "layout": "Seven separate input arrays (Int32 kind plus six Float32 fields) and Float32 prices.",
+    "precision": {
+      "storage": [
+        "int32",
+        "float32"
+      ],
+      "compute": "float32"
+    },
+    "memory": "Global SoA input/output; no shared-memory scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 1024,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "GPU math lowering and CUDA backend runtime; no vendor pricing library.",
+    "host_control_boundary": "One pricing kernel per evaluation; oracle, fixture construction, transfers and artifacts excluded.",
+    "fidelity_status": "Equivalent pricing formula on measured source settings; math approximation and layout adaptations disclosed.",
+    "configuration_id": "fp32_native37cycle_n262144_repeat10_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Analytic call/put pricing, short inherited Float32 erf approximation; put reconstructed by parity.",
+    "work_item_mapping": "One option per thread, 1024 workgroups of 256.",
+    "layout": "Seven separate input arrays (Int32 kind plus six Float32 fields) and Float32 prices.",
+    "storage_precision": [
+      "int32",
+      "float32"
+    ],
+    "compute_precision": "float32",
+    "memory_hierarchy_and_access": "Global SoA input/output; no shared-memory scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1024,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 1024,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "GPU math lowering and CUDA backend runtime; no vendor pricing library.",
+    "host_control_boundary": "One pricing kernel per evaluation; oracle, fixture construction, transfers and artifacts excluded.",
+    "fidelity_status_and_scope": "Equivalent pricing formula on measured source settings; math approximation and layout adaptations disclosed.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "black-scholes",
+    "primary_motif": "independent_transcendental_pricing_map",
+    "storage_precision": [
+      "float32",
+      "int32 option kind"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "One option per thread retained; native AoS with piecewise rational erf and reciprocal-exp discounts differs from inherited Julia SoA, short erf approximation and exp(-rate*time)."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Analytic pricing GPU kernel only, synchronized launch loop per internal repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native AoS versus all Julia SoA inputs; unused native value/tolerance fields also present in source structure.",
+      "Native error-function and discount evaluation differs from inherited Julia approximations, so performance differences combine math implementation and abstraction choices.",
+      "Only 262144 options cycling the original 37 positive-maturity/volatility settings; original 50 million scale and zero-maturity/volatility limits are unmeasured."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "computational_finance",
+      "scientific_task": "Price European call and put options using the analytic Black-Scholes engine with continuous dividend yield.",
+      "mathematical_operation": "Discounted normal-CDF formula with log spot/strike, scaled volatility, expiry and risk/dividend rates.",
+      "discretization_or_topology": "Independent option records; analytic stochastic-model solution rather than a discretized PDE or Monte Carlo simulation.",
+      "invariants": [
+        "Option prices are nonnegative in the fixture.",
+        "Call-put parity and discounted payoff limits characterize the formula; no new market-model validation is implied."
+      ],
+      "accuracy_requirements": [
+        "Every finite Float32 price must match an independent Float64 libm-erf analytic oracle and both GPU references within absolute 1e-4.",
+        "This matches native per-option tolerance and strengthens the inherited Julia subset-only 1e-3 check."
+      ],
+      "precision_sensitivity": "Cancellation near out-of-money prices; exp/log/erf approximations and discount evaluation change low bits. Measured absolute tolerance does not establish acceptable financial model error.",
+      "input_size_regimes": "262144 independent options cycling all 37 exact source settings; all option input fields rounded once to Float32.",
+      "community_use_case": "Native source explicitly identifies a Quantlib-derived analytic Black-Scholes pricing engine.",
+      "provenance": [
+        {
+          "path": "src/black-scholes-cuda/blackScholesAnalyticEngine.cu",
+          "sha256": "9290c8223619c452adb54485aadf7e17cb0e21d90561714c35a4b94079be4da0",
+          "source_locations": "37 option settings, analytic pricing kernel and option structures"
+        },
+        {
+          "path": "src/black-scholes-cuda/blackScholesAnalyticEngineKernels.cu",
+          "sha256": "52d734495ac6553c798209856151711274b1bddf25ef11fd24dce7a7ed53d5d9",
+          "source_locations": "37 option settings, analytic pricing kernel and option structures"
+        },
+        {
+          "path": "src/black-scholes-cuda/blackScholesAnalyticEngineStructs.cuh",
+          "sha256": "2801815e8f3498d6146608398a162032ba6aa52be28528d93b1c21b73d4234ad",
+          "source_locations": "37 option settings, analytic pricing kernel and option structures"
+        }
+      ],
+      "uncertainty": "The fixture is a pricing microbenchmark, without a market dataset, calibration, hedging task, or application-level risk budget."
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Analytic call/put pricing, short inherited Float32 erf approximation; put reconstructed by parity.",
+        "mapping": "One option per thread, 1024 workgroups of 256.",
+        "layout": "Seven separate input arrays (Int32 kind plus six Float32 fields) and Float32 prices.",
+        "precision": {
+          "storage": [
+            "int32",
+            "float32"
+          ],
+          "compute": "float32"
+        },
+        "memory": "Global SoA input/output; no shared-memory scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "GPU math lowering and CUDA backend runtime; no vendor pricing library.",
+        "host_control_boundary": "One pricing kernel per evaluation; oracle, fixture construction, transfers and artifacts excluded.",
+        "fidelity_status": "Equivalent pricing formula on measured source settings; math approximation and layout adaptations disclosed.",
+        "configuration_id": "fp32_native37cycle_n262144_repeat10_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Analytic call/put pricing, short inherited Float32 erf approximation; put reconstructed by parity.",
+        "mapping": "One option per thread, 1024 workgroups of 256.",
+        "layout": "Seven separate input arrays (Int32 kind plus six Float32 fields) and Float32 prices.",
+        "precision": {
+          "storage": [
+            "int32",
+            "float32"
+          ],
+          "compute": "float32"
+        },
+        "memory": "Global SoA input/output; no shared-memory scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend plus GPU math lowering; no vendor pricing library.",
+        "host_control_boundary": "One pricing kernel per evaluation; oracle, fixture construction, transfers and artifacts excluded.",
+        "fidelity_status": "Equivalent pricing formula on measured source settings; math approximation and layout adaptations disclosed.",
+        "configuration_id": "fp32_native37cycle_n262144_repeat10_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Analytic call/put pricing, short inherited Float32 erf approximation; put reconstructed by parity.",
+        "mapping": "One option per thread, 1024 workgroups of 256.",
+        "layout": "Seven separate input arrays (Int32 kind plus six Float32 fields) and Float32 prices.",
+        "precision": {
+          "storage": [
+            "int32",
+            "float32"
+          ],
+          "compute": "float32"
+        },
+        "memory": "Global SoA input/output; no shared-memory scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend plus GPU math lowering; no vendor pricing library.",
+        "host_control_boundary": "One pricing kernel per evaluation; oracle, fixture construction, transfers and artifacts excluded.",
+        "fidelity_status": "Equivalent pricing formula on measured source settings; math approximation and layout adaptations disclosed.",
+        "configuration_id": "fp32_native37cycle_n262144_repeat10_v1"
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/black-scholes-julia/main.jl",
+    "path": "src/black-scholes-julia/black-scholes-julia-cuda.jl/main.jl",
     "sha256": "e74d303e78b2b26bccea9c5b26aa7674932afcf57c0322af416726b22495c9c2",
     "syntax_features": {
       "cuda_kernel_launch": [
@@ -40,11 +245,113 @@
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "fp32_native37cycle_n262144_repeat10_v1",
+      "run_id": "20261017T163759099236Z_black-scholes",
+      "result": ".porting-state/portable_julia/runs/20261017T163759099236Z_black-scholes/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
+      "result_sha256": "00c2bd605c0f659773bb98d7cb102ef2189ff0d541e4ed3507e971ecdf4c04b3",
+      "source_hash": "b7288bbfa2fc2ab396f28c95ee5069d8218e704fe5f9c783876d4f0f0d703b24",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T163759099236Z_black-scholes/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.05991e-05,
+        2.17712e-05,
+        1.86731e-05,
+        1.86401e-05,
+        1.84012e-05
+      ],
+      "mean_last_four_seconds": 1.93714e-05,
+      "contract": {
+        "precision": "float32inputs/outputs anddevicecompute; CPUindependentfloat64oracle",
+        "shape": [
+          262144
+        ],
+        "fixture": "Exactnative37optionconfigurationcycle, includesallcalls/puts, fieldsroundonceFloat32, indexi%37; sourcecycle verifiedagainstpreservedJuliaCONFIGS",
+        "internal_repeats": 10,
+        "scope": "AnalyticEuropeanoptionpricingonly, source37settings; original50Mlargeregime unmeasured; positivevolatility/maturityonly",
+        "mapping": "oneoption/thread1024blocks256; native36B AoS inclvalue/tol unusedfields vs Julia7SoAarrays",
+        "accuracy": "Allfinite262144prices Float64libm-erforacle anddualrawreferenceartifacts abs1e-4 rtol0 (same nativeperoptiontolerance, stricterthan historicalJuliasubset1e-3)",
+        "math_implementation_difference": "Nativepiecewiserationalerf anddiscount1/exp; inheritedJulia/KA/JACCshortpolynomialerfapprox andexp(-rate*T), explicitlyretained/verified"
+      },
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "black-scholes-cuda_jl-P1-layout-math",
+        "benchmark_id": "black-scholes",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/black-scholes.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "black-scholes-cuda_jl-P1-layout-math",
+          "benchmark": "black-scholes",
+          "model": "cuda_jl",
+          "phase": "reference_audit",
+          "code": "P1",
+          "is_failed_attempt": false,
+          "candidate_id": null,
+          "check_id": 1,
+          "repair_id": null,
+          "symptom": "Native AoS and piecewise rational erf / reciprocal-exp discounts differ from inherited Julia SoA and short erf / exp(-rate*time).",
+          "root_cause": "Historical Julia implementation choice retained by both portable versions.",
+          "resolution": "All 37 exact input settings checked at native absolute tolerance 1e-4; disclose math and layout confounds.",
+          "final_outcome": "verified_with_disclosed_adaptations",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T163759099236Z_black-scholes/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "black-scholes-cuda_jl-N3-prices",
+        "benchmark_id": "black-scholes",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/black-scholes.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "black-scholes-cuda_jl-N3-prices",
+          "benchmark": "black-scholes",
+          "model": "cuda_jl",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failed_attempt": false,
+          "max_abs_error": 4.52995300293e-05,
+          "symptom": "Full-output difference within declared 1e-4 absolute tolerance.",
+          "root_cause": "Different Float32 math implementations; no instruction-level causal isolation performed.",
+          "resolution": "Retain complete finite artifacts and independent Float64 oracle comparison.",
+          "final_outcome": "verified_tolerated_drift",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T163759099236Z_black-scholes/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -56,5 +363,29 @@
     "translation_tokens": null
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "black-scholes",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T163759099236Z_black-scholes/result.json"
+    ],
+    "contract": {
+      "precision": "float32inputs/outputs anddevicecompute; CPUindependentfloat64oracle",
+      "shape": [
+        262144
+      ],
+      "fixture": "Exactnative37optionconfigurationcycle, includesallcalls/puts, fieldsroundonceFloat32, indexi%37; sourcecycle verifiedagainstpreservedJuliaCONFIGS",
+      "internal_repeats": 10,
+      "scope": "AnalyticEuropeanoptionpricingonly, source37settings; original50Mlargeregime unmeasured; positivevolatility/maturityonly",
+      "mapping": "oneoption/thread1024blocks256; native36B AoS inclvalue/tol unusedfields vs Julia7SoAarrays",
+      "accuracy": "Allfinite262144prices Float64libm-erforacle anddualrawreferenceartifacts abs1e-4 rtol0 (same nativeperoptiontolerance, stricterthan historicalJuliasubset1e-3)",
+      "math_implementation_difference": "Nativepiecewiserationalerf anddiscount1/exp; inheritedJulia/KA/JACCshortpolynomialerfapprox andexp(-rate*T), explicitlyretained/verified"
+    },
+    "limitations": [
+      "Native AoS versus all Julia SoA inputs; unused native value/tolerance fields also present in source structure.",
+      "Native error-function and discount evaluation differs from inherited Julia approximations, so performance differences combine math implementation and abstraction choices.",
+      "Only 262144 options cycling the original 37 positive-maturity/volatility settings; original 50 million scale and zero-maturity/volatility limits are unmeasured."
+    ]
+  }
 }

@@ -2,7 +2,7 @@
 """Export the full census without converting unknowns into successes or failures."""
 from pathlib import Path
 from collections import Counter
-import datetime, hashlib, json, re, subprocess
+import datetime, hashlib, json, re, subprocess, time
 
 ROOT=Path(__file__).resolve().parents[1]
 STATE=ROOT/'.porting-state/portable_julia'
@@ -12,8 +12,13 @@ MODELS={'cuda_jl':'cuda.jl','ka':'KA','jacc':'JACC'}
 CODES=['B1','B2','B3','B4','R1','R2','R3','N1','N2','N3','S1','S2','P1','T1']
 
 def read(p,default=None):
-    try:return json.loads(p.read_text())
-    except (OSError,ValueError):return default
+    # Missing evidence is unknown; malformed existing evidence must not silently erase it.
+    for attempt in range(4):
+        try:return json.loads(p.read_text())
+        except FileNotFoundError:return default
+        except json.JSONDecodeError:
+            if attempt==3:raise
+            time.sleep(.05)
 
 def write(p,d):
     p.parent.mkdir(parents=True,exist_ok=True)
@@ -107,6 +112,13 @@ def main():
         domain={'schema_version':2,'benchmark_id':b,'scientific_intent':intent,
                 'base_ontology':{'path':base[b].get('ontology_path'),'frozen_sha256':base[b].get('ontology_sha256'),'status':'inferred base; not measured evidence'},
                 'historical_pass_method':base[b].get('method'),'historical_pass_is_strengthened_verification':False}
+        witness_path=STATE/'scientific_witnesses_300'/(b+'.json')
+        witness=read(witness_path)
+        if witness:
+            domain['scientific_witness_evidence']={'path':str(witness_path.relative_to(ROOT)),'sha256':digest(witness_path),
+                'summary':{k:v for k,v in witness.items() if k!='checks'},
+                'model_trial_summary':[{'model':x.get('model'),'trial':x.get('trial'),'pass':x.get('pass'),'artifact_sha256':x.get('artifact_sha256')} for x in witness.get('checks',[])],
+                'interpretation':'Additional scoped mathematical/invariant evidence; complements full dual-reference checks, not a proof over all inputs.'}
         write(OUT/'domains'/(b+'.json'),domain);domain_rows.append(domain)
         for line,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
             if event.get('implementation_model') in ['cuda','native_cuda']:

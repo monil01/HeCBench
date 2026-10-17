@@ -10,12 +10,75 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Serial per-row max, exponential sum and normalized output loops.",
+    "mapping": "One row/workitem, 32 blocks of 256; adjacent lanes start 128 Float32 values apart.",
+    "layout": "Contiguous row-major Float32 logits and probabilities.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 exp/sum/division; int32 indices"
+    },
+    "implementation_detail": "JACC callback index converted to Int32; serial row loops.",
+    "memory": "Global input/output, no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 32,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "JACC CUDA backend",
+    "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+    "implementation_class": "framework_device_kernel",
+    "fidelity_status": "matched named scope",
+    "provenance": [
+      {
+        "path": "src/softmax-julia/softmax-julia-JACC/main.jl",
+        "sha256": "ef14c77abda1195ccbbd1dae3d663dc6fa5dd03158a46b66ca8e0b0d8a73dfd1",
+        "source_locations": "actual device implementation and dispatch"
+      }
+    ],
+    "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+    "resource_policy": {
+      "current_controlled_configuration": "explicit shmem_size0",
+      "historical_baseline": "automatic kernel maximum; per-benchmark byte count unknown without individual counters"
+    },
+    "coverage": "Mode0 only; mode1 is unimplemented/unmeasured, even where the historical CLI accepts a mode argument."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Serial per-row max, exponential sum and normalized output loops.",
+    "work_item_mapping": "One row/workitem, 32 blocks of 256; adjacent lanes start 128 Float32 values apart.",
+    "layout": "Contiguous row-major Float32 logits and probabilities.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 exp/sum/division; int32 indices",
+    "memory_hierarchy_and_access": "Global input/output, no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "current_controlled_configuration": "explicit shmem_size0",
+      "historical_baseline": "automatic kernel maximum; per-benchmark byte count unknown without individual counters"
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 32,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "JACC CUDA backend",
+    "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+    "fidelity_status_and_scope": "matched named scope",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "softmax",
     "primary_motif": "normalization",
@@ -59,6 +122,142 @@
         "resource_profile_status": "Measured0Bdynamicshared/32sharedoccupancyblocklimit fortriad; othercasespolicycheckedfromsourceonly, noindividualcounterclaim.",
         "resource_baseline_configuration": "mode0_naive_fp32_8192x128_repeat10_v1"
       }
+    },
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "normalized_exponential_primitive",
+      "scientific_task": "Normalize independent rows of logits into nonnegative distributions.",
+      "mathematical_operation": "Subtract row maximum, sum exp(logit-max), then divide each exponential by that sum.",
+      "discretization_or_topology": "8192 independent rows of 128 dense logits.",
+      "invariants": [
+        "Positive outputs and each row sums to one within roundoff.",
+        "Adding a constant to all finite logits in a row leaves softmax unchanged."
+      ],
+      "accuracy_requirements": [
+        "Every Float32 output checked with source-based absolute tolerance 1e-3 and full dual-reference artifacts."
+      ],
+      "precision_sensitivity": "exp approximation, serial reduction rounding and stability for large logit ranges; subtract-max retained.",
+      "input_size_regimes": "Native naive mode0 only, 8192x128 and ten repeats; optimized cooperative mode1 remains unported/unmeasured.",
+      "community_use_case": "Probability normalization primitive common in ML; source alone does not identify a model or domain science dataset.",
+      "uncertainty": "Measured mode0 is serial within each row; results do not describe available optimized native mode1 or all softmax implementations.",
+      "provenance": [
+        {
+          "path": "src/softmax-cuda/main.cu",
+          "sha256": "4c8bb4d2a112a8501097e59a630ee1657f4bde552b04313663a417df0f6b27b7",
+          "source_locations": "native kernels and launch configuration"
+        }
+      ],
+      "reviewed_at": "2026-10-17T16:42:41.767560+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Serial per-row max, exponential sum and normalized output loops.",
+        "mapping": "One row/workitem, 32 blocks of 256; adjacent lanes start 128 Float32 values apart.",
+        "layout": "Contiguous row-major Float32 logits and probabilities.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/sum/division; int32 indices"
+        },
+        "implementation_detail": "Explicit CUDA linear index converted to Int32, mode0 body only.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 32,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "Custom CUDA.jl kernel/runtime",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/softmax-julia/softmax-julia-cuda.jl/main.jl",
+            "sha256": "07fbec0348e3697478016379a4cbe1bbd41424d5ce214ac7ccd2510d6f89d4f5",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "coverage": "Mode0 only; mode1 is unimplemented/unmeasured, even where the historical CLI accepts a mode argument."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Serial per-row max, exponential sum and normalized output loops.",
+        "mapping": "One row/workitem, 32 blocks of 256; adjacent lanes start 128 Float32 values apart.",
+        "layout": "Contiguous row-major Float32 logits and probabilities.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/sum/division; int32 indices"
+        },
+        "implementation_detail": "KA generated global index converted to Int32; serial row loops.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 32,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/softmax-julia/softmax-julia-KA/main.jl",
+            "sha256": "86121d1f7fb75cc3eab76cd01778e09e28cfcd58b3efbdb326fabd9c0e63652d",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "coverage": "Mode0 only; mode1 is unimplemented/unmeasured, even where the historical CLI accepts a mode argument."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Serial per-row max, exponential sum and normalized output loops.",
+        "mapping": "One row/workitem, 32 blocks of 256; adjacent lanes start 128 Float32 values apart.",
+        "layout": "Contiguous row-major Float32 logits and probabilities.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/sum/division; int32 indices"
+        },
+        "implementation_detail": "JACC callback index converted to Int32; serial row loops.",
+        "memory": "Global input/output, no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 32,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend",
+        "host_control_boundary": "GPU launch loop only; transfers, reset, reference and artifact operations excluded.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "matched named scope",
+        "provenance": [
+          {
+            "path": "src/softmax-julia/softmax-julia-JACC/main.jl",
+            "sha256": "ef14c77abda1195ccbbd1dae3d663dc6fa5dd03158a46b66ca8e0b0d8a73dfd1",
+            "source_locations": "actual device implementation and dispatch"
+          }
+        ],
+        "attempt_count_policy": "Historical phase records unchanged; no counts inferred retrospectively.",
+        "resource_policy": {
+          "current_controlled_configuration": "explicit shmem_size0",
+          "historical_baseline": "automatic kernel maximum; per-benchmark byte count unknown without individual counters"
+        },
+        "coverage": "Mode0 only; mode1 is unimplemented/unmeasured, even where the historical CLI accepts a mode argument."
+      }
     }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
@@ -90,8 +289,15 @@
       "configuration_id": "mode0_naive_fp32_8192x128_repeat10_v1_shmem0_v2",
       "run_id": "20261016T235934958667Z_softmax",
       "result": ".porting-state/portable_julia/runs/20261016T235934958667Z_softmax/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "f23bd08e79e8395fda899e71c3ad039d5c1fefd0db8cb3d0bccc72f600c29e48",
       "source_hash": "888fe8a6b0d662d3e1fd9a50ae006e4d133e59a71ea1dda5b863f52318de7ea7",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235934958667Z_softmax/hardware.txt",
       "trials_correct": [
         true,
         true,

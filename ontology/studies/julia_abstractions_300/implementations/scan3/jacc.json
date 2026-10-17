@@ -10,12 +10,96 @@
     "cuda_jl": "6.2.1",
     "kernel_abstractions": "0.9.45",
     "jacc": "1.4.0",
-    "scope": "Current pinned study environments; verify per-run snapshots before release comparisons.",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+    "status": "verified",
+    "actual_algorithm": "Three authored stages implement global exclusive prefix: block prefix, top prefix and add-back; one thread writes each block sum. Native Thrust/CUB is a different algorithm; development inherited the scan2 implementation.",
+    "kernel_ownership": "Authored model-specific device entrypoints.",
+    "work_item_mapping": "Stage1:16blocks x128threads,256values/block; stage2:one8-thread block for16totals; stage3:16blocks x256threads.",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int64"
+    ],
+    "data_layout": "Contiguous vectors.",
+    "resource_policy": "Explicit dynamic shared1024/64/4bytes with per-stage full zero-template copies.",
+    "synchronization": [
+      "workgroup_barrier",
+      "ordered_kernel_stages"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "adapted",
+      "reason": "Native Thrust/CUB primitives adapted to authored parallel framework hierarchy; original zero-fill stub repaired."
+    },
+    "host_device_boundary": "First slot preallocates scratch; second allocates/releases actual temporary buffers per call inside the measured operation. Native vendor temporary policies differ.",
+    "timing_scope": "sum preallocated and actual-temporary-allocation full-operation means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native vendor library versus authored three-stage algorithm",
+      "Explicit per-call temporary allocation second slot",
+      "Native system malloc/free versus Julia pool policies",
+      "Native Thrust internal allocation/synchronization",
+      "Historical zero-fill reference corrected; development inherited from scan2"
+    ],
+    "source_revision": {
+      "path": "src/scan3-julia/scan3-julia-JACC/main.jl",
+      "sha256": "1e945cd5aa318a55e71123874d977e5e8ab607dd6018bbd6457e4fe3805644ee"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "failure_history": {
+      "records": [
+        ".porting-state/porting_logs/scan3-julia-jacc/manifest.json",
+        ".porting-state/porting_logs/scan3-julia-jacc/compiler_attempts.jsonl"
+      ],
+      "unknown_historical_counts": null,
+      "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+    },
+    "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Three authored stages implement global exclusive prefix: block prefix, top prefix and add-back; one thread writes each block sum. Native Thrust/CUB is a different algorithm; development inherited the scan2 implementation.",
+    "work_item_mapping": "Stage1:16blocks x128threads,256values/block; stage2:one8-thread block for16totals; stage3:16blocks x256threads.",
+    "layout": "Contiguous vectors.",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int64"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "workgroup_barrier",
+      "ordered_kernel_stages"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Explicit dynamic shared1024/64/4bytes with per-stage full zero-template copies.",
+    "launch_geometry": null,
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/scan3-julia/scan3-julia-JACC/main.jl",
+      "sha256": "1e945cd5aa318a55e71123874d977e5e8ab607dd6018bbd6457e4fe3805644ee"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
     "benchmark": "scan3",
     "audited_at": "2026-10-17T00:17:47.003017+00:00",
@@ -56,6 +140,195 @@
         "src/scan3-julia/scan3-julia-cuda.jl/main.jl": "3dea03a1cb58ee6fea46fa306d8199742274a915d283102fbedaa703d1abccfe",
         "src/scan3-julia/scan3-julia-KA/main.jl": "81f9be60caecbccf8c5b171550d8ecb43aa98e95e508c8a4243fa5d0ca14b591"
       }
+    },
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "domain neutral primitives",
+      "scientific_task": "Compare preallocated and temporary-allocation prefix operations",
+      "governing_method": "Authored three-stage exclusive prefix replaces native Thrust/CUB operations.",
+      "discretization": "Array, key or workgroup structure; no physical spatial mesh.",
+      "community_use_case": "Prefix operator and allocation-policy probe; framework and vendor algorithms differ.",
+      "accuracy_needs": [
+        "Exact named integer/permutation or accepted full numerical output; retain source-specific scope."
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/scan3-cuda/main.cu",
+          "sha256": "3253a82ed4b6c7d56f854f9bee985af98e5b19ca00c02c504fc391f056df3146"
+        }
+      ],
+      "confidence": "source-reviewed operator/probe; application relevance is potential, not source dataset provenance"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Three authored stages implement global exclusive prefix: block prefix, top prefix and add-back; one thread writes each block sum. Native Thrust/CUB is a different algorithm; development inherited the scan2 implementation.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Stage1:16blocks x128threads,256values/block; stage2:one8-thread block for16totals; stage3:16blocks x256threads.",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int64"
+        ],
+        "data_layout": "Contiguous vectors.",
+        "resource_policy": "Static shared Float32 windows256,16 and1 (1024/64/4bytes by stage).",
+        "synchronization": [
+          "workgroup_barrier",
+          "ordered_kernel_stages"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native Thrust/CUB primitives adapted to authored parallel framework hierarchy; original zero-fill stub repaired."
+        },
+        "host_device_boundary": "First slot preallocates scratch; second allocates/releases actual temporary buffers per call inside the measured operation. Native vendor temporary policies differ.",
+        "timing_scope": "sum preallocated and actual-temporary-allocation full-operation means",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native vendor library versus authored three-stage algorithm",
+          "Explicit per-call temporary allocation second slot",
+          "Native system malloc/free versus Julia pool policies",
+          "Native Thrust internal allocation/synchronization",
+          "Historical zero-fill reference corrected; development inherited from scan2"
+        ],
+        "source_revision": {
+          "path": "src/scan3-julia/scan3-julia-cuda.jl/main.jl",
+          "sha256": "3dea03a1cb58ee6fea46fa306d8199742274a915d283102fbedaa703d1abccfe"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Three authored stages implement global exclusive prefix: block prefix, top prefix and add-back; one thread writes each block sum. Native Thrust/CUB is a different algorithm; development inherited the scan2 implementation.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Stage1:16blocks x128threads,256values/block; stage2:one8-thread block for16totals; stage3:16blocks x256threads.",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int64"
+        ],
+        "data_layout": "Contiguous vectors.",
+        "resource_policy": "Static @localmem Float32 windows256,16 and1.",
+        "synchronization": [
+          "workgroup_barrier",
+          "ordered_kernel_stages"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native Thrust/CUB primitives adapted to authored parallel framework hierarchy; original zero-fill stub repaired."
+        },
+        "host_device_boundary": "First slot preallocates scratch; second allocates/releases actual temporary buffers per call inside the measured operation. Native vendor temporary policies differ.",
+        "timing_scope": "sum preallocated and actual-temporary-allocation full-operation means",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native vendor library versus authored three-stage algorithm",
+          "Explicit per-call temporary allocation second slot",
+          "Native system malloc/free versus Julia pool policies",
+          "Native Thrust internal allocation/synchronization",
+          "Historical zero-fill reference corrected; development inherited from scan2"
+        ],
+        "source_revision": {
+          "path": "src/scan3-julia/scan3-julia-KA/main.jl",
+          "sha256": "81f9be60caecbccf8c5b171550d8ecb43aa98e95e508c8a4243fa5d0ca14b591"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/scan3-julia-ka/manifest.json",
+            ".porting-state/porting_logs/scan3-julia-ka/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "reviewed_at": "2026-10-17T17:04:48.594731+00:00",
+        "status": "verified",
+        "actual_algorithm": "Three authored stages implement global exclusive prefix: block prefix, top prefix and add-back; one thread writes each block sum. Native Thrust/CUB is a different algorithm; development inherited the scan2 implementation.",
+        "kernel_ownership": "Authored model-specific device entrypoints.",
+        "work_item_mapping": "Stage1:16blocks x128threads,256values/block; stage2:one8-thread block for16totals; stage3:16blocks x256threads.",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32",
+          "Int64"
+        ],
+        "data_layout": "Contiguous vectors.",
+        "resource_policy": "Explicit dynamic shared1024/64/4bytes with per-stage full zero-template copies.",
+        "synchronization": [
+          "workgroup_barrier",
+          "ordered_kernel_stages"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "adapted",
+          "reason": "Native Thrust/CUB primitives adapted to authored parallel framework hierarchy; original zero-fill stub repaired."
+        },
+        "host_device_boundary": "First slot preallocates scratch; second allocates/releases actual temporary buffers per call inside the measured operation. Native vendor temporary policies differ.",
+        "timing_scope": "sum preallocated and actual-temporary-allocation full-operation means",
+        "verification_contract": "raw_numeric_outputs",
+        "keyconfounds": [
+          "Native vendor library versus authored three-stage algorithm",
+          "Explicit per-call temporary allocation second slot",
+          "Native system malloc/free versus Julia pool policies",
+          "Native Thrust internal allocation/synchronization",
+          "Historical zero-fill reference corrected; development inherited from scan2"
+        ],
+        "source_revision": {
+          "path": "src/scan3-julia/scan3-julia-JACC/main.jl",
+          "sha256": "1e945cd5aa318a55e71123874d977e5e8ab607dd6018bbd6457e4fe3805644ee"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "failure_history": {
+          "records": [
+            ".porting-state/porting_logs/scan3-julia-jacc/manifest.json",
+            ".porting-state/porting_logs/scan3-julia-jacc/compiler_attempts.jsonl"
+          ],
+          "unknown_historical_counts": null,
+          "interpretation": "Preserved host lifecycle/reference/measurement phases remain separate from target kernel candidates; missing history is unknown."
+        },
+        "profiling_status": "Source-reviewed resource choices; no new GPU measurements or bottleneck claims."
+      }
     }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
@@ -92,8 +365,15 @@
       "configuration_id": "scan3_vendor_vs_custom_hierarchy_n4096_r10_v1",
       "run_id": "20261017T001548457183Z_scan3",
       "result": ".porting-state/portable_julia/runs/20261017T001548457183Z_scan3/result.json",
+      "native_reference_repaired": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "reference_provenance": null,
       "result_sha256": "b16bbf939846c0922e87e8e1e23f60ace18a8e6888e115dd7f12cc2e2c31ae4e",
       "source_hash": "b5b135849600f36ec66fd3e842a4f3626c727bc06f01dce716d76e0574216184",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T001548457183Z_scan3/hardware.txt",
       "trials_correct": [
         true,
         true,
