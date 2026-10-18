@@ -108,6 +108,10 @@ def normalize_traits(t):
     if not isinstance(precision,dict):precision={}
     return {
         'algorithm':pick('actual_algorithm','algorithm','algorithm_and_mapping'),
+        'implementation_class':pick('implementation_class'),
+        'declared_environment':pick('environment','environment_id'),
+        'package_versions':pick('package_versions'),
+        'julia_language_version':pick('julia_language_version'),
         'work_item_mapping':pick('work_item_mapping','mapping','algorithm_and_mapping'),
         'layout':pick('layout','data_layout'),
         'storage_precision':pick('storage_precision') or precision.get('storage'),
@@ -122,9 +126,12 @@ def normalize_traits(t):
         'resource_policy':pick('resource_policy','resource_geometry'),
         'launch_geometry':pick('launch_geometry','resource_geometry'),
         'library_backend_boundary':pick('library_boundary','backend_boundary','backend_extensions','actual_backend'),
-        'host_control_boundary':pick('host_control_boundary'),
+        'host_control_boundary':pick('host_control_boundary','host_device_boundary'),
+        'support_boundary':pick('support_boundary'),
+        'native_to_model_mapping':pick('native_to_model_mapping'),
+        'timing_scope':pick('timing_scope'),
         'fidelity_status_and_scope':pick('fidelity_scope','fidelity_status','status'),
-        'source_review_evidence':pick('source_evidence','source_sha256','source_revision'),
+        'source_review_evidence':pick('source_evidence','provenance','source_revision','source_sha256'),
         'null_interpretation':'Not recorded in this source review; never assume absent feature or zero resource use.'}
 
 def main():
@@ -258,6 +265,22 @@ def main():
                     'effort':normalized_effort,'effort_field_provenance':effort_field_provenance,
                     'effort_manifest_provenance':{'selected_path':str(selected_manifest.relative_to(ROOT)),'selected_sha256':digest(selected_manifest) if selected_manifest.is_file() else None,'candidate_alias_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q)} for q in manifest_candidates],'selection_rule':'Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged.'},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
+            # Some reviewed annotations store separate model classes in the
+            # parent dictionary. Retain that explicit model entry, never infer
+            # a model class from a shared string or source syntax.
+            class_by_model=traits.get('implementation_class',{})
+            if isinstance(class_by_model,dict):
+                model_aliases=[model,{'cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}[model],suffix]
+                class_key=next((k for k in model_aliases if class_by_model.get(k) is not None),None)
+                if class_key is not None:
+                    record['declared_model_implementation_class']={
+                        'value':class_by_model[class_key],
+                        'annotation_path':str((STATE/'traits'/(b+'.json')).relative_to(ROOT)),
+                        'annotation_sha256':digest(STATE/'traits'/(b+'.json')),
+                        'field':'implementation_class.'+class_key,
+                        'scope':'Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence.'}
+                    if record['implementation_ontology_normalized'] is not None and record['implementation_ontology_normalized'].get('implementation_class') is None:
+                        record['implementation_ontology_normalized']['implementation_class']=class_by_model[class_key]
             record['effort']['observed_harness_activity_windows']=usage_windows(b,model)
             scope_review=STATE/'usage_boundaries_300'/b/'measurement_scope_review.json'
             if scope_review.exists():record['effort']['activity_window_scope_review']={'path':str(scope_review.relative_to(ROOT)),'sha256':digest(scope_review),'record':read(scope_review)}
