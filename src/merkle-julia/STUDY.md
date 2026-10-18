@@ -1,0 +1,25 @@
+# merkle: scientific and implementation observation
+
+Genuinefull7roundfieldpermutationcorrectedbinarytree, allnodes notrootonly. Originalnativeactuallastleafperturbationleavesallnodesunchangeddue2idxstride; correct8idx properBigIntrootchanges. Nativecorrectedreferenceexplicit/excludeduntouched. Allnative/targetactualUInt64outputscomparedexact0 andallnodesindependentBigIntmodprime. Targetportable4limbhighproduct/privateNTuple mappingdiffers nativeumul64hi/ulong4, noisolatedabstractionpenaltyclaim. No security/collisionresistanceclaim forsourceparameters.
+
+## Reference audit
+
+HistoricalJulia usesXOR/add toymerge andhardcodedtiming strings, notRescuePrimefieldhash. Replacedactual7roundfieldpermutation/alllevels; sourcepairstridedefect independentlyprovenbyunchangednativeGPUlastleafperturbationfulltreewitness, ownedcorrectednativechangesonlytwoidxstride2→8expressions, conditionalexcludeduntouchedstratum.
+
+## Numerical and performance evidence
+
+Configuration `merkle_corrected_pairstride8_allnodes_BigInt_N64_128_256_v1`, result `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T085035126394Z_merkle/result.json`. Five in-process trials per model; full outputs checked in every trial against both references; mean trials2–5. Warmup precedes trial1. Nativefieldpermutation/hostdispatchunchanged; ownedtreecopycorrectstwoinputstrides. This named configuration does not certify all CLI modes or physical model validity.
+
+## Cost and failures
+
+CUDAjl1completecompileddevicecandidate/1actualJITprocess,2wholeprogramchecks due sharedhostgeneratorwhitespaceparseB2 beforefirstGPUJIT. KA/JACCfirstcandidates/checks. Sharedfixturetableparserul-vsull caughtassertion T1 beforeGPU; originalnativewitnessfirstcompilemissingMakefileconstexprflagB4sharedadapter thenrestoredflag. Savedprecompiletupleclosureletsource-reviewdraftchange(nonfailureP1, notobserveddevicecompilerfailure). Prospectivewindowsinclude cachedcontext/source/numbertheory/oracle/metadata/waiting/coordination, nonexclusivebilledcoding. Initialmain/headerlinecountcontextreadpreviousLULESHmeterdisclosed. Historical CUDA.jl attempts unknown. Reference correction or documented P1 mapping phase is separate from target translation. Prospectivephaseactivitywindows available, includecachedcontext/source/numbertheory/oracle/waiting/coordination/sharedmetadata; notexclusivebilledcoding. Initialentry/headercontextreadpreviousLULESHwindow; historicalcostunknown/mainproxyomitssharedbody.
+
+Reproduce: `python3 tools/verify_portable_julia.py --config src/merkle-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Complete arithmetic evidence and mapping limitations
+
+All20fullcaptures bitidentical6076UInt64words/prefix2108, full1780actualinternalfieldwords+12untouchedslot0 values, allreadonlyleaf/MDS/ARK bytes/72guards. Exactzeroactualrawdualrefcomparison; independentPythonarbitraryprecisionmodularpow/densematrix products compare everyfieldwordmodprime. Source lazyrepresentation can return noncanonicalresidues, so mathematicalequality is modp; actualnative/targetrepresentationalsobitidenticalonallfixtures. No security/collisionresistance/parameter-generation audit claimed. Actualunchangednative512fullnodewords sourcepolicyoracle +lastleafperturbationidentity preserved; correctedproperrootchanges.
+
+Targets preserve native7roundinverseadditionchain (exponent10540996611094048183) andfieldaccumulationassociation but high64 expands4limbUInt64arithmetic vs nativeumul64hi, privateNTuple12 vs sourceulong4[3], scalarconstantloads vsvector; shared0/JACCexplicit0, noCUDAdeviceextensions. Everydependentlevelcontextcompletion/sourcefinalcompletion preserved; named3treecases21launches/outertrial. Smallfinallevels/hostoverhead included. No measuredroofline/ISA/resourcebottleneck claim. Meanouter2-5 {"cuda": 0.020485647, "cuda_jl": 0.018748155000000002, "ka": 0.018936631750000002, "jacc": 0.01889132775}. Firstvalidtimingsretained, no speed-basedretuning.
+
+CUDAjl1authoredcompletecompileddevicecandidate/1actualJITprocess,2wholeprogramchecks(sharedhostparseerrorbeforeJIT); KA/JACCfirstcandidate/process. Sharedfixtureul-vsullparserassertion/T1 andmissingnativeconstexprcompileflag/B4 preservedseparately; not3frameworkfailures. OneprecompiletypingletreviewP1 not observedCUDAcompilerfeedbackfailure.
