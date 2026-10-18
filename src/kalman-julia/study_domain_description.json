@@ -1,0 +1,96 @@
+{
+  "scientific_intent": {
+    "primary_family": "stochastic_statistics",
+    "primary_domain": "linear_state_space_filtering_and_forecast_variance",
+    "review_status": "source_reviewed",
+    "scientific_task": "Run batched eight-state scalar-observation Kalman updates and finite-horizon forecasts",
+    "mathematical_operation": "Innovationv=y-Zalpha, F=ZPZtranspose, propagatedgainK=TPZtranspose/F, nextalpha=Talpha+Kv+c, P=TP(T-KZ)transpose+RQR; forecastsZalpha andoptionalZPZtranspose withopenloopprediction.",
+    "discretization": "RD8, fourbatches(series,observations,horizon,intercept,variance)=(1,7,3,1,1),(17,9,4,1,1),(257,4,2,0,0),(3,0,0,0,1), alldiff0..7 plus0/7emptycontrol26paths. UppertriangularTdiagonal.5, dyadicvariedstate/Z/y, P=.5LLtranspose,Q=.125I+.0078125LLtranspose.",
+    "accuracy_requirements": "Allfivefullnativeoutputarrays vsindependentDecimal80conditionalposterior/predictmatrixoracle1e-9+1e-9|gold|; finiteandpositiveinnovation/forecastvariance; exactallinputecho/guards, disabledvarianceuntouched andskippedlogzero. No rawNaNcomparisonacceptance.",
+    "input_size_regime": "1,17,257series coverpartial/fullandpartialsecond256threadblocks, zeroobservations/horizon branch, notoriginalarbitraryCLIrepeats/randomnonsymmetriccovariancephysicalvalidation.",
+    "precision_sensitivity": "ActualFloat64 orderedmatrix arithmetic/log andStaticArraysper-threadworkspaces; independent80decimaldigitmatrix oracle. SPDcovariance andnonzeroZ preventsingularinnovations; minF~.09698. Tstableexacttriangularstructure; no universalconditioning/stabilitybound.",
+    "community_use_case": "Linearstate-space estimation/time-series forecasting is an illustrative scientificuse. NativeheaderdescribesbatchedKalmanstate/intercept/differencing/forecastvariance; no actualdatasetaccuracy, fittedARIMAparameters or applicationprovenance inferred.",
+    "description": "Restore genuinehistoricalJulia partial forecastvariancekernel to allnative residuals/innovationvariances/sumlogvariances/forecastmeans/forecastvariances andoptionalbranches. NewvariedT/SPDcases expose inheritedJulia transposedKZ outerproduct, repaired againstunchangednativeandindependentmatrixoracle. No nativeGPUbodychange.",
+    "provenance": "NVIDIA2019\u20132021Apache2 nativeKalmanheader/docs andCPUreference reviewed; originalJulia source preserved. Independentconditionalposteriorform mathematicallyequivalentforSPDandzeroadditionalmeasurementnoise, not copiednativeT*P*Ltranspose loops.",
+    "source_evidence": [
+      {
+        "path": "src/kalman-cuda/main.cu",
+        "sha256": "8476f395cc827ff27cb8a1d3a7091fc513b48f47dd48655c53f1db44b383cb92"
+      },
+      {
+        "path": "src/kalman-cuda/reference.h",
+        "sha256": "ec5cefe35456bf0796e666292f7f25dfe3bdc8e73a6f3311361fd1e8b9087ea9"
+      },
+      {
+        "path": "src/kalman-julia/original_main.jl",
+        "sha256": "342fcae49ff95e566d2a8eefbc59213896003fedd85f26862f9e0621676b78c7"
+      },
+      {
+        "path": "src/kalman-julia/scientific_witness.json",
+        "sha256": "64056b068937a88ae621aca33cda77eff9525bc445fbd97f5fd3d0d309a077c1"
+      }
+    ]
+  },
+  "primary_motif": "batched_independent_small_dense_state_space_recursion",
+  "storage_precision": [
+    "Float64_batched_columnmajor_matrices_vectors_series"
+  ],
+  "compute_precision": [
+    "Float64_dot_matrix_multiply_log"
+  ],
+  "synchronization": [
+    "HostGPUcompletion aftereachfullper-seriesfilter/forecastkernel",
+    "No devicebarriers/atomics; independentseries/lane"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "SameonecompleteRD8series/lane, sequentialobservations/forecasthorizon,256threadceilgrid, fullsource5outputs andallcontrolbranches restored. StaticArrayslocalworkspaces vsnativefixedlocalarrays compilerstorageunprofiled. Nativebodyunchanged; historicalJuliaouterproductindex correctedbeforeportabletargets."
+  },
+  "algorithm": "Per-series8stateKalmaninnovation/gain/state/covariancerecursion, sourceorderedmatrixproducts, skippedstartup logsum, optionalintercept andforecastmean/variance withfullhorizon.",
+  "work_item_mapping": "OneGPUlaneperindependentseries,256threadsceilgrid ns1/17/257/3, explicitboundsreturn. All26pathslaunchsamefullfilterkernel, nointer-seriescooperation.",
+  "layout": "Float64batch-majorseries, per-series8x8columnmajormatrices and8vectors;7read-onlyinputbuffers and5outputbuffers all8guards/side. LocalStaticArrays MVectorworkspaces, nativefixeddoublearrays; no finalP/alphaoutput(sideeffectsabsent/sourceinputsechounchanged).",
+  "launch_geometry": "256threads;1blockfor1/17/3series,2blocksfor257, allnativeandframeworkvariantsmatched",
+  "verification_contract": "All20captures565435Float64words/trial:59311exactprefix+506124fullarrays.30574outputpositions(includes4112disabledvarianceuntouched),470558actualinputecho payloadvalues,4992guardchecks/trial. Allresidual/F/log/mean/variance; positivefiniteF andforecastvariance,5147unwritten/zero-logexactpositions. BothGPUrefs andindependentDecimal80posteriororacle, rawfulloutputsnotchecksum.",
+  "keyconfounds": [
+    "NamedlegalSPD/stableToperatorfixtures, notoriginalrandomnonsymmetricP/QCLI orphysicalforecastaccuracy",
+    "NativeC++fixedlocalarrays vsJuliaStaticArrays workspace/codegeneration, local/register/heapstorage notprofiled",
+    "Sourceconf_int producesvariances, notcalibratedconfidenceintervals; sumlogF alone isnotcompleteloglikelihood",
+    "Referencealgorithmrestoration+inlining/deviceheaprepair+inheritedKZindexrepair separatelyaccounted; KA/JACCreusefixedhelper",
+    "All26host-inclusivekernelregions include dispatch/sync, noisolateddeviceprofiling/rooflinecausalclaim",
+    "InitialreferenceaccountingENDprematureatfailedcandidate preserved; subsequentreference_completion separatelymetered, no backfill orsumoverlap"
+  ],
+  "boundary_rounding_policy": "Float64finiteoutputs tolerance1e-9+1e-9relative fixedbeforefirsttrial; inputs/guards/unwrittenpositions exact. Scalarobservationnoise0 asnative. n_diff0 usesimplicitZ=e1, othersusefullZ; c[n_diff]=mu onlyintercepttrue; logs skipfirstn_diffobs. conf_intfalse buffer remains sentinel, no negativevariance accepted.",
+  "support_boundary": "RD8selectedfiniteSPDPQandstableTcases, allsource5outputs/diff/forecastcontrols; singularF/unphysicalcovariances/realdataforecastquality/parameterestimation/fullCLIunverified.",
+  "interpretation": "For filteringusers, verify the complete innovation/state-drivenforecast outputs and mathematicallylegalcovarianceconditions, not merelyforecastvariance. The nonsymmetrictransition fixtures detect an inheritedtransposedgain-designupdate. Preciseoperatoragreement doesnotestablishmodelcalibration/forecastskill; sourcevarianccalculationisnotaconfidenceinterval. Frameworkversions use ordinaryJulia arithmetic/StaticArrays withframeworkindexing, noCUDA-specificdeviceintrinsic.",
+  "reference_class": "CUDAjl_completed_corrected_Kalman_full5outputs",
+  "ka_class": "KA_ordinary_Julia_StaticArrays_full_Kalman_kernel",
+  "jacc_class": "JACC_ordinary_Julia_StaticArrays_full_Kalman_kernel",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "thread_local_workspace": "MVector64/8; actualregister/local/heapplacementunprofiled",
+      "registers": "unprofiled"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "thread_local_workspace": "MVector64/8; actualregister/local/heapplacementunprofiled",
+      "registers": "unprofiled"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "thread_local_workspace": "MVector64/8; actualregister/local/heapplacementunprofiled",
+      "registers": "unprofiled"
+    }
+  },
+  "backend_extensions": {
+    "ka": [
+      "CUDAhostallocation/copysynchronization/artifactharness only; deviceordinaryJuliaFloat64log/matrixarithmetic/StaticArrays"
+    ],
+    "jacc": [
+      "CUDAhostallocation/copysynchronization/artifactharness only; deviceordinaryJuliaFloat64log/matrixarithmetic/StaticArrays"
+    ]
+  }
+}
