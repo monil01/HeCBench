@@ -1,0 +1,2 @@
+#include <cstdio>
+int main(){FILE*f=tmpfile();fputs("0.553205685222938,1.20669195905392\n",f);rewind(f);double a=-99,b=-99;int first=fscanf(f,"%lf",&a);long before=ftell(f);int second=fscanf(f,"%lf",&b);long after=ftell(f);printf("{\"first_read_status\":%d,\"second_read_status\":%d,\"second_position_unchanged\":%s,\"second_value_untouched\":%s}\n",first,second,before==after?"true":"false",b==-99?"true":"false");fclose(f);return first==1&&second==0&&before==after?0:2;}
