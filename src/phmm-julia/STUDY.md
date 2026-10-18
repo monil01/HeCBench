@@ -1,0 +1,27 @@
+# phmm: scientific and implementation observation
+
+Conditionaldefined-storageoperator, notstatisticalHMMqualitycertificate. Bothactual3936wordphysicalforwardmatrices/allinputemissiontransitionlikelihoodstartarrays/36guards across3cases,61051Float64words/prefix24607, exactFractionnormalFP64componentbudgets/zeroemission/untouchedcontrols. Originaluninitializednativecaller/staticmask+safeinitializedpoisonwitness preserved; hostBfromAcorrectiononly excludeduntouched.
+
+## Reference audit
+
+HistoricalCUDAjl smokesingleInt32markerandliteral0time/checksum, notsourceFloat64state-mixing. OriginalCUDAcallermeanwhileinitializesonlyA,wholematrixswapsafteronecellwrite, secondcallreadsthreeunwrittenBcells/staticproof. Safelyinitializedactualnativepoison0/1 probes give1/64vs13/64exact, notunsafeoriginalGPUfailure. IndependentlyjustifiedconditionalhostBfromAinitialization fixesdefinedness only, devicekernel/all440stale-bufferupdatesunchanged; no textbookHMMreplacement.
+
+## Numerical and performance evidence
+
+Configuration `phmm_conditional_BfromA_source440updates_repeat1_2_zero_FP64rational_v1`, result `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T104940376706Z_phmm/result.json`. Five in-process trials per model; full outputs checked in every trial against both references; mean trials2–5. Warmup precedes trial1. Native kernel unchanged. This named configuration does not certify all CLI modes or physical model validity.
+
+## Cost and failures
+
+Sharedreference_resolution includesstaticmask/Fractionpoisonprediction/actualnativeGPUprobe1build+1process4kernels, exactrationalfulloracle/gamma_nnormalrangeanalysis/source-sciencereview. SeparateCUDAjlrestoration includesnativehostadapter+namedreferencebody/measurement; newfirstcandidate/processpass sofar, actualtargetattemptscheckedagainstlogs. Repeatedcachedcontext/source/oracle/metadata/waiting/coordinationincluded, notexclusivebilledcoding; historicaloriginalcostunknown. JACCseesverifiedKA. Historical CUDA.jl attempts unknown. Reference correction or documented P1 mapping phase is separate from target translation. Prospectivecached/repeatedcontextactivityavailable, nonexclusive/notbilledcoding; originalhistoryunknown/finalsourceproxyonlypartial.
+
+Reproduce: `python3 tools/verify_portable_julia.py --config src/phmm-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Conditional source operator and numerical scope
+
+Nativecallerwritten-maskproof: secondcallreads3unwrittenBcells/6doublesperbatch. SafeinitializednativeGPUpoison0vs1producesexact1/64vs13/64all8components, independentlypredictedFraction. This isnotanoriginalunsafeGPUfailure. CorrectedownedhostinitializesentireBfromA beforeROI; nativekernelunchanged/all440cellupdates+wholematrixswaps/stalevalues/selftermretained. Canonicalreference_provenance bindsoriginals/adapter/witnessbeforemeasurements. CONDITIONAL corrected-native stratumexcludeduntouchedaggregates. No textbookPairHMM/probability/modelqualitycertification. Dormantj0branchunmeasured/originalCLInevercallsit; potentialbatchindexemissionissueunresolvedthere.
+
+Fullsource11x40/batch4/twostates, positiveheterogeneousdyadicrepeat1/2andzeroemissionrepeat1, original1000repeatCLIunmeasured. Everyactualboth3936-doublephysicalmatrix/allreadonlyemissiontransitionlikelihoodstart/36guards,61051Float64words/prefix24607. IndependentexactFractionstate-mixingreplay andpre-GPUpositivebinary64gamma_ncomponentbudgets, exactzeros/untouched/readonly/canaries. All20fullartifactschecked, maxabsoluteoracleerror 2.7755575615628914e-17 andmaxbudgetratio 0.00016895180978355914. Strictfinite-sourceoperationnormal-roundinganalysis, notstatisticalmodelvalidation.
+
+1760kernelcalls/trial(440+880+440), exactsource4blocks/2threads, sum3pipeline+contextcompletionROI; allocation/reset/guards/fullcapturesoutside. Nativeobserved448Bstaticshared/32registers. Configure56Float64/448Bsharedall3, actualJuliacomplregistercountsunknown; privatef/tduplicatearrays scalarized/directloaded andsecond-barrierprivate-loadphase differs(no interthreaddependence), no ISAequivalence. Sourceidenticalduplicateglobalwritesretained; notformalrace-freedomproof. JACCadds56wordtemplateglobalcopy/barrier; resource/mappingconfounds,no intrinsicabstractionpenaltyclaim. All3framework_device_kernel/noCUDAdeviceextensions.
+
+Reference/KA/JACCfirstauthoredcandidate/wholeprogram5trialsPASS. Separateactualnativepoisonprobe4kernels/onebuild+process/sharedreference-resolutioncost, exactFraction/gamma_nresearch/nativehostcorrection; nottargetfailureiterations. JACCreuseddocumentedPathfinderlowercasearrayAPIlessonandverifiedKA. Genericresolutionnotificationrow failurefalse linksalreadyrecordedsmoke/nativebarrier, no duplicatedfailurecount. Phaseactivityincludescachedcontext/metadata/waiting/coordination, notexclusivecodingbill. Means2–5 {"cuda": 0.0055037245, "cuda_jl": 0.006834221, "ka": 0.008778493750000001, "jacc": 0.013996804000000002}.

@@ -1,0 +1,7 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <cstdio>
+#include "../phmm-cuda/constants_types.h"
+#include "../phmm-cuda/kernel.h"
+void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}
+int main(){constexpr int F=(x_dim+1)*(y_dim+1)*batch*2,T=(x_dim+1)*batch*2*3,L=4*batch*2,S=batch*2;fArray*a,*b,*emis;tArray*trans;lArray*like;sArray*start;ck(cudaMalloc(&a,F*8));ck(cudaMalloc(&b,F*8));ck(cudaMalloc(&emis,F*8));ck(cudaMalloc(&trans,T*8));ck(cudaMalloc(&like,L*8));ck(cudaMalloc(&start,S*8));std::vector<double>A(F,1),E(F,.5),Tvec(T,.25),Lvec(L,.25),St(S,.25);ck(cudaMemcpy(emis,E.data(),F*8,cudaMemcpyDefault));ck(cudaMemcpy(trans,Tvec.data(),T*8,cudaMemcpyDefault));ck(cudaMemcpy(like,Lvec.data(),L*8,cudaMemcpyDefault));ck(cudaMemcpy(start,St.data(),S*8,cudaMemcpyDefault));for(int poison=0;poison<2;poison++){std::vector<double>B(F,poison),out(F);ck(cudaMemcpy(a,A.data(),F*8,cudaMemcpyDefault));ck(cudaMemcpy(b,B.data(),F*8,cudaMemcpyDefault));pair_HMM_forward<<<batch,2>>>(1,1,a,trans,emis,like,start,b);ck(cudaDeviceSynchronize());pair_HMM_forward<<<batch,2>>>(1,2,b,trans,emis,like,start,a);ck(cudaDeviceSynchronize());ck(cudaMemcpy(out.data(),a,F*8,cudaMemcpyDefault));bool ok=true;double want=poison?13./64:1./64;for(int bi=0;bi<batch;bi++)for(int s=0;s<2;s++){int idx=((1*(y_dim+1)+2)*batch+bi)*2+s;ok &=out[idx]==want;}printf("SAFE_POISON background=%d actual=%.17g expected=%.17g all8components=%s\n",poison,out[((y_dim+1)+2)*batch*2],want,ok?"PASS":"FAIL");if(!ok)return 3;}return 0;}
