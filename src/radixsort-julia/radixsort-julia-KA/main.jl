@@ -1,0 +1,22 @@
+include(joinpath(@__DIR__,"study_kernels.jl"))
+include(joinpath(@__DIR__,"..","study_common.jl"))
+const BACKEND=CUDA.CUDABackend()
+const LOCAL_SORT=local_sort_ka!(BACKEND,128)
+const OFFSETS=offsets_ka!(BACKEND,128)
+const SCAN1=scan1_ka!(BACKEND,256)
+const SCAN2=scan2_ka!(BACKEND,256)
+const UNIFORM=uniform_ka!(BACKEND,256)
+const REORDER=reorder_ka!(BACKEND,128)
+function run(keys,tmp,counts,blocks,scan,buffer,n)
+ nb=n÷Int32(256);bn=n÷Int32(16384)
+ for startbit in Int32(0):Int32(4):Int32(28)
+  LOCAL_SORT(keys,tmp,startbit;ndrange=Int(n)÷4)
+  OFFSETS(tmp,counts,blocks,startbit,nb;ndrange=Int(n)÷2)
+  SCAN1(scan,counts;ndrange=Int(bn)*256)
+  SCAN2(buffer,scan,counts,bn;ndrange=256)
+  UNIFORM(scan,buffer;ndrange=Int(bn)*256)
+  REORDER(keys,tmp,blocks,scan,startbit,nb,n;ndrange=Int(n)÷2)
+ end
+ return
+end
+study(run,(T,n)->KernelAbstractions.allocate(BACKEND,T,n))
