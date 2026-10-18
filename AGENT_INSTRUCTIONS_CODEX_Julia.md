@@ -1,5 +1,10 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+### Missing descriptive timing labels
+
+A uniformly missing machine-readable timing label can be reviewed without rerunning when the original configuration already declared the region and source inspection proves it. Use `reuse_timing_region_metadata` only for explicit all-four-model reuse, twenty unchanged rows, original result/config hashes, hashed source evidence and reviewed boundaries for each model. Retain raw missing labels and all samples; the derived result adds a separate effective descriptor and review provenance. This cannot repair a different region, unit, completion boundary, input or numerical acceptance. Preserve the original nonmatched result and count annotation/tooling effort separately. The numerical audit independently checks the review hashes and original-row equality.
+
+
 ### Version-scoped capability conclusions
 
 Bind every capability conclusion to the actual operation, compiler/toolkit, loaded library, generated target and device. A build rejection in one installed toolchain does not establish a universal hardware requirement: check another available toolchain when source/API evidence suggests a changed implementation. Preserve contrary successful probes and retract overgeneralized classifications explicitly. Capability execution alone is not full operator verification or a five-trial measurement. Explicit software storage/rounding that preserves every required low-precision intermediate is a semantic implementation choice; disclose it and generated arithmetic rather than silently replacing the contract with FP32, or inferring hardware instructions from a dtype name. Update per-model ontology and paper conclusions when new version-specific evidence changes a boundary.
