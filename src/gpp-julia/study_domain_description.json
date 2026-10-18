@@ -1,0 +1,78 @@
+{
+  "scientific_intent": {
+    "primary_family": "quantum_electronic",
+    "primary_domain": "BerkeleyGW_plasmon_pole_self_energy",
+    "review_status": "source_reviewed",
+    "scientific_task": "Evaluate a generalized plasmon-pole self-energy summation at three frequencies",
+    "mathematical_operation": "Sum complex rational pole factors times inverse-dielectric and conjugated band-amplitude products over bands, owned reciprocal vectors and plane waves; six scalar Float64 atomic reductions.",
+    "discretization": "Four finite small band/reciprocal-index cases, three frequencies 3/4/5, source uniform and varied signed dyadic complex coefficients, nonidentity inverse map and exact-zero control.",
+    "accuracy_requirements": "Full six output scalars against independent Decimal80 allterm oracle at predeclared 1e-11+1e-11|gold|; all input bits/guards exact, both GPU references checked on every trial.",
+    "input_size_regime": "(nb,ng,nc)=(3,2,31),(5,3,67),(7,4,129),(2,1,1), includes partial warp and grid-stride loops; not source512-band default or 32768-plane-wave benchmark.",
+    "precision_sensitivity": "Float64 complex arithmetic and unordered atomic accumulation; nonsingular denominator>=7.3916, total complex condition<=7.55; no resonant/singular pole accuracy or general physical error bound.",
+    "community_use_case": "Self-energy miniapplication extracted from BerkeleyGW electronic excited-state/material calculations. This is a kernel operator study, not a physical quasiparticle prediction or complete BerkeleyGW validation.",
+    "description": "Preserve unchanged native AoS and historical genuine CUDA.jl SoA operators. New independent full-frequency checker replaces original first-frequency one-sided host checker. Portable versions keep per-thread accumulators/grid-stride loops and six Float64 atomics.",
+    "provenance": "Repository README gpp description and MIT2019NERSC native sources. Primary background: Vergara Larrea et al., CUG2019 Experiences Porting Mini-applications..., https://cug.org/proceedings/cug2019_proceedings/includes/files/pap137s2-file1.pdf sections introduction/GPP identify BerkeleyGW General Plasmon Pole self-energy summation; no new material-science prediction claim."
+  },
+  "primary_motif": "indirect_complex_rational_sum_with_atomic_reduction",
+  "storage_precision": [
+    "Float64_complex_native_AoS_Julia_SoA",
+    "Int32_indices"
+  ],
+  "compute_precision": [
+    "Float64_real_and_complex",
+    "Int32_index"
+  ],
+  "synchronization": [
+    "Six global Float64 atomic additions per thread",
+    "Host device completion per single reduction",
+    "No shared memory/workgroup barriers"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Same per-thread band/ownedG/plane-wave gridstrides, 32thread2D grid and six output atomics. Historical genuine SoA complex storage and component division vs native AoS/reciprocal multiply remain numerical/layout adaptations; KA/JACC use same arithmetic helper transformed from historical CUDAjl body."
+  },
+  "algorithm": "Per-thread three-complex accumulators; grid-stride bands/ownedG and 32-lane strided plane waves; six final global Float64 atomic additions.",
+  "work_item_mapping": "32 threads per (band,ownedG) block with partial plane-wave loop; case3 reduced2x2 grid exercises outer grid strides.",
+  "layout": "Native CustomComplex<double> AoS x/y; all Julia models separate Float64 real/imag contiguous arrays, Int32 index maps. Each component/input/output carries 8 guards per side.",
+  "launch_geometry": "32x1 threads, grids3x2,5x3,2x2,2x1 matching allmodels",
+  "verification_contract": "All20 capture 18809 Float64 words/trial: 8955 exact input/metadata prefix and 9854 full guarded outputs/inputecho. 24 outputscalars, 896physicalguards and8934 actual inputpayloadvalues/trial checked independently; exactzero control, finite denominator controls. Decimal80 allterm oracle and both GPU refs; no checksum substitute.",
+  "keyconfounds": [
+    "Native AoS complex vs Julia SoA and reciprocalmultiply vs directdivision",
+    "Small finite selected kernels, not original fullCLI/physical selfenergy prediction",
+    "Float64 atomic ordering may vary between trials; tolerant numeric agreement not exact raw bitwise equality",
+    "One shared scientific helper authored during KA translation and reused by JACC; ordered workflow marginal cost",
+    "Host-inclusive sum4 short kernel dispatches; unprofiled kernel/launch/resource bottlenecks",
+    "Original native/CUDAjl first-frequency one-sided host checkers invalid as general accuracy certificates; unchanged operator independently checked"
+  ],
+  "boundary_rounding_policy": "inv last==nc intentionally indexes nc+1 indinv sentinel mapping to nc-1, preserved. No singular division in fixture. Exact allinputbits/guards; finite tolerant output only, no NaN pass. Atomics may reorder rounding.",
+  "support_boundary": "Four named nonsingular small Float64 finite cases, three full complex frequencies. Source unusednvband remains unused; full application and singular/resonant/large configurations unverified.",
+  "interpretation": "For electronic-structure users this tests the self-energy summation kernel and safe nonsingular selected data, not manybody-model accuracy. Layout and division adaptations confound abstraction comparisons; atomic-order differences are permitted only inside declared full-output error bounds. No framework limitation or measured bottleneck inferred.",
+  "reference_class": "CUDAjl_historical_genuine_SoA_complex_atomic_kernel",
+  "ka_class": "KA_ordinary_complex_arithmetic_Atomix_Float64_atomic_reduction",
+  "jacc_class": "JACC_ordinary_complex_arithmetic_Atomix_Float64_atomic_reduction",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    }
+  },
+  "backend_extensions": {
+    "ka": [
+      "CUDA host memory/copy/synchronization harness; Atomix global Float64 atomic addition, no CUDA device intrinsic"
+    ],
+    "jacc": [
+      "CUDA host memory/copy/synchronization harness; Atomix global Float64 atomic addition, no CUDA device intrinsic"
+    ]
+  }
+}
