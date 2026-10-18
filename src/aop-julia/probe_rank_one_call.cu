@@ -1,0 +1,5 @@
+#define main original_main
+#include "../aop-cuda/main.cu"
+#undef main
+#include <vector>
+int main(){const int n=256,t=3;std::vector<double>h(n*t,0.);double*s,*p,*v,*tmp;int*f;CHECK_CUDA(cudaMalloc(&s,h.size()*8));CHECK_CUDA(cudaMalloc(&p,h.size()*8));CHECK_CUDA(cudaMalloc(&v,t*16*8));CHECK_CUDA(cudaMalloc(&tmp,8192*8));CHECK_CUDA(cudaMalloc(&f,t*4));CHECK_CUDA(cudaMemset(v,0,t*16*8));CHECK_CUDA(cudaMemset(tmp,0,8192*8));double price;do_run(h.data(),t,n,PayoffCall(1.),1./t,1.5,.03,0.,s,p,p+(t-1)*n,v,f,tmp,&price);std::vector<double>hv(t*16);CHECK_CUDA(cudaMemcpy(hv.data(),v,hv.size()*8,cudaMemcpyDeviceToHost));double expected=1.5-exp(-.03);printf("{\"original_cuda_price\":%.17g,\"deterministic_no_dividend_call_price\":%.17g,\"last_exercise_time_dt_discounted_payoff\":%.17g,\"abs_error\":%.17g,\"source_unchanged\":true,\"S0\":1.5,\"K\":1,\"r\":0.03,\"sigma\":0,\"T\":1,\"n\":256,\"steps\":3,\"first_svd\":[",price,expected,1.5-exp(-.03/t),fabs(price-expected));for(int i=0;i<12;i++)printf("%s%.17g",i?",":"",hv[i]);puts("]}");}
