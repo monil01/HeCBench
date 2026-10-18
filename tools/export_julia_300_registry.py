@@ -223,7 +223,7 @@ def main():
             normalized_effort,effort_field_provenance=normalize_effort(manifest)
             evidence=[(cid,v) for (bench,m,cid),v in latest.items() if bench==b and m==model]
             scan=scan_source(path)
-            status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else 'historical_pass_not_reaudited' if model=='cuda_jl' else 'not_started'
+            status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else ('existing_cuda_jl_not_reaudited' if base[b].get('method')=='existing_cuda_jl_entrypoint_only' else 'historical_pass_not_reaudited') if model=='cuda_jl' else 'not_started'
             explicit=read(STATE/'status_300'/b/(model+'.json'),{})
             if evidence and any(v[1].get('native_reference_repaired') for _,v in evidence):status='conditionally_verified_native_reference_repaired'
             if evidence and any(v[1].get('native_behavior_known_scientific_defect') for _,v in evidence):status='verified_native_behavior_known_scientific_defect'
