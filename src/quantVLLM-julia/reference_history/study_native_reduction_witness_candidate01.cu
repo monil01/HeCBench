@@ -1,0 +1,5 @@
+#define main legacy_main
+#include "../quantVLLM-cuda/main.cu"
+#undef main
+#include <vector>
+int main(){int n=513;std::vector<float>x(n,0.f);x[0]=127;x.back()=-128;float*di,*scale;int8_t*out;int32_t*azp;cudaMalloc(&di,n*4);cudaMalloc(&scale,4);cudaMalloc(&out,n);cudaMalloc(&azp,4);cudaMemcpy(di,x.data(),n*4,cudaMemcpyHostToDevice);dynamic_scaled_int8_quant<float>(out,di,n,1,scale,nullptr);cudaDeviceSynchronize();float s;int8_t last;cudaMemcpy(&s,scale,4,cudaMemcpyDeviceToHost);cudaMemcpy(&last,out+n-1,1,cudaMemcpyDeviceToHost);printf("NATIVE_SYMMETRIC_513 scale=%.9g lastcode=%d mathematical_scale=%.9g\n",s,int(last),128.f/127.f);x.assign(n,-4.f);x.back()=-1.f;cudaMemcpy(di,x.data(),n*4,cudaMemcpyHostToDevice);dynamic_scaled_int8_quant<float>(out,di,n,1,scale,azp);cudaDeviceSynchronize();int32_t z;cudaMemcpy(&s,scale,4,cudaMemcpyDeviceToHost);cudaMemcpy(&z,azp,4,cudaMemcpyDeviceToHost);cudaMemcpy(&last,out+n-1,1,cudaMemcpyDeviceToHost);printf("NATIVE_ASYMMETRIC_ALL_NEGATIVE scale=%.9g azp=%d lastcode=%d actual_min=-4 actual_max=-1 true_range_scale=%.9g CUDAerror=%s\n",s,z,int(last),3.f/255.f,cudaGetErrorString(cudaGetLastError()));}
