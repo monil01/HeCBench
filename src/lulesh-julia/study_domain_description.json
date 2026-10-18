@@ -1,0 +1,61 @@
+{
+  "scientific_intent": {
+    "review_status": "source_reviewed",
+    "primary_family": "pde_continuum",
+    "scientific_domain": "Compressible Lagrangian hydrodynamics: LLNL LULESH Sedov blast proxy",
+    "scientific_task": "Evolve hexahedral nodal motion and cell thermodynamic state with explicit adaptive time integration",
+    "mathematical_operator": "Nodal stress/hourglass force assembly, hexahedral geometry/strain, monotonic artificial viscosity and ideal-gas EOS",
+    "numerical_method": "Explicit Lagrangian leapfrog-style source15kernel pipeline with host Courant/hydro constraints and source region workload repetitions",
+    "numerical_risk": "Negative volumes, shock/viscosity discretization, geometric conditioning, time-step reduction, FP64 cancellation and source cutoffs",
+    "validation_target": "Complete actual inputs/metadata/guards and per-cycle state, independent geometry/EOS/nodal/timestep algebra and analytic uniform rest/affine controls",
+    "community_use_case": "Auditable continuum miniapp with original full mesh, private geometry and irregular gather/assembly; named early-cycle verification and scientific invariants reusable by hydrodynamics developers, not validated shock solution or convergence guarantee",
+    "evidence": [
+      {
+        "path": "src/lulesh-cuda/lulesh.cu",
+        "bytes": 95053,
+        "sha256": "e404ace6ae6cfafff5e871b8dda2645758e80832292d382a32993821426bbc6d"
+      },
+      {
+        "path": "src/lulesh-cuda/lulesh.h",
+        "bytes": 18471,
+        "sha256": "4b426df06c6bd8c119543cb23e53320048ba833fb53f5b4e5072389073dfa16c"
+      },
+      {
+        "path": "src/lulesh-cuda/lulesh-init.cu",
+        "bytes": 17834,
+        "sha256": "16f74705472e4b712fe456dedea5a6d0e67de98bae2e56da3bb0ea092252535f"
+      },
+      {
+        "path": "src/lulesh-julia/output_audit.json",
+        "bytes": 274807,
+        "sha256": "1493e9b7683e86d91cf08837f10933deaaf3e34ebc0ae62a5c6638f8b416328e"
+      },
+      {
+        "path": "src/lulesh-julia/cold_generation_proof.json",
+        "bytes": 7862,
+        "sha256": "125513708b34fc3c9ce2721cbc8c6fc2ad76e7ff0afd3cc461d9b1942e7bd857"
+      }
+    ]
+  },
+  "primary_motif": "Unstructured hexahedral gather/private geometry/nodal assembly and per-element EOS",
+  "storage_precision": [
+    "float64 physical fields",
+    "int32 connectivity/region/flags"
+  ],
+  "compute_precision": [
+    "float64 device physics/transcendentals",
+    "int32 indices and flags"
+  ],
+  "algorithm": "Explicit Lagrangian leapfrog-style source15kernel pipeline with host Courant/hydro constraints and source region workload repetitions",
+  "layout": "SourceSoA globally, row-major8nodeconnectivity, own private StaticArrays geometry and same sourcegather order",
+  "work_item_mapping": "One nodal/element operation per thread; original256threads and ceil grid;15defs/225launches across15cycles",
+  "synchronization": "Source ordered kernel launches and actual H2D/D2H; device completion around timed cycle, no algorithmic barrier inside these kernels",
+  "verification_contract": "Separate source serial witness executes unchanged15 C++ numerical bodies without GPU/FMA contraction and supports complete fieldwise corroboration; it shares equations and is not an independent scientific oracle. Independent NumPy physical audit derives hexahedron volume by eight-point Gauss determinant integration, divergence by isoparametric Jacobian inversion, characteristic length by face diagonal cross products, nodal force/mass/update, ideal-gas pressure/sound/viscosity closure, global Courant/hydro minima and exact analytic rest/affine positions/relative volume. All20 full captures pass every check; source CPU witness and literal kernel correctness alone would be insufficient. Initial and complete per-cycle states captured; overwritten internal kernel states/private intermediates are not directly observed.",
+  "boundary_rounding_policy": "Seven cases: source Sedov nx1/3/7/30 with1/4/4/3cycles respectively, plus nx3 single-cycle uniform rest, isotropic affine expansion/compression controls (zero initial internal energy and alpha0/+.01/-.01, dt1e-4). Original full30cubed mesh27000elements/29791nodes, actual11region initializer/cost1/balance1 retained. One-element source naturally reaches stop time in first cycle; no artificial cycles after stop. All cases source256threads/ceil launch geometry, positive volumes and no invalid-volume error path. Early-cycle state fidelity is not complete Sedov solution, grid convergence, shock-position or total-energy conservation certification.",
+  "support_boundary": "Seven cases: source Sedov nx1/3/7/30 with1/4/4/3cycles respectively, plus nx3 single-cycle uniform rest, isotropic affine expansion/compression controls (zero initial internal energy and alpha0/+.01/-.01, dt1e-4). Original full30cubed mesh27000elements/29791nodes, actual11region initializer/cost1/balance1 retained. One-element source naturally reaches stop time in first cycle; no artificial cycles after stop. All cases source256threads/ceil launch geometry, positive volumes and no invalid-volume error path. Early-cycle state fidelity is not complete Sedov solution, grid convergence, shock-position or total-energy conservation certification.",
+  "keyconfounds": [
+    "Five checked executions/model; discard only first timing and average2-5. Sum seven case pipelines,15totalcycles and225timed numerical launches. Each cycle includes host TimeIncrement,15source kernels, two tiny H2D volume-error resets, three full D2H vdov/arealg/sound fields and host constraints/device completion. Allocation/source initialization/JIT warmup/reset/full state captures/oracles/serialization outside. Original source main timer starts before setup and has a broader scope; these matched four-model regions are not original full program Total time, isolated kernel latency or full solver time-to-solution. Only composite case-sum times serialized; no inferred per-grid scaling or per-stage timing.",
+    "All3 framework_device_kernel with15 authored entry definitions/model and own indices/allocation/launch. Shared62k-character mathematical helper, ABI-independent array offsets, host time integration, fixtures and scientific audit authored in reference phase then reused KA/JACC. CUDAjl staticlaunch; KA own kernel/index/backend; JACC public LaunchSpec256threads and explicitshmem0 prescribed before check to match zero algorithmic shared memory. Source kernels have private local8/24/32-element arrays, no inter-thread barrier/atomic primitive on scoped positive-volume path. Actual register/spill/occupancy/traffic/FLOP counts unprofiled; private-array representation/indexing/dispatch are covariates, no causal bottleneck or roofline claim."
+  ],
+  "interpretation": "Geometry and physical-closure controls distinguish faithful numerical state from plausible energy printouts. Original full spatial mesh alone does not establish full-time blast solution. No profiler-based mechanism/roofline attribution yet."
+}

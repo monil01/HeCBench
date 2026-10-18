@@ -1,0 +1,39 @@
+# LULESH: geometry and thermodynamic state before energy summaries
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: full15_lagrangian_hydro_original30cubed_earlycycles_tail_and_analytic_rest_affine_v1
+
+## Source alignment
+
+Historical Julia affine synthetic energy=(x+y+z+1)*iteration and hardcoded plane errors omit source hydrodynamics (S1). Restore all15 unchanged native numerical kernels and11helpers, actual hexahedral mesh/regions, nodal stress/hourglass forces, acceleration/boundaries/velocity/position, kinematics/deviatoric strain, monotonic artificial viscosity, ideal-gas material update, original host TimeIncrement and Courant/hydro reductions. No foreign device-body FFI or subset promotion.
+
+## Precision scope
+
+FP64 device geometry/forces/EOS/transcendentals and Int32 indices/connectivity/flags. Julia source-AST helper retains source expression/cast/order and row-major private arrays through StaticArrays.MVector and inline typed array offsets. Full Float64 artifact losslessly encodes actual Int32 values and FP64 storage. Every typed guard, initial actual source input/metadata/region and readonly array checked exact. General1e-7+3e-8relative fixed before GPU; independent geometry/physical relations and analytic controls checked separately. Maximum native-versusJulia absolute full-state difference2.9802322387695312e-8; maxrelative5.45697e-5 arises near zero, not uniform relative accuracy.
+
+## Shape scope
+
+Seven cases: source Sedov nx1/3/7/30 with1/4/4/3cycles respectively, plus nx3 single-cycle uniform rest, isotropic affine expansion/compression controls (zero initial internal energy and alpha0/+.01/-.01, dt1e-4). Original full30cubed mesh27000elements/29791nodes, actual11region initializer/cost1/balance1 retained. One-element source naturally reaches stop time in first cycle; no artificial cycles after stop. All cases source256threads/ceil launch geometry, positive volumes and no invalid-volume error path. Early-cycle state fidelity is not complete Sedov solution, grid convergence, shock-position or total-energy conservation certification.
+
+## Independent accuracy
+
+Separate source serial witness executes unchanged15 C++ numerical bodies without GPU/FMA contraction and supports complete fieldwise corroboration; it shares equations and is not an independent scientific oracle. Independent NumPy physical audit derives hexahedron volume by eight-point Gauss determinant integration, divergence by isoparametric Jacobian inversion, characteristic length by face diagonal cross products, nodal force/mass/update, ideal-gas pressure/sound/viscosity closure, global Courant/hydro minima and exact analytic rest/affine positions/relative volume. All20 full captures pass every check; source CPU witness and literal kernel correctness alone would be insufficient. Initial and complete per-cycle states captured; overwritten internal kernel states/private intermediates are not directly observed.
+
+## Timing
+
+Five checked executions/model; discard only first timing and average2-5. Sum seven case pipelines,15totalcycles and225timed numerical launches. Each cycle includes host TimeIncrement,15source kernels, two tiny H2D volume-error resets, three full D2H vdov/arealg/sound fields and host constraints/device completion. Allocation/source initialization/JIT warmup/reset/full state captures/oracles/serialization outside. Original source main timer starts before setup and has a broader scope; these matched four-model regions are not original full program Total time, isolated kernel latency or full solver time-to-solution. Only composite case-sum times serialized; no inferred per-grid scaling or per-stage timing.
+
+## Mapping covariates
+
+All3 framework_device_kernel with15 authored entry definitions/model and own indices/allocation/launch. Shared62k-character mathematical helper, ABI-independent array offsets, host time integration, fixtures and scientific audit authored in reference phase then reused KA/JACC. CUDAjl staticlaunch; KA own kernel/index/backend; JACC public LaunchSpec256threads and explicitshmem0 prescribed before check to match zero algorithmic shared memory. Source kernels have private local8/24/32-element arrays, no inter-thread barrier/atomic primitive on scoped positive-volume path. Actual register/spill/occupancy/traffic/FLOP counts unprofiled; private-array representation/indexing/dispatch are covariates, no causal bottleneck or roofline claim.
+
+## Attempt scope
+
+Native first actual whole-program build/check passed all5 (owned reader fread warnings retained, not failures). CUDAjl/KA/JACC first authored15-entry bundle and first actual device compiler/check each passed all5; no GPU feedback, math, tolerance or timed-policy repair. Shared CPU fixture preparation initially lacked no-op CUDA host/device decorators, then wrong working directory, third build passed; one extra CPU launch path error separate. CPU harness first parse rejected missing generator whitespace, fixed before GPU. Source-AST parse/translation and unit-cube helper checks passed first; Julia full15 numerical CPU witness passed with maxabs2.98023e-8. Case0 cycle cap corrected before first GPU to honor source stop condition (initial fixture/header bookkeeping, not measured numerical repair). CPU isolated22asset regeneration passed first complete cold attempt.
+
+## Token scope
+
+Prospective inclusive observed API windows contain repeated/cached context, tooling, paper and coordination. Shared workflow overlaps model subphases, never add them. KA/JACC reuse completed reference helpers/harness/scientific controls, so marginal ordered costs are not independent cold-start or billed/exclusive translation cost. CPU cold regeneration overlaps JACC window explicitly. Historical original CUDAjl consumption unknown; entry source chars/4 separate partial size proxy, input/total unknown. Final usage attachment/commits/paper after END outside measured span.
+
+Accepted result `.porting-state/portable_julia/runs/20261018T140222963215Z_lulesh/result.json`. Mean trials2-5 seconds: cuda 0.00470487675, cuda_jl 0.0068443485, ka 0.00738669625, jacc 0.0096982305. Every actual file checked, firsttiming only excluded; no outlier drop. No unsupported feature observed in named positive-volume CUDA-backend scope.
