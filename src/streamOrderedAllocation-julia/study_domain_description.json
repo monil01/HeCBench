@@ -1,0 +1,100 @@
+{
+  "scientific_intent": {
+    "primary_family": "hardware_data_movement",
+    "review_status": "source_reviewed",
+    "scientific_task": "Stream-ordered GPU allocation and reuse around vector addition",
+    "description": "NVIDIA source sample compares traditional cudaMalloc/free with cudaMallocAsync/freeAsync using default memory-pool release thresholds zero and ULONG_MAX. Vector addition supplies a defined numerical consumer; workload intent is allocator lifecycle, not a scientific equation or isolated vector-add performance.",
+    "mathematical_operation": "For each of100 independent allocations perpath, c_i=a_i+b_i inbinary32; compare allocation/copy/kernel/free lifecycle for three policies.",
+    "accuracy_requirements": "Exactboundedbinarydyadicinput addition; all100completeoutputvectors/path exactindependentintegernumeratororacle anddualreferences. Finalactualdevicea/binputechoes exact. Originaldeviceallocations havenoguards, noguardprotectionclaim.",
+    "community_use_case": "GPU applications with repeated temporary buffers andstreamordered lifetimes may use this as a runtime-allocation pattern; no originalapplicationprovenance or fullworkloadbenefit inferred.",
+    "provenance": [
+      {
+        "path": "src/streamOrderedAllocation-cuda/main.cu",
+        "sha256": "4671cc8aeabfa621a5a4f9e3605e337352262a13ac2f6df513656dd92373a2f0",
+        "evidence": "NVIDIA2022copyright/header explicitlydemonstrates cudaMallocAsync/freeAsync and poolrelease settings; unchangedvectorAddGPUkernel andthreeallocationfunctions."
+      },
+      {
+        "path": "src/streamOrderedAllocation-julia/reference_history/original_main.jl",
+        "sha256": "a6750cc93b55ef9e938896c6c344a22e85622d03a9f56669bee4c61a240a676a",
+        "evidence": "Historicalgenuinevectoradditionbut allocation_case ignoreslabel/runtimepolicy; sameCuArrayallocator forall3names."
+      }
+    ]
+  },
+  "primary_motif": "Allocation/transfer/vectoradd lifecycle",
+  "storage_precision": [
+    "Float32 input/output",
+    "UInt64 pool release threshold/64bit pointers",
+    "Float64exactartifactencoding"
+  ],
+  "compute_precision": [
+    "Float32 addition",
+    "independentintegernumerators in1/16units"
+  ],
+  "synchronization": [
+    "TraditionalcudaFree andblockingcudaMemcpy sourcecompletion",
+    "Asyncsameexplicitnonblockingstream ordersalloc/H2D/kernel/free/D2H/free, cudaStreamSynchronize everyiteration",
+    "DevicecompletionbeforeROI; warmupoutside; noatomic/shareddevicebarriers"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Restore actual three runtimeallocator policies through directidenticalCUDART calls; actualownframework256threadvectoradd dispatch onnull/default or explicitnonblockingstream. OriginalJulia sourceuses sameCuArray pathforallthree labels, archived asmappingfailure."
+  },
+  "reference_class": "hybrid_runtime_allocation_cuda_jl_device_kernel",
+  "ka_class": "pure_ka_device_kernel_cuda_runtime_interoperation",
+  "jacc_class": "pure_jacc_device_kernel_cuda_runtime_interoperation",
+  "algorithm": "Three100repeat pipelines: allocatea/b/c, H2Da/b, c=a+b, freea/b, D2Hc, freec; asyncsame-stream frees andperiterationcompletion; finaliterationtwoD2H inputechoes beforeinputfree forverificationall4.",
+  "work_item_mapping": "1D256threads/block,ceil(N/256)blocks, tailguard i<N; eachactiveitem readsonea/b andwritesonec.",
+  "layout": "ContiguousFloat32threeactualruntimeallocations exactlyN*4bytes, originalnoguards. Pageablehosta/b/out, output100distinctpreallocatedslots (sameNbytesD2H eachiteration), lastiterationechoa/b.",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0; no sharedmemory/atomics/devicebarriers",
+      "pool": "Defaultdevicepoolrelease0/UINT64MAX, query/save/restore outsideROI",
+      "allocation": "ActualCUDARTcudaMalloc orcudaMallocAsync; nonowningCuArraywrapper only, notJuliaallocator"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0; no sharedmemory/atomics/devicebarriers",
+      "pool": "Defaultdevicepoolrelease0/UINT64MAX, query/save/restore outsideROI",
+      "allocation": "ActualCUDARTcudaMalloc orcudaMallocAsync; nonowningCuArraywrapper only, notJuliaallocator"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0; no sharedmemory/atomics/devicebarriers",
+      "pool": "Defaultdevicepoolrelease0/UINT64MAX, query/save/restore outsideROI",
+      "allocation": "ActualCUDARTcudaMalloc orcudaMallocAsync; nonowningCuArraywrapper only, notJuliaallocator"
+    }
+  },
+  "launch_geometry": "256threads,ceil(N/256)blocks, fourN1/255/257/4097,3policies,100repeats=1200launches/trial",
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAhostruntimeallocation/copy/free/mempool FFI absoluteactualDSO",
+      "CUDAstreamhandle/contextmanagement andnonowningCuArrayviews; nodeviceintrinsicextensions"
+    ],
+    "ka": [
+      "CUDAhostruntimeallocation/copy/free/mempool FFI absoluteactualDSO",
+      "CUDAstreamhandle/contextmanagement andnonowningCuArrayviews; nodeviceintrinsicextensions"
+    ],
+    "jacc": [
+      "CUDAhostruntimeallocation/copy/free/mempool FFI absoluteactualDSO",
+      "CUDAstreamhandle/contextmanagement andnonowningCuArrayviews; nodeviceintrinsicextensions"
+    ]
+  },
+  "supported_features": [
+    "ActualstreamorderedallocationonV100/runtime12",
+    "Poolreleasepolicyzero/max",
+    "ExactFloat32vectoradditionfulloutputs"
+  ],
+  "verification_contract": "All20full1419889Float64words exact:9229inputprefix and1410660states, full100outputvectors for12paths pluslastiterationactualGPUinputechoes. Independentgenerator integernumeratoraddition (not Float32CPUclone). AllAPIstatuseschecked; failedinput/oraclereads fatal. OriginalGPUbuffers havenoguards, noneinvented. Fivecheckedtrialtimesmean2-5, perpathclocksretained.",
+  "keyconfounds": [
+    "SmallnamedNnotoriginal33554432memorypressure/throughput",
+    "Fullallocator/copy/dispatch/freeROI, notisolatedkernel/roofline",
+    "TwofinaliterationinputD2Hechos insideROIall4;100distincthostoutputslotsvsoriginaloneoverwritten",
+    "JuliaactualCUDARTFFI/nonowningwrappercreation anddriver-createdstream vsnativeruntimecreatedstream arehostmappingcovariates",
+    "Poolretention0/max changesruntimeallocatorstate, originalpolicyrestoredatprocessend; noGPUmalloccounter/bandwidthclaim",
+    "Source100repetitions1200kernellaunches/trial; allocationsemanticsnotenforcedbyoutputequalityalone, actualAPI/source/logevidencebound"
+  ],
+  "boundary_rounding_policy": "Tailguard forN1/255/257/4097; valuesdyadic/16 withsmallintegernumerators exactlybinary32. NoFP16/Float64kernel orarbitrarylargecancellationcoverage.",
+  "support_boundary": "ActualCUDAbackend/runtime12/deviceV100 memorypools, smallvectors namedconfiguration; nofull33554432CLIallocationpressure, allocatorpeak/roofline/applicationbenefit/generalnonCUDAsupportclaim.",
+  "interpretation": "This case tests whether a translation preserves runtimeallocation semantics, notjust thenumericalkernel. KA/JACCdeviceaddition ispureframework, while allthreeJuliaharnesses requireCUDAhostruntimeinteroperation fororiginalallocatorpolicy. Fullpipeline ratios cannotisolatecompilerlowering; zero/highpoolrelease pathsprovide policycomparison onlyforthis namedsize/100repeatcontext."
+}
