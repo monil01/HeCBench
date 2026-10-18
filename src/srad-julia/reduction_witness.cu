@@ -1,0 +1,8 @@
+#include <cuda_runtime.h>
+#include <cstdio>
+#include <vector>
+#include <fstream>
+#include "../srad-cuda/main.h"
+#include "../srad-cuda/reduce_kernel.cu"
+#define CK(x) do{auto e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));return 2;}}while(0)
+int main(){const int N=513;std::vector<float>a(N),b(N),beforea(N),beforeb(N);double expected=0,expected2=0;for(int i=0;i<N;++i){a[i]=i%31+1;b[i]=a[i]*a[i];expected+=a[i];expected2+=b[i];}float*da,*db;CK(cudaMalloc(&da,N*4));CK(cudaMalloc(&db,N*4));CK(cudaMemcpy(da,a.data(),N*4,cudaMemcpyHostToDevice));CK(cudaMemcpy(db,b.data(),N*4,cudaMemcpyHostToDevice));CK(cudaMemcpy(beforea.data(),da,N*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(beforeb.data(),db,N*4,cudaMemcpyDeviceToHost));if(a!=beforea||b!=beforeb)return 3;std::ofstream f(ARTIFACT,std::ios::binary);f.write((char*)a.data(),N*4);f.write((char*)b.data(),N*4);int no=N,mul=1,blocks=(N+255)/256,stage=0;while(blocks){reduce<<<blocks,256>>>(N,no,mul,da,db);CK(cudaDeviceSynchronize());CK(cudaMemcpy(a.data(),da,N*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(b.data(),db,N*4,cudaMemcpyDeviceToHost));f.write((char*)a.data(),N*4);f.write((char*)b.data(),N*4);++stage;no=blocks;if(blocks==1)blocks=0;else{mul*=256;blocks=(blocks+255)/256;}}if(!f)return 3;printf("{\"N\":513,\"actual_input_echo_exact\":true,\"stages\":%d,\"actual_original_sum\":%.17g,\"actual_original_sum_squared\":%.17g,\"mathematical_sum\":%.17g,\"mathematical_sum_squared\":%.17g,\"artifact\":\"%s\",\"dtype\":\"float32\",\"count\":%d,\"original_kernel_unchanged\":true}\n",stage,a[0],b[0],expected,expected2,ARTIFACT,2*N*(stage+1));return 0;}
