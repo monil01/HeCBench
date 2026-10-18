@@ -1,0 +1,139 @@
+{
+  "scientific_intent": {
+    "primary_family": "signal_image",
+    "primary_domain": "image_depixelization_local_connectivity_graph",
+    "review_status": "source_reviewed",
+    "scientific_task": "Construct quantized color-similarity neighborhoods and resolve diagonal crossings using source local graph heuristics",
+    "mathematical_operation": "Float32RGB\u2192clamped8-bitYUV; undirected8-neighbor threshold graph(Y48/U7/V6), then2\u00d72 perimeter/diagonal decisions from color frequency, degree1 islands and capped degree2 curve scores. Equal-score ambiguous crossings retain both diagonals.",
+    "discretization": "Seven finite palette images,16\u00d716,32\u00d716,16\u00d732,32\u00d732;3328pixels total.256threads, fullblocks, two kernels/case; conditional source fixes established independently before GPU.",
+    "accuracy_requirements": "Exact all3328 temporary packed YUV/connectivity words and3328 final graph words/trial, actualRGB input echoes and560guardwords, exact9998input/parameterprefixwords. Independent explicit adjacency-list oracle and geometric walk invariant, source/corrected CPU-ASan probes, bothGPUrefs.",
+    "input_size_regime": "256..1024pixels/case; full256-threadblocks, local adaptive graph walks capped at image size. Kernel-component microstudy, not application-scale vectorization throughput.",
+    "precision_sensitivity": "Actual Float32input/colors, UInt32quantizedcolor/connectivity/output. Palette bin margin.0224036 exceeds conservative32epsF32*255 allowance.000972748, so permitted Float32/FMAassociation differences cannot alter selected bins. Integer outputs must agree exactly; arbitrary RGB quantization thresholds/nonfinite inputs not certified.",
+    "community_use_case": "Color-similarity graphs and local crossing decisions are image/vectorization preprocessing components. No complete vectorizer, guaranteed planarity or visual-quality result is claimed.",
+    "description": "Source performs two-stage connectivity/crossing decisions. CPU-ASan on valid producer images exposes rectangular extent swaps; a real producer path exposes a non-neighbor curve transition from missingbreak; packedfield witness exposes wholeword island tests. Only those five lines are conditionally corrected. Historical Julia was constant smoke output and is archived.",
+    "provenance": "Original src/depixel-cuda kernel bodies andmain preserved with minimaldiff and CPUwitnesses. Corrected source matches independent graphoracle on sevenfullcases under CPU-ASan; originalsafeuniformCPUcontrol also matches. OriginalinvalidGPU inputs were neverrun."
+  },
+  "primary_motif": "color_stencil_then_adaptive_local_graph_traversal",
+  "storage_precision": [
+    "Float32_RGB_AoS",
+    "UInt32_packed_YUV_connectivity_and_graph"
+  ],
+  "compute_precision": [
+    "Float32_color_transform_and_clamp",
+    "UInt32_bitsets_masks",
+    "Int32_geometry_scores_loopcounts"
+  ],
+  "synchronization": [
+    "Same-stream kernel1\u2192kernel2 dependence",
+    "Host completion at each7-case batch boundary",
+    "No kernel workgroup barriers or global atomics"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Same two-stage conditional graphoperator and256thread1Dgeometry; sameAoSRGBbits, quantizedfields, neighbororder, sourceheuristic/cap/tiepolicy. Julia factors fourcorrectedcurvewalk copies into oneinline helper, native retains source copies; no semantic policy redesign."
+  },
+  "reference_class": "CUDAjl_genuine_color_connectivity_crossgraph_conditional_reference",
+  "ka_class": "KA_pure_device_color_graph_pipeline_CUDA_host_harness",
+  "jacc_class": "JACC_pure_device_color_graph_pipeline_CUDA_host_harness",
+  "verification_contract": "27198UInt32words/trial:9998inputbits/dimensionsprefix +17200actualtmp/out/guard/RGBdeviceecho words; all20arrays bitexact vs bothrefs and independentabstractgraphoracle.560physicalguardwords/trial. Conditionalminimalnativegraphrepair proven beforefirstGPU; no untouchednativefidelity/performanceclaim.",
+  "keyconfounds": [
+    "Conditional native extent/transition/fieldprojection corrections; untouched-native aggregates excluded",
+    "No guaranteed elimination ofallcrosses/planarity or full vectorization/imagequality validation; source ties retainbothdiagonals",
+    "Palette chosenwith explicitquantizationmargin; not arbitraryRGB/thresholdboundary validation",
+    "Native float3AoSsizeof12 vsJulia flat3-Float32AoSchannels, actualsamephysicalinputbits",
+    "Julia genericclamp/unsafe_trunc finitepalette vsCUDA_saturatef/cast; selectedfixturecertifiesequivalence, no universalnonfiniteclaim",
+    "Native fourduplicatedbit-switchwalkers vsJulia oneinlineduniformwalker; actualcompiledresources/branchcostunprofiled",
+    "Composite2-stagehostinclusivebatch not one kernelrooflinecoordinate; graph-walkwork variesbyimage",
+    "Fixedinput reused100times/batch, unlike originalCLI refreshes imageperouterrepeat",
+    "JACCcachedLaunchSpecDictlookup insidetimedhostloop",
+    "Shared source-deriveddevicehelper andgraphoracle authoredonce duringreferencephase; wrappercostorderedmarginal",
+    "Firstreferenceprogram hostPrintfT1 failure afterinitialGPUtrial, artifactnotcaptured; no invented numericaloutcome/secondGPUalgorithmcandidate"
+  ],
+  "boundary_rounding_policy": "Out-of-image neighbor invalid contributes noedge; RGB/YUV selectedstrictlyinsidefinitechannelrange, positivefloat-to-uinttruncation. Corrected rectangularwindow rows max(r\u22123,0)..min(r+4,h\u22121),columns similarlyw. Reciprocalproducergraph ensuresdegree2walknextvalid; originalscore initialized1 acrossbothends andNcap preserved. Lastrow/column no2\u00d72adjacency bits, colorpayload preserved.",
+  "algorithm": "8-neighbor quantized color threshold graph followed by degree/sparsity/cappedcurve-score diagonal decision",
+  "work_item_mapping": "Onepixel/lane,1D256threads,1/2/4blocks perimage, two kernels percase. Adaptiveperpixel sparsewindow and4curvewalks, no cooperativegroup operations.",
+  "layout": "Nativeguardedfloat3AoS12bytes/pixel; JuliaguardedflatFloat32triples physicallysameAoS. Separate guardedUInt32temporary/finalarrays; all actual inputbuffer words echoed.",
+  "memory_access": {
+    "cuda_jl": "Kernel1 repeated RGB\u2192YUV conversions for center/8neighbors, packedglobalgraphstore. Kernel2 neighborhoodcolor reads plus adaptive reciprocal degree2 graphwalks and packeddecisionstore. No sharedtile/requestedsharedmemory; allactualcache/register/branchresources unprofiled.",
+    "ka": "Kernel1 repeated RGB\u2192YUV conversions for center/8neighbors, packedglobalgraphstore. Kernel2 neighborhoodcolor reads plus adaptive reciprocal degree2 graphwalks and packeddecisionstore. No sharedtile/requestedsharedmemory; allactualcache/register/branchresources unprofiled.",
+    "jacc": "Kernel1 repeated RGB\u2192YUV conversions for center/8neighbors, packedglobalgraphstore. Kernel2 neighborhoodcolor reads plus adaptive reciprocal degree2 graphwalks and packeddecisionstore. No sharedtile/requestedsharedmemory; allactualcache/register/branchresources unprofiled."
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "threads": 256,
+      "blocks": [
+        1,
+        2,
+        4
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem": null,
+      "kernel_atomics": false,
+      "kernel_barriers": 0,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "ka": {
+      "threads": 256,
+      "blocks": [
+        1,
+        2,
+        4
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem": null,
+      "kernel_atomics": false,
+      "kernel_barriers": 0,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "jacc": {
+      "threads": 256,
+      "blocks": [
+        1,
+        2,
+        4
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem": 0,
+      "kernel_atomics": false,
+      "kernel_barriers": 0,
+      "actual_registers_spills_occupancy": "unprofiled"
+    }
+  },
+  "launch_geometry": {
+    "threads": 256,
+    "case_count": 7,
+    "pixels": [
+      512,
+      512,
+      512,
+      256,
+      256,
+      1024,
+      256
+    ],
+    "kernels_percase": 2,
+    "repeats_perbatch": 100
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDA allocation/copy/synchronization in host harness; device helpers use ordinary Julia operations, no CUDA-specific device intrinsic"
+    ],
+    "ka": [
+      "CUDA allocation/copy/synchronization in host harness; device helpers use ordinary Julia operations, no CUDA-specific device intrinsic"
+    ],
+    "jacc": [
+      "CUDA allocation/copy/synchronization in host harness; device helpers use ordinary Julia operations, no CUDA-specific device intrinsic"
+    ]
+  },
+  "support_boundary": "Conditionalminimalnativecorrections,7finitepaletteimages/multiple256sizes; full2stageoperator exact andallactualguards. SourceinvalidGPUrectangles notexecuted; arbitraryRGB/thresholds/nonfinite/tails, sourceuntouchedperformance, fullplanarvectorization/visualquality notcovered.",
+  "supported_features": [
+    "Float32_RGB_quantization",
+    "UInt32_packed_graph",
+    "adaptive_bounded_graph_walk",
+    "rectangular_images",
+    "full_intermediate_final_arrays",
+    "exact_integer_outputs",
+    "pure_framework_device_controlflow"
+  ],
+  "interpretation": "Domain semantics expose native bounds, adjacency and fieldprojection defects that checksum/smoke validation misses. Exact independent graph agreement follows only an explicit conditional source correction, with image-quality claims kept separate. Generic device control flow is expressible inKA/JACC for this sourceoperator; allwrapper candidates pass without a framework feature failure. Scientific inputs determine stencil/graphworkmix, but unprofiled compositehosttimings cannot establish a single rooflineposition or intrinsic abstraction overhead."
+}
