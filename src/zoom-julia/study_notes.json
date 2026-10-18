@@ -1,0 +1,817 @@
+{
+  "algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+  "mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+  "launch_geometry": {
+    "threads": [
+      16,
+      16,
+      1
+    ],
+    "shapes": [
+      [
+        2,
+        3,
+        17,
+        19
+      ],
+      [
+        1,
+        2,
+        32,
+        33
+      ]
+    ],
+    "factors": [
+      [
+        1.5,
+        2.5
+      ],
+      [
+        0.6,
+        0.9
+      ]
+    ],
+    "fields": [
+      "signeddyadic",
+      "constantone"
+    ],
+    "timed_components": 8,
+    "shared_bytes_zoom": [
+      384,
+      2204,
+      2240
+    ],
+    "shared_bytes_edge": 0,
+    "algorithm_block_barriers_zoom": 1,
+    "internal_repeats": 3
+  },
+  "reference_audit": {
+    "phase": "reference_mapping_and_oracle_precision_alignment",
+    "taxonomy_code": "P1",
+    "finding": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+    "original_main_sha256": "8fd1d9838510177449ceeb6e3f26a6879a65e8310fb7a448ad4bf58d004e2c0d",
+    "native_source_sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8",
+    "native_kernel_header_sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5",
+    "native_source_unchanged": true,
+    "native_fallback_scope": "get_sm_size repeats blocks[0] in its fallback loop; smaller listed blocks are never selected. Measured capacities all<48KiB and use original16x16. Huge-shrink fallback remains unmeasured source-host limitation, not framework unsupported."
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "traits": {
+    "primary_motif": "shared_tile_whole_pixel_rectangle_mean_center_crop_edge_padding",
+    "storage_precision": [
+      "Float32 image/shared tile/output"
+    ],
+    "compute_precision": [
+      "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+      "Float32 ordered addition and division",
+      "Int32 local coordinates",
+      "Int64 image pitch/plane offset"
+    ],
+    "synchronization": [
+      "one algorithm block barrier after tile load",
+      "separate zoom/edge launches when shrinking",
+      "context-wide pre/post pipeline timing"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum8 means of3 reset+zoom pipelines; shrinking addsedgekernel; all allocations/copies/oracles outside",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "application_domain": "Image/tensor zoom augmentation with fixed output dimensions",
+      "operator": "Unweighted mean of whole source cells intersecting native Float32 coordinate intervals, followed by centered crop or nearest-edge padded shrinking",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/zoom-cuda/main.cu",
+          "sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8"
+        },
+        {
+          "path": "src/zoom-cuda/kernels.h",
+          "sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5"
+        }
+      ],
+      "scientific_scope": "Not bilinear interpolation, exact fractional-area resampling, arbitrary factor support or image-quality study. Both original CLI factor pairs and constant-field invariance checked for named shapes."
+    },
+    "keyconfounds": [
+      "Shared staging restored from historicallyglobal-onlyreference, separate P1alignmentcost",
+      "JACC copiesentire template and adds initialbarrier before source tileload",
+      "KA sharedcapacityVal specialization vsdynamicshared native/CUDAjl/JACC",
+      "Shrinkmode includesextraedgekernel andlarger sharedcapacity thanexpand; cannotattributeperformance solelytoresourceuse withoutcounters",
+      "Two named smallshapes, no fullCLI size/resourcefallback certification",
+      "Float32 coordinateendpoint precision is part of actualoperator, notFloat64idealresize"
+    ]
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 3,
+      "backend_extensions": [],
+      "resource_policy": "Dynamic shared exact384/2204/2240bytes; edge0bytes.",
+      "synchronization": [
+        "one algorithm tileload barrier",
+        "same-stream stage order",
+        "context-wide measured completion"
+      ],
+      "host_oracle_precision": [
+        "Aligned Float32 coordinate endpoints",
+        "Independent Python rational boxmean and Float32 rounding"
+      ],
+      "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+      }
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 3,
+      "backend_extensions": [],
+      "resource_policy": "KA static @localmem exactcapacityviaVal96/551/560; edge0bytes.",
+      "synchronization": [
+        "one algorithm tileload barrier",
+        "same-stream stage order",
+        "context-wide measured completion"
+      ],
+      "host_oracle_precision": [
+        "Aligned Float32 coordinate endpoints",
+        "Independent Python rational boxmean and Float32 rounding"
+      ],
+      "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+      }
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 3,
+      "backend_extensions": [],
+      "resource_policy": "Dynamic shared exact384/2204/2240bytes; JACC complete template copy and additionalinitialbarrier; edge explicit0bytes.",
+      "synchronization": [
+        "one algorithm tileload barrier",
+        "same-stream stage order",
+        "context-wide measured completion",
+        "JACC initialtemplate barrier"
+      ],
+      "host_oracle_precision": [
+        "Aligned Float32 coordinate endpoints",
+        "Independent Python rational boxmean and Float32 rounding"
+      ],
+      "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+      }
+    }
+  },
+  "observation": "Zoom makes scientific operator and implementation mapping separable: whole-pixel interval means are not bilinear or overlap-weighted resampling, and output dimensions remain fixed through crop/pad. A geometry-based unit-cell intersection oracle computes exact rational means at actual Float32 endpoints, independently of the shared implementation and native CPU loops. Constant fields remain exactly one in every measured output, and all edge/crop pixels are checked. Source-backed tile capacities and pipeline stage count provide analysis traits; no causal shared-memory bottleneck claim follows from small-case timings.",
+  "effort_observation": "One saved candidate and one program/JIT check per Julia model, each with three authored kernel definitions, no observed target feedback repair. CUDAjl mapping/oracle-precision restoration recorded separately from target translation. KA capacityVal types imply multiple kernel specializations within one compiler-validation process, not extra translation attempts. Usage windows include verification and same-benchmark metadata.",
+  "scientific_witness_summary": {
+    "benchmark": "zoom",
+    "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T012019744608Z_zoom/result.json",
+    "captured_trials_checked": 20,
+    "method": "Independent unit-source-cell intersection predicate against actual Float32 mapping intervals, exact rational unweighted means, direct centered-crop/clamp coordinate map. No shared staging/reduction code or copied native CPU loops.",
+    "parameter_precision": "Float32 factors, dimension products, ratios and interval endpoints; rational mean then roundedFloat32.",
+    "scope": "Unweighted whole-pixel rectangle means, not bilinear or fractional-area weighting. Fixed input-sized output after crop/pad. Both source factors and two named shapes; huge shrink/resource fallback unmeasured.",
+    "cases": [
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "signeddyadic",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          25,
+          47
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": null,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "signeddyadic",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          10,
+          17
+        ],
+        "shared_slots": 551,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": null,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "constantone",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          25,
+          47
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": true,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "constantone",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          10,
+          17
+        ],
+        "shared_slots": 551,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": true,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "signeddyadic",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          48,
+          82
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": null,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "signeddyadic",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          19,
+          29
+        ],
+        "shared_slots": 560,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": null,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "constantone",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          48,
+          82
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": true,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "constantone",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          19,
+          29
+        ],
+        "shared_slots": 560,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": true,
+        "output_values": 2112
+      }
+    ],
+    "reports": [
+      {
+        "model": "cuda",
+        "trial": 1,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda",
+        "trial": 2,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda",
+        "trial": 3,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda",
+        "trial": 4,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda",
+        "trial": 5,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 1,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 2,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 3,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 4,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 5,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "ka",
+        "trial": 1,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "ka",
+        "trial": 2,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "ka",
+        "trial": 3,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "ka",
+        "trial": 4,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "ka",
+        "trial": 5,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "jacc",
+        "trial": 1,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "jacc",
+        "trial": 2,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "jacc",
+        "trial": 3,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "jacc",
+        "trial": 4,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      },
+      {
+        "model": "jacc",
+        "trial": 5,
+        "full_output_pixels": 16200,
+        "exact_prefix_values": 16328,
+        "max_abs_error_to_independent_rounded_rational_mean": 0.0,
+        "sha256": "0b33c7af2d6c16621860c4b7ce891f0f61c8b63be57a504f4dbc97c5847787f9"
+      }
+    ]
+  },
+  "per_component_performance": {
+    "cuda": {
+      "five_trial_seconds": [
+        [
+          7.536666666666666e-06,
+          1.2923333333333334e-05,
+          7.253333333333333e-06,
+          1.0246666666666666e-05,
+          7.283333333333333e-06,
+          1.0403333333333334e-05,
+          7.37e-06,
+          1.0160333333333333e-05
+        ],
+        [
+          8.913333333333333e-06,
+          1.0413333333333332e-05,
+          7.027e-06,
+          1.0216666666666667e-05,
+          7.287e-06,
+          1.034e-05,
+          7.223333333333333e-06,
+          1.012e-05
+        ],
+        [
+          8.817e-06,
+          1.0346666666666667e-05,
+          7.16e-06,
+          1.0320000000000001e-05,
+          7.176666666666666e-06,
+          1.0477e-05,
+          7.176666666666666e-06,
+          1.0330333333333333e-05
+        ],
+        [
+          8.716666666666666e-06,
+          1.0443666666666668e-05,
+          6.993333333333333e-06,
+          1.0350333333333333e-05,
+          7.23e-06,
+          1.0286666666666666e-05,
+          7.146666666666667e-06,
+          1.0376666666666667e-05
+        ],
+        [
+          8.66e-06,
+          1.0453666666666666e-05,
+          7.073333333333333e-06,
+          1.029e-05,
+          7.27e-06,
+          1.036e-05,
+          7.1436666666666665e-06,
+          1.0216666666666667e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        8.77675e-06,
+        1.0414333333333333e-05,
+        7.063416666666667e-06,
+        1.029425e-05,
+        7.240916666666666e-06,
+        1.0365916666666667e-05,
+        7.172583333333333e-06,
+        1.0260916666666667e-05
+      ],
+      "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+    },
+    "cuda_jl": {
+      "five_trial_seconds": [
+        [
+          9.803666666666667e-06,
+          2.9573333333333334e-05,
+          1.0763333333333334e-05,
+          1.3040333333333333e-05,
+          9.72e-06,
+          1.3260333333333334e-05,
+          9.516666666666668e-06,
+          1.2653333333333335e-05
+        ],
+        [
+          3.109366666666667e-05,
+          1.5817e-05,
+          9.88e-06,
+          1.3057e-05,
+          9.506666666666667e-06,
+          1.2867000000000002e-05,
+          9.67e-06,
+          1.2570333333333336e-05
+        ],
+        [
+          1.3720000000000002e-05,
+          1.4220000000000001e-05,
+          9.797e-06,
+          1.2683333333333334e-05,
+          9.510333333333334e-06,
+          1.324e-05,
+          9.613666666666667e-06,
+          1.269e-05
+        ],
+        [
+          1.275e-05,
+          3.3587e-05,
+          1.1186666666666667e-05,
+          1.3283666666666668e-05,
+          9.706666666666668e-06,
+          1.2613666666666666e-05,
+          9.686666666666668e-06,
+          1.2603333333333335e-05
+        ],
+        [
+          1.2576666666666666e-05,
+          1.2930333333333334e-05,
+          9.260000000000001e-06,
+          1.2353666666666668e-05,
+          9.426666666666667e-06,
+          1.2643333333333335e-05,
+          9.146666666666667e-06,
+          1.2506666666666667e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        1.7535083333333334e-05,
+        1.9138583333333333e-05,
+        1.0030916666666668e-05,
+        1.2844416666666669e-05,
+        9.537583333333335e-06,
+        1.2841000000000001e-05,
+        9.52925e-06,
+        1.2592583333333335e-05
+      ],
+      "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+    },
+    "ka": {
+      "five_trial_seconds": [
+        [
+          2.2323666666666668e-05,
+          6.833066666666667e-05,
+          2.9907e-05,
+          3.241e-05,
+          2.2343333333333333e-05,
+          3.600366666666667e-05,
+          2.157366666666667e-05,
+          3.223366666666667e-05
+        ],
+        [
+          5.565033333333334e-05,
+          4.605366666666667e-05,
+          2.4063333333333334e-05,
+          3.419666666666667e-05,
+          2.1973333333333335e-05,
+          3.5960333333333335e-05,
+          2.2210333333333337e-05,
+          3.167366666666667e-05
+        ],
+        [
+          2.6547000000000002e-05,
+          3.4090333333333335e-05,
+          2.080366666666667e-05,
+          3.1103666666666665e-05,
+          2.2463333333333336e-05,
+          3.227e-05,
+          2.201666666666667e-05,
+          3.1080333333333335e-05
+        ],
+        [
+          2.9187000000000004e-05,
+          3.376366666666667e-05,
+          2.1567000000000002e-05,
+          3.0807e-05,
+          2.1320333333333337e-05,
+          3.3420333333333336e-05,
+          2.1513333333333333e-05,
+          3.1153666666666666e-05
+        ],
+        [
+          2.5327e-05,
+          3.323033333333333e-05,
+          2.074366666666667e-05,
+          3.420366666666667e-05,
+          2.2007000000000005e-05,
+          3.154366666666667e-05,
+          2.1497e-05,
+          3.2307e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        3.417783333333334e-05,
+        3.67845e-05,
+        2.179441666666667e-05,
+        3.257775e-05,
+        2.1941000000000002e-05,
+        3.329858333333334e-05,
+        2.1809333333333335e-05,
+        3.155366666666667e-05
+      ],
+      "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+    },
+    "jacc": {
+      "five_trial_seconds": [
+        [
+          1.8760333333333334e-05,
+          4.5647000000000005e-05,
+          2.2237e-05,
+          2.8287e-05,
+          2.3550333333333334e-05,
+          2.8047e-05,
+          1.835666666666667e-05,
+          2.718366666666667e-05
+        ],
+        [
+          4.3413666666666674e-05,
+          3.7877000000000003e-05,
+          1.9423333333333334e-05,
+          3.159366666666667e-05,
+          1.8580333333333332e-05,
+          2.7887000000000003e-05,
+          1.8073666666666666e-05,
+          2.7543333333333334e-05
+        ],
+        [
+          2.6347e-05,
+          3.1707e-05,
+          1.8130333333333335e-05,
+          2.9127000000000004e-05,
+          1.8357e-05,
+          2.744366666666667e-05,
+          1.9226666666666667e-05,
+          2.866366666666667e-05
+        ],
+        [
+          2.7776666666666668e-05,
+          2.8103333333333336e-05,
+          2.0263333333333336e-05,
+          2.7453666666666668e-05,
+          2.0147000000000002e-05,
+          2.8343666666666668e-05,
+          1.8523666666666667e-05,
+          2.9180333333333336e-05
+        ],
+        [
+          2.898e-05,
+          2.9060333333333334e-05,
+          1.8560000000000002e-05,
+          2.765366666666667e-05,
+          1.8657e-05,
+          2.712366666666667e-05,
+          1.7417000000000003e-05,
+          2.6866666666666668e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        3.162933333333334e-05,
+        3.1686916666666667e-05,
+        1.909425e-05,
+        2.8957e-05,
+        1.8935333333333335e-05,
+        2.76995e-05,
+        1.831025e-05,
+        2.8063500000000003e-05
+      ],
+      "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+    }
+  }
+}
