@@ -1,0 +1,6 @@
+#include "../pso-cuda/kernel_cpu.cpp"
+#include <vector>
+#include <cstring>
+#include <cstdint>
+void write(const char*n,const std::vector<float>&a){FILE*f=fopen(n,"wb");if(!f)exit(3);fwrite(a.data(),4,a.size(),f);fclose(f);}
+int main(){constexpr int P=30,R=10000;std::vector<float>pos(P*DIM),vel(P*DIM,0),best(P*DIM),global(DIM);srand(123);for(size_t i=0;i<pos.size();i++)pos[i]=best[i]=getRandom(START_RANGE_MIN,START_RANGE_MAX);for(int i=0;i<DIM;i++)global[i]=pos[i];std::vector<float>input=pos;input.insert(input.end(),vel.begin(),vel.end());input.insert(input.end(),best.begin(),best.end());input.insert(input.end(),global.begin(),global.end());write("study_input_f32.bin",input);pso(P,R,pos.data(),vel.data(),best.data(),global.data());std::vector<float>out=pos;out.insert(out.end(),vel.begin(),vel.end());out.insert(out.end(),best.begin(),best.end());out.insert(out.end(),global.begin(),global.end());write("study_expected_cpu_f32.bin",out);float maxabs=0;for(float x:out){if(!std::isfinite(x))return 4;maxabs=fmaxf(maxabs,fabsf(x));}printf("CPU_SOURCE_PSO particles=%d dimensions=%d iterations=%d maxstate=%g globalFitness=%g fullstate=%zu\n",P,DIM,R,maxabs,host_fitness_function(global.data()),out.size());}
