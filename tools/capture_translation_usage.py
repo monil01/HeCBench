@@ -6,8 +6,9 @@ ROOT=Path(__file__).resolve().parents[1];STATE=ROOT/'.porting-state/portable_jul
 p=argparse.ArgumentParser();p.add_argument('--agent',required=True);p.add_argument('--benchmark',required=True);p.add_argument('--model',choices=['shared','cuda_jl','ka','jacc'],required=True);p.add_argument('--phase',required=True);p.add_argument('--boundary',choices=['begin','end','abandon'],required=True);p.add_argument('--note',default='');a=p.parse_args()
 agent=a.agent if a.agent.startswith('/root') else '/root/'+a.agent
 source=json.loads((STATE/'usage_meter_sources.json').read_text())['agent_sources'][agent];path=Path(source['path'])
-cohort=json.loads((STATE/'batch_300.json').read_text())['benchmarks']
-if a.benchmark not in cohort+['study300'] or not a.phase.replace('-','').replace('_','').isalnum():raise SystemExit('Invalid frozen benchmark/phase path')
+cohort_path=STATE/('batch_447.json' if (STATE/'batch_447.json').exists() else 'batch_300.json')
+cohort=json.loads(cohort_path.read_text())['benchmarks']
+if a.benchmark not in cohort+['study300','study150','study447'] or not a.phase.replace('-','').replace('_','').isalnum():raise SystemExit('Invalid frozen benchmark/phase path')
 # Read only usage events from this explicitly registered agent stream.
 with path.open('rb') as f:
  size=path.stat().st_size;f.seek(max(0,size-2**21));lines=f.read().decode(errors='replace').splitlines()

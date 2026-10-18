@@ -3,7 +3,7 @@
 from pathlib import Path
 from study_evidence import effective_config
 from collections import Counter
-import datetime, hashlib, json, re, subprocess, time
+import argparse, datetime, hashlib, json, re, subprocess, time
 
 ROOT=Path(__file__).resolve().parents[1]
 STATE=ROOT/'.porting-state/portable_julia'
@@ -54,7 +54,7 @@ def usage_windows(benchmark,model):
 # Exact source-line reviews retain raw events while correcting attribution and
 # grouping duplicate descriptions. Never deduplicate by textual similarity.
 def load_event_reviews():
-    path=OUT/'event_review_overrides.json';document=read(path,{})
+    path=ROOT/'ontology/studies/julia_abstractions_300/event_review_overrides.json';document=read(path,{})
     reviews={}
     for review in document.get('entries',[]):
         source=ROOT/review['source_path'];number=review['line']
@@ -164,9 +164,12 @@ def normalize_traits(t):
         'null_interpretation':'Not recorded in this source review; never assume absent feature or zero resource use.'}
 
 def main():
+    global OUT
+    ap=argparse.ArgumentParser();ap.add_argument('--population',type=int,choices=[300,447],default=300);args=ap.parse_args();population=args.population
+    OUT=ROOT/f'ontology/studies/julia_abstractions_{population}'
     now=datetime.datetime.now(datetime.timezone.utc).isoformat()
     event_reviews=load_event_reviews()
-    baseline=read(STATE/'baseline_300.json');cohort=read(STATE/'batch_300.json')
+    baseline=read(STATE/f'baseline_{population}.json');cohort=read(STATE/f'batch_{population}.json')
     selected=set(cohort['benchmarks']);base={x['bench']:x for x in baseline['benchmarks']}
     adjud=read(PAPER/'research/data/adjudications.json',{});disp=read(PAPER/'research/data/configuration_dispositions.json',{})
     latest={}
@@ -284,7 +287,7 @@ def main():
                                         'configuration_ontology_semantics':'Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.',
                                         'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
             per_model=traits.get('implementation_traits',{}).get(model)
-            record={'schema_version':2,'study':'julia_abstractions_300_v2','benchmark_id':b,'implementation_model':model,
+            record={'schema_version':2,'study':f'julia_abstractions_{population}_v2','benchmark_id':b,'implementation_model':model,
                     'status':status,'scientific_intent_record':f'../../domains/{b}.json',
                     'environment':{'julia_release':'1.12.6','cuda_jl':'6.2.1','kernel_abstractions':'0.9.45','jacc':'1.4.0',
                                    'scope':'Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.',
@@ -365,7 +368,7 @@ def main():
         fp=origin_fingerprint(event)
         key=('reviewed_observation',event['canonical_observation_id'],event['taxonomy_code']) if event.get('canonical_observation_id') else ('copied_origin',fp) if fp in copied_origin_groups else ('event_id',event['event_id'])
         origin_events.setdefault(key,event)
-    summary={'generated_at':now,'target_benchmarks':300,'implementation_slots':900,
+    summary={'generated_at':now,'target_benchmarks':population,'implementation_slots':3*population,
              'status_counts':{m:dict(Counter(r['status'] for r in statuses if r['model']==m)) for m in MODELS},
              'per_model_review_counts':{m:dict(Counter(r['ontology_review'] for r in statuses if r['model']==m)) for m in MODELS},
              'scientific_review_counts':dict(Counter(d['scientific_intent'].get('review_status','unspecified') for d in domain_rows)),
@@ -375,14 +378,14 @@ def main():
              'observed_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in all_events if e['implementation_model']==m)) for m in MODELS},
              'observed_origin_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in origin_events.values() if e['origin_model']==m)) for m in [*MODELS,'cuda','shared_infrastructure']},
              'origin_event_semantics':'Explicit origin_model overrides affected target; shared_* phases grouped as shared infrastructure. Exact source-line reviews group duplicate observations/correct origins; raw failure:false is honored. Otherwise copied reference notifications use benchmark/origin/code/phase/cause/check/candidate. Process effort remains separate; partial histories, not total rates.',
-             'recorded_shared_infrastructure_events':len(all_infrastructure_events),'recorded_native_reference_events':len(all_reference_events),'failure_history_totals_known':False,'all_300_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==300 for m in MODELS),
+             'recorded_shared_infrastructure_events':len(all_infrastructure_events),'recorded_native_reference_events':len(all_reference_events),'failure_history_totals_known':False,'all_names_ordinary_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==population for m in MODELS),
              'meaning':'Complete inventory denominator; current outcomes, unknown records and partial histories stay explicit.'}
     write(OUT/'index.json',{'schema_version':2,'summary':summary,'records':statuses})
     write(OUT/'failure_events.json',{'schema_version':2,'events':all_events,'native_reference_events':all_reference_events,'shared_infrastructure_events':all_infrastructure_events,'origin_events':list(origin_events.values()),'count_interpretation':'Observed event rows by model, not all historical failures. N3/P1 excluded from failed-event totals.'})
-    write(STATE/'study_300_status.json',{'summary':summary,'records':statuses})
-    write(PAPER/'research/data/study_300_status.json',{'summary':summary,'records':statuses})
-    write(PAPER/'research/data/scientific_domains_300.json',domain_rows)
-    write(PAPER/'research/data/failure_events_300.json',{'events':all_events,'native_reference_events':all_reference_events,'shared_infrastructure_events':all_infrastructure_events,'origin_events':list(origin_events.values()),'partial_history':True})
+    write(STATE/f'study_{population}_status.json',{'summary':summary,'records':statuses})
+    write(PAPER/f'research/data/study_{population}_status.json',{'summary':summary,'records':statuses})
+    write(PAPER/f'research/data/scientific_domains_{population}.json',domain_rows)
+    write(PAPER/f'research/data/failure_events_{population}.json',{'events':all_events,'native_reference_events':all_reference_events,'shared_infrastructure_events':all_infrastructure_events,'origin_events':list(origin_events.values()),'partial_history':True})
     print(json.dumps(summary))
 
 if __name__=='__main__':main()

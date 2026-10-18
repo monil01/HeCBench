@@ -10,6 +10,7 @@ from study_evidence import effective_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--complete', action='store_true')
+parser.add_argument('--population',type=int,choices=[300,447],default=447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 state = root / '.porting-state'
@@ -22,7 +23,7 @@ def read(path, default=None):
 def git(path, *argv):
     return subprocess.check_output(['git', *argv], cwd=path, text=True).strip()
 
-cohort_path = local / 'batch_300.json'
+cohort_path = local / f'batch_{args.population}.json'
 if not cohort_path.exists():
     cohort_path = local / 'batch_100.json'
 cohort = read(cohort_path)
@@ -100,7 +101,7 @@ status = f'active_{target}_benchmark_expansion'
 if args.complete:
     # Census completion includes evidence-backed unavailable outcomes; it never
     # converts these outcomes to passing ports or relaxes any verification check.
-    registry=root/'ontology/studies/julia_abstractions_300'
+    registry=root/f'ontology/studies/julia_abstractions_{target}'
     passing={'verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect'}
     unavailable={'hardware_blocked','environment_blocked','reference_blocked','feature_unsupported','failed'}
     unfinished=[]
@@ -126,18 +127,18 @@ payload = {
     'instruction_hashes': {n: hashlib.sha256((root/n).read_bytes()).hexdigest()
                            for n in ['AGENT_INSTRUCTIONS_CODEX_Julia.md', 'JULIA_CORRECTNESS_CHECK.md', 'paper_writing.md']},
     'cohort': str(cohort_path.relative_to(root)), 'target_benchmarks': target,
-    'frozen_baseline': str((local/'baseline_300.json').relative_to(root)),
+    'frozen_baseline': str((local/f'baseline_{target}.json').relative_to(root)),
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
     'accepted_configuration_role_counts':{role:sum(r['role']==role for r in accepted_records) for role in ['primary','corrected_reference_secondary']},
     'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
-    'active_work': read(local/'active_work_300.json', {}),
-    'active_work_path': str((local/'active_work_300.json').relative_to(root)),
-    'model_status_inventory': str((local/'study_300_status.json').relative_to(root)),
+    'active_work': read(local/f'active_work_{target}.json', {}),
+    'active_work_path': str((local/f'active_work_{target}.json').relative_to(root)),
+    'model_status_inventory': str((local/f'study_{target}_status.json').relative_to(root)),
     'open_prospective_usage_segments': usage_segments,
     'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',
     'dirty_files': {k: git(p, 'status', '--short') for k,p in [('source',root),('paper',paper)]},
-    'next_translation': ('Completed frozen300 assessment: preserve matched/conditional/known-defect/unavailable outcomes; no automatic reruns.' if args.complete else 'Continue disjoint frozen300 queues KA then JACC, repairing references where needed. Root commits verified variants separately.'),
+    'next_translation': ('Completed frozen cohort assessment: preserve matched/conditional/known-defect/unavailable outcomes; no automatic reruns.' if args.complete else 'Continue remaining150 disjoint queues KA then JACC within447-name union, repairing references where needed. Root commits verified variants separately.'),
     'next_paper': ('Review-ready draft: supply author/publication metadata and arrange archival evidence release before submission.' if args.complete else 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.'),
     'local_only_research': True,
     'paper_build_artifact': {'path':str((paper/'build/main.pdf').relative_to(root)),
@@ -169,7 +170,7 @@ tmp = folder/'LATEST.json.tmp'
 tmp.write_text(json.dumps(latest, indent=2)+'\n')
 tmp.replace(folder/'LATEST.json')
 # A small tracked-source pointer can be committed without shipping research logs.
-summary = root/'ontology/studies/julia_abstractions_300/PROGRESS.json'
+summary = root/f'ontology/studies/julia_abstractions_{target}/PROGRESS.json'
 summary.parent.mkdir(parents=True, exist_ok=True)
 summary.write_text(json.dumps(latest, indent=2)+'\n')
 print(json.dumps(latest))
