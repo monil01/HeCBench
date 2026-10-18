@@ -1,21 +1,11 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+REPEATS ?= 3
+.PHONY: main run clean
 main:
-	rm -rf data
-
+	@echo "Named six-path convolution study; original files and CLI archived in reference_history."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(REPEATS)
 clean:
-	rm -rf data
-
-data/input_14_1_128.bin: main
-	mkdir -p data
-	touch data/input_14_1_128.bin
-
-run: data/input_14_1_128.bin
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 0 100
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1 100
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 2 100
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 3 100
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 4 100
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 5 100
+	@echo "Study fixtures retained."
