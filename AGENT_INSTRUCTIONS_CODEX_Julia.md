@@ -1,5 +1,8 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+Use JSON `null` for an uncomputed numerical error metric, with a scope note; do not use zero as an unknown value. If archived rows already contain such a placeholder, preserve every row and add a hash-bound `reported_metric_definition_erratum` through `study_evidence.py`. Keep actual oracle absolute/conditioned errors and dual-reference comparison metrics separate. This descriptive correction cannot alter tolerances, sources, acceptance or timings and adds no GPU attempt.
+
+
 An unchanged empty kernel (for example dispatch) has no numerical outputs. Use `numerical_agreement_kind: no_numerical_outputs_execution_only` and `execution_only_verified`, retain source review/launch/completion and all five timing trials, and report these cases separately from numerical and property agreement. Never fabricate output arrays to obtain numerical acceptance. The runner's `execution_only_pass` is launch/completion evidence only; `variant_verified` refers to that explicitly named contract, not numerical correctness. No-output cases are excluded from numerical-contract checkpoint totals and artifact audits.
 
 
