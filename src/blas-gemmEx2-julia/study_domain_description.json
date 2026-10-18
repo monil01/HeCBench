@@ -1,0 +1,110 @@
+{
+  "scientific_intent": {
+    "primary_family": "linear_algebra",
+    "review_status": "source_reviewed",
+    "scientific_task": "Typed dense row-major matrix multiplication through cuBLASLt",
+    "description": "Source vendor-library benchmark computes C=AB with alpha1/beta0 via row-major-to-column-major layout mapping, managed A/B/C and source heuristic/workspace orchestration. Actual native double operand swap instead computes BA on safe square input. Named conditional study corrects only this duplicate operand swap, retaining source API descriptors/heuristic and FP32 switch fallthrough.",
+    "mathematical_operation": "C[i,j]=sum_q A[i,q]B[q,j]; bounded dyadic real and exact integer matrices.",
+    "accuracy_requirements": "Exact all entries on declared bounded quarter-dyadic inputs, whose products/partial sums are representable even in BF16/F16. This controls API/layout/math correctness but does not stress arbitrary low-precision rounding or identify internal vendor accumulation instructions.",
+    "community_use_case": "Dense linear algebra building block; no specific physical application inferred from benchmark name.",
+    "provenance": "Original main.cu/test_gemm/LtSgemmCustomFind source review plus actual safe noncommuting GPU witness and published CUDA API ABI headers.",
+    "source_evidence": [
+      {
+        "path": "src/blas-gemmEx2-cuda/main.cu",
+        "sha256": "a2fb0f6ea8ab5f0e556f7851db49ab8ede347e8f95f69965d6a171a2af980430"
+      },
+      {
+        "path": "src/blas-gemmEx2-julia/reference_provenance.json",
+        "sha256": "c1d015bf83423b7cb2ef6dc1fb07ed7bcab8c87e9dde5e44ad009f7336e409de"
+      }
+    ]
+  },
+  "primary_motif": "vendor_dense_GEMM_API_orchestration",
+  "storage_precision": [
+    "Float64",
+    "Float32",
+    "Float16",
+    "BF16(rawUInt16 host encoding)",
+    "Int8 inputs/Int32 outputs"
+  ],
+  "compute_precision": [
+    "API CUBLAS_COMPUTE_64F70",
+    "API CUBLAS_COMPUTE_32F68",
+    "API CUBLAS_COMPUTE_16F64",
+    "API CUBLAS_COMPUTE_32I72",
+    "Vendor internal accumulation/instruction precision unprofiled; no TensorCore claim"
+  ],
+  "synchronization": [
+    "Source cudaDeviceSynchronize inside each Lt helper plus matched outer completion",
+    "No authored device synchronization"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Native and Julia independently orchestrate same actual cuBLASLt12.0.2.224 C ABI; CUDA.jl/KA/JACC import their respective package but all mathematical kernels remain vendor-library delegated. All3 Julia frontends reuse once-authored Lt C API helper. Native operand correction is conditional/excluded untouched-native aggregate."
+  },
+  "reference_class": "vendor_library_API_orchestration_no_authored_device_kernels",
+  "ka_class": "vendor_library_API_orchestration_no_authored_device_kernels",
+  "jacc_class": "vendor_library_API_orchestration_no_authored_device_kernels",
+  "verification_contract": "All20 full178728-word captures; 70696 exact input-prefix values plus complete actual initialC/C/A/B typed buffers/256-byte guards and512 opaque workspace guard bytes. Exact finite entrywise dual references plus independent Python integer dot from actual captured A/B. Prefix/readonly/initialC/guards bit exact. All27 per-path clocks retained and summed; 5 checked trials mean2-5. Native actual BA defect independently witnessed; corrected AB only is certified.",
+  "keyconfounds": [
+    "Conditional native operand correction excludes untouched-native aggregate",
+    "Vendor-only pipeline: zero authored GPU kernels; cannot attribute timings or effort to KA/JACC device lowering",
+    "FP32 mode0/1/2/3 all source switch fallthrough to plain compute32F68, not advertised fast mode",
+    "Small periodic bounded dyadic matrices intentionally make every reduction exact; no generic rounding/overflow/largeGEMM performance claim",
+    "Actual same cuBLASLt120002 DSO all4; vendor chosen algorithm/internal compute unprofiled",
+    "Explicit managed GPU prefetch outsideROI after reset limits migration confound; allocations/readbacks/oracles outside",
+    "Unknown reuse_from config field ignored by runner: refs executed3programs, KA2, JACC1; all preserved, first complete all4 selected by protocol, not timing"
+  ],
+  "boundary_rounding_policy": "Finite quarter-dyadic floating A/B\u00b1.5; exact partial numerator bound256 in units1/16. Integer\u00b12 products/Int32 bound256. Typed BF16 host encoding preserves these exact inputs; no arbitrary BF16 rounding promise.",
+  "algorithm": "Direct C API layout/descriptor/preference/firstheuristic/Matmul/completion/destruction with original alpha1/beta0; corrected row-major operand correspondence; no authored device kernel.",
+  "work_item_mapping": "Opaque vendor library internal device mapping; host loop over27 typed/shape cases. No KA/JACC device dispatch.",
+  "layout": "Source row-major managed A[M,K],B[K,N],C[M,N], vendor transposed column-major view. Actual buffers256B aligned, each256B prefix/suffix guards;32MiB workspace plus512 guard bytes.",
+  "launch_geometry": "Opaque vendor internal grid/block not captured; no authored launch geometry.",
+  "support_boundary": "Conditionalcorrectednative/excludeduntouchedCUDAaggregate. All9APItypedpaths on3smallperiod5boundedmatrices,notgeneralrounding/overflow/largeGEMM/TensorCoreinstructioncoverage. FP32oldfastlabelsallplaincompute32sourcefallthrough. Library-onlyKA/JACCfrontendsnotdeviceabstractiontranslation/performancecomparison;noauthoredGPUcompilerattempts.",
+  "supported_features": [
+    "All9 source typed API paths actually execute on V100 with pinnedLt120002, including BF16/F64",
+    "Real managed-memory buffers/heuristic/workspace pipeline",
+    "Rectangular row-major AB after conditional operand repair"
+  ],
+  "interpretation": "This is library delegation, so numerical agreement establishes correct typed ABI/layout/orchestration on a bounded fixture. Identical vendor kernels and shared Julia helper cannot establish any framework device-abstraction performance ranking or cold-start token ranking. Timing differences include Julia/C API and descriptor/control overhead; profiling would be needed for device-work attribution.",
+  "backend_extensions": {
+    "cuda_jl": [
+      "Direct CUBLASLt C ABI",
+      "Direct CUDART managed allocation/prefetch/synchronization/readback",
+      "Framework import only; no authored GPU dispatch"
+    ],
+    "ka": [
+      "Direct CUBLASLt C ABI",
+      "Direct CUDART managed allocation/prefetch/synchronization/readback",
+      "Framework import only; no authored GPU dispatch"
+    ],
+    "jacc": [
+      "Direct CUBLASLt C ABI",
+      "Direct CUDART managed allocation/prefetch/synchronization/readback",
+      "Framework import only; no authored GPU dispatch"
+    ]
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "workspace_bytes": 33554432,
+      "managed_memory": true,
+      "payload_alignment": 256,
+      "vendor_device_resources": "unprofiled",
+      "authored_shared_memory": "not applicable"
+    },
+    "ka": {
+      "workspace_bytes": 33554432,
+      "managed_memory": true,
+      "payload_alignment": 256,
+      "vendor_device_resources": "unprofiled",
+      "authored_shared_memory": "not applicable"
+    },
+    "jacc": {
+      "workspace_bytes": 33554432,
+      "managed_memory": true,
+      "payload_alignment": 256,
+      "vendor_device_resources": "unprofiled",
+      "authored_shared_memory": "not applicable"
+    }
+  }
+}
