@@ -243,9 +243,21 @@ def main():
             if scope_review.exists():record['effort']['activity_window_scope_review']={'path':str(scope_review.relative_to(ROOT)),'sha256':digest(scope_review),'record':read(scope_review)}
             profiles=read(STATE/'profile_summaries_300'/(b+'.json'),{})
             if profiles.get('models',{}).get(model):record['measured_profile_evidence']=profiles['models'][model]
-            current_ref=log/'current_reference_effort_300.json'
-            if current_ref.is_file():
-                record['current_reference_repair_effort']={'path':str(current_ref.relative_to(ROOT)),'sha256':digest(current_ref),'record':read(current_ref),'scope':'Current repair phase only; does not replace unknown historical original translation effort.'}
+            # Reference-only records can precede a manifest and live under any
+            # established CUDA.jl log alias. Preserve separate phases verbatim;
+            # do not lose them merely because manifest selection fell back to cuda.
+            current_refs=[log_root/(b+'-julia-'+alias)/'current_reference_effort_300.json'
+                          for alias in aliases
+                          if (log_root/(b+'-julia-'+alias)/'current_reference_effort_300.json').is_file()]
+            if current_refs:
+                record['current_reference_repair_effort_records']=[
+                    {'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),
+                     'scope':'Current repair phase only; does not replace unknown historical original translation effort.'}
+                    for q in current_refs]
+                preferred=next((x for x in record['current_reference_repair_effort_records']
+                                if x['path']==str((log/'current_reference_effort_300.json').relative_to(ROOT))),
+                               record['current_reference_repair_effort_records'][0])
+                record['current_reference_repair_effort']=preferred
             write(OUT/'implementations'/b/(model+'.json'),record)
             statuses.append({'benchmark_id':b,'model':model,'status':status,'ontology_review':record['implementation_review_status'],
                              'scientific_review':intent.get('review_status','unspecified'),
