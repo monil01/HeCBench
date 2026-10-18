@@ -1,5 +1,12 @@
 # Julia Correctness Check
 
+### Native compile compatibility and publication checks
+
+A source patch that only disambiguates an exact zero constructor is a compile-compatibility intervention, not evidence of wrong scientific mathematics. Preserve the original rejection and patch, classify changed-native results conservatively as conditional, and record the intervention subtype separately from mathematical or synchronization repairs. Retain all five numerical comparisons under the same inputs and tolerances.
+
+A manuscript verification checkpoint includes actual body-page accounting: all figures/tables/appendices count even if LaTeX places them after references. Flush body floats before the bibliography, inspect the PDF and record body versus reference pages. Preserve detailed checks in the working companion without describing it as an approved PASC supplement.
+
+
 
 ### Atomic operations and independent reduction checks
 

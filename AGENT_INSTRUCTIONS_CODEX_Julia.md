@@ -1,5 +1,12 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+### Native compatibility repairs and manuscript page accounting
+
+Distinguish compile-only compatibility interventions (for example an exact zero literal selecting the intended FP16/BF16 constructor) from corrections to scientific mathematics or concurrency. Preserve unchanged source, rejected compiler diagnostics and the exact patch; conservatively classify a changed native reference as conditional and explain the intervention subtype. Never infer a scientific numerical defect from a build rejection.
+
+For the PASC main manuscript, count every figure/table/appendix page toward the ten-page body limit, including floats deferred past the references. Flush all body floats before the bibliography when checking the limit. Move supporting detail into the separately identified working technical companion rather than reducing ACM fonts or margins; retain the main scientific conclusions, uncertainty and full-population denominators. The companion is not an approved conference supplement.
+
+
 
 ### Atomic operations and independent reduction checks
 

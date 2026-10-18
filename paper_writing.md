@@ -1,5 +1,12 @@
 # PASC27 Julia translation paper — writing instructions
 
+### Honest page budgets and repair subtypes
+
+Before a paper checkpoint, flush body floats before the bibliography and inspect the rendered PDF. PASC's ten-page body limit includes every figure, table and appendix, including any float otherwise deferred beyond the references. Record body and reference page counts separately. Keep ACM fonts and margins; transfer supporting analyses to the clearly labeled working technical companion. This companion has no implied conference supplement or archival status.
+
+In failure tables and case studies distinguish native compile-only compatibility changes, synchronization/allocation corrections and mathematical/scientific repairs. A build rejection is not a numerical defect. Exact-zero overload disambiguation can be semantically neutral yet remains a disclosed changed-native intervention in the conservative conditional stratum; do not pool it silently with untouched CUDA or claim all conditional cases have faulty scientific formulas.
+
+
 
 ### Atomic operations and independent reduction checks
 
