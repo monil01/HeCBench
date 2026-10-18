@@ -1,0 +1,78 @@
+from pathlib import Path
+import re,math,struct,json,shutil,hashlib
+R=Path('/home/imo/HeCBench_julia');p=R/'src/cobahh-julia';child=p/'cobahh-julia-cuda.jl';child.mkdir(exist_ok=True);shutil.copy2(p/'main.jl',child/'original_main.jl');shutil.copy2(p/'Makefile',p/'original_Makefile');(p/'main.jl').write_text('include(joinpath(@__DIR__,"cobahh-julia-cuda.jl","main.jl"))\n');source=(R/'src/cobahh-cuda/neuron_update.h').read_text();f=lambda x:struct.unpack('<f',struct.pack('<f',x))[0];dt=f(.0001);clock=f(.01);L={1:30}
+for i,ex in re.findall(r'const float\s+_lio_(\d+)\s*=\s*([^;]+);',source):
+ ex=ex.strip();L[int(i)]=f(math.exp(f((-2000 if int(i)==23 else -100)*dt)))if 'expf' in ex else f(float(ex.rstrip('f')))
+def timestep(t):return int(f(f(t+f(f(.001)*dt))/dt))
+def evolve(state):
+ h,m,n,ge,v,gi,last=state;Ah=L[2]*math.exp(L[3]*v);Bh=-4/(f(.001)+L[4]*math.exp(L[5]*v))-Ah;den=L[7]+L[8]*math.exp(L[9]*v);d2=L[13]+L[14]*math.exp(L[15]*v);Am=(L[6]+L[10]-f(.32)*v)/den;Bm=(L[11]-L[10]+f(.32)*v)/den+(L[12]+L[16]-f(.28)*v)/d2;d3=L[7]+L[18]*math.exp(L[5]*v);An=(L[17]+L[19]-f(.032)*v)/d3;Bn=(L[20]-L[19]+f(.032)*v)/d3-L[21]*math.exp(L[22]*v);Av=L[24]+L[25]*n**4+L[26]*h*m**3+L[27]*ge+L[28]*gi;Bv=L[29]+L[30]*n**4-(L[31]*h*m**3+L[32]*ge+L[32]*gi);upd=lambda x,A,B:f(-A/B+(x+A/B)*math.exp(dt*B));return [upd(h,Ah,Bh),upd(m,Am,Bm),upd(n,An,Bn),f(L[23]*ge),upd(v,Av,Bv),f(L[33]*gi),last]
+cases=[(33,1,0),(257,1,1),(129,3,2)];fixture=[];oracle=[];flags=[];predicted=[]
+for n,steps,mode in cases:
+ arrays=[[]for k in range(7)]
+ for i in range(n):
+  last=f(clock-f([.0025,.003,.0035,-.001][i%4]))
+  if mode==0:s=[f(.6),f(.05),f(.32),f(1e-9),f(-.065+(i%5)*.0005),f(1e-9),last]
+  elif mode==1:s=[f(.35+(.3 if i%2 else -.3)),f(.45+(.4 if i%3 else -.4)),f(.55+(.5 if i%4 else -.5)),f(.15+(.1 if i%2 else -.1)),f(.65+(.6 if i%5 else -.6)),f(.25+(.2 if i%3 else -.2)),last]
+  else:s=[f(.35),f(.45),f(.55),f(.05+((i%7)/128)),f(.05),f(.05+((i%7)/128)),last]
+  for a,x in zip(arrays,s):a.append(x)
+ fixture.extend([n,steps,mode,dt,clock]+[L[i]for i in range(1,34)]+sum(arrays,[]));states=[list(a)for a in zip(*arrays)]
+ for st in range(steps):states=[evolve(s)for s in states]
+ out=sum([list(a)for a in zip(*states)],[]);nr=[float(timestep(f(clock-x))>=L[1])for x in arrays[6]];oracle.extend(out+nr);flags.extend(nr);predicted.append({'mode':mode,'n':n,'iterations':steps,'m_min':min(s[1]for s in states),'m_max':max(s[1]for s in states),'all_finite':all(math.isfinite(x)for s in states for x in s)})
+for name,data in [('fixtures_f32.bin',fixture),('oracle_f32.bin',oracle)]:
+ with(p/name).open('wb')as io:io.write(struct.pack('<'+'f'*len(data),*data))
+w={'method':'Independent affine frozen-coefficient ODE update A+B*x with equilibrium -A/B and Float64 exponential, rounded to actual Float32 storage each step; recomposes grouped rates rather than copying nested BA expressions','source_constants':{str(k):v for k,v in L.items()},'cases':predicted,'scientific_defect_witness':{'physiological_initial_state':{'v':f(-.065),'m':f(.05),'h':f(.6),'n':f(.32),'ge':f(1e-9),'gi':f(1e-9)},'predicted_source_m_after_one_step':predicted[0]['m_min'],'compiled_lio8':0,'comment_expression_lio8_as_float32':f(25.79034*(.001*.001*math.exp(.25*(-.063)/.001))),'compiled_lio18':0,'comment_expression_lio18_as_float32':f(20.085537*(.001*.001*math.exp(.2*(-.063)/.001))),'contract':'For dm/dt=alpha(1-m)-beta*m with nonnegative rates, frozen-voltage exponential update preserves gate probability [0,1]. Source zero coefficients make effective alpha_m negative.','scientific_context_source':'https://brian.readthedocs.io/en/stable/examples-misc_COBAHH.html','context_limit':'Official example establishes related mathematical intent; exact generated-code provenance not claimed. Actual native GPU output still to be checked.'},'limits':['Compiled source coefficient realization checked, not faithful calibrated Hodgkin-Huxley physics','Time held fixed across repeated updates as source; no network spikes/synaptic/refractory/reset simulation','Full original initializer leaves index0 uninitialized; named fixtures fully initialize every neuron']};(p/'independent_oracle.json').write_text(json.dumps(w,indent=2)+'\n')
+# Mechanical scalar arithmetic extraction; keep original nested operations in GPU translation.
+start=source.index('  float h = d_h[_idx];');end=source.index('\n}',start);body=source[start:end];lines=[]
+for line in body.splitlines():
+ line=line.strip()
+ if line=='char not_refractory;':continue
+ line=re.sub(r'^(const )?float\s+','',line);line=line.replace('_idx','i').replace('_timestep','timestep').replace('expf','exp').rstrip(';');line=re.sub(r'(?<![A-Za-z0-9_])([0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?)f\b',lambda m:m.group(1)+'0'if 'e' not in m.group(1).lower()else m.group(1).replace('e','f').replace('E','f'),line)
+ lines.append(line)
+mathjl='@inline timestep(t,dt)=trunc(Int32,(t+1f-3*dt)/dt)\n@inline function point!(i,d_h,d_m,d_n,d_ge,d_v,d_gi,d_lastspike,d_not_refractory,_N,dt,t,P)\n if i<=_N\n'
+for i in range(1,34):mathjl+=f'  _lio_{i}='+ (f'Int32(P[{i}])'if i==1 else f'P[{i}]')+'\n'
+mathjl+=' @inbounds begin\n'+'\n'.join('  '+line for line in lines)+'\n end\n end\n return\nend\n';(p/'study_math.jl').write_text(mathjl)
+common=r'''const CASES=((33,1,0),(257,1,1),(129,3,2));const SENT=-8192.25f0;const NSENT=Int8(-99)
+function study(allocate,launch)
+ fixture=collect(reinterpret(Float32,read(joinpath(@__DIR__,"fixtures_f32.bin"))));oracle=collect(reinterpret(Float32,read(joinpath(@__DIR__,"oracle_f32.bin"))));states=[];off=0
+ for(n,steps,mode)in CASES
+  dt=fixture[off+4];clock=fixture[off+5];P=Tuple(fixture[off+6:off+38]);inputs=[copy(fixture[off+38+(k-1)*n+1:off+38+k*n])for k in 1:7];raw=[allocate(Float32,n+2)for k in 1:7];nr=allocate(Int8,n+2);args=[view(a,2:n+1)for a in raw];push!(states,(n,steps,mode,dt,clock,P,inputs,raw,nr,args));off+=38+7n
+ end
+ function run(c)
+  n,steps,mode,dt,clock,P,inputs,raw,nr,args=c
+  for k in 1:7;h=vcat(SENT,inputs[k],SENT);copyto!(raw[k],h);end;fill!(nr,NSENT)
+  CUDA.synchronize(CUDA.context());start=time_ns()
+  for step in 1:steps;launch(args...,view(nr,2:n+1),Int32(n),dt,clock,P);end
+  CUDA.synchronize(CUDA.context());elapsed=(time_ns()-start)*1e-9/steps;arrays=Array.(raw);flags=Array(nr);guards=Float32[];ok=true
+  for a in arrays;append!(guards,Float32[a[1],a[end]]);ok&=a[1]===SENT&&a[end]===SENT;end
+  append!(guards,Float32[flags[1],flags[end]]);ok&=flags[1]===NSENT&&flags[end]===NSENT&&reinterpret(UInt8,arrays[7][2:end-1])==reinterpret(UInt8,inputs[7])
+  vals=vcat([a[2:end-1]for a in arrays]...,Float32.(flags[2:end-1]));return vals,guards,elapsed,ok
+ end
+ for c in states;run(c);end
+ for trial in 1:5
+  out=copy(fixture);oi=0;elapsed=0.;ok=true;err=0.
+  for c in states
+   vals,guards,t,pass=run(c);ref=oracle[oi+1:oi+length(vals)];e=maximum(abs.(vals.-ref));ok&=pass&&all(isfinite,vals)&&all(abs.(vals.-ref).<=2f-4 .+2f-4.*abs.(ref));n=c[1];ok&=vals[7n+1:8n]==ref[7n+1:8n];oi+=length(vals);err=max(err,Float64(e));append!(out,vals);append!(out,guards);elapsed+=t
+  end
+  path=joinpath(get(ENV,"STUDY_OUTPUT_DIR",pwd()),"trial_$(trial).bin");open(io->write(io,out),path,"w");println("STUDY_TRIAL {\"trial\":",trial,",\"time_seconds\":",elapsed,",\"correct\":",ok,",\"checked_values\":",length(out),",\"max_abs_error\":",err,",\"timing_region\":\"sum3_source_frozenclock_iteration_means_complete\",\"jit_excluded\":true,\"internal_repeats\":1,\"case_internal_repeats\":[1,1,3],\"output_artifact\":{\"path\":\"",path,"\",\"dtype\":\"float32\",\"count\":",length(out),",\"byte_order\":\"little\"}}")
+  ok||error("CobahhActualSourceStateFlagsAndGuards")
+ end
+end
+''';common=re.sub(r'\)for ',') for ',common).replace(']for ','] for ');(p/'study_common.jl').write_text(common)
+(child/'main.jl').write_text('using CUDA\ninclude(joinpath(@__DIR__,"..","study_math.jl"))\nfunction neuron_kernel!(args...)\n i=Int32((blockIdx().x-1)*blockDim().x+threadIdx().x)\n point!(i,args...)\n return\nend\nfunction launch(h,m,n,ge,v,gi,last,nr,N,dt,t,P)\n @cuda threads=256 blocks=cld(Int(N),256) neuron_kernel!(h,m,n,ge,v,gi,last,nr,N,dt,t,P)\nend\ninclude(joinpath(@__DIR__,"..","study_common.jl"))\nstudy((T,n)->CUDA.zeros(T,n),launch)\n')
+args=','.join(f'L[{i}]'for i in range(1,33))
+native=r'''#include <cuda_runtime.h>
+#include <cmath>
+#include <vector>
+#include <fstream>
+#include <string>
+#include <algorithm>
+#include "../cobahh-cuda/neuron_update.h"
+void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}
+std::vector<float>load(const char*p){std::ifstream f(p,std::ios::binary|std::ios::ate);size_t n=f.tellg();f.seekg(0);std::vector<float>v(n/4);f.read((char*)v.data(),n);return v;}
+struct S{int n,steps,mode;float dt,t;std::vector<float>L,inputs;std::vector<float*>raw,a;char*nr;};
+int main(){auto fixture=load(HH_FIXTURE),oracle=load(HH_ORACLE);std::vector<S>s;size_t off=0;for(int c=0;c<3;c++){S q;q.n=int(fixture[off]);q.steps=int(fixture[off+1]);q.mode=int(fixture[off+2]);q.dt=fixture[off+3];q.t=fixture[off+4];q.L.assign(fixture.begin()+off+5,fixture.begin()+off+38);q.inputs.assign(fixture.begin()+off+38,fixture.begin()+off+38+7*q.n);for(int k=0;k<7;k++){float*a;ck(cudaMalloc(&a,(q.n+2)*4));q.raw.push_back(a);q.a.push_back(a+1);}ck(cudaMalloc(&q.nr,q.n+2));off+=38+7*q.n;s.push_back(q);}
+auto run=[&](S&q){std::vector<float>reset(q.n+2,-8192.25f);for(int k=0;k<7;k++){std::copy(q.inputs.begin()+k*q.n,q.inputs.begin()+(k+1)*q.n,reset.begin()+1);ck(cudaMemcpy(q.raw[k],reset.data(),reset.size()*4,cudaMemcpyHostToDevice));}ck(cudaMemset(q.nr,(unsigned char)-99,q.n+2));auto&a=q.a;auto&L=q.L;ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int step=0;step<q.steps;step++){cobahh<<<(q.n+255)/256,256>>>(a[0],a[1],a[2],a[3],a[4],a[5],a[6],q.nr+1,q.n,q.dt,q.t,int(L[0]),ARGS);}
+ck(cudaGetLastError());ck(cudaDeviceSynchronize());return std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/q.steps;};for(auto&q:s)run(q);for(int trial=1;trial<=5;trial++){auto out=fixture;size_t oi=0;bool ok=true;double elapsed=0,err=0;for(auto&q:s){elapsed+=run(q);std::vector<float>guards;for(int k=0;k<7;k++){std::vector<float>h(q.n+2);ck(cudaMemcpy(h.data(),q.raw[k],h.size()*4,cudaMemcpyDeviceToHost));ok&=h.front()==-8192.25f&&h.back()==-8192.25f;guards.push_back(h.front());guards.push_back(h.back());for(int i=0;i<q.n;i++){float e=std::abs(h[i+1]-oracle[oi]);err=std::max(err,double(e));ok&=std::isfinite(h[i+1])&&e<=2e-4f+2e-4f*std::abs(oracle[oi]);if(k==6)ok&=h[i+1]==q.inputs[k*q.n+i];oi++;}out.insert(out.end(),h.begin()+1,h.end()-1);}std::vector<char>nr(q.n+2);ck(cudaMemcpy(nr.data(),q.nr,nr.size(),cudaMemcpyDeviceToHost));ok&=nr.front()==-99&&nr.back()==-99;for(int i=0;i<q.n;i++){ok&=float(nr[i+1])==oracle[oi++];out.push_back(float(nr[i+1]));}guards.push_back(float(nr.front()));guards.push_back(float(nr.back()));out.insert(out.end(),guards.begin(),guards.end());}std::string path="trial_"+std::to_string(trial)+".bin";std::ofstream f(path,std::ios::binary);f.write((char*)out.data(),out.size()*4);f.close();printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":%.17g,\"timing_region\":\"sum3_source_frozenclock_iteration_means_complete\",\"jit_excluded\":true,\"internal_repeats\":1,\"case_internal_repeats\":[1,1,3],\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,elapsed,ok?"true":"false",out.size(),err,path.c_str(),out.size());if(!ok)return 3;}for(auto&q:s){for(auto*a:q.raw)ck(cudaFree(a));ck(cudaFree(q.nr));}}
+'''.replace('ARGS',args);(p/'study_native.cu').write_text(native)
+sha=lambda q:hashlib.sha256(q.read_bytes()).hexdigest();config={'benchmark':'cobahh','configuration_id':'cobahh_actual_zero_coefficients_threefixtures_33_257_129_steps1_1_3_v1','gpu':6,'timeout':900,'inputs_shared_verified':True,'input_prefix_count':len(fixture),'timed_regions_equivalent_verified':True,'native_behavior_known_scientific_defect':True,'exclude_from_scientific_fidelity_aggregates':True,'exclude_untouched_native_aggregates':True,'reference_provenance':{'native_source':{'path':'src/cobahh-cuda/neuron_update.h','sha256':sha(R/'src/cobahh-cuda/neuron_update.h')},'independent_witness':{'path':'src/cobahh-julia/independent_oracle.json','sha256':sha(p/'independent_oracle.json')},'classification':'Compiled zero HH-rate coefficients reproduce actual source behavior but violate bounded gating update on physiological input. Native GPU witness confirmation part of full captures; source unchanged, not native_reference_repaired.','native_original_preserved':True},'input_contract':{'cases':cases,'precision':'Float32 state/coefficients; Int8 refractory flag, artifactFloat32encoding','fixture':'Allneuronsfullyinitialized includingindex0; physiologicalone-step, source-stylepositive/rangestateone-step, symmetricconductances3steps','time_policy':'dt0.0001/t0.01 heldfixed acrossrepeats, lastspikeconstant andflagnotappliedtovoltage, exactlysource','constants':'All33preprocessedactualsourceconstants serializedincludingliteralzeros8/18; expdecayprefactors fixedsharedFloat32','outputs':'All7state/inputfields plusrefractoryflags and48rawguards; exactlastspike/flags/guards','timing':'Sum3 kerneliterationmeans, percaseiterations1/1/3, contextcomplete, reset/readbackoutside','scientific_scope':'Actual truncatedsourcecoefficient stateupdate, NOT faithfulcalibratedHHphysics/networksimulation; known-scientific-defectstratumexcluded','native_initialization_scope':'Originalhostfori=1 leavesindex0undefined; namedinitializedfixtures avoidundefineddatawithoutchangingdevicekernel'},'atol':2e-4,'rtol':2e-4,'numerical_evidence_strength':'full_actual_source_states_flags_and_independent_affine_ODE_oracle_with_known_gating_defect','models':{}}
+deps=[str(p/q)for q in ['fixtures_f32.bin','oracle_f32.bin']];config['models']['cuda']={'structured':True,'cwd':str(p),'source_dependencies':deps+[str(R/'src/cobahh-cuda/neuron_update.h')],'build':['nvcc','-std=c++17','-O3','-arch={arch}','-DHH_FIXTURE="'+str(p/'fixtures_f32.bin')+'"','-DHH_ORACLE="'+str(p/'oracle_f32.bin')+'"','study_native.cu','-o','study_native'],'command':['./study_native'],'verification_method':'full_actual_source_states_independent_affine_ODE_flags_guards','native_check_description':'Originaldevicekernelunchanged, actual33coefficients; independentaffine-ODEoracle NOT boundedHHphysicsacceptance'};config['models']['cuda_jl']={'structured':True,'cwd':str(child),'source_dependencies':deps+[str(p/'study_math.jl'),str(p/'study_common.jl')],'command':['julia','--project='+str(R/'src/_julia_ka_env'),'main.jl'],'verification_method':'full_actual_source_states_independent_affine_ODE_flags_guards'};(p/'study_config_reference.json').write_text(json.dumps(config,indent=2)+'\n');(p/'SCOPE.md').write_text('# COBAHH actual-source behavior study, known scientific defect\n\n'+json.dumps(config['input_contract'],indent=2)+'\n\nAcceptance fixedbeforeGPU: finiteallstates2e-4+2e-4rel againstindependentaffineODE andbothGPUrefs. Refractoryflags,lastspikeinput,guardbytesexact. Expectedphysiologicalm=-0.320847afteroneupdate violatesgatingprobability[0,1] owingliteralzero_lio8; thisscientificdefectisnotignoredorclassifiedframeworkunsupported. Baseline reproducesactualnativebehavior; hypotheticalcorrectedcoefficientsbelongseparatestudybacklog. OriginallargeN/longiterations/undefinedindex0CLI notcertified.\n');shutil.copy2('/tmp/prepare_cobahh.py',p/'study_generator_history.py');print({'prefix':len(fixture),'states_flags':len(oracle),'artifact_count':len(fixture)+len(oracle)+48,'predictions':predicted})
