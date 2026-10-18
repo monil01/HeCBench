@@ -259,8 +259,12 @@ def main():
                 shared_config_traits=traits.get('configuration_overrides',{}).get(cid,{})
                 class_map=shared_config_traits.get('implementation_class',{})
                 config_class=config_traits.get('implementation_class') or (class_map.get({'cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}[model]) if isinstance(class_map,dict) else class_map)
+                scoped_effort_paths=[log_root/(b+'-julia-'+alias)/'configurations'/cid/'manifest.json'
+                                     for alias in aliases
+                                     if (log_root/(b+'-julia-'+alias)/'configurations'/cid/'manifest.json').is_file()]
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
                                         'configuration_role':disp.get(cid,{}).get('role',c.get('configuration_role','primary')),
+                                        'scoped_effort_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),'scope':'Named configuration phase only; historical top-level effort is separate.'} for q in scoped_effort_paths],
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
                                         'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),
