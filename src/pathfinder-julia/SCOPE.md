@@ -1,0 +1,7 @@
+# Declared Pathfinder scope
+
+Genuine source250-thread shared-memory ghost-zone dynamicprogramming, sourcegridfloor(rows*cols/250) including idleblocks, fixedborderheight, source temporalpyramids andpartiallastbatch, two250Int32sharedarrays/2000bytes. Nativekernel unchanged. Named(1cols,251rows,h5),(33,11,5),(257,13,5),(499,8,3),(1001,11,5), source0..9 deterministiccosts. Original100000x1000h5 unmeasured. Compilewarmup before5trials; kernelpipeline+finalcontextcompletionROI only, allocations/copies/reset/captureoutside, sum5pipelineintervals60kernels/trial. NativeCLI offloadinclusiveROI separateunmeasured.
+
+Initializebothpingpongarraysand16384debugwords deterministicallyoutsideROI. Nativeuninitializeddebuguntouchedslots become0namedfixture; no devicealgorithmrepair. Preserve actualsource tx11/i0 diagnostic globalstore1 (possiblysame-indexidempotentstores; noformalracefreeclaim). Exacteveryfinalandpreviouspyramidrow/bothbuffers, fulldebugarray, readonlywall andguards, fullactualhostinputprefix vsindependentintegerCPUrow-DP+separatediagnosticindexoracle; all5exactdualreferences. No tracebackpath/crossbackendproof/globalroutingapplicationqualityclaim.
+
+HistoricalJulia row-by-row recurrence mathematicallymatchesDP butdifferent launch/temporaltiling/no sharedmapping andomitsunusednativeinstrumentation. P1mappingalignment, not establishedscientificS1. Sourcecost generationnamedcommonfixture; sourceRNGCLI sequenceunmeasured.

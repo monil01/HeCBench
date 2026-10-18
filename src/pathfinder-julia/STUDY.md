@@ -1,0 +1,27 @@
+# pathfinder: scientific and implementation observation
+
+Fullbothactualpingpongrows/full16384diagnosticmarks/readonlywall/40guards+actual18974wordinputprefix,121683Int32wordpayload pertrial. Namedonecolumn/partialspatialtile/partialtemporalbatch checkedindependentserialrowDPoracle, source250threadghostzonealgorithm/gridpreserved. No source-nativealgorithmrepair.
+
+## Reference audit
+
+HistoricalCUDAjl genuinelycomputesclamped3-neighbormin-plus recurrence rowbyrow; nativeuses250thread2x250sharedghostzonepyramids, oversizedfloor(rows*cols/250)grid, unuseddiagnosticstores. Alignmapping/work/ROI; no establishedwrongscientificrecurrenceS1. BothusecommoncostfixtureinsteadmismatchedLCG/CPPrand. OriginalPASSdoesnotprovideindependentnumericalevidence.
+
+## Numerical and performance evidence
+
+Configuration `pathfinder_source250_ghostzone_fullgrid_5shapes_temporaltail_debug_v1`, result `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T103731663279Z_pathfinder/result.json`. Five in-process trials per model; full outputs checked in every trial against both references; mean trials2–5. Warmup precedes trial1. Native kernel unchanged. This named configuration does not certify all CLI modes or physical model validity.
+
+## Cost and failures
+
+Currentreferencefirstdevicecandidate/wholeprogramPASS, CPUparseronlycheck1. KA/JACCactualattemptsrecordedfromrunlogs; JACCsawvalidatedKA. Sharedsource/fixture/science/mappingreview/waiting/metadata/coordination/cachedcontextincludedprospectiveactivitywindows, notexclusivebilledcoding; historicaloriginalcostunknown. Ametadata scriptinitiallyassertedwronglineindex before cleanup ofgeneratorcopiedmigrationcommands; noinput/sourcekernel/runchanged, repairedbeforepublication. JACCfirsthostallocationuseduppercaseJACC.Array(BaseArray), actualGPUcompilerKernelErrornon-bitstypeVector beforefirstwarmupkernel/timedtrials. BackendAPIuseslowercaseJACC.array; correctedallocationonly, samekernelmath/launch/contract, secondsourcewrapper/check. Historical CUDA.jl attempts unknown. Reference correction or documented P1 mapping phase is separate from target translation. Prospectivecached/repeatedcontextphaseactivityavailablebutnotexclusivebilledcoding; source-sizeproxyonlypartial/oldhistoryunknown.
+
+Reproduce: `python3 tools/verify_portable_julia.py --config src/pathfinder-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Full numerical and source-mapping scope
+
+All20 full121683Int32wordartifacts/prefix18974 areexactindependentrowDPoracle/dualreferences: bothactualfinalandpreviouspyramidglobalrows, full16384diagnosticmarks, readonlywalls/40guards. Juliaall500internaltemplatewordsremain0independentlychecked; thisimplementationinternalread-onlyinputisnotanadditionalnativebenchmarkoutput. Fivecases(1,251,5),(33,11,5),(257,13,5),(499,8,3),(1001,11,5), source0..9costs, partialspatialtileandtemporaltail2/1, exactintegercostnottracebackpath/tiebreakquality. IndependentCPUrowDPdoesnotreuseghostzonealgorithm. Nativeunchanged. Originalsource100000x1000h5/CPPrandsequence/offloadinclusiveCLI unmeasured.
+
+Native250threads, prev250/result250Int32staticshared2000B, oversizedsourcegridfloor(rows*cols/250)includingidleblocks,60timedkernels/trial, onlykernelpipeline+finalcontextfence. HistoricalCUDAjl row-by-row recurrenceisgenuinebutdifferentmapping(P1notS1); restoredsourceghostzone/diagnosticwork, samecostoperator. CUDAjl/KAstatic500Int32shared andJACCdynamic500Int32splitinto2halvesexplicit2000B. JACC.sharedcopies500globaltemplatewordstosharedandaddsbarrier, explicitmappingoverheadnotintrinsicframeworkperformanceclaim. All3ownframeworkdevicekernels/noCUDAdeviceextensions. Int32costarithmetic/mixedInt32+Int64Juliaindices/literalpromotions, backendregisters/rooflinebottleneckunprofiled.
+
+Sourceuninitializedunuseddiagnosticglobalwords initialized0outsideROI, sourceidempotentnonatomicglobalstores1preserved; fullobservedmarksagreenumericallybutthisisnotformalCUDAdata-race-freedomcertificate. BothglobalpingpongbuffersinitializedoutsideROI; fullactualrowoutputscomputedsourcekernel. NamedROIexcludesallocation/reset/fullD2H, notsourceoffloadinclusiveend-to-endtime.
+
+Currentreference/KAfirstcompletecandidate/process5trialsPASS. JACC2savedwrappercandidates/2wholeprogram+compilervalidationchecks,1mathematicalalgorithm: uppercaseJACC.Array returnedhostBaseArray, GPUcompilerrejectedVectornon-bitstype beforefirstwarmupkernel. LowercasebackendJACC.array correctsallocation, samekernel/launch/contract;2ndprocessall5PASS. This is observedAPI/compilervalidationfeedback, not unsupportedfeature or numericalalgorithmfailure. OneCPUparser-onlyinspectionbeforefirstGPUseries/nativebuild1. Sharedmetadatacleanupassertwronglineindexoccurredaftervalidreference, didnotmutateinput/contract/GPUcandidate; generatornowonlyregeneratesfixtures/notarchivalmigration. Phasecostsincludecommonoracle/mappingresearch/metadata/waiting/cachedcontext, notrequiredhistoricalminimumtranslationcost. Means2–5 {"cuda": 0.00025209475, "cuda_jl": 0.00025966425000000003, "ka": 0.0003983355, "jacc": 0.0006107360000000001}.
