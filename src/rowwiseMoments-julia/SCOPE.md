@@ -1,0 +1,14 @@
+# Welford populationmoments
+
+1281281281284R100 has512rows/524288elements; namedlargestcasebatch1 retains4rows/sourceperrowlength, notfull1GiB128batchclaim
+
+ExactPythonintegerdyadicmeans/populationvariances withDecimal80 reciprocal sqrt; independentofWelford/reductiontree androbusttolargeoffsetcancellation. Fourconstant-meanrowcontrols exact. NotfullGroupNormoutputs ormodelaccuracy.
+
+CUDAjlframeworkdevicekernel usesownpublicCUDAwarp/barrier/rsqrt/staticsharedAPIs. KAownkernelindices/@localmem32WData plusCUDAdeviceinterop hybrid. JACCownlinearindexdispatch+CUDAwarp/barrier/rsqrt/dynamic32WData hybrid, explicit768Blaunchresource/noJACC.sharedtemplatepreload. Same768Bdeclaredsharedstorage butstaticvslocalframeworkvsdynamiclayout, native/Juliacompilers/FMA/conversion/bounds/checks andhostdispatch remain covariates; no pureabstractioncausalranking.
+
+sum8hostWelfordlaunchbatchR10pluswholedevicecompletion divided10, setup/JIT/reset/copy/checkoutside; five trials mean2-5
+
+Prospectiveinclusivephasewindows withsharedcontext/cache/interleavedcoordination/paper/classificationreview. Sharedworkflowoverlapsphasecounters; cachedinputsubsetnotextra. Notexclusive/billedtranslationcost; sourcechars/4partialproxy/historicalunknown.
+
+
+Largestnamedcase launches4rowblocks versus512inoriginalbatch128default. This smallgrid doesnotcertifyfullGPUthroughput orsource-defaultroofline positioning. Allactualcase/componenttimes retained.
