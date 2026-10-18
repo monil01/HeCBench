@@ -1,5 +1,14 @@
 # Julia Correctness Check
 
+## Current authority: remaining-150 expansion (2026-10-18 UTC)
+
+The user reopened translation: port the 150 existing CUDA.jl entrypoints lacking KA/JACC, verify native CUDA/CUDA.jl/KA/JACC agreement, and update the paper. Frozen worklist: `.porting-state/portable_julia/batch_150.json`; three disjoint worker queues are `batch_150_<owner>.json`. This adds 147 new names and revisits three previously hardware-limited cases, yielding 447 distinct names, not 450. The prior frozen300 results remain historical evidence and are not rerun automatically. These active instructions supersede completed-cohort stop notes below.
+
+Use three workers with the existing owners; root alone commits shared/native changes and each verified KA/JACC version separately. Complete KA then JACC for each benchmark. Preserve original CUDA and CUDA.jl, fix references only with documented evidence, and retain conditional results separately. Exact contracts require exact agreement; floating-point contracts use justified predeclared tolerances. Capture complete outputs or explicitly justified property contracts, independent scientific checks, all five correctness verdicts and times; discard only first timing and average last four. Keep GPU6 serialized under the existing study lock; no use of other users' devices. Hardware limitations cannot be solved by fake outputs, changed operators or weakened acceptance.
+
+Record actual attempts, diagnostics, numerical evidence, token activity windows (unknown historical consumption remains unknown), package/toolchain versions and per-model scientific/implementation ontology. Keep the full150 denominator and unstarted/blocked states visible; numerical agreement alone is not scientific validity. The paper must distinguish the original300 census from the147-name extension and report the447-name union without double-counting. Preserve source-backed scientific categories, RQs, compact readable figures, ten-page ACM body limit and local-only ignored research. Create active joint checkpoints; do not mark complete while repairable work remains.
+
+
 ## Current authority: completed frozen-300 assessments
 
 All 300 benchmark names have reviewed scientific intent and separate CUDA.jl, KernelAbstractions and JACC records (900 model slots). The final evidence audit covers 297 matched names, 350 accepted configurations (348 primary and two explicitly corrected secondary configurations), and 7,000 checked trial artifacts, with zero hard audit issues. The three remaining names—`blas-fp4gemm`, `blas-fp8gemm` and `blas-mxfp8gemm`—have reviewed native hardware/library limitations; they are not successful ports or demonstrated framework limitations. Each model's conservative census separates 274 ordinary, 15 conditional, eight known-native-defect and three unavailable names. Do not describe this as 300 universally correct scientific applications.
