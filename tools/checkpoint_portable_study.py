@@ -48,7 +48,7 @@ for path in sorted((local / 'runs').glob('*/result.json')):
         'configuration_classification_adjudication': config.get('configuration_classification_adjudication'),
         'hardware_stratum': 'single_v100' if str(config.get('gpu',6))=='6' else 'multiple_or_other_devices',
         'untouched_single_gpu_aggregate_eligible': str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
-        'role': dispositions.get(cid, {}).get('role', 'primary'),
+        'role': dispositions.get(cid, {}).get('role', config.get('configuration_role','primary')),
         'references_agree': d.get('reference_agreement'),
         'result': str(path.relative_to(root)),
         'result_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -57,20 +57,20 @@ for path in sorted((local / 'runs').glob('*/result.json')):
                        'trials_correct': [t.get('correct') for t in m.get('trials', [])],
                        'mean_last_four_seconds': m.get('mean_seconds')}
                    for k, m in d['models'].items()}}
-primary = [r for r in records.values() if r['role'] == 'primary']
-pairs = len({r['benchmark'] for r in primary if r['matched_performance_valid']})
-versions = {k: len({r['benchmark'] for r in primary if r['variants'].get(k)})
+accepted_records = [r for r in records.values() if r['role'] in ['primary','corrected_reference_secondary']]
+pairs = len({r['benchmark'] for r in accepted_records if r['matched_performance_valid']})
+versions = {k: len({r['benchmark'] for r in accepted_records if r['variants'].get(k)})
             for k in ['ka', 'jacc']}
 strata = {
-    'known_native_scientific_defect_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']}),
-    'corrected_native_reference_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']}),
-    'multiple_or_other_device_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
-    'untouched_native_single_gpu_names': len({r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
+    'known_native_scientific_defect_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']}),
+    'corrected_native_reference_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_reference_repaired']}),
+    'multiple_or_other_device_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
+    'untouched_native_single_gpu_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
 stratum_memberships = {
-    'known_native_scientific_defect_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']},
-    'corrected_native_reference_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['native_reference_repaired']},
-    'multiple_or_other_device_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'},
-    'untouched_native_single_gpu_names': {r['benchmark'] for r in primary if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']}}
+    'known_native_scientific_defect_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']},
+    'corrected_native_reference_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_reference_repaired']},
+    'multiple_or_other_device_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'},
+    'untouched_native_single_gpu_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']}}
 strata_overlaps = {b:[name for name,names in stratum_memberships.items() if b in names]
                    for b in sorted(set().union(*stratum_memberships.values()))
                    if sum(b in names for names in stratum_memberships.values())>1}
@@ -128,6 +128,7 @@ payload = {
     'cohort': str(cohort_path.relative_to(root)), 'target_benchmarks': target,
     'frozen_baseline': str((local/'baseline_300.json').relative_to(root)),
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
+    'accepted_configuration_role_counts':{role:sum(r['role']==role for r in accepted_records) for role in ['primary','corrected_reference_secondary']},
     'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'active_work': read(local/'active_work_300.json', {}),
