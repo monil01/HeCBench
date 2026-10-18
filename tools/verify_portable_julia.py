@@ -99,6 +99,15 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
                     and row.get('nonnull_allocations_checked') is True
                     and row.get('allocation_lifecycle_checked') is True):
                 return 'runtime_allocation_lifecycle'
+            if (row.get('source_empty_kernel') is False
+                    and row.get('source_no_observable_numerical_outputs') is True
+                    and row.get('no_output_reason') == 'source_final_pointer_assertion_only'
+                    and row.get('source_final_pointer_assertion_checked') is True
+                    and row.get('pointer_graph_checked') is True
+                    and row.get('device_completion_checked') is True
+                    and row.get('nonnull_final_pointer_checked') is True
+                    and row.get('pointer_storage_bits') == 64):
+                return 'source_final_pointer_assertion_only'
             return None
         reasons = [no_output_source(row) for row in (ref, got)]
         valid = input_prefix_count == 0 and reasons[0] is not None and reasons[0] == reasons[1] and all(
