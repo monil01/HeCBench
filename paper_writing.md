@@ -786,3 +786,7 @@ Bind the compiler, headers and resolved runtime libraries for each measured conf
 ### Reproducible source archives
 
 Before staging an original-source or candidate-history directory, inspect its file inventory. Retain sources, licenses, independent CPU fixtures, generators, patches and essential runtime inputs. Keep compiled executables, object files, shared libraries, raw GPU trial captures and profiler caches in local ignored evidence; filter binary magic bytes rather than relying on filename extensions. Record their hashes and rebuild commands. Preserve existing local artifacts when removing accidental Git tracking. Paper publication commits exclude the local research tree.
+
+### Omitted contract attestations
+
+If otherwise complete immutable measurements omitted the top-level shared-input or equivalent-region attestation, use `reuse_missing_contract_attestations` with exact result/config hashes, source-boundary review and hashed input/timing evidence. Only omitted/null fields may become true; an explicit false cannot be repaired this way. Require all-four reuse, twenty valid checked JIT-excluded trials with the same explicit region, unchanged execution/configuration/tolerances/input contract, a positive serialized-input prefix and fresh saved-artifact comparisons. Preserve the original records and the resulting metadata adjudication; this is a reviewed descriptive correction, not a new GPU run or a repair of numerical failure.

@@ -80,6 +80,61 @@ def exact_input_prefix(ref, got, count):
         return {'status':'mismatch','reason':'Serialized input prefix bytes differ; output tolerance does not apply.','values':count,'bytes':nbytes}
     return {'status':'pass','values':count,'bytes':nbytes,'method':'Exact saved prefix bytes; actual kernel input use still requires source/buffer audit.'}
 
+def review_missing_contract_attestations(config, previous_config, previous_result, result_path):
+    """Review omitted descriptive attestations without changing execution or criteria."""
+    name = config.get('reuse_missing_contract_attestations')
+    if not name:
+        return None
+    if set(config.get('reuse_models', [])) != set(MODELS):
+        raise ValueError('Missing-attestation review requires immutable all-four reuse')
+    review_path = Path(name)
+    if not review_path.is_absolute():
+        review_path = ROOT / review_path
+    review = json.loads(review_path.read_text())
+    if (review.get('source_run_id') != previous_result['run_id']
+            or review.get('result_sha256') != hashlib.sha256(result_path.read_bytes()).hexdigest()
+            or review.get('config_sha256') != hashlib.sha256(result_path.with_name('config.json').read_bytes()).hexdigest()):
+        raise ValueError('Missing-attestation review must bind exact archived result/config')
+    if not review.get('reason', '').strip() or not review.get('source_boundary_review', '').strip():
+        raise ValueError('Missing-attestation review requires explicit semantic source-boundary review')
+    changed = []
+    for key in ('inputs_shared_verified', 'timed_regions_equivalent_verified'):
+        before, after = previous_config.get(key), config.get(key)
+        if before != after:
+            if before is not None or after is not True:
+                raise ValueError('Only omitted/null attestations may become true; explicit false is not repairable by metadata')
+            changed.append(key)
+    if not changed or config.get('input_prefix_count', 0) <= 0:
+        raise ValueError('Missing-attestation review requires omitted fields and full serialized-input-prefix evidence')
+    for category in ('input_evidence', 'timing_evidence'):
+        entries = review.get(category)
+        if not isinstance(entries, list) or not entries:
+            raise ValueError('Missing-attestation review requires source/audit evidence: ' + category)
+        for item in entries:
+            path = Path(item['path'])
+            if not path.is_absolute():
+                path = ROOT / path
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != item.get('sha256'):
+                raise ValueError('Missing-attestation source/audit evidence hash mismatch: ' + str(path))
+    regions = set()
+    for model in MODELS:
+        data = previous_result['models'].get(model, {})
+        rows = data.get('trials', [])
+        if (data.get('complete') is not True or data.get('timing_valid') is not True
+                or data.get('provenance_valid') is not True or len(rows) != 5):
+            raise ValueError('Missing-attestation review cannot repair invalid execution/timing/provenance')
+        for row in rows:
+            if row.get('correct') is not True or row.get('jit_excluded') is not True or not row.get('timing_region'):
+                raise ValueError('Missing-attestation review needs twenty checked, JIT-excluded explicit regions')
+            regions.add(row['timing_region'])
+    if len(regions) != 1:
+        raise ValueError('Missing-attestation review requires identical explicitly recorded timed regions')
+    return {'path': str(review_path), 'sha256': hashlib.sha256(review_path.read_bytes()).hexdigest(),
+            'source_run_id': previous_result['run_id'], 'updated_fields': changed,
+            'source_result_sha256': review['result_sha256'], 'source_config_sha256': review['config_sha256'],
+            'reason': review['reason'], 'immutable_execution_and_trials_unchanged': True,
+            'scope': 'Omitted descriptive attestations only; all saved output/input-prefix comparisons rechecked, original source/trials/times immutable.'}
+
 def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=None):
     if agreement_kind == 'no_numerical_outputs_execution_only':
         # Explicit source-reviewed no-output paths only; absence of an artifact
@@ -320,14 +375,18 @@ def verify(config):
     reuse_config=None
     reuse_configuration_transition=None
     prefix_validation_transition=None
+    contract_attestation_review=None
     if config.get('reuse_result'):
         reuse_path=Path(config['reuse_result'])
         reuse_result=json.loads(reuse_path.read_text())
         reuse_config=json.loads((reuse_path.parent/'config.json').read_text())
         if reuse_result['benchmark']!=bench or reuse_result['protocol']!=PROTOCOL or reuse_result.get('input_contract')!=config.get('input_contract'):
             raise ValueError('reuse benchmark/protocol/input contract mismatch')
+        contract_attestation_review=review_missing_contract_attestations(config,reuse_config,reuse_result,reuse_path)
         for key in ('atol','rtol','gpu','inputs_shared_verified','timed_regions_equivalent_verified'):
-            if reuse_config.get(key)!=config.get(key): raise ValueError('reuse config mismatch: '+key)
+            if reuse_config.get(key)!=config.get(key):
+                if contract_attestation_review and key in contract_attestation_review['updated_fields']:continue
+                raise ValueError('reuse config mismatch: '+key)
         old_prefix_count=reuse_config.get('input_prefix_count',0)
         if old_prefix_count!=prefix_count:
             reason=config.get('reuse_prefix_revalidation_reason')
@@ -344,6 +403,9 @@ def verify(config):
                 'old_configuration_id':reuse_config['configuration_id'],
                 'new_configuration_id':config['configuration_id'],'reason':reason.strip(),
                 'unchanged_models':[]}
+
+    if config.get('reuse_missing_contract_attestations') and reuse_result is None:
+        raise ValueError('Missing-attestation review requires an archived reuse_result')
 
     if config.get('reuse_timing_region_metadata') and (reuse_result is None or set(config.get('reuse_models',[]))!=set(MODELS)):
         raise ValueError('Timing metadata annotation requires all-four reuse before any execution')
@@ -511,7 +573,7 @@ def verify(config):
                        'review':timing_metadata_adjudication,'new_GPU_executions':0})
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and reference_agreement and all(variant_verified.values())
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
-            'numerical_agreement_kind':config.get('numerical_agreement_kind','declared_numeric_artifact_contract'),'numerical_agreement_claim':config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only','input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
+            'contract_attestation_metadata_adjudication':contract_attestation_review,'numerical_agreement_kind':config.get('numerical_agreement_kind','declared_numeric_artifact_contract'),'numerical_agreement_claim':config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only','input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
             'attempt_accounting':config.get('attempt_accounting'),'timing_region_metadata_adjudication':timing_metadata_adjudication,'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
