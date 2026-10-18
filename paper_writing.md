@@ -1,5 +1,8 @@
 # PASC27 Julia translation paper — writing instructions
 
+An unchanged empty kernel (for example dispatch) has no numerical outputs. Use `numerical_agreement_kind: no_numerical_outputs_execution_only` and `execution_only_verified`, retain source review/launch/completion and all five timing trials, and report these cases separately from numerical and property agreement. Never fabricate output arrays to obtain numerical acceptance. The runner's `execution_only_pass` is launch/completion evidence only; `variant_verified` refers to that explicitly named contract, not numerical correctness. No-output cases are excluded from numerical-contract checkpoint totals and artifact audits.
+
+
 For newly measured configurations, enable `bind_all_declared_dependencies: true` in every model specification and explicitly list executed includes, fixtures/oracles and runtime assets before the first measurement. This binds arbitrary extensions such as `.inc`, `.bin` and `.txt`; retain historical configs and their manual hash/audit evidence, and never imply that old runs had this additional automatic binding. Changing a reused model specification requires a fresh series or an explicitly reviewed provenance transition.
 
 ## Current authority: remaining-150 expansion (2026-10-18 UTC)

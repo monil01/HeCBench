@@ -227,6 +227,7 @@ def main():
             explicit=read(STATE/'status_300'/b/(model+'.json'),{})
             if evidence and any(v[1].get('native_reference_repaired') for _,v in evidence):status='conditionally_verified_native_reference_repaired'
             if evidence and any(v[1].get('native_behavior_known_scientific_defect') for _,v in evidence):status='verified_native_behavior_known_scientific_defect'
+            if evidence and all(v[1].get('numerical_agreement_kind')=='no_numerical_outputs_execution_only' for _,v in evidence):status='execution_only_verified'
             if explicit.get('status') and not evidence:status=explicit['status']
             events=[]
             sources=[(log/'compiler_attempts.jsonl',False),(STATE/'failure_events_300'/(b+'.jsonl'),True)]
@@ -269,7 +270,7 @@ def main():
                                         'configuration_role':disp.get(cid,{}).get('role',c.get('configuration_role','primary')),
                                         'numerical_agreement_kind':c.get('numerical_agreement_kind','declared_numeric_artifact_contract'),
                                         'verification_contract':c.get('verification_contract'),
-                                        'raw_output_identity_claim':False if c.get('numerical_agreement_kind')=='property_equivalence_not_identical_raw_values' else None,
+                                        'numerical_agreement_claim':c.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only','raw_output_identity_claim':False if c.get('numerical_agreement_kind') in ('property_equivalence_not_identical_raw_values','no_numerical_outputs_execution_only') else None,
                                         'scoped_effort_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),'scope':'Named configuration phase only; historical top-level effort is separate.'} for q in scoped_effort_paths],
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
@@ -288,7 +289,7 @@ def main():
                                         'implementation_ontology_override':config_traits or None,
                                         'shared_configuration_traits_override':shared_config_traits or None,
                                         'configuration_ontology_semantics':'Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.',
-                                        'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('property_score_artifacts_with_raw_structured_state_records' if c.get('numerical_agreement_kind')=='property_equivalence_not_identical_raw_values' else 'aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
+                                        'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('execution_only_no_numerical_outputs' if c.get('numerical_agreement_kind')=='no_numerical_outputs_execution_only' else 'property_score_artifacts_with_raw_structured_state_records' if c.get('numerical_agreement_kind')=='property_equivalence_not_identical_raw_values' else 'aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
             per_model=traits.get('implementation_traits',{}).get(model)
             record={'schema_version':2,'study':f'julia_abstractions_{population}_v2','benchmark_id':b,'implementation_model':model,
                     'status':status,'scientific_intent_record':f'../../domains/{b}.json',

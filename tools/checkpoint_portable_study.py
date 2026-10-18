@@ -49,7 +49,7 @@ for path in sorted((local / 'runs').glob('*/result.json')):
         'native_behavior_known_scientific_defect': bool(config.get('native_behavior_known_scientific_defect')),
         'configuration_classification_adjudication': config.get('configuration_classification_adjudication'),
         'hardware_stratum': 'single_v100' if str(config.get('gpu',6))=='6' else 'multiple_or_other_devices',
-        'untouched_single_gpu_aggregate_eligible': str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
+        'untouched_single_gpu_aggregate_eligible': config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only' and str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
         'role': dispositions.get(cid, {}).get('role', config.get('configuration_role','primary')),
         'references_agree': d.get('reference_agreement'),
         'result': str(path.relative_to(root)),
@@ -59,7 +59,8 @@ for path in sorted((local / 'runs').glob('*/result.json')):
                        'trials_correct': [t.get('correct') for t in m.get('trials', [])],
                        'mean_last_four_seconds': m.get('mean_seconds')}
                    for k, m in d['models'].items()}}
-accepted_records = [r for r in records.values() if r['role'] in ['primary','corrected_reference_secondary']]
+execution_only_records = [r for r in records.values() if r['role'] in ['primary','corrected_reference_secondary'] and r['numerical_agreement_kind']=='no_numerical_outputs_execution_only']
+accepted_records = [r for r in records.values() if r['role'] in ['primary','corrected_reference_secondary'] and r['numerical_agreement_kind']!='no_numerical_outputs_execution_only']
 pairs = len({r['benchmark'] for r in accepted_records if r['matched_performance_valid']})
 versions = {k: len({r['benchmark'] for r in accepted_records if r['variants'].get(k)})
             for k in ['ka', 'jacc']}
@@ -132,8 +133,9 @@ payload = {
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
     'accepted_configuration_role_counts':{role:sum(r['role']==role for r in accepted_records) for role in ['primary','corrected_reference_secondary']},
     'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
+    'execution_only_validated_names':sorted({r['benchmark'] for r in execution_only_records if r['matched_performance_valid']}),
     'explicit_property_equivalence_names':sorted({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['numerical_agreement_kind']=='property_equivalence_not_identical_raw_values'}),
-    'matched_counter_meaning':'Four-model accepted named contracts; property equivalence is not identical raw numerical values.',
+    'matched_counter_meaning':'Four-model accepted named numerical/property contracts; property equivalence is not identical raw values. No-output execution-only cases excluded and listed separately.',
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'active_work': read(local/f'active_work_{target}.json', {}),
     'active_work_path': str((local/f'active_work_{target}.json').relative_to(root)),

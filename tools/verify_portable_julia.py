@@ -79,7 +79,21 @@ def exact_input_prefix(ref, got, count):
         return {'status':'mismatch','reason':'Serialized input prefix bytes differ; output tolerance does not apply.','values':count,'bytes':nbytes}
     return {'status':'pass','values':count,'bytes':nbytes,'method':'Exact saved prefix bytes; actual kernel input use still requires source/buffer audit.'}
 
-def compare_records(ref, got, atol, rtol, input_prefix_count=0):
+def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=None):
+    if agreement_kind == 'no_numerical_outputs_execution_only':
+        # Explicit empty-kernel contract; never infer numerical agreement from
+        # absence of artifacts or from a target's own PASS.
+        valid = input_prefix_count == 0 and all(
+            row.get('source_empty_kernel') is True and row.get('execution_checked') is True
+            and row.get('correct') is True and row.get('checked_values') == 0
+            and not row.get('output_artifact') and row.get('values') in (None, [])
+            and row.get('numerical_outputs') in (None, [])
+            for row in (ref, got))
+        return {'status': 'execution_only_pass' if valid else 'unverified',
+                'checked_values': 0, 'max_abs_error': None, 'max_rel_error': None,
+                'numerical_agreement_claim': False,
+                'meaning': 'Reviewed empty source kernel and checked launch/completion only; no numerical outputs.'}
+
     prefix_check=exact_input_prefix(ref,got,input_prefix_count)
     if prefix_check['status'] not in ('pass','not_requested'):return {'status':prefix_check['status'],'reason':prefix_check['reason'],'input_prefix_check':prefix_check}
     a=ref.get('output_artifact'); b=got.get('output_artifact')
@@ -421,8 +435,10 @@ def verify(config):
         comparisons[model]={}
         for ref in ('cuda','cuda_jl'):
             a=results[ref].get('trials',[]); b=results[model].get('trials',[])
-            checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0)) for x,y in zip(a,b)]
-            if len(checks)==5 and all(x['status']=='pass' for x in checks):
+            checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0),config.get('numerical_agreement_kind')) for x,y in zip(a,b)]
+            if len(checks)==5 and all(x['status']=='execution_only_pass' for x in checks):
+                status='execution_only_pass'
+            elif len(checks)==5 and all(x['status']=='pass' for x in checks):
                 status='direct_artifact_pass' if all(x.get('output_artifact') and y.get('output_artifact') for x,y in zip(a,b)) else 'numeric_summary_pass'
             elif any(x['status']=='mismatch' for x in checks): status='mismatch'
             elif results[ref]['status']=='native_check_pass' and results[model]['status']=='native_check_pass': status='independent_native_checks_only'
@@ -430,12 +446,12 @@ def verify(config):
             comparisons[model][ref]={'status':status,'trials':checks}
     ref_a=results['cuda'].get('trials',[])
     ref_b=results['cuda_jl'].get('trials',[])
-    reference_checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0)) for x,y in zip(ref_a,ref_b)]
+    reference_checks=[compare_records(x,y,config.get('atol',1e-6),config.get('rtol',1e-5),config.get('input_prefix_count',0),config.get('numerical_agreement_kind')) for x,y in zip(ref_a,ref_b)]
     reference_disagreement=any(x['status']=='mismatch' for x in reference_checks)
-    reference_agreement=(len(reference_checks)==5 and all(x['status']=='pass' for x in reference_checks))
+    reference_agreement=(len(reference_checks)==5 and all(x['status']==('execution_only_pass' if config.get('numerical_agreement_kind')=='no_numerical_outputs_execution_only' else 'pass') for x in reference_checks))
     variant_verified={}
     for model in ('ka','jacc'):
-        comparisons_ok=all(v['status'] in ('direct_artifact_pass','numeric_summary_pass') for v in comparisons[model].values())
+        comparisons_ok=all(v['status'] in ('direct_artifact_pass','numeric_summary_pass','execution_only_pass') for v in comparisons[model].values())
         variant_verified[model]=reference_agreement and comparisons_ok and all(results[m]['status']=='native_check_pass' for m in ('cuda','cuda_jl',model))
     timing_metadata_adjudication=review_missing_timing_region(config,reuse_result,reuse_config,
         reuse_path if reuse_result is not None else None,results)
@@ -446,7 +462,7 @@ def verify(config):
                        'review':timing_metadata_adjudication,'new_GPU_executions':0})
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and reference_agreement and all(variant_verified.values())
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
-            'input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
+            'numerical_agreement_kind':config.get('numerical_agreement_kind','declared_numeric_artifact_contract'),'numerical_agreement_claim':config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only','input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
             'attempt_accounting':config.get('attempt_accounting'),'timing_region_metadata_adjudication':timing_metadata_adjudication,'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
