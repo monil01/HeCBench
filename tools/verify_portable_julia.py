@@ -282,6 +282,9 @@ def verify(config):
                 'new_configuration_id':config['configuration_id'],'reason':reason.strip(),
                 'unchanged_models':[]}
 
+    if config.get('reuse_timing_region_metadata') and (reuse_result is None or set(config.get('reuse_models',[]))!=set(MODELS)):
+        raise ValueError('Timing metadata annotation requires all-four reuse before any execution')
+
     for model in MODELS:
         spec=config.get('models',{}).get(model)
         if not spec:
