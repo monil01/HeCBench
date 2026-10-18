@@ -197,6 +197,14 @@ def main():
         traits=read(STATE/'traits'/(b+'.json'),{})
         # A completed operator audit supersedes an earlier header-level review.
         audited_intent=traits.get('scientific_intent')
+        classification=traits.get('scientific_classification')
+        if not audited_intent and classification and 'provisional' not in classification.get('review_status','provisional'):
+            audited_intent={**classification,
+                'primary_family':classification['broad_family'],
+                'scientific_task':classification.get('mathematical_operator'),
+                'evidence':classification.get('source_evidence',[]),
+                'classification_method':'Source-reviewed scientific_classification fields normalized from local traits; no name-derived promotion.',
+                'classification_source':str((STATE/'traits'/(b+'.json')).relative_to(ROOT))}
         if audited_intent and 'provisional' not in audited_intent.get('review_status','provisional'):
             intent=audited_intent
         else:
