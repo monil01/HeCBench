@@ -51,6 +51,35 @@ def usage_windows(benchmark,model):
             w['marker_lag_derived_from_archived_timestamps']=True
     return windows
 
+# Exact source-line reviews retain raw events while correcting attribution and
+# grouping duplicate descriptions. Never deduplicate by textual similarity.
+def load_event_reviews():
+    path=OUT/'event_review_overrides.json';document=read(path,{})
+    reviews={}
+    for review in document.get('entries',[]):
+        source=ROOT/review['source_path'];number=review['line']
+        lines=source.read_text().splitlines()
+        if type(number) is not int or number<1 or number>len(lines):
+            raise ValueError('Event review line missing: '+str(source))
+        if hashlib.sha256(lines[number-1].strip().encode()).hexdigest()!=review['source_line_sha256']:
+            raise ValueError('Event review source hash mismatch: '+str(source)+':'+str(number))
+        if review['canonical_origin_model'] not in [*MODELS,'cuda','shared_infrastructure']:
+            raise ValueError('Unknown reviewed origin')
+        key=(review['source_path'],number)
+        if key in reviews:raise ValueError('Duplicate event review selector')
+        reviews[key]=review
+    return reviews
+def apply_event_review(event,reviews):
+    review=reviews.get((event['evidence_path'],event['evidence_line']))
+    if review:
+        event['origin_model']=review['canonical_origin_model']
+        if 'is_failure' in review:
+            if type(review['is_failure']) is not bool:raise ValueError('Review failure flag must be boolean')
+            event['is_failure']=review['is_failure']
+        event['canonical_observation_id']=review['canonical_observation_id']
+        event['exact_source_line_review']=review
+    return event
+
 # Preserve equivalent historical counter spellings and expose conflicts rather
 # than silently interpreting absent canonical keys as absent evidence.
 EFFORT_ALIASES={
@@ -136,6 +165,7 @@ def normalize_traits(t):
 
 def main():
     now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    event_reviews=load_event_reviews()
     baseline=read(STATE/'baseline_300.json');cohort=read(STATE/'batch_300.json')
     selected=set(cohort['benchmarks']);base={x['bench']:x for x in baseline['benchmarks']}
     adjud=read(PAPER/'research/data/adjudications.json',{});disp=read(PAPER/'research/data/configuration_dispositions.json',{})
@@ -214,9 +244,10 @@ def main():
                     if code not in CODES:continue
                     item={'event_id':e.get('event_id') or hashlib.sha256((str(file)+':'+str(line)).encode()).hexdigest()[:20],
                           'benchmark_id':b,'implementation_model':model,'taxonomy_code':code,
-                          'phase':e.get('phase','unspecified'),'origin_model':e.get('origin_model') or ('shared_infrastructure' if str(e.get('phase','')).startswith('shared_') else model),'is_failure':code not in ['N3','P1'] and e.get('is_failure',True) is not False and not e.get('diagnostic_only',False) and e.get('in_scope',True) is not False,
+                          'phase':e.get('phase','unspecified'),'origin_model':e.get('origin_model') or ('shared_infrastructure' if str(e.get('phase','')).startswith('shared_') else model),'is_failure':code not in ['N3','P1'] and e.get('is_failure',e.get('failure',True)) is not False and not e.get('diagnostic_only',False) and e.get('in_scope',True) is not False,
                           'evidence_path':str(file.relative_to(ROOT)),'evidence_line':line,
                           'raw_event':e,'classification_basis':'explicit event code or explicit coded status; no count imputation'}
+                    item=apply_event_review(item,event_reviews)
                     events.append(item);all_events.append(item)
             if model=='cuda_jl' and not evidence and not explicit.get('status') and any(e['taxonomy_code']=='S1' for e in events):
                 status='reference_blocked'
@@ -320,14 +351,15 @@ def main():
         model='cuda' if raw.get('implementation_model') in ['cuda','native_cuda'] else 'shared_infrastructure'
         standalone.append({**item,'event_id':raw.get('event_id') or hashlib.sha256((item['evidence_path']+':'+str(item['evidence_line'])).encode()).hexdigest()[:20],
             'implementation_model':model,'origin_model':raw.get('origin_model',model),'taxonomy_code':code,'phase':raw.get('phase','unspecified'),
-            'is_failure':code not in ['N3','P1'] and raw.get('is_failure',True) is not False and not raw.get('diagnostic_only',False) and raw.get('in_scope',True) is not False,
+            'is_failure':code not in ['N3','P1'] and raw.get('is_failure',raw.get('failure',True)) is not False and not raw.get('diagnostic_only',False) and raw.get('in_scope',True) is not False,
             'classification_basis':'Explicit standalone native/shared event; no target failure imputation'})
+    standalone=[apply_event_review(e,event_reviews) for e in standalone]
     origin_population=[*all_events,*standalone]
     copied_origin_groups={origin_fingerprint(e) for e in origin_population if e['origin_model']!=e['implementation_model']}
     origin_events={}
     for event in origin_population:
         fp=origin_fingerprint(event)
-        key=('copied_origin',fp) if fp in copied_origin_groups else ('event_id',event['event_id'])
+        key=('reviewed_observation',event['canonical_observation_id'],event['taxonomy_code']) if event.get('canonical_observation_id') else ('copied_origin',fp) if fp in copied_origin_groups else ('event_id',event['event_id'])
         origin_events.setdefault(key,event)
     summary={'generated_at':now,'target_benchmarks':300,'implementation_slots':900,
              'status_counts':{m:dict(Counter(r['status'] for r in statuses if r['model']==m)) for m in MODELS},
@@ -338,7 +370,7 @@ def main():
              'legacy_summary_aliases':{'provisional_family_counts':'Compatibility alias for scientific_family_counts; review_status fields determine actual review depth.'},
              'observed_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in all_events if e['implementation_model']==m)) for m in MODELS},
              'observed_origin_taxonomy_events':{m:dict(Counter(e['taxonomy_code'] for e in origin_events.values() if e['origin_model']==m)) for m in [*MODELS,'cuda','shared_infrastructure']},
-             'origin_event_semantics':'Explicit origin_model overrides affected target; shared_* phases grouped as shared infrastructure. Repeated reference notifications deduplicated by benchmark/origin/code/phase/cause/check/candidate. Partial histories, not total rates.',
+             'origin_event_semantics':'Explicit origin_model overrides affected target; shared_* phases grouped as shared infrastructure. Exact source-line reviews group duplicate observations/correct origins; raw failure:false is honored. Otherwise copied reference notifications use benchmark/origin/code/phase/cause/check/candidate. Process effort remains separate; partial histories, not total rates.',
              'recorded_shared_infrastructure_events':len(all_infrastructure_events),'recorded_native_reference_events':len(all_reference_events),'failure_history_totals_known':False,'all_300_verified':all(sum(1 for r in statuses if r['model']==m and r['status']=='verified_named_configuration')==300 for m in MODELS),
              'meaning':'Complete inventory denominator; current outcomes, unknown records and partial histories stay explicit.'}
     write(OUT/'index.json',{'schema_version':2,'summary':summary,'records':statuses})
