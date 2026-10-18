@@ -1,0 +1,25 @@
+# mis: scientific and implementation observation
+
+Allactualinitialpriorityandtimedfinalstatusfor130139vertices across7graphs inclshipped124651vertexCSR; fullarraysnotsetsizeonly, exactindependentFloat32priority/totalordergreedy +independence/maximality. Exactrawdualrefall1325160Int32words/prefix532340. Allthreehybrid_device_intrinsicsfromforeignvolatileLLVM; ownframeworkdispatch, no CUDAhostfallbackKA/JACC. Nativeasyncprotocolretained/notproofrace-freedom/globalprogress/crossbackendcapability. Sourceweightsunused andmaximalnotmaximumcardinality.
+
+## Reference audit
+
+HistoricalJulia is genuineECL-MIS butcheckedInt32(Float32ratio) throws whereC++intcasttruncates. Actualpath3firstvertexratio71.999992 andGPUKernelException; -g2replaybacktraceexplicitInt32float.jl923→original_main.jl72. Alignunsafe_trunc; sourcevolatileUInt8statusprotocol restoredthroughBH-reusedLLVMwrappers. OriginalnativeGPUalgorithmunmodified. Twoactualold-sourceGPUdiagnosticprocessesoneuniqueunderlyingcastexception, distinctfromoneauthoredrestoredreferencecandidate/process.
+
+## Numerical and performance evidence
+
+Configuration `mis_asyncvolatile_exactgreedy_sevengraphs_internet_3repeats_v1`, result `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T093442721126Z_mis/result.json`. Five in-process trials per model; full outputs checked in every trial against both references; mean trials2–5. Warmup precedes trial1. Native kernel unchanged. This named configuration does not certify all CLI modes or physical model validity.
+
+## Cost and failures
+
+Currentauthoredreference/KA/JACC eachfirstcompletecandidate/processpass. WorkflowalsoincludesTWOactualGPUdiagnosticprocessesononeimmutablehistoricalsourcecandidate(defaultdebugand-g2sameunderlyingR1castexception), onefeedbackrepair oldcast→unsafe_trunc beforedraftingnewreference. Thesechecks/costskeptseparatefromunknownoriginaltranslationhistory andnewcandidatefirstpass. TwoCUDAcompile-onlyPTXreflectionchecks(entryonlythenfullmodule) identifyactualld/st.volatile.global.b8, noGPUkernelrun/retiming. No failednewtargetcompiler/runtimeattempt. Prospectivewindowsinclude cachedcontext/science/Fractiongreedy/dataparsing/debug/ABI/codegeninspection/waiting/coordination, notexclusivebilledcoding. Historical CUDA.jl attempts unknown. Reference correction or documented P1 mapping phase is separate from target translation. Prospectivephaseactivitywindowsavailable/cachedcontext/source/discretemath/actualold-sourceprobes/PTX/waiting/coordination/metadata included; notexclusivebilledcoding. Unknownoldoriginalsessioncost/source-sizeproxyonlypartial.
+
+Reproduce: `python3 tools/verify_portable_julia.py --config src/mis-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Full discrete accuracy and actualvolatilefeature
+
+All20actualcaptures bitidentical1325160Int32words/prefix532340/260278priority+membership values and224guards, fullactualCSRreadonlybytes. IndependentFraction-certifiedFloat32RNEprioritydivision+UInt32hash, sequentialdescendingtotalprioritygreedy, separateactual-outputindependence/maximality. Sevenselectedcounts[2,33,1,112,1030,2462,73269], includingactualshippedinternet124651v387240e sourceweightsunused. Maximalnotmaximumcardinality/noapplicationnetworkqualityclaim. ActualtimedfinalstatescapturedbeforeexplicituntimeddeterministicpriorityreplayinSeparatebuffer, notclaimedoriginaltimedintermediate.
+
+RawcustomLLVMglobali8volatileall3versions→hybrid_device_intrinsics, ownframeworkdispatch/pureintegerstatusalgorithm/nohiddenCUDAhostfallback. CUDAjlcompile-onlyfullmodulePTXcontainsld.volatile.global.b8/st.volatile.global.b8; entryonlyinitialreflectionomitscallee bodies notfailure. BHLLVMhelpermethodreused/generalizedUInt8align1, sourcehashpinned, notindependentfirstprincipletranslation. LLVMPTXhelpercallsvisiblebeforebackendlink, finalSASSinlining/physicalregisterusageunmeasured, nobottleneckattribution. Volatilenotatomic/fence, finiteV100checksnotformalmemorymodel/globalprogress/crossbackendproof. Float32initpriorityinsideROI vsfindminsintegerstageprecisions separated.
+
+Currentauthoredreference/KA/JACCeachfirstcandidate/processPASS, aftertwoactuallegacy-sourceGPUprobes(defaultdebugand-g2)oneuniqueprioritycastR1observationsameimmutableoldcandidate; -g2backtraceInt32float.jl923→original_main.jl72. Thesearecurrent-studydiagnosticcosts, notunknownoriginalsessionhistory orfailednewKA/JACCcandidates. Onechecked-to-unsafe_truncrepairprecedednewcandidate. TwoCUDAcodegen-onlyreflections(entryonly/fullmodule) noGPUlaunch/retiming. No falsewholebenchmarkfirstprogramsuccessclaim. Fiveoutertrials/checkallarrays;source3internalrepeatmean/namedvsCLI100,sumpipeline7casemeans {"cuda": 0.00027284058333333335, "cuda_jl": 0.0003263676666666667, "ka": 0.000351829, "jacc": 0.00040742375} seconds meantrials2–5.
