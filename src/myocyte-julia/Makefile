@@ -1,14 +1,2 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
-.PHONY: main clean run
-
-main:
-	@true
-
-clean:
-	rm -rf __pycache__ output.txt
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 100
+run:
+	flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6 julia --project=../_julia_ka_env main.jl
