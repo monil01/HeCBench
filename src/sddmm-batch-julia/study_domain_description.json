@@ -1,0 +1,121 @@
+{
+  "scientific_intent": {
+    "primary_family": "linear_algebra",
+    "primary_domain": "strided_batched_sampled_dense_dense_matrix_product_CSR_output",
+    "review_status": "source_reviewed",
+    "scientific_task": "Compute selected entries of each batched dense product at the sparse CSR mask, preserving row-major dense layout and perbatchCSR/value strides.",
+    "mathematical_operation": "C_i=alpha*(A_i B_i) sampled at structure(C_i)+beta*C_i; selectedalpha1beta0,Float32/default/NONTRANSPOSE, CSRzero-basedsorteduniqueindices. Namedprimary repeatsCSRstructureacrossbatches matching sourceinitializer; differentdensecontentperbatch.",
+    "discretization": "Fivecases batches1/3/4/32/2, dimensions1x1x1,17x11x19,33x17x35,32x33x31,1x7x9; nnz1/37/67/64/4 perbatch,2436sampledoutputs total,42batches. Odd/nonsquare/emptyrow/singleRowcontrols.",
+    "accuracy_requirements": "All2436sampledoutputs exact vsinteger-scaledfullouterproductoracle, fullactualGPUdense/CSRinputs/initialCecho and400guards; all20artifacts160079Float64losslesswordsbitidenticalbothreferences. Independentdot vsouterproductlooporder checks, unchangedatolrtol0.",
+    "input_size_regime": "Compact namedmatrixshapes withsourcebatch32retained; original1024/4096CLI/randominputs/repeat1000 anddiverseCSRoffsetsdomainnotcertified.",
+    "precision_sensitivity": "Float32storage andtypedcuSPARSEcomputeAPI; vendoraccumulationinternalsopaque. Aquarters/Beighths withabsolutesumunits1/32<2^24 givesexactproducts/partialsumorders inselectedFloat32domain. Genericfloatrounding/largeKnotcertified.",
+    "community_use_case": "Sampled matrix products are a sparse linear-algebra building block; source isNVIDIA batched cuSPARSEexample, noapplication-domain provenance inferred. Graph/attention connections would be illustrative uses, not validated application workloads.",
+    "description": "HistoricalJulia mcpralias unrelatedtosampleddenseproduct isarchived andrestored. Nativecontainszeroauthoreddevicekernels; CUDAjl/KA/JACCareexplicitvendorlibraryorchestration usingtheactualsamecuSPARSE12001DSO/HOSTmode/stream0. NoKA/JACCdevicekerneltranslation/JIT/portabilityclaim.",
+    "provenance": "Source main.cu APIsequence andutils.h initializer/oracle. CPUsourcewitness repeatsCSRstructurebecause srand123 reseed, whilevaluesvary. Broaderdistinct-offsetcontrols failnativeandJuliavendor12001 plusJuliavendor12510; allrawcaptures/hypothesis preserved, notframeworkfailure.",
+    "source_evidence": [
+      {
+        "path": "src/sddmm-batch-cuda/main.cu",
+        "sha256": "82f5a623d478327684e8073c86960c07010a5babb99691b43bb40c29ea2adb6b"
+      },
+      {
+        "path": "src/sddmm-batch-cuda/utils.h",
+        "sha256": "05444d309e9be3bc437ca9529e5adac22c3cd53ddefbaeab0ffa6477e1af92e6"
+      },
+      {
+        "path": "src/sddmm-batch-julia/reference_history/original_main.jl",
+        "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375"
+      },
+      {
+        "path": "src/sddmm-batch-julia/source_pattern_witness.cpp",
+        "sha256": "b4612c4e6cba7761566970d8daccf94b0233eb42d1978d1627b0786070d3487f"
+      }
+    ]
+  },
+  "primary_motif": "vendor_strided_batched_sampled_dense_matrix_products_CSR_mask",
+  "storage_precision": [
+    "Float32_denseA_B_sparseCvalues",
+    "Int32_CSRoffsets_columns",
+    "Float64_lossless_artifact_encoding_only"
+  ],
+  "compute_precision": [
+    "Float32_cuSPARSE_typed_compute_API_vendorinternalsopaque",
+    "Independentexactinteger_scaled_units1_over32_oracle_notGPU"
+  ],
+  "synchronization": [
+    "SourceownedcuSPARSEHOSTmode/legacy0stream",
+    "Wholedevicecompletion before/after5computeAPIcalls percase",
+    "Noauthoredkernelbarriers/sharedmemory/atomics"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "SameactualcuSPARSE12001DSO andCreateDnMat/stridedbatch/CreateCSR/CSRbatch/bufferquery/preprocess/compute API, sourceROWlayout/F32/default/HOST0/stream0. Source-shapedCSRpatternrepeatedperbatch/densecontentdistinct. Noauthoreddevicekernelsall4; libraryinternalalgorithmopaque."
+  },
+  "algorithm": "Preallocate/copy5guardedarrays, createownedvendorhandle+rowmajorA/BdescriptorswithfullstridesandCSRbatcheddescriptor, queryworkspace/preprocessoutsideROI. ResetC/readactualinitialCoutside, execute5SDDMMcalls+wholedevicecompletion, fullactualGPUA/B/offsets/columns/output/initialC+guardsreadback andoracleoutside.",
+  "work_item_mapping": "Zeroauthoreddevicekernelsall4; vendorinternalgrid/work-items/registers/kernelcountunobserved. Hostorchestrationperfixture performs5SDDMMAPIcalls,25total/trial, noassuming25GPUkernels.",
+  "layout": "ArowmajorMxK/fullbatchstrideM*K,BrowmajorKxN/fullstrideK*N,CSRoffsetsstrideM+1/columnsandvaluesstrideNNZ,0-basedInt32sorteduniquerows. Fivearrays8typedwordguardsbefore/afterpayload; CresettononzeroinitialoutsideROI thenbeta0overwrites. Actualfullinputechoesandguardbitchecks.",
+  "launch_geometry": "25cuSPARSESDDMMAPIcalls/trial,5percase; libraryinternalGPUkernels/grid/resourcesopaque. NoauthoredKA/JACC/CUDAjlGPUkernelorJIT. Exactsourcebatch32 retainednamed32x33x31case.",
+  "verification_contract": "All20full160079Float64wordartifactsbitidentical:78637prefix+81442fulloutput/inputecho/guardwords;2436sampledoutputs/42distinctdensebatchpairs/sharedCSRpattern percase/400guardwords. Independentinteger-scaledfulldenseouterproduct+CSRselection vsfixtureinnerdot, atolrtol0. Prior15diverseoffsetvendorfailedcaptures remainstrictfailures, source-shapedv2notretroactivepass.",
+  "keyconfounds": [
+    "Vendorlibrarydelegationall4; zeroauthoredGPUkernels/JIT, comparisoncovershostorchestrationnotframeworkdevicecompilerperformance",
+    "Source-shapedrepeatedCSRpattern accepted, differentrowoffsetsfailedactualvendor12001/12510; notgeneralbatchedCSRcertification/notframeworkunsupported",
+    "SameactualsystemcuSPARSE12001binary/hash/dladdr/HOST0/legacy0 all4; algorithm/accumulator/resourcesopaque",
+    "Compactmatrices/batch32namedshape, original1024/4096andrepeat1000unmeasured; hostAPIdispatchoverheadmaymatterbutunprofiled",
+    "Exactrationaldomainallproducts/partialsumssafeFloat32; noconclusiongeneralrounding/largeKaccuracy",
+    "SourceNNVIDIAvendorAPIsnoapplicationprovenance; noGNN/attentionaccuracyclaim",
+    "NVCCversioned.soargumentbuildT1 fixedlinker-L/-l; noauthoredGPUcompilerrejection",
+    "BroadvariedoffsetcontrolN1originvendor onnative/Julia, followedexplicitnewsource-shapedscope; no tolerancechange/failureerasure",
+    "SharedvendorFFI/oracles/authoredonceinreferencephase, KA/JACCentrypointreuse; observedusageordered/marginal/nonexclusivecachedcontextnotcoldframeworkcost"
+  ],
+  "boundary_rounding_policy": "0-basedCSRrowoffsets/columnindices, sorteduniquecolumns, allbatchespercaseonecommonstructureassourceinit_matrix reseed. Float32alpha1beta0, Cinitialnonzero ignoredmathematically, inputCstillcapturedbeforeeachtrial. Exactbinaryrationaldotdomain, noarbitrarytolerance. Zerooutputsacceptedonlymathematicalzeros; allguards exact.",
+  "support_boundary": "Compact namedmatrixshapes withsourcebatch32retained; original1024/4096CLI/randominputs/repeat1000 anddiverseCSRoffsetsdomainnotcertified. Vendoronlyorchestration, notportableauthoreddevicekernels; source-shapedrepeatedCSRpatternrequiredforcurrentcertifiedcase. Distinctoffsetsfailedvendorcontrols preservedandexcludedprimaryaggregates.",
+  "interpretation": "Forusersofsampledmatrixproducts, matrixlayout, CSRrowstructure/batchstrides andactualvendorversion dominate the supportedoperatorcontract. Frameworksserveaslibraryorchestrators here, so this casecannotrankKA/JACCdevicekernelabstractions. IndependentvariedCSRcontrols exposeasharedvendorboundaryhiddenbyoriginalreseededpattern; keepthatfailedbroaderdomainvisible besidehonestnarrowprimarysuccess.",
+  "reference_class": "vendor_library_interop",
+  "ka_class": "vendor_library_interop",
+  "jacc_class": "vendor_library_interop",
+  "resource_policy": {
+    "cuda_jl": {
+      "authored_device_kernel_entrypoints": 0,
+      "device_kernel_candidates": 0,
+      "device_jit_process_checks": 0,
+      "vendor_GPU_kernel_count": null,
+      "vendor_accumulator_and_resources": "opaque/unprofiled",
+      "library": "cuSPARSE12001",
+      "shared_bytes": "vendorinternalunknown_notauthored",
+      "source_reviewed": true
+    },
+    "ka": {
+      "authored_device_kernel_entrypoints": 0,
+      "device_kernel_candidates": 0,
+      "device_jit_process_checks": 0,
+      "vendor_GPU_kernel_count": null,
+      "vendor_accumulator_and_resources": "opaque/unprofiled",
+      "library": "cuSPARSE12001",
+      "shared_bytes": "vendorinternalunknown_notauthored",
+      "source_reviewed": true
+    },
+    "jacc": {
+      "authored_device_kernel_entrypoints": 0,
+      "device_kernel_candidates": 0,
+      "device_jit_process_checks": 0,
+      "vendor_GPU_kernel_count": null,
+      "vendor_accumulator_and_resources": "opaque/unprofiled",
+      "library": "cuSPARSE12001",
+      "shared_bytes": "vendorinternalunknown_notauthored",
+      "source_reviewed": true
+    }
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAhostdeviceallocation/copy/completion; explicitCUDA-specificcuSPARSEhostABIallphases/sameactualDSO, libraryinteropnotportabledevicekernel",
+      "Zeroauthoredframeworkdevicekernels; loadingKA/JACCpackage doesnotexercisedevicecompilerorprovefeaturecapability"
+    ],
+    "ka": [
+      "CUDAhostdeviceallocation/copy/completion; explicitCUDA-specificcuSPARSEhostABIallphases/sameactualDSO, libraryinteropnotportabledevicekernel",
+      "Zeroauthoredframeworkdevicekernels; loadingKA/JACCpackage doesnotexercisedevicecompilerorprovefeaturecapability"
+    ],
+    "jacc": [
+      "CUDAhostdeviceallocation/copy/completion; explicitCUDA-specificcuSPARSEhostABIallphases/sameactualDSO, libraryinteropnotportabledevicekernel",
+      "Zeroauthoredframeworkdevicekernels; loadingKA/JACCpackage doesnotexercisedevicecompilerorprovefeaturecapability"
+    ]
+  }
+}
