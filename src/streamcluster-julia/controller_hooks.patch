@@ -1,0 +1,73 @@
+--- original/streamcluster.cu
++++ source_bridge/streamcluster.cu
+@@ -742,6 +742,7 @@
+     fprintf(stderr, "error opening %s\n",outfile);
+     exit(1);
+   }
++  study_final(centers,centerIDs);
+   int* is_a_median = (int*)calloc( sizeof(int), centers->num );
+   for( int i =0 ; i< centers->num; i++ ) {
+     is_a_median[centers->p[i].assign] = 1;
+@@ -817,6 +818,7 @@
+     localSearch(&points,kmin, kmax,&kfinal);
+ 
+     fprintf(stderr,"finish local search\n");
++    study_precentroid(&points);
+     contcenters(&points);
+     if( kfinal + centers.num > centersize ) {
+       //here we don't handle the situation where # of centers gets too large. 
+@@ -850,6 +852,8 @@
+   localSearch( &centers, kmin, kmax ,&kfinal );
+   contcenters(&centers);
+   outcenterIDs( &centers, centerIDs, outfile);
++  free(block); free(centerBlock); free(centerIDs); free(points.p); free(centers.p);
++  free(switch_membership); free(is_center); free(center_table);
+ }
+ 
+ int main(int argc, char **argv)
+--- original/streamcluster_cl.h
++++ source_bridge/streamcluster_cl.h
+@@ -88,11 +88,11 @@
+       auto t4 = std::chrono::steady_clock::now();
+       *serial += std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count();
+ #endif
+-      cudaMalloc((void**)&work_mem_d, sizeof(float) * (kmax+1) * num);
+-      cudaMalloc((void**)&center_table_d, sizeof(int) * num);
+-      cudaMalloc((void**)&switch_membership_d, sizeof(char) * num);
+-      cudaMalloc((void**)&coord_d, sizeof(float) * dim * num);
+-      cudaMalloc((void**)&p_d, sizeof(Point_Struct) * num);
++      cudaMalloc((void**)&work_mem_d, sizeof(float) * ((kmax+1) * num + 16));
++      cudaMalloc((void**)&center_table_d, sizeof(int) * (num+16));
++      cudaMalloc((void**)&switch_membership_d, sizeof(char) * (num+16));
++      cudaMalloc((void**)&coord_d, sizeof(float) * (dim * num+16));
++      cudaMalloc((void**)&p_d, sizeof(Point_Struct) * (num+16));
+ 
+ #ifdef PROFILE_TMP
+       auto t5 = std::chrono::steady_clock::now();
+@@ -136,6 +136,7 @@
+     *cpu_gpu_memcpy += std::chrono::duration_cast<std::chrono::nanoseconds>(t8 - t7).count();
+ #endif
+ 
++    study_prepare(points,x,K,kmax,center_table);
+     /***** kernel execution *****/
+     /* Determine the number of thread blocks in the x- and y-dimension */
+     size_t smSize = dim;
+@@ -153,9 +154,7 @@
+     if(work_items%work_group_size != 0)  //process situations that work_items cannot be divided by work_group_size
+       work_items = work_items + (work_group_size-(work_items%work_group_size));
+ 
+-    compute_cost<<<work_items/work_group_size, work_group_size, smSize*sizeof(float)>>>(
+-      p_d, coord_d, work_mem_d, center_table_d, switch_membership_d,
+-      num, dim, x, K);
++    study_launch(p_d,coord_d,work_mem_d,center_table_d,switch_membership_d,num,dim,x,K);
+ 
+ #ifdef PROFILE_TMP
+     cudaDeviceSynchronize();
+@@ -173,6 +172,7 @@
+     *memcpy_back += std::chrono::duration_cast<std::chrono::nanoseconds>(t11 - t10).count();
+ #endif
+ 
++    study_capture(points,x,K,z,center_table,switch_membership,work_mem_h);
+     /****** cpu side work *****/
+     int numclose = 0;
+     gl_cost = z;
