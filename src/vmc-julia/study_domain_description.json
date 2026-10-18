@@ -1,0 +1,102 @@
+{
+  "scientific_intent": {
+    "primary_family": "quantum_electronic",
+    "review_status": "source_reviewed",
+    "scientific_task": "Correlated two-electron configuration-space Metropolis sampling",
+    "description": "SourceVMC code evolves57344 independentwalkers in sixCartesian electroncoordinates, withtrialamplitude(1+r12/2)exp[-2(r1+r2)], Metropolisratioofamplitudesquared andthreeinterparticle/nuclear-distance averages plus acceptancecount. Itdoesnotcompute Hamiltonian/localenergy oroptimizevariationalparameters. Sourceidentity supports twoelectron quantum sampling but no namedmaterial/atomprovenance assertion.",
+    "mathematical_operation": "Sixdimensional symmetricuniformproposal andaccept ifpsi_new\u00b2>psi_old\u00b2*u; integrate r1,r2,r12 andacceptindicators alongchains, reduce fullwalkerstatistics.",
+    "accuracy_requirements": "ExactintegerLCGstate/Float32randomcast, exactacceptedcounts/guards; FP32coordinates/psi/distance/statistics vsindependentFloat64hypot-basedMCMC/mathgroupsums. Fixed2e-5+3e-5relativegeneral, stricterpsi1e-12+2e-5relative; shortpathdecisioncontrol notstatisticalconvergenceguarantee.",
+    "community_use_case": "QuantumMonteCarlo developers canreuse independentwalkers, correlatedtrialamplitude andlocalstatistics reductions. Thissamplerbuildingblockdoesnotcertifychemicalenergies/fullvariationalcalculation.",
+    "provenance": [
+      {
+        "path": "src/vmc-cuda/vmc2.cu",
+        "sha256": "8eff8d8daf70b4401512794b3dc97490fee31e8839b6fd24842c5ea9458dea9f",
+        "evidence": "wave_function/compute_distances/LCG_random/propagate,sum_stats andfullsource57344population; noenergyfunction intranslationunit."
+      },
+      {
+        "path": "src/vmc-julia/reference_history/original_main.jl",
+        "sha256": "8afafddc751d2f9c26932dfbc1d4fa2a402ecdd7bb24b29aaf91fbfe5e4db66e",
+        "evidence": "GenuinehistoricalsamplerwithsameLCG/wavefunction/reduction; archivedpreserved, currentnamedshortchainstudy changesnstepsnotnativekernelbodies."
+      }
+    ]
+  },
+  "primary_motif": "Independentstochasticwalkerpropagation andtwo-levelsharedtree reductions",
+  "storage_precision": [
+    "Float32coordinates/wavefunction/distances/statistics/workspaces",
+    "UInt32LCGstate",
+    "Float64artifactencoding/independentoracle"
+  ],
+  "compute_precision": [
+    "Float32GPUmath,sqrt,exp,multiply-add andsumtree",
+    "UInt32wrap/andmod2^31LCGwithF32randomcast",
+    "IndependentFloat64hypot/exp/Metropolis/mathematicalgroupedsums"
+  ],
+  "synchronization": [
+    "Sharedreductionbarrierafterloadandeachtreelevel",
+    "GPUlaunchorder init/zero/propagate/reductions",
+    "DevicecompletionatROIboundaries,fullreadbackoutside"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Preservefull57344walkerpopulation,224\u00d7256propagation and224threadsecondreduction,fullfourstatisticsandpersistenttwo-samplechains. Fivekernelentrypointsreproduced withownframeworkdeviceindices/shared/barriers. CurrentJuliahelperusesexplicitmuladd fornorm/proposal/waveprefactor; nativeunchangeddefaultnvccfusion, notclaimedbitidenticalinstructionstream."
+  },
+  "reference_class": "cuda_jl_device_pipeline",
+  "ka_class": "pure_ka_device_pipeline_cuda_harness",
+  "jacc_class": "pure_jacc_device_pipeline_cuda_harness",
+  "algorithm": "InitLCG(seedXORglobalwalker),sixrandominitialcoordinatesandwavefunction; zero4stats,shortburnprop;2sampleszero/propagate/full2stagefourstatreduction;eachsample fullstatecapture. Twofixedseeds/shortgenerationcontexts.",
+  "work_item_mapping": "Oneindependentwalkerperthread;224blocks256threads=57344; firstreduction224\u00d7256,second1\u00d7224,shared512tree starts128 andguards tid+s<blockDim. Noatomics.",
+  "layout": "SevenindependentcontiguousFloat32arrays (sixcoordinates+psi), fourcomponentstatsSoA4N,UInt32LCGarray,224partialworkspace,4totals;eachactualbuffer64wordprefix/suffixguards with256Balignedpayload.",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 2048,
+      "reduction_shared": "512Float32 staticCUDAjl/KA; JACCdynamic2048full512templatecopy+entrybarrier covariate",
+      "point_kernels_shared_bytes": 0,
+      "JACC_nonreduction_shmem_explicit_zero": true
+    },
+    "ka": {
+      "shared_bytes": 2048,
+      "reduction_shared": "512Float32 staticCUDAjl/KA; JACCdynamic2048full512templatecopy+entrybarrier covariate",
+      "point_kernels_shared_bytes": 0,
+      "JACC_nonreduction_shmem_explicit_zero": true
+    },
+    "jacc": {
+      "shared_bytes": 2048,
+      "reduction_shared": "512Float32 staticCUDAjl/KA; JACCdynamic2048full512templatecopy+entrybarrier covariate",
+      "point_kernels_shared_bytes": 0,
+      "JACC_nonreduction_shmem_explicit_zero": true
+    }
+  },
+  "launch_geometry": "Source224\u00d7256fullwalkerpopulation, firststatreduction224\u00d7256 then1\u00d7224; 2cases\u00d72samples\u00d710ROIsourcekernels=40timedlaunches. init/initialize/zero/burn4\u00d72casepreparationoutside.",
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAbackendhostallocation/initialization/synchronization/readbackonly; noCUDAdeviceintrinsicextensions"
+    ],
+    "ka": [
+      "CUDAbackendhostallocation/initialization/synchronization/readbackonly; noCUDAdeviceintrinsicextensions"
+    ],
+    "jacc": [
+      "CUDAbackendhostallocation/initialization/synchronization/readbackonly; noCUDAdeviceintrinsicextensions"
+    ]
+  },
+  "supported_features": [
+    "UInt32wrappedLCG",
+    "Float32transcendentals",
+    "Independentwalkerstate",
+    "Sharedtree224secondstage",
+    "Fiveownframeworkkernels"
+  ],
+  "verification_contract": "All20full5057177Float64words:9exactscalarprefix+5057168states. Bothcases actualfullinitializedcoordinates/psi/RNG,afterburnallcoordinates/psi/4stats/RNG,aftereach2samplesalltheseplus4totals/224partialworkspace, allactualguards. IndependentFloat64hypot/analytictrialwavefunction/LCG/MCMC+mathgroupsums, psiindependentstrict1e-12+2e-5relative, integerRNG/accept+guards exact. Actualfullpersteptrajectoriesnotcaptured;initial/burn/samplecheckpointsare. Fixedgeneral2e-5+3e-5relative, fivecheckedtrialsmean2-5.",
+  "keyconfounds": [
+    "Namedburnin2/5/samplegen3/7not100000/5000sourceequilibrium,noenergy/convergenceclaim",
+    "IndependentF64MCMCminimumgap6.08e-6/1.67e-6 areobservedfixturedecisionmargins, notformaluniversalstabilitybounds",
+    "JACCfull512F32templatecopy/sharedentrybarrier vsstaticnative/KAarrays",
+    "Sharednumerichelperauthoredreferenceonce,reusedportableframeworkentrypoints;orderedmarginaltokenwindowsnotcoldindependenttranslationcost",
+    "Nativeoriginaldefaultfusion vsJuliaexplicitmuladd, arithmeticmatchtolerancevalidatednotidenticalinstructionclaim",
+    "Fullcheckpointstate/oraclesoutsideROI; nointernaltrajectorycapturenorMCstatisticalconfidenceinference",
+    "NoactualFLOP/traffic/occupancycounters, nohardwarebottleneck/rooflineattribution",
+    "Tinycoordinatecomponents showmaxrelative3.37% despiteabs<=7.16e-7; wavefunctionrelative<=1.93e-6,distanceacc<=4.29e-6, totalsrelative7.06e-8. No uniformrelativeaccuracyclaim."
+  ],
+  "boundary_rounding_policy": "Full224blocks and57344walkers noedgepaddingintheoperator;64wordguards256Balignedoutsideactualpayload. LCGmod2^31UInt32wrap, randomstatecasttoroundedFloat32beforedivision. Positiveanalyticwavefunction, strictMetropoliscomparison; sourcecanunderflowextremestateoutsidecert.",
+  "support_boundary": "CUDAbackendonly,sourcefullpopulation/geometry butnamedshortchains/fixedseeds; noequilibrateddistribution,statisticalerrorbars/energy/localHamiltonian/variationaloptimization/fullCLI5000generationcertification.",
+  "interpretation": "Forquantum-domainresearchers, preservingexactrandomstreams/decisions andfullstatesmatters morethana plausibledistanceaverage. Independenthigherprecisionchecks coveractualshortdeterministicpaths; theydonotreplaceMonteCarloconvergenceanalysis. Reductionmapping/sharedtemplateanddispatchcostsareimplementationcovariates; noframeworkwinner/generalenergyaccuracyclaim."
+}
