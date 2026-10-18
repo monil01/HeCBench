@@ -1,4 +1,8 @@
-# Active root preparation: spmm
+## Completed result
+
+All four versions passed exact full-artifact verification in `.porting-state/portable_julia/runs/20261018T104646539975Z_spmm/result.json`; source/KA/JACC committed separately through `c3c41f6ae`. See `study_notes.json`, `output_audit.json`, `SCOPE.md` and per-version `verification.json`. The following records the earlier preparation state, not pending work.
+
+# Historical preparation plan: spmm
 
 Source reviewed but NO implementation edits or archives yet. CUDA source actually uses sparse×sparse cusparseSpGEMM, unlike benchmark spgemm (sparse×dense SpMM, owned portable_infrastructure). Historical Julia genuine custom CSR×CSR into DENSE C; restore actual vendor sparse representation and source ROI. Native has zero authored GPU kernels. Preserve full NVIDIA license notice from main.cu in new driver/comments/docs.
 
