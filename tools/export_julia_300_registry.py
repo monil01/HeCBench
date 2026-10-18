@@ -229,6 +229,7 @@ def main():
                 class_map=shared_config_traits.get('implementation_class',{})
                 config_class=config_traits.get('implementation_class') or (class_map.get({'cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}[model]) if isinstance(class_map,dict) else class_map)
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
+                                        'configuration_role':disp.get(cid,{}).get('role',c.get('configuration_role','primary')),
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
                                         'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),
