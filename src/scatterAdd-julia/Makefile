@@ -1,12 +1,10 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+.PHONY: main run clean
 main:
-	@true
-
+	@echo "Both shared-atomic scatter kernels; ten exactdyadic study paths."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 3
 clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 10000000 32 8 1000
+	@echo "Retain study fixtures."
