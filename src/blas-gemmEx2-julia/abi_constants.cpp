@@ -1,0 +1,4 @@
+#include <cublasLt.h>
+#include <cstdio>
+#include <cstddef>
+int main(){printf("{\"algo_bytes\":%zu,\"heuristic_bytes\":%zu,\"heuristic_state_offset\":%zu,\"heuristic_waves_offset\":%zu,\"TRANS_A\":%d,\"TRANS_B\":%d,\"PREF_WORKSPACE\":%d,\"compute16\":%d,\"compute32\":%d,\"compute64\":%d,\"computeInt\":%d,\"type64\":%d,\"type32\":%d,\"type16\":%d,\"typeBF16\":%d,\"typeInt8\":%d,\"typeInt32\":%d}\n",sizeof(cublasLtMatmulAlgo_t),sizeof(cublasLtMatmulHeuristicResult_t),offsetof(cublasLtMatmulHeuristicResult_t,state),offsetof(cublasLtMatmulHeuristicResult_t,wavesCount),CUBLASLT_MATMUL_DESC_TRANSA,CUBLASLT_MATMUL_DESC_TRANSB,CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,CUBLAS_COMPUTE_16F,CUBLAS_COMPUTE_32F,CUBLAS_COMPUTE_64F,CUBLAS_COMPUTE_32I,CUDA_R_64F,CUDA_R_32F,CUDA_R_16F,CUDA_R_16BF,CUDA_R_8I,CUDA_R_32I);}
