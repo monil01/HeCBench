@@ -1,0 +1,26 @@
+#include <vector>
+#include <cstdint>
+#include <cstring>
+#include <filesystem>
+#include <cmath>
+#include <algorithm>
+#define main original_zmddft_main
+#include "../zmddft-cuda/main.cu"
+#undef main
+static constexpr int N=33554432,G=16,R=100;static constexpr double SENT=12345.25;
+static std::filesystem::path BASE=std::filesystem::path(__FILE__).parent_path();
+static void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"CUDA:%s\n",cudaGetErrorString(e));exit(1);}}
+static std::vector<double>readf(std::string name){FILE*f=fopen((BASE/name).c_str(),"rb");if(!f)abort();fseek(f,0,SEEK_END);size_t n=ftell(f);rewind(f);std::vector<double>a(n/8);if(fread(a.data(),1,n,f)!=n)abort();fclose(f);return a;}
+static void launch(double*X,double*P1,double*P2,double*Y){ker_zmddft_fwd_256x256x256_cu0<<<16384,64>>>(X,P1);ker_zmddft_fwd_256x256x256_cu1<<<16384,64>>>(P1,P2);ker_zmddft_fwd_256x256x256_cu2<<<16384,64>>>(P2,Y);}
+static bool inspect(const std::vector<double>&a,const std::vector<double>&o,double&ma,double&mb){bool ok=true;for(int i=0;i<N;i++){double er=std::abs(a[i]-o[i]),budget=1e-9+1e-12*std::abs(o[i]);ok &=std::isfinite(a[i])&&er<=budget;ma=std::max(ma,er);mb=std::max(mb,er/budget);}for(int i=N;i<N+G;i++)ok &=a[i]==SENT;return ok;}
+int main(){const char*outdir=getenv("STUDY_OUTPUT_DIR");if(!outdir)outdir=".";auto input=readf("input_complex_f64.bin"),tw=readf("twiddles_f64.bin");std::vector<std::vector<double>>oracle;for(int i=0;i<3;i++)oracle.push_back(readf("oracle_stage"+std::to_string(i)+"_f64.bin"));std::vector<double>reset(N+G,SENT),host(N+G),impulse(N+G,0),actualTW(512);std::fill(reset.begin(),reset.begin()+N,NAN);std::fill(impulse.begin()+N,impulse.end(),SENT);int idx=2*(3*256*256+5*256+7);impulse[idx]=.75;impulse[idx+1]=-.5;
+ double *X,*P1,*P2,*Y;ck(cudaMalloc(&X,(N+G)*8ul));ck(cudaMalloc(&P1,(N+G)*8ul));ck(cudaMalloc(&P2,(N+G)*8ul));ck(cudaMalloc(&Y,(N+G)*8ul));std::vector<double*>buffers={P1,P2,Y};ck(cudaMemcpyFromSymbol(actualTW.data(),D3,512*8));if(actualTW!=tw)abort();ck(cudaMemcpy(X,impulse.data(),(N+G)*8ul,cudaMemcpyHostToDevice));for(auto b:buffers)ck(cudaMemcpy(b,reset.data(),(N+G)*8ul,cudaMemcpyHostToDevice));launch(X,P1,P2,Y);ck(cudaDeviceSynchronize());
+ auto diagdir=BASE/"../../.porting-state/portable_julia/diagnostics/zmddft";std::filesystem::create_directories(diagdir);auto path=diagdir/"cuda_impulse_stages_f64.bin";FILE*f=fopen(path.c_str(),"wb");bool warmok=true;double warmmax=0,warmbudget=0;
+ for(int stage=0;stage<3;stage++){ck(cudaMemcpy(host.data(),buffers[stage],(N+G)*8ul,cudaMemcpyDeviceToHost));auto o=readf("impulse_stage"+std::to_string(stage)+"_f64.bin");warmok &=inspect(host,o,warmmax,warmbudget);fwrite(host.data(),8,N,f);}fclose(f);ck(cudaMemcpy(host.data(),X,(N+G)*8ul,cudaMemcpyDeviceToHost));warmok &=host==impulse;f=fopen((diagdir/"cuda_impulse.json").c_str(),"w");fprintf(f,"{\"model\":\"cuda\",\"correct\":%s,\"timed\":false,\"location\":[3,5,7],\"amplitude\":[0.75,-0.5],\"all3stage_values\":%d,\"max_abs_error\":%.17g,\"max_normalized_budget_error\":%.17g,\"stage_artifact\":\"%s\"}\n",warmok?"true":"false",3*N,warmmax,warmbudget,path.c_str());fclose(f);if(!warmok){fprintf(stderr,"Analyticimpulsefailed %.17g budget%.17g\n",warmmax,warmbudget);return 1;}
+ input.resize(N+G,SENT);ck(cudaMemcpy(X,input.data(),(N+G)*8ul,cudaMemcpyHostToDevice));launch(X,P1,P2,Y);ck(cudaDeviceSynchronize());bool ok=true;double ma=0,mb=0;for(int stage=0;stage<3;stage++){ck(cudaMemcpy(host.data(),buffers[stage],(N+G)*8ul,cudaMemcpyDeviceToHost));ok &=inspect(host,oracle[stage],ma,mb);}if(!ok){fprintf(stderr,"DenseCPUFFTfirstwarmupfailed %.17g budget%.17g\n",ma,mb);return 1;}
+ for(int trial=1;trial<=5;trial++){
+  for(auto b:buffers)ck(cudaMemcpy(b,reset.data(),(N+G)*8ul,cudaMemcpyHostToDevice));ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int rep=0;rep<R;rep++)launch(X,P1,P2,Y);ck(cudaDeviceSynchronize());double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();ma=mb=0;ok=true;std::vector<double>guards;ck(cudaMemcpy(host.data(),X,(N+G)*8ul,cudaMemcpyDeviceToHost));ok &=host==input;guards.insert(guards.end(),host.begin()+N,host.end());ck(cudaMemcpyFromSymbol(actualTW.data(),D3,512*8));ok &=actualTW==tw;std::string outpath=std::string(outdir)+"/trial"+std::to_string(trial)+".bin";f=fopen(outpath.c_str(),"wb");fwrite(host.data(),8,N,f);fwrite(actualTW.data(),8,512,f);double params[]={256,256,256,R,64,16384,3,512};fwrite(params,8,8,f);
+  for(int stage=0;stage<3;stage++){ck(cudaMemcpy(host.data(),buffers[stage],(N+G)*8ul,cudaMemcpyDeviceToHost));ok &=inspect(host,oracle[stage],ma,mb);fwrite(host.data(),8,N,f);guards.insert(guards.end(),host.begin()+N,host.end());}fwrite(guards.data(),8,guards.size(),f);fclose(f);
+  printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%d,\"max_abs_error\":%.17g,\"max_rel_error\":null,\"max_normalized_budget_error\":%.17g,\"timing_region\":\"R100_full256cube_F64_Spiral3FFTstages_devicecomplete\",\"jit_excluded\":true,\"internal_repeats\":100,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%d,\"byte_order\":\"little\"}}\n",trial,elapsed,ok?"true":"false",3*N+4*G,ma,mb,outpath.c_str(),4*N+512+8+4*G);fflush(stdout);if(!ok)return 1;
+ }for(auto b:buffers)ck(cudaFree(b));ck(cudaFree(X));return 0;
+}
