@@ -1,6 +1,10 @@
 # PASC27 Julia translation paper — writing instructions
 
 
+### Atomic operations and independent reduction checks
+
+Read the actual atomic API expansion before translating reductions. An atomic store of `max(array[i], value)` can contain a non-atomic read and is not an atomic maximum. In the pinned Atomix API, use its modifying call form (`Atomix.@atomic max(array[i], value)`) for that operation; record exact package/source evidence. Check the complete selected index, tie rule, winning value and dependent state against an independent oracle, rather than checking only a plausible aggregate. Preserve failed candidates, all rejected captures and the original tolerance; classify an observed wrong result separately from a compiler rejection. Compiler success alone does not establish concurrency semantics.
+
 ### Rejected execution evidence
 
 Retain structured records and binary artifacts from nonzero exits, timeouts and invalid-provenance executions under `rejected_trials`, with return code, source validity, raw diagnostics and capture errors. These records never establish accepted-trial completeness, reference comparisons, timing means or verification. Preserve nonfinite diagnostic values without corrupting the result JSON; keep original raw tokens and artifact bytes. A lost historical capture remains an explicit evidence gap. A later localization run has its own diagnostic configuration and scope; it cannot replace an earlier failed series or retroactively repair acceptance. Preserve failed candidates and original tolerances before any revised scientific contract.
@@ -141,7 +145,7 @@ an explicit, documented replacement is implemented. Keep each section in a
 separate `.tex` file. The old `Hecbench-agent-paper/` is not this paper's
 active destination. The active ACM manuscript is now `2026-PASC-Hecbench-Julia-paper/main.tex`.
 Its separate section files, illustrative code comparison, and methodology
-diagram are present. KA/JACC experimental results remain pending.
+diagram are present. The generated census and newest checkpoint identify current KA/JACC results; older pilot-only passages are explicitly labeled interim evidence.
 
 Authoritative division of responsibility:
 
