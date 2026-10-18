@@ -6,7 +6,7 @@ kernel timing is valid only when structured records explicitly exclude JIT.
 GPU use is serialized with the study-wide advisory lock.
 """
 from __future__ import annotations
-import argparse, csv, fcntl, hashlib, json, math, os, re, shutil, sqlite3
+import argparse, copy, csv, fcntl, hashlib, json, math, os, re, shutil, sqlite3
 import statistics, subprocess, tempfile, struct
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,6 +62,7 @@ def artifact_values(row):
     return [x[0] for x in struct.iter_unpack('<'+fmt,data)]
 
 _FINITE_ARTIFACT_CACHE = {}
+_NUMERIC_COMPARISON_CACHE = {}
 
 def exact_input_prefix(ref, got, count):
     if isinstance(count,bool) or not isinstance(count,int) or count<0:raise ValueError('input_prefix_count must be a nonnegative integer')
@@ -141,7 +142,27 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
         if not _FINITE_ARTIFACT_CACHE[key]:
             return {'status':'unverified','reason':'nonfinite artifact values'}
         return {'status':'pass','checked_values':a['count'],'max_abs_error':0,'max_rel_error':0,'input_prefix_check':prefix_check}
+    # Deterministic outputs may repeat across all five independently executed
+    # trials/models. Reuse only the mathematical comparison, after rehashing
+    # both actual files; every trial and source/input check remains separate.
+    cache_key = None
+    if a and b and a.get('sha256') and b.get('sha256'):
+        for artifact in (a, b):
+            if hashlib.sha256(Path(artifact['saved_path']).read_bytes()).hexdigest() != artifact['sha256']:
+                return {'status':'unverified','reason':'saved artifact content hash changed'}
+        metadata = [{k: artifact.get(k, 'little' if k == 'byte_order' else None)
+                     for k in ('sha256','dtype','count','shape','byte_order')}
+                    for artifact in (a, b)]
+        cache_key = json.dumps([metadata, atol, rtol, input_prefix_count, agreement_kind], sort_keys=True)
+        if cache_key in _NUMERIC_COMPARISON_CACHE:
+            comparison = copy.deepcopy(_NUMERIC_COMPARISON_CACHE[cache_key])
+            comparison['comparison_computation'] = 'reused_after_full_artifact_pair_rehash'
+            comparison['input_prefix_check'] = prefix_check
+            return comparison
     comparison=compare(artifact_values(ref),artifact_values(got),atol,rtol)
+    if cache_key is not None and comparison.get('status') == 'pass':
+        _NUMERIC_COMPARISON_CACHE[cache_key] = copy.deepcopy(comparison)
+        comparison['comparison_computation'] = 'computed_from_full_saved_values'
     comparison['input_prefix_check']=prefix_check
     return comparison
 
