@@ -1,0 +1,34 @@
+# clock: Compute a cooperative block minimum while observing actual device clock registers around the source reduction
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: clock_f32_reduction_minima_native_clock64_aux_2fixtures_3grids_v2
+
+## Scientific intent and fidelity
+
+NVIDIA sourceclocksample measuresblockreductionwithclock() andprintscrossblock extrema. HistoricalJulia onlywritesconstant1 andprints hostnanoseconds asclocks. Newreferencecompletesgenuinesharedminimum+actualregisterreads; nofakeGPUtiming.
+
+Scientific task: Everyblock reads same512Float32values and selects strict-less minimum; firstlane recordsperSMstart/end64-bitclockaroundreduction. Clocksnondeterministic, exactminima independentlycertified.. Requirements and precision sensitivity: All16450blockminima bitexact vsCPUglobalorderstatistic andbothGPUrefs;96outputguards+96timerguards exact. Perblock64-bitclockformatandmodulardelta>0<2^31 checked fromallrawtimers. No exactclock-valueagreement.. Community use case: Deviceinstrumentation andblockreductions illustrate HPC kernelmeasurement components; no originalscientificapplication provenance.. Provenance/uncertainty: OriginalNVIDIAsourceheader andkernelreview; actualNVCCPTXauthoritativelyshowsmov.u64 clock64 underLinuxclock_t64. CrossSMclockcomparisonsandsourceefficiencypercentage are NOTvalidated/comparablewalltime metrics.. Domain-neutral examples are illustrative uses, not claimed original application provenance.
+
+## Numerical evidence and implementation ontology
+
+34134UInt32canonicalwords:1042exactinput/parameterwords +16450minima +192guards +16450perblockvalidatedclockpropertybits. All20canonicalarrays exactvsbothrefs. Everytrialalso preserves32996rawInt64timer+guardwords inauxbinary, audited independently; rawclockvaluesnotcanonicalizedawayorclaimedequal.
+
+Mapping: Same2values/lane, strictlesspairwisemintree,9barriers+finalbarrier andfirstlanestart/endclock64; explicitCUDAclockregisterbackendextensionKA/JACC. JACCpreinitializessharedtemplatebeforedevicetimer butinsidehostkernelROI; physicalinstruction/schedulingnotidentical.. Support boundary: 6fullblockfiniteFloat32minimum+deviceclock64cases onCUDA/V100; portableframeworkdispatch/reductionwithCUDAregisterintrinsic hybrid. Nootherbackendregistersupport, exactclockequality/crossSMtimestamps/walltimeconversion, sourceefficiencyformula, arbitraryNaNsemantics orfullCLIclaim.. Per-model implementation records include actual algorithm, layout, mapping, synchronization, resources, pinned versions, allfive samples and hash-linked evidence. The scientific requirement is distinct from the implementation choice.
+
+Accepted bundle `.porting-state/portable_julia/runs/20261018T044119948480Z_clock/`. Mean trials 2–5 microseconds: cuda 79.72301750, cuda_jl 70.00280750, ka 74.89437750, jacc 877.40567000. Timed scope: Sum6hostinclusive kernelbatchregions,100launches/region divided100; compilation/inputsetup/outputreset/captureoutside; mean2–5 of5checkedtrials. Allfivechecks passbothreferences; firsttimingonlyexcluded, nooutlierdrop. Candidate/checkhistory is ineachmodelmanifest; reference/adapterrepairs separatefromportabletranslation. HistoricalCUDA.jlcost remainsunknown, notzero. Current tokenproxies arepartialretainedsourcecharacters/4, input/totalunknown, sharedadaptercountedonce.
+
+## Interpretation for domain scientists
+
+Smallinstrumentedreduction is a source-backedcase for abstractionboundaries: genericreduction/barriersareexpressed inKA/JACC, while a real hardwarecyclecounterusesCUDA-specificintrinsic. Numericaloutputequivalence andtimingobservables needdistinctcontracts. Allminimaareexact; perblockclockdeltaonlypropertychecked andallrawsamplevaluespreserved. No devicecycle-to-walltime orcrossSMclockcomparison, andsharedtemplateinitializationisnotcapturedbytheJACCdevicetimerbutdoescontributetothecommonhostROI.
+
+Confounds: CUDAclock64backendextension meansnotpurecrossbackendKA/JACC; Nativeclock() actual64-bitmapping toolchain-specific, provenPTX; initial32-bitassumptionfailedpreservedchecker; JACCshared512Float32templatecopy+extrabarrier beforedeviceclockstartbutinsidehosttiming; Deviceclockdeltapropertiesonly, notclockequivalence, crossSMtimestampcomparisonorwalltimeconversion; Allblocksreusesame512input, cachebehavior/resourceeffects unprofiled; Hostinclusive6pathbatch timings includeJulia/JACCdispatch andsourcekernelinstrumentation; JACCDictionaryLaunchSpec lookup insidetimedhostloop; SourceCLIefficiency/crossSMextrema metric notvalidated/reproducedscientifically; Orderedreference->KA->JACC helperreuse, sharedwitnesswithinmodelphase; tokensnotcoldframeworkranking. RQ1/E1 has configuration-scoped numerical fidelity; RQ2/E2 separates model/phase taxonomy and effort; RQ3/E3 has paired four-model timings; RQ4/E4 links scientific intent to audited implementation traits, with profiler mechanisms pending; RQ5/E5 gives no universal winner. No unsupported feature is inferred from an unfinished translation or an environment error.
+
+
+## Source clock width and distinct evidence contracts
+
+First native capture reported allfive false under my incorrect32-bitformatoracle, although all actualminima andguards were exact. Raw native clockvalues exceed32bits, and compile-only nativePTX proves bothreads are mov.u64 %clock64 under thisLinuxclock_t64/NVCC12.0 toolchain. Source/compiler evidence establishes width; mere clockvalue disagreement would not. InitialnewCUDAjl candidate usedUInt32register. Candidate2 usesUInt64 andthehostpropertyoracle checksactual64-bitformat/modulardeltas; originalnativeGPUbody isunchanged. T1sharedhostoracle andS1referenceclockwidth events are preservedseparately from compilerfailures andfromKA/JACCfirstcandidate successes. HistoricalJulia onlywroteconstant1; itsoldbody/cost remainsarchived/unknown.
+
+Canonicalall20arrays verify all16450minima/trial exactly,192guards,1042inputbits/parameters,16450clockpropertybits. Rawstart/endtimers(32996Int64includingguards pertrial) are auxiliary files, allstored andSHA-bound byoutput_audit.json; neverclaimequalclockcountsacrossmodels. The audit independently derives minima byorderstatistic andchecks everyblockrawmodular64elapsed andguards. CrossSMtimestampcomparability andsourceCLIefficiencyformula areunverified.
+
+KA/JACCuseanexplicitCUDA.clock(UInt64) backendintrinsic forhardwaremeasurement, notpurecrossbackendabstraction; reduction/launch/barriers areframeworkAPIs. JACC.shared initialization occursbeforedeviceclockstartandaddsonebarrier, butallworkisincommonhostROI. Devicecounterintervals thereforecannot measurewholekernelcost, muchlesscomparewalltime. Hostbatchtimings includecachedJACCLaunchSpecdictionarylookup; no GPUprofiling exists forcausaldecomposition. Everyfirstportablecandidate/checkpasses. Prospectivewindows includecontext/coordination andsharedwitnesswork; workflowoverlap andhelperreuse precludecoldframeworktokenranking.
