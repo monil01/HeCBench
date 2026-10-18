@@ -233,6 +233,10 @@ def main():
             log_root=ROOT/'.porting-state/porting_logs'
             aliases=['cuda','cuda.jl','cuda_jl'] if model=='cuda_jl' else [model]
             manifest_candidates=[log_root/(b+'-julia-'+alias)/'manifest.json' for alias in aliases if (log_root/(b+'-julia-'+alias)/'manifest.json').is_file()]
+            # Retain the canonical legacy CUDA.jl log as a separate candidate.
+            # Fresh reference preparations may use this path; absent counters stay unknown.
+            if model=='cuda_jl' and (log_root/(b+'-julia')/'manifest.json').is_file():
+                manifest_candidates.append(log_root/(b+'-julia')/'manifest.json')
             # Prefer a current source-bound record, then the latest explicit record.
             # Retain every alias candidate; never merge incompatible histories silently.
             selected_manifest=max(manifest_candidates,key=lambda q:(bool(digest(path) and read(q,{}).get('source_sha256')==digest(path)),q.stat().st_mtime_ns)) if manifest_candidates else log_root/(b+'-julia-'+aliases[0])/'manifest.json'
