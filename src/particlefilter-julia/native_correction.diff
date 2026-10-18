@@ -1,0 +1,26 @@
+--- original/kernel_normalize_weights.h
++++ native_corrected/kernel_normalize_weights.h
+@@ -14,9 +14,7 @@
+   if(0 == local_id)
+     sumWeights = partial_sums[0];
+   __syncthreads();
+-  if(i < Nparticles) {
+-    weights[i] = weights[i]/sumWeights;
+-  }
++  // Weights normalized by a separate completed kernel before this one-block launch.
+   __syncthreads();
+   if(i == 0) {
+     CDF[0] = weights[0];
+@@ -37,8 +35,10 @@
+     u1 = u[0];
+ 
+   __syncthreads();
+-  if(i < Nparticles)
++  for(int j=local_id;j<Nparticles;j+=blockDim.x)
+   {
+-    u[i] = u1 + i/((float)(Nparticles));
++    u[j] = u1 + j/((float)(Nparticles));
+   }
+ }
++
++__global__ void kernel_scale_weights(float*w,const float*s,int n){int i=blockIdx.x*blockDim.x+threadIdx.x;if(i<n)w[i]/=s[0];}
