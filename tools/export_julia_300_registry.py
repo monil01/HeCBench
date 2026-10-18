@@ -225,6 +225,7 @@ def main():
             scan=scan_source(path)
             status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else ('existing_cuda_jl_not_reaudited' if base[b].get('method')=='existing_cuda_jl_entrypoint_only' else 'historical_pass_not_reaudited') if model=='cuda_jl' else 'not_started'
             explicit=read(STATE/'status_300'/b/(model+'.json'),{})
+            if evidence and any(v[1].get('verification_contract_revised') for _,v in evidence):status='conditionally_verified_revised_acceptance_contract'
             if evidence and any(v[1].get('native_reference_repaired') for _,v in evidence):status='conditionally_verified_native_reference_repaired'
             if evidence and any(v[1].get('native_behavior_known_scientific_defect') for _,v in evidence):status='verified_native_behavior_known_scientific_defect'
             if evidence and all(v[1].get('numerical_agreement_kind')=='no_numerical_outputs_execution_only' for _,v in evidence):status='execution_only_verified'
@@ -274,10 +275,11 @@ def main():
                                         'scoped_effort_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),'scope':'Named configuration phase only; historical top-level effort is separate.'} for q in scoped_effort_paths],
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
+                                        'verification_contract_revised':bool(c.get('verification_contract_revised')),
                                         'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),
                                         'gpu_visibility':str(c.get('gpu',6)),
                                         'hardware_stratum':'single_v100' if str(c.get('gpu',6))=='6' else 'multiple_or_other_devices',
-                                        'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),
+                                        'untouched_single_gpu_aggregate_eligible':str(c.get('gpu',6))=='6' and not c.get('native_reference_repaired') and not c.get('verification_contract_revised') and not c.get('exclude_from_aggregate',False) and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),
                                         'input_contract_metadata_erratum':c.get('input_contract_metadata_erratum'),'reported_metric_definition_erratum':c.get('reported_metric_definition_erratum'),'source_scope_adjudication':c.get('source_scope_adjudication'),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),
                                         'result_sha256':digest(p),'source_hash':m.get('source_hash'),
                                         'declared_environment':c.get('environment',c.get('toolchain')),
@@ -348,6 +350,7 @@ def main():
             statuses.append({'benchmark_id':b,'model':model,'status':status,'ontology_review':record['implementation_review_status'],
                              'scientific_review':intent.get('review_status','unspecified'),
                              'primary_family':intent.get('primary_family',intent.get('primary_domain','unclassified')),
+                             'verification_contract_revised':any(c.get('verification_contract_revised') for c in config_evidence),
                              'numerical_agreement_kinds':sorted({c.get('numerical_agreement_kind','declared_numeric_artifact_contract') for c in config_evidence})})
     # A reference barrier copied into several target ledgers is one origin event.
     def origin_fingerprint(event):

@@ -46,10 +46,11 @@ for path in sorted((local / 'runs').glob('*/result.json')):
         'run_id': d['run_id'], 'variants': d['variant_verified'],
         'matched_performance_valid': d.get('matched_performance_valid', False),
         'native_reference_repaired': bool(config.get('native_reference_repaired')),
+        'verification_contract_revised': bool(config.get('verification_contract_revised')),
         'native_behavior_known_scientific_defect': bool(config.get('native_behavior_known_scientific_defect')),
         'configuration_classification_adjudication': config.get('configuration_classification_adjudication'),
         'hardware_stratum': 'single_v100' if str(config.get('gpu',6))=='6' else 'multiple_or_other_devices',
-        'untouched_single_gpu_aggregate_eligible': config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only' and str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
+        'untouched_single_gpu_aggregate_eligible': config.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only' and str(config.get('gpu',6))=='6' and not config.get('native_reference_repaired') and not config.get('verification_contract_revised') and not config.get('exclude_from_aggregate',False) and not config.get('exclude_untouched_native_aggregates',False) and not config.get('exclude_from_scientific_fidelity_aggregates',False) and not config.get('native_behavior_known_scientific_defect',False),
         'role': dispositions.get(cid, {}).get('role', config.get('configuration_role','primary')),
         'references_agree': d.get('reference_agreement'),
         'result': str(path.relative_to(root)),
@@ -65,11 +66,13 @@ pairs = len({r['benchmark'] for r in accepted_records if r['matched_performance_
 versions = {k: len({r['benchmark'] for r in accepted_records if r['variants'].get(k)})
             for k in ['ka', 'jacc']}
 strata = {
+    'revised_acceptance_contract_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['verification_contract_revised']}),
     'known_native_scientific_defect_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']}),
     'corrected_native_reference_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_reference_repaired']}),
     'multiple_or_other_device_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'}),
     'untouched_native_single_gpu_names': len({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['untouched_single_gpu_aggregate_eligible']})}
 stratum_memberships = {
+    'revised_acceptance_contract_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['verification_contract_revised']},
     'known_native_scientific_defect_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_behavior_known_scientific_defect']},
     'corrected_native_reference_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['native_reference_repaired']},
     'multiple_or_other_device_names': {r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['hardware_stratum']!='single_v100'},
@@ -104,7 +107,7 @@ if args.complete:
     # Census completion includes evidence-backed unavailable outcomes; it never
     # converts these outcomes to passing ports or relaxes any verification check.
     registry=root/f'ontology/studies/julia_abstractions_{target}'
-    passing={'verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect','execution_only_verified'}
+    passing={'conditionally_verified_revised_acceptance_contract','verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect','execution_only_verified'}
     unavailable={'hardware_blocked','environment_blocked','reference_blocked','feature_unsupported','failed'}
     unfinished=[]
     for b in sorted(selected):
