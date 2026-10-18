@@ -117,7 +117,7 @@ if args.complete:
             if outcome in unavailable and explicit.get('terminal_adjudication') is True and explicit.get('repair_or_limitation_review_completed') is True and explicit.get('evidence'):continue
             unfinished.append(b+':'+model+':'+str(outcome))
     if unfinished:raise SystemExit('Incomplete census assessments: '+', '.join(unfinished[:25]))
-    audit = read(paper / 'research/data/numerical_contract_audit.json')
+    audit = read(paper / ('research/data/numerical_contract_audit.json' if target==300 else f'research/data/numerical_contract_audit_{target}.json'))
     if audit['summary']['hard_issue_count'] or audit['summary']['audited_benchmarks']!=pairs:
         raise SystemExit('Refresh the full numerical evidence audit before completing the census.')
     if not (paper / 'build/main.pdf').is_file():raise SystemExit('Paper PDF missing.')
