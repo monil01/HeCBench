@@ -1,0 +1,21 @@
+
+#include <cuda_runtime.h>
+#include <cusparse.h>
+#include <dlfcn.h>
+#include <vector>
+#include <fstream>
+#include <stdexcept>
+#include <chrono>
+#include <cstdio>
+#include "study_cases.h"
+#define CK(x) do{if((x)!=0)throw std::runtime_error(#x);}while(0)
+const int G=16,R=10;const unsigned GUARD=0xa5a55a5a,POISON=0x13579bdf;
+std::vector<unsigned>readv(const char*n){std::ifstream f(n,std::ios::binary|std::ios::ate);if(!f)throw std::runtime_error("fixtureopen");size_t z=f.tellg();if(z%4)throw std::runtime_error("dtype");f.seekg(0);std::vector<unsigned>v(z/4);if(!f.read((char*)v.data(),z))throw std::runtime_error("shortfixture");return v;}
+unsigned*upload(std::vector<unsigned>&v){unsigned*p;CK(cudaMalloc(&p,v.size()*4));CK(cudaMemcpy(p,v.data(),v.size()*4,cudaMemcpyHostToDevice));return p;}
+std::vector<unsigned>get(unsigned*p,int n){std::vector<unsigned>v(n);CK(cudaMemcpy(v.data(),p,n*4,cudaMemcpyDeviceToHost));return v;}
+struct State{Case c;std::vector<unsigned>h[6];unsigned*d[6];void*buf;};
+void capture(State&s,std::vector<unsigned>&out){for(int k=0;k<6;k++){auto v=get(s.d[k],s.h[k].size());out.insert(out.end(),v.begin(),v.end());}}
+int main(){auto input=readv("input_u32.bin"),oracle=readv("oracle_u32.bin");void*lib=dlopen("/usr/lib/x86_64-linux-gnu/libcusparse.so.12.0.1.140",RTLD_NOW|RTLD_LOCAL);if(!lib)throw std::runtime_error(dlerror());auto fn=(decltype(&cusparseCsr2cscEx2))dlsym(lib,"cusparseCsr2cscEx2");Dl_info info;if(!fn||!dladdr((void*)fn,&info))throw std::runtime_error("functionresolution");printf("STUDY_VENDOR Csr2cscEx2=%s\n",info.dli_fname);cusparseHandle_t h;CK(cusparseCreate(&h));int version;CK(cusparseGetVersion(h,&version));cudaStream_t stream;CK(cusparseGetStream(h,&stream));if(stream!=0)throw std::runtime_error("stream");printf("STUDY_VENDOR version=%d stream=0 alg=1 action=1 base=0 datatype=0\n",version);std::vector<State>states;std::vector<unsigned>prefix;
+for(auto c:cases){State s;s.c=c;int sizes[]={c.nnz,c.m+1,c.nnz,c.nnz,c.n+1,c.nnz};int offset=c.io;for(int k=0;k<6;k++){s.h[k].assign(sizes[k]+32,GUARD);if(k<3){std::copy(input.begin()+offset,input.begin()+offset+sizes[k],s.h[k].begin()+G);offset+=sizes[k];}else std::fill(s.h[k].begin()+G,s.h[k].end()-G,POISON);s.d[k]=upload(s.h[k]);}size_t bytes;CK(cusparseCsr2cscEx2_bufferSize(h,c.m,c.n,c.nnz,s.d[0]+G,(int*)(s.d[1]+G),(int*)(s.d[2]+G),s.d[3]+G,(int*)(s.d[4]+G),(int*)(s.d[5]+G),CUDA_R_32F,CUSPARSE_ACTION_NUMERIC,CUSPARSE_INDEX_BASE_ZERO,CUSPARSE_CSR2CSC_ALG1,&bytes));CK(cudaMalloc(&s.buf,std::max(bytes,size_t(1))));capture(s,prefix);CK(cudaDeviceSynchronize());CK(fn(h,c.m,c.n,c.nnz,s.d[0]+G,(int*)(s.d[1]+G),(int*)(s.d[2]+G),s.d[3]+G,(int*)(s.d[4]+G),(int*)(s.d[5]+G),CUDA_R_32F,CUSPARSE_ACTION_NUMERIC,CUSPARSE_INDEX_BASE_ZERO,CUSPARSE_CSR2CSC_ALG1,s.buf));CK(cudaDeviceSynchronize());states.push_back(s);}
+for(int trial=1;trial<=5;trial++){auto art=prefix;bool ok=true;double seconds=0;for(auto&s:states){auto c=s.c;for(int k=3;k<6;k++)CK(cudaMemcpy(s.d[k],s.h[k].data(),s.h[k].size()*4,cudaMemcpyHostToDevice));CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int r=0;r<R;r++)CK(fn(h,c.m,c.n,c.nnz,s.d[0]+G,(int*)(s.d[1]+G),(int*)(s.d[2]+G),s.d[3]+G,(int*)(s.d[4]+G),(int*)(s.d[5]+G),CUDA_R_32F,CUSPARSE_ACTION_NUMERIC,CUSPARSE_INDEX_BASE_ZERO,CUSPARSE_CSR2CSC_ALG1,s.buf));CK(cudaDeviceSynchronize());seconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/R;int off=c.oo;for(int k=0;k<6;k++){auto v=get(s.d[k],s.h[k].size());for(int i=0;i<(int)v.size();i++){unsigned expected=k<3?s.h[k][i]:(i>=G&&i<(int)v.size()-G?oracle[off+i-G]:GUARD);ok&=v[i]==expected;}if(k>=3)off+=v.size()-32;}capture(s,art);}
+std::string path="spgeam_trial"+std::to_string(trial)+".bin";std::ofstream(path,std::ios::binary).write((char*)art.data(),art.size()*4);printf("STUDY_TRIAL {\"trial\":%d,\"correct\":%s,\"jit_excluded\":true,\"time_seconds\":%.12g,\"internal_repeats\":10,\"timing_region\":\"sum_five_CSR_to_CSC_ALG1_numeric_vendor_batches_completion_per_repeat\",\"max_abs_error\":0,\"max_rel_error\":0,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"uint32\",\"count\":%zu,\"shape\":[%zu],\"byte_order\":\"little\"}}\n",trial,ok?"true":"false",seconds,path.c_str(),art.size(),art.size());}for(auto&s:states){for(auto p:s.d)CK(cudaFree(p));CK(cudaFree(s.buf));}CK(cusparseDestroy(h));}

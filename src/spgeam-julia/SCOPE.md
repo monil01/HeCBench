@@ -1,0 +1,9 @@
+# CSR-to-CSC sparse transpose
+
+ActualnativeoperationCSRtoCSCtranspose notmatrixadditiondespitename. HistoricalgenuineJuliatransposesfullDENSEarray andprintscsr2cscEx2timer, neverrunsinit_csr: mathematicaltranspose butdifferentrepresentation/algorithm/ROI. P1/S2sourceandperformancescopealignment, notfabricatedoldGPUfailure. RestoredactualvendorAPI/ALG1/NUMERIC/Int32CSR-CSC.
+
+Named1×1/17×33/33×17/257×129/1024×1024 signednonzeros, emptyrows/columns, oddrectangular. Sourceoriginal20082square/150616nnz/repeat1000unmeasured. No corrective nativeintervention.
+
+All4sameactualcuSPARSE12001DSO/stream0/F32/NUMERIC/BASEZERO/ALG1. CUDAjlhostCABI/localGCpreservation/context/allocandframeworkimportcovariates; actual vendorGPUalgorithm shared. KA/JACC GPUloweringnotexercised. No causalGPUabstractionranking or FLOProofline.
+
+Prospectiveinclusiveworkflow/referencewindows includereusedcontext/cache/paper/audits/coordination. KA/JACCpartial evaluationwindows beganaftersharedhelper/wrapperdraft, notexclusivewholetranslationcost. Sharedworkflowoverlapsphasesdonotadd; sourcechars/4partialsizeproxyseparate/historicalunknown.
