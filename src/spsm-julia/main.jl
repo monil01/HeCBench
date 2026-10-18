@@ -1,1 +1,1 @@
-include("../mcpr-julia/main.jl")
+include("spsm-julia-cuda.jl/main.jl")
