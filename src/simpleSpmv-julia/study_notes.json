@@ -1,0 +1,62 @@
+{
+  "scientific_intent": {
+    "primary_family": "linear_algebra",
+    "primary_domain": "sparse_linear_operator",
+    "scientific_task": "Compute the same square matrix-vector product by dense scanning, scalar CSR rows and subgroup-cooperative CSR rows",
+    "mathematical_method": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+    "input_size_regime": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+    "accuracy_requirements": [
+      "Full47520output/guardvalues per capture, independentFP64 math.fsum rowdotproducts fromactualFP32fixture, atol1e-5/rtol1e-5",
+      "1437701losslesslyserializedactualGPUinputs including64bitrow/columnindices exactprefix",
+      "All1440sentinelguards checkedexact independently, primarytolerantcomparisonaloneisnotexactguardproof",
+      "Conditionalnativevectorsolewritercorrection; originalall5independentPASS preserved despite source-levelalllaneconflict, nooriginalnumericalfailureinvented"
+    ],
+    "precision_sensitivity": "FP32storage/products/accumulation, FP64hostoracle and losslessartifactencoding distinct fromGPUprecision; reductionorder/FMA covariates",
+    "community_use_case": "Reusable sparse operator and storage/reduction alternatives for iterative scientificsolvers. No PDEsystem, Krylovconvergence, conditionnumberor time-to-solution guarantee fromoneSpMVfixture.",
+    "review_status": "source_audited",
+    "evidence": [
+      {
+        "path": "src/simpleSpmv-cuda/kernels.cu",
+        "sha256": "2e25324d3971145c30d43cccf8d5d3b3579953472e49a5d3ff6298710be93cda"
+      },
+      {
+        "path": "src/simpleSpmv-cuda/utils.cpp",
+        "sha256": "4a543306cc9400c18d55e88e056bc2eed91a756b738ffd363e762c8b2f6594fb"
+      },
+      {
+        "path": "src/simpleSpmv-julia/generate_oracle.py",
+        "sha256": "29032fc4a0d1df3604d278edabb51b49b814611a1c2858b9d3cf687a9bf20ea3"
+      },
+      {
+        "path": "src/simpleSpmv-julia/independent_artifact_audit.py",
+        "sha256": "ad52c1b935138de056f90cf61c0055f5859f4aa5cfc04d6fe9e5f23d6d5fc3f9"
+      }
+    ]
+  },
+  "keyconfounds": [
+    "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+    "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+    "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+    "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+    "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+    "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+    "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+    "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+  ],
+  "result": {
+    "path": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv/result.json",
+    "sha256": "c8ef2fa77a2a2fc59b6eb7d85b6851b81811616becac8e302e2fb402594d7ee0"
+  },
+  "independent_audit": {
+    "path": "src/simpleSpmv-julia/independent_artifact_audit.json",
+    "sha256": "afd84a559699787e5861110454a185bca35421c871cdc4b80ea91092c2076a2c"
+  },
+  "native_reference_provenance": {
+    "reason": "Originalvectorlaneswrite distinctshufflepartials tosameoutput. Actualoriginal5/5fulloraclePASS preserved, so noobservednumericalfailureclaimed. Solewriterlane0guardmakesdefinedintendedrowdotproduct; dense/scalarCSRbodiesunchanged.",
+    "original_gpu_result": ".porting-state/portable_julia/runs/20261018T011959158673Z_simpleSpmv/result.json",
+    "correction": "Onlyif(threadIdx.x==0) aroundy[m]=temp inrenamedtemplate. Samewarp reduction/launch/inputs/tolerance.",
+    "original_source": "src/simpleSpmv-cuda/kernels.cu",
+    "corrected_template": "src/simpleSpmv-julia/vector_defined.cuh",
+    "independent_contract": "ExactdenseandCSRFP64math.fsum rowdotproducts ofsharedactualFP32inputs; originalpassesnotfalse failures."
+  }
+}
