@@ -2,12 +2,40 @@
   "schema_version": 2,
   "benchmark_id": "resize",
   "scientific_intent": {
-    "primary_family": "unclassified",
-    "review_status": "provisional_category_requires_source_review",
-    "scientific_task": null,
-    "community_use_case": null,
-    "evidence": [],
-    "classification_method": "Curated name/motif grouping to organize source review; not validated application provenance."
+    "primary_family": "signal_image",
+    "primary_domain": "planar_integer_image_resampling",
+    "review_status": "source_reviewed",
+    "scientific_task": "Resample planar image channels using the source nearest coordinate convention or corrected bilinear interpolation, with unsigned pixel storage.",
+    "mathematical_operation": "Nearest copies the pixel selected by positive-away rounding of(y+.5)*scale with upper clamping. Bilinear samples max((y+.5)*scale\u2212.5,0) with replicated upper neighbors, convex four-corner weights and final unsigned truncation. Sixteen planar channels are processed in groups of eight.",
+    "discretization": "24 paths:UInt8/16/32\u00d7four shapes\u00d7nearest/bilinear, each repeated3times; downsample8\u00d76\u21924\u00d73 and9\u00d77\u21926\u00d74, upsample12\u00d714\u219224\u00d728, identity5\u00d73. Source29184blocks\u00d7256threads retained. All scale ratios are exact dyadics.",
+    "accuracy_requirements": "Exact full outputs versus independent Fraction convex-bilinear/declared-nearest oracle, actual GPU input bytes and7936guards. Full unsigned range nearest copying, including UInt32max. Bilinear UInt8 inputs<=220 and UInt16/32<=3520 keep all Float32 polynomial arithmetic exactly representable before final truncation.",
+    "input_size_regime": "Named small images,16complete channels/three internal repeats and fixed source launch geometry. Mostly inactive source grid for these sizes; not original1920\u00d71080\u2192256\u00d7256 channels512 CLI or large-image throughput/image-quality validation.",
+    "precision_sensitivity": "Unsigned storage/copy at8/16/32bits; Float32 coordinates and corrected bilinear weights/pixel arithmetic. Exact dyadic rational domain has expanded intermediate numerators<2^21<2^24; no tolerance is needed. High-intensity UInt32 bilinear interpolation can lose precision and remains outside certification.",
+    "community_use_case": "Image resampling is a preprocessing primitive. Coordinate convention, border replication, integer quantization, channel layout and intensity precision matter to downstream results. No antialiasing, perceptual image quality, calibrated imaging or generic nearest identity property is claimed.",
+    "description": "Original native host scale division truncates ratios and integer bilinear weight casts erase interpolation. Actual unchanged-native GPU counterexamples establish both defects. The accepted study uses an explicitly conditional corrected native reference and retains the unusual native nearest half-center/away-tie convention, including identity shift.",
+    "provenance": "Native main.cu templates, resize_image scale helper and original true coordinate flags; Apache2 LICENSE retained without inferred originating library. Independent Fraction oracle uses convex corner weights rather than the expanded GPU polynomial. Native UInt8 witness observed; generic unsigned cast defect additionally follows source type semantics.",
+    "source_evidence": [
+      {
+        "path": "src/resize-cuda/main.cu",
+        "sha256": "9ddddcefa6f2e95aa4b6adcdf92b968a9890cca53d5d42fb6ad5a7322af8978b"
+      },
+      {
+        "path": "src/resize-cuda/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "src/resize-julia/original_main.jl",
+        "sha256": "5189e834fcf3a69178d373971237c99505a6bb29473c6076438e6ea7d2187939"
+      },
+      {
+        "path": "src/resize-julia/native_original_witness.json",
+        "sha256": "ab90dd2f3b3daf341961882848476edb53e3facdbb92ea54a11986881e5e7881"
+      },
+      {
+        "path": "src/resize-julia/corrected_kernels.cuh",
+        "sha256": "47d30ac256dd1d6a792c9347fdf9f13fc0234ee969aff41a1950fc64a9e27694"
+      }
+    ]
   },
   "base_ontology": {
     "path": "ontology/benchmarks/resize.yaml",
@@ -16,5 +44,38 @@
   },
   "historical_pass_method": "existing_cuda_jl_entrypoint_only",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "fee46c63be141c68cb632f3a",
+      "begin_event_id": "c7ceba9a7850ea1126c54e61",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T11:14:21.512807+00:00",
+      "usage_event_timestamp": "2026-10-18T11:14:15.543Z",
+      "elapsed_usage_event_start": "2026-10-18T10:56:30.656Z",
+      "delta_usage": {
+        "input_tokens": 6416503,
+        "cached_input_tokens": 6363136,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 39084,
+        "reasoning_output_tokens": 20190,
+        "total_tokens": 6455587
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 5.969807,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "624102505df359e602400808169ec05eb609f2380704d90b0cece37c3eca439d",
+      "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 7.687455,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/resize/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "e481b86173f49da544ad328c170bd8fba26fc6ade288c1c6a5a6556c65c3a928",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }
