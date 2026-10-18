@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "dropout",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/dropout.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,648 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+    "work_item_mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+    "storage_precision": [
+      "Float32",
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32",
+      "UInt64"
+    ],
+    "synchronization": [
+      "Per-block barriers",
+      "Context completion at each four-launch pipeline boundary"
+    ],
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": [
+        512,
+        256,
+        128
+      ],
+      "vector_instances": [
+        1,
+        2,
+        4
+      ],
+      "cases": 6,
+      "probabilities": [
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "timed_kernel_calls_per_trial": 24,
+      "untimed_probability_replay_calls_per_trial": 18,
+      "shared_bytes": 0
+    },
+    "resource_policy": {
+      "shared_bytes": 0,
+      "jacc_explicit_shmem_size": 0
+    },
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "2ab6016bf058cb9ed87ed18e445ff5ca8b4b50c57da6dd13234d921ed3bd97e8",
+    "reference_repair": null,
+    "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "device_kernel_definitions": 2,
+    "verification_only_kernel_definitions": 1,
+    "requested_benchmark_instances": 3,
+    "timed_kernel_calls_per_trial": 24,
+    "untimed_probability_replays_per_trial": 18,
+    "host_oracle_precision": "Unbounded Python integer counter arithmetic, rounded Float32 conversion/scale; packed Boolean masks",
+    "artifact_encoding_precision": "UInt32 raw Float32 bits, widened mask bytes and guards",
+    "index_precision": [
+      "UInt32 native coordinates",
+      "Int64 Julia flat offsets"
+    ],
+    "rng_mapping": "Own exact integer Philox4x32-10, offset STATE1, source VEC-specific assignment, no vendor device interoperability",
+    "emitted_vector_mapping_evidence": "src/dropout-julia/vector_mapping_evidence.json"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+    "layout": null,
+    "storage_precision": [
+      "Float32",
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32",
+      "UInt64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Unbounded Python integer counter arithmetic, rounded Float32 conversion/scale; packed Boolean masks",
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Per-block barriers",
+      "Context completion at each four-launch pipeline boundary"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": 0,
+      "jacc_explicit_shmem_size": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": [
+        512,
+        256,
+        128
+      ],
+      "vector_instances": [
+        1,
+        2,
+        4
+      ],
+      "cases": 6,
+      "probabilities": [
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "timed_kernel_calls_per_trial": 24,
+      "untimed_probability_replay_calls_per_trial": 18,
+      "shared_bytes": 0
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "2ab6016bf058cb9ed87ed18e445ff5ca8b4b50c57da6dd13234d921ed3bd97e8",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "review_status": "source_reviewed",
+      "application_domain": "Neural-network stochastic dropout operator",
+      "scientific_operator": "Seeded elementwise Bernoulli keep mask and inverse-keep scaling",
+      "numerical_method": "Philox4x32-10 counter RNG, native Float32 uniform conversion and multiplication",
+      "community_use": "Reproducible stochastic regularization primitive; no model training or generalization experiment",
+      "accuracy_requirements": "Every seeded mask and scaled Float32 output bit exact against independent integer RNG oracle and both GPU references; signed zero included",
+      "source_evidence": [
+        {
+          "path": "src/dropout-cuda/main.cu",
+          "sha256": "46ab37cbd74ce0f124815a001966ff8d2d1751e67026f04e77f85b4cba696d0c"
+        },
+        {
+          "path": "src/dropout-julia/study_math.jl",
+          "sha256": "ab235fa132d7dac46e890fe019db869d0e2385d30066f747d5868f8cb7403db8"
+        },
+        {
+          "path": "src/dropout-julia/study_fixture_oracle.py",
+          "sha256": "1fb197383fa4bc72ed89a060051ee1b50522f5325e939c32957007babb4a8d83"
+        }
+      ],
+      "limitations": [
+        "Only two 4-aligned sizes and four probabilities; arbitrary vector tails unmeasured",
+        "No training-quality/statistical-quality certification",
+        "p1..3 captures are explicit untimed deterministic replays; p4 is actual timed pipeline final state"
+      ]
+    },
+    "primary_motif": "Counter-RNG generation plus vectorized elementwise stochastic mask/scale",
+    "storage_precision": [
+      "Float32",
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32",
+      "UInt64"
+    ],
+    "synchronization": [
+      "Per-block barriers",
+      "Context completion at each four-launch pipeline boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Exact active-lane work/RNG mapping; own integer Philox instead of vendor RNG device functions, inactive portable lanes participate in barriers; emitted vector loads/stores checked separately"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum6_original_four_probability_kernel_pipelines_complete",
+    "verification_contract": "full_seeded_masks_and_raw_scaled_Float32_bits_with_explicit_replay_states",
+    "keyconfounds": [
+      "Only p4 is actual timed final output, p1..3 are deterministic untimed replays",
+      "All payloads 16B aligned including native guarded input; original cudaMalloc 256B payload alignment not replicated",
+      "Own integer Philox vs native vendor curand functions may lower differently",
+      "Raw80 RNG probe executes once per process, copied into each trial record",
+      "Short/specific sizes, no training-quality or arbitrary-tail claim"
+    ],
+    "benchmark": "dropout",
+    "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T051652412401Z_dropout/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/dropout-cuda/main.cu",
+      "native_source_sha256": "46ab37cbd74ce0f124815a001966ff8d2d1751e67026f04e77f85b4cba696d0c",
+      "reviewed_at": "2026-10-18T05:23:30.871884+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+        "work_item_mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+        "storage_precision": [
+          "Float32",
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Float32",
+          "UInt32",
+          "UInt64"
+        ],
+        "synchronization": [
+          "Per-block barriers",
+          "Context completion at each four-launch pipeline boundary"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": [
+            512,
+            256,
+            128
+          ],
+          "vector_instances": [
+            1,
+            2,
+            4
+          ],
+          "cases": 6,
+          "probabilities": [
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ],
+          "timed_kernel_calls_per_trial": 24,
+          "untimed_probability_replay_calls_per_trial": 18,
+          "shared_bytes": 0
+        },
+        "resource_policy": {
+          "shared_bytes": 0,
+          "jacc_explicit_shmem_size": null
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "baba7611c243c93084f99bc3cf16610414867ee4d5beace1f5785517e7bfbdf9",
+        "reference_repair": {
+          "taxonomy_code": "P1",
+          "phase": "reference_rng_fidelity_restoration",
+          "finding": "Historical CUDA.jl implements dropout using a documented deterministic hash RNG portability substitution rather than native seeded cuRAND Philox. This changes exact seeded masks/draw mapping, not an established violation of the Bernoulli operator law. Current reference restores exact Philox counter/subsequence/offset STATE1 and source VEC-specific draw assignment using own Julia integer arithmetic. Native unchanged.",
+          "original_source_sha256": "8e5c49a51ad4a2cab809c5b2c3b552db6ff29c9c5326168b7e007791751f6bcf",
+          "native_source": {
+            "path": "src/dropout-cuda/main.cu",
+            "sha256": "46ab37cbd74ce0f124815a001966ff8d2d1751e67026f04e77f85b4cba696d0c"
+          },
+          "original_native_unchanged": true
+        },
+        "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "verification_only_kernel_definitions": 1,
+        "requested_benchmark_instances": 3,
+        "timed_kernel_calls_per_trial": 24,
+        "untimed_probability_replays_per_trial": 18,
+        "host_oracle_precision": "Unbounded Python integer counter arithmetic, rounded Float32 conversion/scale; packed Boolean masks",
+        "artifact_encoding_precision": "UInt32 raw Float32 bits, widened mask bytes and guards",
+        "index_precision": [
+          "UInt32 native coordinates",
+          "Int64 Julia flat offsets"
+        ],
+        "rng_mapping": "Own exact integer Philox4x32-10, offset STATE1, source VEC-specific assignment, no vendor device interoperability",
+        "emitted_vector_mapping_evidence": "src/dropout-julia/vector_mapping_evidence.json"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+        "work_item_mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+        "storage_precision": [
+          "Float32",
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Float32",
+          "UInt32",
+          "UInt64"
+        ],
+        "synchronization": [
+          "Per-block barriers",
+          "Context completion at each four-launch pipeline boundary"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": [
+            512,
+            256,
+            128
+          ],
+          "vector_instances": [
+            1,
+            2,
+            4
+          ],
+          "cases": 6,
+          "probabilities": [
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ],
+          "timed_kernel_calls_per_trial": 24,
+          "untimed_probability_replay_calls_per_trial": 18,
+          "shared_bytes": 0
+        },
+        "resource_policy": {
+          "shared_bytes": 0,
+          "jacc_explicit_shmem_size": null
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "d00a417defc268f27fb79b515ba4f2e8979c6d12c610296beff8c7cf4b68e83c",
+        "reference_repair": null,
+        "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "verification_only_kernel_definitions": 1,
+        "requested_benchmark_instances": 3,
+        "timed_kernel_calls_per_trial": 24,
+        "untimed_probability_replays_per_trial": 18,
+        "host_oracle_precision": "Unbounded Python integer counter arithmetic, rounded Float32 conversion/scale; packed Boolean masks",
+        "artifact_encoding_precision": "UInt32 raw Float32 bits, widened mask bytes and guards",
+        "index_precision": [
+          "UInt32 native coordinates",
+          "Int64 Julia flat offsets"
+        ],
+        "rng_mapping": "Own exact integer Philox4x32-10, offset STATE1, source VEC-specific assignment, no vendor device interoperability",
+        "emitted_vector_mapping_evidence": "src/dropout-julia/vector_mapping_evidence.json"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+        "work_item_mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+        "storage_precision": [
+          "Float32",
+          "UInt8",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Float32",
+          "UInt32",
+          "UInt64"
+        ],
+        "synchronization": [
+          "Per-block barriers",
+          "Context completion at each four-launch pipeline boundary"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": [
+            512,
+            256,
+            128
+          ],
+          "vector_instances": [
+            1,
+            2,
+            4
+          ],
+          "cases": 6,
+          "probabilities": [
+            0.25,
+            0.5,
+            0.75,
+            1.0
+          ],
+          "timed_kernel_calls_per_trial": 24,
+          "untimed_probability_replay_calls_per_trial": 18,
+          "shared_bytes": 0
+        },
+        "resource_policy": {
+          "shared_bytes": 0,
+          "jacc_explicit_shmem_size": 0
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "2ab6016bf058cb9ed87ed18e445ff5ca8b4b50c57da6dd13234d921ed3bd97e8",
+        "reference_repair": null,
+        "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "verification_only_kernel_definitions": 1,
+        "requested_benchmark_instances": 3,
+        "timed_kernel_calls_per_trial": 24,
+        "untimed_probability_replays_per_trial": 18,
+        "host_oracle_precision": "Unbounded Python integer counter arithmetic, rounded Float32 conversion/scale; packed Boolean masks",
+        "artifact_encoding_precision": "UInt32 raw Float32 bits, widened mask bytes and guards",
+        "index_precision": [
+          "UInt32 native coordinates",
+          "Int64 Julia flat offsets"
+        ],
+        "rng_mapping": "Own exact integer Philox4x32-10, offset STATE1, source VEC-specific assignment, no vendor device interoperability",
+        "emitted_vector_mapping_evidence": "src/dropout-julia/vector_mapping_evidence.json"
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/dropout-julia/dropout-julia-JACC/main.jl",
+    "sha256": "2ab6016bf058cb9ed87ed18e445ff5ca8b4b50c57da6dd13234d921ed3bd97e8",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        45,
+        47,
+        52
+      ],
+      "local_storage": [],
+      "barrier": [
+        14,
+        27
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        43,
+        51
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+      "run_id": "20261018T051652412401Z_dropout",
+      "result": ".porting-state/portable_julia/runs/20261018T051652412401Z_dropout/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "dec56ff4599e5af3385e80e494cb0d9b9d7f7f296da2b7a7e5077f047d43299f",
+      "source_hash": "4746845706c6a0b796ed2d03f51c6edb27219c5d3cdaf2ab53575932402b41b6",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T051652412401Z_dropout/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0007857480000000002,
+        0.000872508,
+        0.000822169,
+        0.0008096669999999999,
+        0.0007899580000000001
+      ],
+      "mean_last_four_seconds": 0.0008235755,
+      "contract": {
+        "sizes": [
+          1028,
+          524292
+        ],
+        "vector_variants": [
+          1,
+          2,
+          4
+        ],
+        "blocks": [
+          512,
+          256,
+          128
+        ],
+        "threads": 256,
+        "seed": 12345678,
+        "offset": 87654321,
+        "probabilities": [
+          0.25,
+          0.5,
+          0.75,
+          1.0
+        ],
+        "inputs": "Smallsourceconstant0.1; largevariedsigneddyadicandnegativezero, exactFloat32bits; payload16Balign andNdivisible4",
+        "RNG": "ExactPhilox4x32-10counter/subsequence/offsetSTATE1 andFloat32uniformconversion; sourceVEC2alwaysnewuniform4usesfirst2, neverflipunusedbranch",
+        "timing": "Sum6original4probabilitylaunchpipelines total(notdivided4), contextcomplete, RNGinitinsidetimedkernels; nohostpremasks",
+        "capture_scope": "Actualtimedp4outputs snapshotted BEFORE anyreplay. p1..3 arefulluntimeddeterministicreplays everytrial, notoriginaltimedintermediatearrays. Raw80uintRNGprobeonceperprocess outsidealltiming copiedintoeachcapture explicitlyonce.",
+        "oracle": "IndependentPythonintegerPhiloxpackedmask, exactCPUFloat32 input*mask*(1/p), allguards/inputreadonly;80rawuintvendorcurand4probe",
+        "mapping": "Native2authoredtemplates/3instances, own2entrydefinitions plusverificationprobe1; packedVecElementV2/V4datatypes, inactiveportablelanesremainatbarrier withRNGworkactiveonly",
+        "scope": "All3nativevariants/fixedgrids andactualsecond/fifthloopcontinuation; arbitraryunalignedvector-tailN andlearnedmodelquality unmeasured"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_exact_scaled_floatbits_and_seeded_masks_timed_p4_untimed_p123_plus_rawRNG80"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 691,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/dropout-julia/dropout-julia-JACC/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "5c97844e13b0900ac8bd5538",
+        "begin_event_id": "6eb2068eaa1fa512803f8562",
+        "agent": "/root/maps_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T05:18:42.297977+00:00",
+        "usage_event_timestamp": "2026-10-18T05:18:34.427Z",
+        "elapsed_usage_event_start": "2026-10-18T05:15:59.798Z",
+        "delta_usage": {
+          "input_tokens": 1725922,
+          "cached_input_tokens": 1721344,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5734,
+          "reasoning_output_tokens": 4384,
+          "total_tokens": 1731656
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 7.870977,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "330e00b5b7d326a673a0276267cad4eadf7e9f6637b3f3c8c3e04f31e40f19b2",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 10.292278,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/dropout/jacc_translation.jsonl",
+        "evidence_sha256": "37f5c8f048b556886f4ed9e3c5da247cded7d4d87f03793584d4493b3c85f95d",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/dropout-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "026a2cb02a148d1736fae0318028bb2e14000572309d8ff5098f20e00cad770b",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/dropout-julia-jacc/manifest.json",
+        "sha256": "026a2cb02a148d1736fae0318028bb2e14000572309d8ff5098f20e00cad770b"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "5f62e4445bd3850e35065ccacff335ccfba00f3d",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "dropout",
+    "implementation_model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T051652412401Z_dropout/result.json",
+    "configuration_id": "dropout_original_grids_1028_524292_Philox_allp_timedp4_replayp123_v1",
+    "named_scope_only": true,
+    "native_reference_repaired": false,
+    "numerical_contract": "Each process checks every mask against Python packed Philox oracle and every scaled Float32 bit against CPU source*mask*scale plus all guards and readonly inputs. Raw80 vendor/own/Python RNG probe once per process; copied across trial captures. p1..3 are untimed deterministic replays, actual timed p4 captured before replay."
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/dropout.json",
+    "annotation_sha256": "98336dd13629154312eb16bb9a5c12f68896217bbc3fa54dbf26d8b738067eaa",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

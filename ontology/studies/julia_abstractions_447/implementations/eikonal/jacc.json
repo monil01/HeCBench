@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "eikonal",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/eikonal.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,638 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Three original-equivalent FIM kernels plus full host active-list neighbor/convergence algorithm to emptylist",
+    "work_item_mapping": "4x4x4tile and 6\u00b3FP64sharedhalo, contiguousblock64field, reduction4x4x2 with64Boolshared, source sqrtf and host list policies",
+    "storage_precision": [
+      "Float64",
+      "Bool",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Float32",
+      "UInt32"
+    ],
+    "synchronization": [
+      "Block barriers around each localJacobi update",
+      "Tree-reduction barriers",
+      "Host convergence readbacks and orderedlistcopies",
+      "Context completion at fullsolver ROI boundary"
+    ],
+    "launch_geometry": {
+      "solver_threads": [
+        4,
+        4,
+        4
+      ],
+      "reducer_threads": [
+        4,
+        4,
+        2
+      ],
+      "shared_solver_bytes": 1728,
+      "shared_reduction_bytes": 64,
+      "grid": "[active_blocks,1,1]",
+      "cases": 3,
+      "iterations_per_block": [
+        1,
+        3,
+        10
+      ],
+      "authored_device_definitions": 3
+    },
+    "resource_policy": {
+      "solver_shared_bytes": 1728,
+      "reduction_shared_bytes": 64,
+      "shared_allocation": "JACC dynamic explicit sizes and publicshared zero-template preload"
+    },
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "90a9ba66f1fcef440b2e26e5cf47b5b8dfe8e81a189e05cfe5f055a4bce80f10",
+    "reference_repair": null,
+    "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "device_kernel_definitions": 3,
+    "host_oracle_precision": "Float64 globalGodunovquadratic roots/fsum, independent fromblockedFIM/localFP32sqrt source",
+    "artifact_encoding_precision": "Float64encoded field/metadata, widenedBoolandUInt32 flags notdeviceFloat64arithmetic",
+    "index_precision": [
+      "Int32devicecoordinates",
+      "Int64Juliaflattenedoffsets"
+    ],
+    "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Three original-equivalent FIM kernels plus full host active-list neighbor/convergence algorithm to emptylist",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "4x4x4tile and 6\u00b3FP64sharedhalo, contiguousblock64field, reduction4x4x2 with64Boolshared, source sqrtf and host list policies",
+    "layout": null,
+    "storage_precision": [
+      "Float64",
+      "Bool",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Float32",
+      "UInt32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64 globalGodunovquadratic roots/fsum, independent fromblockedFIM/localFP32sqrt source",
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Block barriers around each localJacobi update",
+      "Tree-reduction barriers",
+      "Host convergence readbacks and orderedlistcopies",
+      "Context completion at fullsolver ROI boundary"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "solver_shared_bytes": 1728,
+      "reduction_shared_bytes": 64,
+      "shared_allocation": "JACC dynamic explicit sizes and publicshared zero-template preload"
+    },
+    "launch_geometry": {
+      "solver_threads": [
+        4,
+        4,
+        4
+      ],
+      "reducer_threads": [
+        4,
+        4,
+        2
+      ],
+      "shared_solver_bytes": 1728,
+      "shared_reduction_bytes": 64,
+      "grid": "[active_blocks,1,1]",
+      "cases": 3,
+      "iterations_per_block": [
+        1,
+        3,
+        10
+      ],
+      "authored_device_definitions": 3
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete",
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "90a9ba66f1fcef440b2e26e5cf47b5b8dfe8e81a189e05cfe5f055a4bce80f10",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "application_domain": "Travel-time / static Hamilton-Jacobi Eikonal equation",
+      "scientific_operator": "Positive-speed isotropic discrete Eikonal arrival-time field from origin seed",
+      "numerical_method": "Fast Iterative Method with4\u00b3local tiles, shared-memory local Jacobi, host active-list neighbor scheduling and convergence reductions; mixedFloat64/Float32sqrt sourcepolicy",
+      "community_use": "Travel-time propagation in computational physics/image geometry; named discrete operator study, not a calibrated material or continuous-PDE convergence experiment",
+      "accuracy_requirements": "Full final field against independent global monotone Godunov Float64 fixedpoint, finite/nonnegative/seed and constant-speed coordinate-axis checks, allstate direct4way comparison/guards",
+      "source_evidence": [
+        {
+          "path": "src/eikonal-cuda/kernel.cu",
+          "sha256": "e6c9752eea5a3b956e792a15f6e58ff3488a66fa48baf8d7d2028258ad0e7b2e"
+        },
+        {
+          "path": "src/eikonal-cuda/fim.cu",
+          "sha256": "ecc03f3c57ba6f426cc3e4c69b151b5389ee396eb2d8722f4890efe995094a81"
+        },
+        {
+          "path": "src/eikonal-cuda/common_def.h",
+          "sha256": "8f006d064ee0ff6ba20a236408c42120e16833c0666f42930a7f969114c6cd54"
+        },
+        {
+          "path": "src/eikonal-cuda/StructuredEikonal.cu",
+          "sha256": "9fb3136dbae6397f48e9a5e41cbf54ed3a6c003207dcc44a0b30b28f7bde9428"
+        },
+        {
+          "path": "src/eikonal-julia/study_fixture_oracle.py",
+          "sha256": "a0b4414f2c5fe3fd1714b86d7b55fb93b669fb59370f2f70371f1f7a20f62905"
+        }
+      ],
+      "limitations": [
+        "Only4\u00b3/8\u00b3/12\u00b3 cases, no large512\u00b3 performance/continuous-gridrefinement certificate",
+        "Source sqrtf intentionally lowers radicands/root to Float32 despite Float64 storage",
+        "All source masks true, no obstacle/zero-speed/anisotropic study"
+      ]
+    },
+    "primary_motif": "Irregular active-tile stencil iteration with block convergence reduction and host neighbor scheduling",
+    "storage_precision": [
+      "Float64",
+      "Bool",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float64",
+      "Float32",
+      "UInt32"
+    ],
+    "synchronization": [
+      "Block barriers around each localJacobi update",
+      "Tree-reduction barriers",
+      "Host convergence readbacks and orderedlistcopies",
+      "Context completion at fullsolver ROI boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same4\u00b3solver/neighbor and4x4x2reducer blocks, sourceblockedglobalorder/6\u00b3sharedtile, hostneighbor/list logic, source sqrtf and nIter preserved; JACC shared template preload explicit extra mappingwork"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete",
+    "verification_contract": "full_final_solution_plus_all_recorded_algorithm_states_and_input_guards",
+    "keyconfounds": [
+      "MixedFP32root insideFP64operator, not fullFP64 physics precision",
+      "Host scheduling/readback overhead included, smallvolume not GPUthroughput-only",
+      "JACC publicshared template preload additionalwork versus uninitialized source/shared arrays",
+      "Named hosttemporarylist initialization insideROI all4, sourceoriginaltemporaryallocation beforetimer",
+      "GlobalGodunovchecker usesFloat64sqrt and independentiteration, not sourceactive-list implementation",
+      "No continuousEikonal meshrefinement/physicalmodel calibration"
+    ],
+    "benchmark": "eikonal",
+    "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T053826730753Z_eikonal/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/eikonal-cuda/kernel.cu",
+      "native_source_sha256": "e6c9752eea5a3b956e792a15f6e58ff3488a66fa48baf8d7d2028258ad0e7b2e",
+      "reviewed_at": "2026-10-18T05:40:24.507396+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Three original-equivalent FIM kernels plus full host active-list neighbor/convergence algorithm to emptylist",
+        "work_item_mapping": "4x4x4tile and 6\u00b3FP64sharedhalo, contiguousblock64field, reduction4x4x2 with64Boolshared, source sqrtf and host list policies",
+        "storage_precision": [
+          "Float64",
+          "Bool",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Float32",
+          "UInt32"
+        ],
+        "synchronization": [
+          "Block barriers around each localJacobi update",
+          "Tree-reduction barriers",
+          "Host convergence readbacks and orderedlistcopies",
+          "Context completion at fullsolver ROI boundary"
+        ],
+        "launch_geometry": {
+          "solver_threads": [
+            4,
+            4,
+            4
+          ],
+          "reducer_threads": [
+            4,
+            4,
+            2
+          ],
+          "shared_solver_bytes": 1728,
+          "shared_reduction_bytes": 64,
+          "grid": "[active_blocks,1,1]",
+          "cases": 3,
+          "iterations_per_block": [
+            1,
+            3,
+            10
+          ],
+          "authored_device_definitions": 3
+        },
+        "resource_policy": {
+          "solver_shared_bytes": 1728,
+          "reduction_shared_bytes": 64,
+          "shared_allocation": "framework static shared"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "eacf01078f6660d3478decc89486a6ccf0cff5fecb6ed8e8bbea29f999a5beb7",
+        "reference_repair": {
+          "taxonomy_code": "S1",
+          "phase": "reference_FIM_algorithm_restoration",
+          "finding": "Historical Julia only fills indices, emits fabricated iteration/convergence timings and writes one checksum rather than full NRRD field; it does not solve the native Eikonal equation. Restored three source-equivalent authored kernels plus actual host active-list FIM algorithm. Native original kernels/precision policy unchanged; independent global Godunov oracle is a checker, not substituted GPU algorithm.",
+          "original_source_sha256": "7299735660123c74e2a249a5353c2bb58554d321688e1809773fd71cdbe1c104",
+          "native_source": {
+            "path": "src/eikonal-cuda/kernel.cu",
+            "sha256": "e6c9752eea5a3b956e792a15f6e58ff3488a66fa48baf8d7d2028258ad0e7b2e"
+          },
+          "original_native_unchanged": true
+        },
+        "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 3,
+        "host_oracle_precision": "Float64 globalGodunovquadratic roots/fsum, independent fromblockedFIM/localFP32sqrt source",
+        "artifact_encoding_precision": "Float64encoded field/metadata, widenedBoolandUInt32 flags notdeviceFloat64arithmetic",
+        "index_precision": [
+          "Int32devicecoordinates",
+          "Int64Juliaflattenedoffsets"
+        ],
+        "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Three original-equivalent FIM kernels plus full host active-list neighbor/convergence algorithm to emptylist",
+        "work_item_mapping": "4x4x4tile and 6\u00b3FP64sharedhalo, contiguousblock64field, reduction4x4x2 with64Boolshared, source sqrtf and host list policies",
+        "storage_precision": [
+          "Float64",
+          "Bool",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Float32",
+          "UInt32"
+        ],
+        "synchronization": [
+          "Block barriers around each localJacobi update",
+          "Tree-reduction barriers",
+          "Host convergence readbacks and orderedlistcopies",
+          "Context completion at fullsolver ROI boundary"
+        ],
+        "launch_geometry": {
+          "solver_threads": [
+            4,
+            4,
+            4
+          ],
+          "reducer_threads": [
+            4,
+            4,
+            2
+          ],
+          "shared_solver_bytes": 1728,
+          "shared_reduction_bytes": 64,
+          "grid": "[active_blocks,1,1]",
+          "cases": 3,
+          "iterations_per_block": [
+            1,
+            3,
+            10
+          ],
+          "authored_device_definitions": 3
+        },
+        "resource_policy": {
+          "solver_shared_bytes": 1728,
+          "reduction_shared_bytes": 64,
+          "shared_allocation": "framework static shared"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "7c99250a2740507697c33a0ebe99a41a19a7d526d121cc5dff16e4f5d83524a6",
+        "reference_repair": null,
+        "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 3,
+        "host_oracle_precision": "Float64 globalGodunovquadratic roots/fsum, independent fromblockedFIM/localFP32sqrt source",
+        "artifact_encoding_precision": "Float64encoded field/metadata, widenedBoolandUInt32 flags notdeviceFloat64arithmetic",
+        "index_precision": [
+          "Int32devicecoordinates",
+          "Int64Juliaflattenedoffsets"
+        ],
+        "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Three original-equivalent FIM kernels plus full host active-list neighbor/convergence algorithm to emptylist",
+        "work_item_mapping": "4x4x4tile and 6\u00b3FP64sharedhalo, contiguousblock64field, reduction4x4x2 with64Boolshared, source sqrtf and host list policies",
+        "storage_precision": [
+          "Float64",
+          "Bool",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float64",
+          "Float32",
+          "UInt32"
+        ],
+        "synchronization": [
+          "Block barriers around each localJacobi update",
+          "Tree-reduction barriers",
+          "Host convergence readbacks and orderedlistcopies",
+          "Context completion at fullsolver ROI boundary"
+        ],
+        "launch_geometry": {
+          "solver_threads": [
+            4,
+            4,
+            4
+          ],
+          "reducer_threads": [
+            4,
+            4,
+            2
+          ],
+          "shared_solver_bytes": 1728,
+          "shared_reduction_bytes": 64,
+          "grid": "[active_blocks,1,1]",
+          "cases": 3,
+          "iterations_per_block": [
+            1,
+            3,
+            10
+          ],
+          "authored_device_definitions": 3
+        },
+        "resource_policy": {
+          "solver_shared_bytes": 1728,
+          "reduction_shared_bytes": 64,
+          "shared_allocation": "JACC dynamic explicit sizes and publicshared zero-template preload"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "90a9ba66f1fcef440b2e26e5cf47b5b8dfe8e81a189e05cfe5f055a4bce80f10",
+        "reference_repair": null,
+        "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 3,
+        "host_oracle_precision": "Float64 globalGodunovquadratic roots/fsum, independent fromblockedFIM/localFP32sqrt source",
+        "artifact_encoding_precision": "Float64encoded field/metadata, widenedBoolandUInt32 flags notdeviceFloat64arithmetic",
+        "index_precision": [
+          "Int32devicecoordinates",
+          "Int64Juliaflattenedoffsets"
+        ],
+        "timing_scope": "sum3_full_active_list_FIM_solver_host_scheduling_copies_complete"
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/eikonal-julia/eikonal-julia-JACC/main.jl",
+    "sha256": "90a9ba66f1fcef440b2e26e5cf47b5b8dfe8e81a189e05cfe5f055a4bce80f10",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        86,
+        88,
+        93
+      ],
+      "local_storage": [],
+      "barrier": [
+        23,
+        30,
+        32,
+        55,
+        62,
+        64,
+        74,
+        78
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+      "run_id": "20261018T053826730753Z_eikonal",
+      "result": ".porting-state/portable_julia/runs/20261018T053826730753Z_eikonal/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "d2b457cbc1a7169bca6f3b8678e9438126bc5b382df02383cf3bfe883c091a97",
+      "source_hash": "33aba20de4af39c5b2fe166ba6dfa3d51acae413f917ffb966cb006c22a13bfa",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T053826730753Z_eikonal/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.004863074,
+        0.004749034,
+        0.004544091,
+        0.004544060000000001,
+        0.004604801
+      ],
+      "mean_last_four_seconds": 0.0046104965,
+      "contract": {
+        "cases": [
+          [
+            4,
+            1,
+            0
+          ],
+          [
+            8,
+            3,
+            0
+          ],
+          [
+            12,
+            10,
+            1
+          ]
+        ],
+        "inputs": "Exact Float64speed1..2dyadic/originseed0/INF1e20, source alltruemask and block4memoryorder",
+        "outputs": "Full dsol/tsol/con/listVol/list and readonly speed/mask with rawguards, iteration/process counts; independent globalGodunovFloat64oracle",
+        "timing": "Sum3 full blockedFIM solver including hostactive-list neighbor scheduling, listH2D/convergenceD2H and context completion; pertrial initialization outsideROI; hosttemporarylists initialized in helper all4",
+        "scope": "No analyticEuclideandistance claim; discreteGodunov fixedpoint/sourcephysicalpolicy, original512cubeCLIunmeasured",
+        "precision": "NativeFloat64storage/math with sqrtf(Float32radicand) deliberatelypreserved"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 1133,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/eikonal-julia/eikonal-julia-JACC/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "cda81b6d09b56e1a1b1622bc",
+        "begin_event_id": "3ef891454f86f44fee13773e",
+        "agent": "/root/maps_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T05:39:34.770516+00:00",
+        "usage_event_timestamp": "2026-10-18T05:39:27.044Z",
+        "elapsed_usage_event_start": "2026-10-18T05:37:50.251Z",
+        "delta_usage": {
+          "input_tokens": 633799,
+          "cached_input_tokens": 631040,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3518,
+          "reasoning_output_tokens": 616,
+          "total_tokens": 637317
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 7.726516,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "4b0293e764907e538fa9cd82da5ac9b468b381162e96ad1ad1d3e364e597f014",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 5.385938,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/eikonal/jacc_translation.jsonl",
+        "evidence_sha256": "6d8b92415e5d3c18cb854e7ba4f43d2987d699adb5a89d1330c5be4e9e9c9338",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/eikonal-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "a271af1e3755a884fc7e54c708f22328b5cd6ae78c0a67c1d997ff561a8aa2f2",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/eikonal-julia-jacc/manifest.json",
+        "sha256": "a271af1e3755a884fc7e54c708f22328b5cd6ae78c0a67c1d997ff561a8aa2f2"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "866b4f13cf9a4f015cb0ab1b3e03603fb5e9ab86",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "eikonal",
+    "implementation_model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T053826730753Z_eikonal/result.json",
+    "configuration_id": "eikonal_full_block4_FIM_constant_variable_speed_3fixtures_v1",
+    "named_scope_only": true,
+    "native_reference_repaired": false,
+    "numerical_contract": "Full16383words withinunchangedprospectivetolerance; native/JuliadoNOTclaimbitidentical. Finaldsolindependentoracle; tsol/con/listVol/list/counts aredirectalgorithmstatecomparison"
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/eikonal.json",
+    "annotation_sha256": "ce5b6ea91eec3c1e150f05a844d9f0c36ba97ab2dd5d1e999b335f5f06276494",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "d3q19-bgk",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "conditionally_verified_native_reference_repaired",
   "scientific_intent_record": "../../domains/d3q19-bgk.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,963 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "d3q19-bgk",
+    "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2",
+    "status": "verified",
+    "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+    "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+    "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+    "precision": {
+      "storage": [
+        "Float64_populations_rho",
+        "Float32_u_star",
+        "Int8_boundary_flags_dirs",
+        "Int32_boundary_direction_bits"
+      ],
+      "compute": [
+        "Float64_moments_population_relaxation",
+        "Float32_macroscopic_velocity",
+        "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+        "Int32_grid_indices"
+      ]
+    },
+    "memory_access": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+    "synchronization": [
+      "Host completion after every timestep, with population pointer swap",
+      "No interthread or workgroup barriers in collision/stream kernel"
+    ],
+    "resource_policy": {
+      "block_threads": 64,
+      "grid": [
+        1,
+        17,
+        17
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_shmem_explicit": 0,
+      "private_Float64_values": 38,
+      "native_launch_bounds_maxthreads": 64,
+      "Julia_explicit_matching_launch_bounds_hint": false,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "launch_geometry": {
+      "threads": [
+        64,
+        1,
+        1
+      ],
+      "blocks": [
+        1,
+        17,
+        17
+      ],
+      "active_x_width": 17,
+      "N": 17,
+      "steps": 20,
+      "pointer_swap_and_sync_eachstep": true,
+      "out_u_every_step": true
+    },
+    "backend_extensions": [
+      "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+    ],
+    "host_device_boundary": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+    "supported_features": [
+      "D3Q19_BGK_collision_stream",
+      "local_bounce_and_movingwall",
+      "mixed_Float64_Float32",
+      "3D_partial_x_workgroups",
+      "private_static_vectors",
+      "complete_discrete_field_validation",
+      "mass_positivity_invariants"
+    ],
+    "fidelity_status": "matched",
+    "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk",
+    "numerical_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.0013234520000000001,
+      0.001194741,
+      0.00123912,
+      0.0011584800000000001,
+      0.00116649
+    ],
+    "mean_last_four_seconds": 0.00118970775,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-JACC/main.jl",
+        "sha256": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2"
+      },
+      {
+        "path": "src/d3q19-bgk-julia/study_common.jl",
+        "sha256": "cb36ec294a6acc707ed5b584896e847c60905447ec1da8e4a1894aecf1ca9b7b"
+      },
+      {
+        "path": "src/d3q19-bgk-julia/lbm_math.jl",
+        "sha256": "1e3a89f9893aa0ca389f2cd5a61c7e5bc45ac49f44bb172e19ef123f8337e1b6"
+      }
+    ],
+    "implementation_source_digest": "1c01a8135e4e1760ee9027c143d573f635dcc3556a2d32aeec0a5ee4fe6b0597",
+    "native_reference_repaired": true,
+    "scientific_fidelity_status": "conditional_initialized_metadata_discrete_cavity_agreement",
+    "independent_numerical_audit": "src/d3q19-bgk-julia/output_audit.json",
+    "shared_math_attribution_phase": "reference_preparation",
+    "boundary_setup_translation": "Notported; identicalfrozenCPUmetadata matchedagainstnativeGPUsetupandchecked inactualinitialprefix"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+    "implementation_class": "JACC_D3Q19_BGK_device_core_shared_math_CUDA_host_harness",
+    "declared_environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+    "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+    "storage_precision": [
+      "Float64_populations_rho",
+      "Float32_u_star",
+      "Int8_boundary_flags_dirs",
+      "Int32_boundary_direction_bits"
+    ],
+    "compute_precision": [
+      "Float64_moments_population_relaxation",
+      "Float32_macroscopic_velocity",
+      "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+      "Int32_grid_indices"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+    "synchronization": [
+      "Host completion after every timestep, with population pointer swap",
+      "No interthread or workgroup barriers in collision/stream kernel"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "block_threads": 64,
+      "grid": [
+        1,
+        17,
+        17
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_shmem_explicit": 0,
+      "private_Float64_values": 38,
+      "native_launch_bounds_maxthreads": 64,
+      "Julia_explicit_matching_launch_bounds_hint": false,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "launch_geometry": {
+      "threads": [
+        64,
+        1,
+        1
+      ],
+      "blocks": [
+        1,
+        17,
+        17
+      ],
+      "active_x_width": 17,
+      "N": 17,
+      "steps": 20,
+      "pointer_swap_and_sync_eachstep": true,
+      "out_u_every_step": true
+    },
+    "library_backend_boundary": [
+      "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+    ],
+    "host_control_boundary": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+    "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "matched",
+    "source_review_evidence": [
+      {
+        "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-JACC/main.jl",
+        "sha256": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2"
+      },
+      {
+        "path": "src/d3q19-bgk-julia/study_common.jl",
+        "sha256": "cb36ec294a6acc707ed5b584896e847c60905447ec1da8e4a1894aecf1ca9b7b"
+      },
+      {
+        "path": "src/d3q19-bgk-julia/lbm_math.jl",
+        "sha256": "1e3a89f9893aa0ca389f2cd5a61c7e5bc45ac49f44bb172e19ef123f8337e1b6"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "d3q19-bgk",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "primary_domain": "lattice_Boltzmann_fluid_dynamics",
+      "review_status": "source_reviewed",
+      "scientific_task": "Advance a low-Mach moving-wall cavity with the source D3Q19 BGK lattice Boltzmann discretization",
+      "mathematical_operation": "Periodic-addressed pull streaming with local bounce-back and moving-wall corrections, followed by density/momentum moments and BGK relaxation toward second-order equilibrium; boundary obstacle cells retain initialized populations.",
+      "discretization": "17\u00b3 grid including boundary cells,15\u00b3 active fluid cells;19 populations/cell;20 timesteps from rest; moving zmin lid velocity Float32(.02), other faces bounce; source Re100 omega formula. out_u=true each step.",
+      "accuracy_requirements": "Full current/previous population buffers and actual u_star compared with independent generic velocity-vector CPU formulation using atol1e-7+rtol1e-6*abs(ref), declared before trials. All112 guards, immutable rho and full boundary metadata exact; actual initial GPU state prefix byte-identical. Positive populations and active mass relative drift<1e-6 independently checked.",
+      "input_size_regime": "4913 lattice cells,3375 active cells,20-step transient; not steady-state/grid-converged validation or source2000-step CLI performance.",
+      "precision_sensitivity": "Float64 populations/rho coexist with Float32 macroscopic velocity and Float32 equilibrium subexpressions. The independent mathematical vector equilibrium differs slightly from optimized source mixed-precision algebra; absolute errors near zeros matter and huge raw relative-only errors must not imply global inaccuracy or be hidden.",
+      "community_use_case": "Lattice Boltzmann collision/streaming is a computational fluid dynamics component. This is a source-backed transient cavity operator study, not a validated application-scale flow prediction.",
+      "description": "Source STLBM uses unrolled D3Q19 streaming, local boundary treatment and mixed precision. Historical Julia entrypoint aliases unrelated mcpr and is archived. A new genuine solver-core reference is authored. Conditional native initialization defines boundary direction bitsets before original OR operations; original GPU bodies remain unchanged.",
+      "provenance": "STLBM University of Geneva2020, Latt/Coreixas/Beny (bundled license/source). Native setup allocated boundary_values/dirs without initialization; explicit zero seeding is justified by bitset/field meaning, separately recorded before first trial. No undefined native run or full physical continuum correctness is claimed.",
+      "source_evidence": [
+        {
+          "path": "src/d3q19-bgk-cuda/kernels.h",
+          "sha256": "a2346ae6c1bd8ab232a42ff0e90feb06f369f48b5391b6ff00c899138aa81fd6"
+        },
+        {
+          "path": "src/d3q19-bgk-cuda/main.cu",
+          "sha256": "52f7629cb5c6b4aab6308b2222216f034da30dfe532dbbb6eee55c20dcd30bfa"
+        },
+        {
+          "path": "src/d3q19-bgk-julia/scientific_witness.json",
+          "sha256": "2f03cb73872647fb959423bca8d8b34737ecfb34cad340155a9a43ae4b59a987"
+        }
+      ]
+    },
+    "primary_motif": "D3Q19_pull_stream_BGK_collision_with_local_boundaries",
+    "storage_precision": [
+      "Float64_populations_rho",
+      "Float32_u_star",
+      "Int8_boundary_flags_dirs",
+      "Int32_boundary_direction_bits"
+    ],
+    "compute_precision": [
+      "Float64_moments_population_relaxation",
+      "Float32_macroscopic_velocity",
+      "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+      "Int32_grid_indices"
+    ],
+    "synchronization": [
+      "Host completion after every timestep, with population pointer swap",
+      "No interthread or workgroup barriers in collision/stream kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same D3Q19 directions, population SoA layout, pull/bounce/moving-wall branches, source moment grouping and mixed-precision equilibrium; matched17\u00b3 3D launch with64-thread x blocks and pointer swaps/sync each step. Conditional setup initialization is explicit. Boundary metadata is verified native GPU setup vs identical frozen CPU-generated metadata, not a port of setup kernels."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_genuine_D3Q19_BGK_cavity_core_conditional_initialized_metadata",
+      "ka": "KA_D3Q19_BGK_device_core_shared_math_CUDA_host_harness",
+      "jacc": "JACC_D3Q19_BGK_device_core_shared_math_CUDA_host_harness"
+    },
+    "timing_scope": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+    "verification_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+    "keyconfounds": [
+      "Native reference initialization repaired before first trial; excluded from untouched-native aggregates, not original undefined-input CLI agreement",
+      "Source population Float64 storage does not imply all-Float64 arithmetic; Float32 equilibrium/velocity stages matter",
+      "Native explicit unrolled direction code and __launch_bounds__(64) vs Julia fixed-tuple direction loop and no matched explicit launch-bounds hint; compiled resources unprofiled",
+      "Source boundary initialization kernels not translated: native GPU setup checked against common frozen CPU metadata; outside timed core",
+      "out_u=true each20step adds velocity stores vs source sparse CLI output schedule; same parameter/work in all4 named studies",
+      "17\u00b3/20step rest transient only; full CLI2000steps/N102 energy regression/steady-state/continuum accuracy/D3Q27 not certified",
+      "One reference-authored math helper reused by all Julia kernels; ordered marginal wrapper cost, not independent cold translations",
+      "Per-step synchronization and host dispatch included; no isolated kernel bandwidth/roofline or intrinsic abstraction cause",
+      "Nearzero reference values produce huge raw relative-only metrics; full absolute/hybrid normalized errors separately reported without dropping values"
+    ],
+    "boundary_rounding_policy": "Closed moving-zmin-lid cavity; periodic index wrapping only implements source neighbor addressing, not periodic physical boundaries. Bounce bitsets seeded0; native boundary bounce cells may retain value4 set by source make_flag. Moving-wall priority overrides bounce at corners. Float32 lid/velocities/source subexpressions retained; allphysicalguards exact; tolerance applies only evolving populations/velocities.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "d3q19-bgk",
+        "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+        "status": "verified",
+        "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+        "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+        "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+        "precision": {
+          "storage": [
+            "Float64_populations_rho",
+            "Float32_u_star",
+            "Int8_boundary_flags_dirs",
+            "Int32_boundary_direction_bits"
+          ],
+          "compute": [
+            "Float64_moments_population_relaxation",
+            "Float32_macroscopic_velocity",
+            "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+            "Int32_grid_indices"
+          ]
+        },
+        "memory_access": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+        "synchronization": [
+          "Host completion after every timestep, with population pointer swap",
+          "No interthread or workgroup barriers in collision/stream kernel"
+        ],
+        "resource_policy": {
+          "block_threads": 64,
+          "grid": [
+            1,
+            17,
+            17
+          ],
+          "shared_bytes_requested": 0,
+          "JACC_shmem_explicit": null,
+          "private_Float64_values": 38,
+          "native_launch_bounds_maxthreads": 64,
+          "Julia_explicit_matching_launch_bounds_hint": false,
+          "actual_registers_spills_occupancy": "unprofiled"
+        },
+        "launch_geometry": {
+          "threads": [
+            64,
+            1,
+            1
+          ],
+          "blocks": [
+            1,
+            17,
+            17
+          ],
+          "active_x_width": 17,
+          "N": 17,
+          "steps": 20,
+          "pointer_swap_and_sync_eachstep": true,
+          "out_u_every_step": true
+        },
+        "backend_extensions": [
+          "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+        ],
+        "host_device_boundary": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+        "supported_features": [
+          "D3Q19_BGK_collision_stream",
+          "local_bounce_and_movingwall",
+          "mixed_Float64_Float32",
+          "3D_partial_x_workgroups",
+          "private_static_vectors",
+          "complete_discrete_field_validation",
+          "mass_positivity_invariants"
+        ],
+        "fidelity_status": "matched",
+        "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk",
+        "numerical_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00102153,
+          0.001005739,
+          0.001003049,
+          0.0009926590000000001,
+          0.000990269
+        ],
+        "mean_last_four_seconds": 0.000997929,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-cuda.jl/main.jl",
+            "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-cuda.jl/study.jl",
+            "sha256": "5532f0313785e0e7b63991fc1b37a873d5b9dec49c19f1bec897454355df29c6"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/study_common.jl",
+            "sha256": "cb36ec294a6acc707ed5b584896e847c60905447ec1da8e4a1894aecf1ca9b7b"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/lbm_math.jl",
+            "sha256": "1e3a89f9893aa0ca389f2cd5a61c7e5bc45ac49f44bb172e19ef123f8337e1b6"
+          }
+        ],
+        "implementation_source_digest": "bdfd8b7c4521ea36bdcbcd76285b6c0e502de104b017c234656f6a44262bd80f",
+        "native_reference_repaired": true,
+        "scientific_fidelity_status": "conditional_initialized_metadata_discrete_cavity_agreement",
+        "independent_numerical_audit": "src/d3q19-bgk-julia/output_audit.json",
+        "shared_math_attribution_phase": "reference_preparation",
+        "boundary_setup_translation": "Notported; identicalfrozenCPUmetadata matchedagainstnativeGPUsetupandchecked inactualinitialprefix",
+        "actual_executed_gpu_source": "src/d3q19-bgk-julia/d3q19-bgk-julia-cuda.jl/study.jl",
+        "historical_main_not_executed": true
+      },
+      "ka": {
+        "benchmark_id": "d3q19-bgk",
+        "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "b75c9755ee92e99c0f3036560b44acd8803e2dc61597a31248600d370bdbad4d",
+        "status": "verified",
+        "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+        "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+        "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+        "precision": {
+          "storage": [
+            "Float64_populations_rho",
+            "Float32_u_star",
+            "Int8_boundary_flags_dirs",
+            "Int32_boundary_direction_bits"
+          ],
+          "compute": [
+            "Float64_moments_population_relaxation",
+            "Float32_macroscopic_velocity",
+            "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+            "Int32_grid_indices"
+          ]
+        },
+        "memory_access": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+        "synchronization": [
+          "Host completion after every timestep, with population pointer swap",
+          "No interthread or workgroup barriers in collision/stream kernel"
+        ],
+        "resource_policy": {
+          "block_threads": 64,
+          "grid": [
+            1,
+            17,
+            17
+          ],
+          "shared_bytes_requested": 0,
+          "JACC_shmem_explicit": null,
+          "private_Float64_values": 38,
+          "native_launch_bounds_maxthreads": 64,
+          "Julia_explicit_matching_launch_bounds_hint": false,
+          "actual_registers_spills_occupancy": "unprofiled"
+        },
+        "launch_geometry": {
+          "threads": [
+            64,
+            1,
+            1
+          ],
+          "blocks": [
+            1,
+            17,
+            17
+          ],
+          "active_x_width": 17,
+          "N": 17,
+          "steps": 20,
+          "pointer_swap_and_sync_eachstep": true,
+          "out_u_every_step": true
+        },
+        "backend_extensions": [
+          "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+        ],
+        "host_device_boundary": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+        "supported_features": [
+          "D3Q19_BGK_collision_stream",
+          "local_bounce_and_movingwall",
+          "mixed_Float64_Float32",
+          "3D_partial_x_workgroups",
+          "private_static_vectors",
+          "complete_discrete_field_validation",
+          "mass_positivity_invariants"
+        ],
+        "fidelity_status": "matched",
+        "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk",
+        "numerical_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00114985,
+          0.0011581710000000002,
+          0.00115515,
+          0.0011620410000000002,
+          0.0011510110000000002
+        ],
+        "mean_last_four_seconds": 0.0011565932500000001,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-KA/main.jl",
+            "sha256": "b75c9755ee92e99c0f3036560b44acd8803e2dc61597a31248600d370bdbad4d"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/study_common.jl",
+            "sha256": "cb36ec294a6acc707ed5b584896e847c60905447ec1da8e4a1894aecf1ca9b7b"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/lbm_math.jl",
+            "sha256": "1e3a89f9893aa0ca389f2cd5a61c7e5bc45ac49f44bb172e19ef123f8337e1b6"
+          }
+        ],
+        "implementation_source_digest": "8608cd11fc812fc809b89acc0c627f6259ab0da7330b49d854c6c71cfe1e45b7",
+        "native_reference_repaired": true,
+        "scientific_fidelity_status": "conditional_initialized_metadata_discrete_cavity_agreement",
+        "independent_numerical_audit": "src/d3q19-bgk-julia/output_audit.json",
+        "shared_math_attribution_phase": "reference_preparation",
+        "boundary_setup_translation": "Notported; identicalfrozenCPUmetadata matchedagainstnativeGPUsetupandchecked inactualinitialprefix"
+      },
+      "jacc": {
+        "benchmark_id": "d3q19-bgk",
+        "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2",
+        "status": "verified",
+        "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+        "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+        "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+        "precision": {
+          "storage": [
+            "Float64_populations_rho",
+            "Float32_u_star",
+            "Int8_boundary_flags_dirs",
+            "Int32_boundary_direction_bits"
+          ],
+          "compute": [
+            "Float64_moments_population_relaxation",
+            "Float32_macroscopic_velocity",
+            "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+            "Int32_grid_indices"
+          ]
+        },
+        "memory_access": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+        "synchronization": [
+          "Host completion after every timestep, with population pointer swap",
+          "No interthread or workgroup barriers in collision/stream kernel"
+        ],
+        "resource_policy": {
+          "block_threads": 64,
+          "grid": [
+            1,
+            17,
+            17
+          ],
+          "shared_bytes_requested": 0,
+          "JACC_shmem_explicit": 0,
+          "private_Float64_values": 38,
+          "native_launch_bounds_maxthreads": 64,
+          "Julia_explicit_matching_launch_bounds_hint": false,
+          "actual_registers_spills_occupancy": "unprofiled"
+        },
+        "launch_geometry": {
+          "threads": [
+            64,
+            1,
+            1
+          ],
+          "blocks": [
+            1,
+            17,
+            17
+          ],
+          "active_x_width": 17,
+          "N": 17,
+          "steps": 20,
+          "pointer_swap_and_sync_eachstep": true,
+          "out_u_every_step": true
+        },
+        "backend_extensions": [
+          "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+        ],
+        "host_device_boundary": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+        "supported_features": [
+          "D3Q19_BGK_collision_stream",
+          "local_bounce_and_movingwall",
+          "mixed_Float64_Float32",
+          "3D_partial_x_workgroups",
+          "private_static_vectors",
+          "complete_discrete_field_validation",
+          "mass_positivity_invariants"
+        ],
+        "fidelity_status": "matched",
+        "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk",
+        "numerical_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0013234520000000001,
+          0.001194741,
+          0.00123912,
+          0.0011584800000000001,
+          0.00116649
+        ],
+        "mean_last_four_seconds": 0.00118970775,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-JACC/main.jl",
+            "sha256": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/study_common.jl",
+            "sha256": "cb36ec294a6acc707ed5b584896e847c60905447ec1da8e4a1894aecf1ca9b7b"
+          },
+          {
+            "path": "src/d3q19-bgk-julia/lbm_math.jl",
+            "sha256": "1e3a89f9893aa0ca389f2cd5a61c7e5bc45ac49f44bb172e19ef123f8337e1b6"
+          }
+        ],
+        "implementation_source_digest": "1c01a8135e4e1760ee9027c143d573f635dcc3556a2d32aeec0a5ee4fe6b0597",
+        "native_reference_repaired": true,
+        "scientific_fidelity_status": "conditional_initialized_metadata_discrete_cavity_agreement",
+        "independent_numerical_audit": "src/d3q19-bgk-julia/output_audit.json",
+        "shared_math_attribution_phase": "reference_preparation",
+        "boundary_setup_translation": "Notported; identicalfrozenCPUmetadata matchedagainstnativeGPUsetupandchecked inactualinitialprefix"
+      }
+    },
+    "source_sha256": {
+      "src/d3q19-bgk-julia/d3q19-bgk-julia-cuda.jl/main.jl": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+      "src/d3q19-bgk-julia/d3q19-bgk-julia-KA/main.jl": "b75c9755ee92e99c0f3036560b44acd8803e2dc61597a31248600d370bdbad4d",
+      "src/d3q19-bgk-julia/d3q19-bgk-julia-JACC/main.jl": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2"
+    },
+    "ontology_sha256": null,
+    "native_reference_repaired": true,
+    "exclude_untouched_native_aggregates": true,
+    "reference_provenance": {
+      "classification": "conditional_initialization_only_native_reference_correction",
+      "original_main_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-cuda/main.cu",
+      "original_main_sha256": "52f7629cb5c6b4aab6308b2222216f034da30dfe532dbbb6eee55c20dcd30bfa",
+      "original_kernels_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-cuda/kernels.h",
+      "original_kernels_sha256": "a2346ae6c1bd8ab232a42ff0e90feb06f369f48b5391b6ff00c899138aa81fd6",
+      "corrected_setup_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-julia/study_cuda.cu",
+      "corrected_setup_sha256": "c87f6411db93db876c7c46bafe087398b7a4c0a7981979a9a57a9f62c149b424",
+      "intervention": "Set boundary_values and boundary_dirs tozero BEFORE unchanged make_flag/find_wall, avoiding originalallocationuninitialized|= andfluiddirread. No nativeGPUbody changed; originalneverexecutedwithundefinedinput inthisstudy.",
+      "source_witness": "main.cu lbm_vars_gpu_alloc cudaMalloc(values/dirs) withoutinitialization; kernels.h find_wall where[IDX] |=bit andcore unconditional vel_dir load. NewsourceexplicitcudaMemset before originalsetupkernels.",
+      "scientific_justification": "where is a bitset ofbounce directions, zeroinitialvalue establishesemptyset beforeOR. dir onlyhasmeaningforboundaries; definedzero forunusedfluidfield. IndependentCPU boundarymetadata and full20step genericD3Q19CPUoracle validate resultantmeaningfulcavity."
+    },
+    "timing_scope_kind": "hostinclusive_20_discrete_cavity_steps_with_velocity_output_and_sync",
+    "numerical_evidence_strength": "full_discrete_fields_bothrefs_genericCPUoracle_exactguards_metadata_mass_positivity_conditional_setup",
+    "hardware_mechanism_evidence": "Unprofiled; no bandwidth/roofline/occupancy cause inferred",
+    "independent_numerical_audit": "src/d3q19-bgk-julia/output_audit.json"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/d3q19-bgk-julia/d3q19-bgk-julia-JACC/main.jl",
+    "sha256": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        9
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        8
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": true
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+      "run_id": "20261018T050459145334Z_d3q19-bgk",
+      "result": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "classification": "conditional_initialization_only_native_reference_correction",
+        "original_main_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-cuda/main.cu",
+        "original_main_sha256": "52f7629cb5c6b4aab6308b2222216f034da30dfe532dbbb6eee55c20dcd30bfa",
+        "original_kernels_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-cuda/kernels.h",
+        "original_kernels_sha256": "a2346ae6c1bd8ab232a42ff0e90feb06f369f48b5391b6ff00c899138aa81fd6",
+        "corrected_setup_path": "/home/imo/HeCBench_julia/src/d3q19-bgk-julia/study_cuda.cu",
+        "corrected_setup_sha256": "c87f6411db93db876c7c46bafe087398b7a4c0a7981979a9a57a9f62c149b424",
+        "intervention": "Set boundary_values and boundary_dirs tozero BEFORE unchanged make_flag/find_wall, avoiding originalallocationuninitialized|= andfluiddirread. No nativeGPUbody changed; originalneverexecutedwithundefinedinput inthisstudy.",
+        "source_witness": "main.cu lbm_vars_gpu_alloc cudaMalloc(values/dirs) withoutinitialization; kernels.h find_wall where[IDX] |=bit andcore unconditional vel_dir load. NewsourceexplicitcudaMemset before originalsetupkernels.",
+        "scientific_justification": "where is a bitset ofbounce directions, zeroinitialvalue establishesemptyset beforeOR. dir onlyhasmeaningforboundaries; definedzero forunusedfluidfield. IndependentCPU boundarymetadata and full20step genericD3Q19CPUoracle validate resultantmeaningfulcavity."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "03d95595ed83eb0a8700bd0044eaeff8bd204727897aec73fe33c6e7a80093a9",
+      "source_hash": "d12a4775436ecafd0364c51cd3c25be080ce2728033e127690ce58ed6c39b87e",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0013234520000000001,
+        0.001194741,
+        0.00123912,
+        0.0011584800000000001,
+        0.00116649
+      ],
+      "mean_last_four_seconds": 0.00118970775,
+      "contract": {
+        "model": "17\u00b3 moving-zmin-lid cavity, otherwalls bounce, sourceD3Q19pull/BGK,20fresh-reststeps,omega sourceRe100/N17 formula, lidFloat32(.02),out_u=trueevery20step",
+        "precision": "Float64population/rho storage, Float32macroscopicvelocities/sourceequilibriumsubexpressions; Int8flags/dirs andInt32bouncebits. atol1e-7+rtol1e-6 precision-aware20step contract, notformalbound/continuumvalidation",
+        "inputs": "108090Float64prefixvalues actualinitialGPUf0+actualboundaryflags/dirs/where convertedexactdouble +N/steps/lid/omega; exactprefixbytes. Nativeoriginalmetadata kernels with explicitinit-onlycorrection vsJuliafrozenCPUmetadata; sameinitialstates source-audited/readbackverified",
+        "metric": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+        "outputs": "Bothcompletepopulationbuffers, actual3componentu_star, immutable r andfullboundarymetadata, physicalguardsall7allocations. Rho/metadata/guardscheckedexactly, populations/velocities tolerance, positivepopulations andactivefluidmassdrift<1e-6 independently."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "d3q19-bgk:jacc:20261018T050459145334Z_d3q19-bgk:N3:accepted",
+        "benchmark_id": "d3q19-bgk",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/d3q19-bgk.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "d3q19-bgk:jacc:20261018T050459145334Z_d3q19-bgk:N3:accepted",
+          "benchmark_id": "d3q19-bgk",
+          "configuration_id": "d3q19_BGK_cavity17_20steps_mixedprecision_initialized_metadata_v1",
+          "implementation_model": "jacc",
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "source_revision": "e2a20b95aa8dee98fece60fcc80c5188746753ce0397f1e14c926e3d13ab3df2",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 4.3034903807193103e-08; unchangedtolerance 1e-07+1e-06*abs(ref).",
+          "minimal_trigger": {
+            "model": "17\u00b3 moving-zmin-lid cavity, otherwalls bounce, sourceD3Q19pull/BGK,20fresh-reststeps,omega sourceRe100/N17 formula, lidFloat32(.02),out_u=trueevery20step",
+            "precision": "Float64population/rho storage, Float32macroscopicvelocities/sourceequilibriumsubexpressions; Int8flags/dirs andInt32bouncebits. atol1e-7+rtol1e-6 precision-aware20step contract, notformalbound/continuumvalidation",
+            "inputs": "108090Float64prefixvalues actualinitialGPUf0+actualboundaryflags/dirs/where convertedexactdouble +N/steps/lid/omega; exactprefixbytes. Nativeoriginalmetadata kernels with explicitinit-onlycorrection vsJuliafrozenCPUmetadata; sameinitialstates source-audited/readbackverified",
+            "metric": "20step hostinclusive collide_stream/pointerswap/completionsync eachstep; fullinitialization/JITwarmup/reset/copy/CPUoracle/serializationoutside. Fivecheckedtrials mean2\u20135; onefresh20steptrajectory pertrial",
+            "outputs": "Bothcompletepopulationbuffers, actual3componentu_star, immutable r andfullboundarymetadata, physicalguardsall7allocations. Rho/metadata/guardscheckedexactly, populations/velocities tolerance, positivepopulations andactivefluidmassdrift<1e-6 independently."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T050459145334Z_d3q19-bgk/result.json",
+              "sha256": "03d95595ed83eb0a8700bd0044eaeff8bd204727897aec73fe33c6e7a80093a9"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "b0bdf2dcce0f7b9c1f37596b",
+        "begin_event_id": "8ca128bd19db8839afea257e",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T05:06:08.460024+00:00",
+        "usage_event_timestamp": "2026-10-18T05:06:00.208Z",
+        "elapsed_usage_event_start": "2026-10-18T05:04:22.233Z",
+        "delta_usage": {
+          "input_tokens": 1009763,
+          "cached_input_tokens": 1007360,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3024,
+          "reasoning_output_tokens": 1936,
+          "total_tokens": 1012787
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 8.252024,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "3684a7a1cba7c80922e5dcaa7037a8e974b97896839d15387e60a8d2e20f1be0",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 7.988759,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/d3q19-bgk/jacc_translation.jsonl",
+        "evidence_sha256": "d199f020cd7decfb16ec46bff801f5200ba0f51384a37e59b24e74b9d13ede62",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/d3q19-bgk/measurement_scope_review.json",
+      "sha256": "8e6683ab0018be06eb045fd2ef26ef7eb138f3da249bb721c8fce993cfd7b8fa",
+      "record": {
+        "benchmark_id": "d3q19-bgk",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Historicalwrongalias entrypoint predatescurrentworkflow; no reconstructed attempts/cost. ProspectiveBEGIN precedesindividualsourceaudit.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/d3q19-bgk-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "b6bbe47e0eec2215dec575b5bdd340be2fff7d04606149e58e8cfe36c10d085b",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/d3q19-bgk-julia-jacc/manifest.json",
+        "sha256": "b6bbe47e0eec2215dec575b5bdd340be2fff7d04606149e58e8cfe36c10d085b"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "c4ee382a3ea15605fa18cec503faa601820ee13e",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "JACC_D3Q19_BGK_device_core_shared_math_CUDA_host_harness",
+    "annotation_path": ".porting-state/portable_julia/traits/d3q19-bgk.json",
+    "annotation_sha256": "85b4a81551065c1965a7dbc4e81c3731bf10ec119460a3e472f778d37e1c56dd",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }
