@@ -1,0 +1,122 @@
+{
+  "scientific_intent": {
+    "primary_family": "signal_image",
+    "primary_domain": "planar_integer_image_resampling",
+    "review_status": "source_reviewed",
+    "scientific_task": "Resample planar image channels using the source nearest coordinate convention or corrected bilinear interpolation, with unsigned pixel storage.",
+    "mathematical_operation": "Nearest copies the pixel selected by positive-away rounding of(y+.5)*scale with upper clamping. Bilinear samples max((y+.5)*scale\u2212.5,0) with replicated upper neighbors, convex four-corner weights and final unsigned truncation. Sixteen planar channels are processed in groups of eight.",
+    "discretization": "24 paths:UInt8/16/32\u00d7four shapes\u00d7nearest/bilinear, each repeated3times; downsample8\u00d76\u21924\u00d73 and9\u00d77\u21926\u00d74, upsample12\u00d714\u219224\u00d728, identity5\u00d73. Source29184blocks\u00d7256threads retained. All scale ratios are exact dyadics.",
+    "accuracy_requirements": "Exact full outputs versus independent Fraction convex-bilinear/declared-nearest oracle, actual GPU input bytes and7936guards. Full unsigned range nearest copying, including UInt32max. Bilinear UInt8 inputs<=220 and UInt16/32<=3520 keep all Float32 polynomial arithmetic exactly representable before final truncation.",
+    "input_size_regime": "Named small images,16complete channels/three internal repeats and fixed source launch geometry. Mostly inactive source grid for these sizes; not original1920\u00d71080\u2192256\u00d7256 channels512 CLI or large-image throughput/image-quality validation.",
+    "precision_sensitivity": "Unsigned storage/copy at8/16/32bits; Float32 coordinates and corrected bilinear weights/pixel arithmetic. Exact dyadic rational domain has expanded intermediate numerators<2^21<2^24; no tolerance is needed. High-intensity UInt32 bilinear interpolation can lose precision and remains outside certification.",
+    "community_use_case": "Image resampling is a preprocessing primitive. Coordinate convention, border replication, integer quantization, channel layout and intensity precision matter to downstream results. No antialiasing, perceptual image quality, calibrated imaging or generic nearest identity property is claimed.",
+    "description": "Original native host scale division truncates ratios and integer bilinear weight casts erase interpolation. Actual unchanged-native GPU counterexamples establish both defects. The accepted study uses an explicitly conditional corrected native reference and retains the unusual native nearest half-center/away-tie convention, including identity shift.",
+    "provenance": "Native main.cu templates, resize_image scale helper and original true coordinate flags; Apache2 LICENSE retained without inferred originating library. Independent Fraction oracle uses convex corner weights rather than the expanded GPU polynomial. Native UInt8 witness observed; generic unsigned cast defect additionally follows source type semantics.",
+    "source_evidence": [
+      {
+        "path": "src/resize-cuda/main.cu",
+        "sha256": "9ddddcefa6f2e95aa4b6adcdf92b968a9890cca53d5d42fb6ad5a7322af8978b"
+      },
+      {
+        "path": "src/resize-cuda/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "src/resize-julia/original_main.jl",
+        "sha256": "5189e834fcf3a69178d373971237c99505a6bb29473c6076438e6ea7d2187939"
+      },
+      {
+        "path": "src/resize-julia/native_original_witness.json",
+        "sha256": "ab90dd2f3b3daf341961882848476edb53e3facdbb92ea54a11986881e5e7881"
+      },
+      {
+        "path": "src/resize-julia/corrected_kernels.cuh",
+        "sha256": "47d30ac256dd1d6a792c9347fdf9f13fc0234ee969aff41a1950fc64a9e27694"
+      }
+    ]
+  },
+  "primary_motif": "planar_channel_batched_nearest_and_bilinear_resampling",
+  "storage_precision": [
+    "UInt8_pixels",
+    "UInt16_pixels",
+    "UInt32_pixels",
+    "Float64_lossless_unsigned_artifact_encoding_only"
+  ],
+  "compute_precision": [
+    "Float32_coordinates_and_bilinear_polynomial",
+    "Unsignednearestcopy_noFloat32pixelconversion",
+    "Int32_loop_channel_spatialindices",
+    "UInt64_output_size"
+  ],
+  "synchronization": [
+    "No device shared memory, barriers or atomics",
+    "Hostcompletion aftereach of24path three-launchbatches"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "ConditionalnativeFloat32scale/bilinearcorrection, original8-channelbatch/fixedgrid/nearestcoordinatebehaviorretained. Juliahardcodesselectedcallertruehalfcenter/roundflags, nativepassesruntimebools; false-flagvariantsnotauthored. Originalnativebilinearpragmaunroll1 vsJuliawhileloop compilerunrollingunprofiled."
+  },
+  "algorithm": "Nearest copies the pixel selected by positive-away rounding of(y+.5)*scale with upper clamping. Bilinear samples max((y+.5)*scale\u2212.5,0) with replicated upper neighbors, convex four-corner weights and final unsigned truncation. Sixteen planar channels are processed in groups of eight.",
+  "work_item_mapping": "One thread handles one outputxy/eight-channelbatch, contiguousxstores andchannelplanestrides; sourcegrid-stridedloop retained. Original29184\u00d7256grid and256threads, namedrequirediterations<=1344 soonlyup to6blocksperformpixelwork.",
+  "layout": "Planarchannelswithxfastest, imagescontiguousperchannel, groups8channels/thread. Input/outputpayloadsstart256Bafterallocationbase toretain256Balignment; leading256/128/64typedguards+16trailingguards eachbuffer, exacttypedreadback.",
+  "launch_geometry": "24paths\u00d73repeatkernels=72launches/trial; 29184blocks\u00d7256threads each, UInt8/16/32 andmode specialize6selectedsourcevariants. KAconstkernel/JACCconstLaunchSpec cachedoutsideROI; JACCshared0.",
+  "verification_contract": "All20 complete133985Float64losslessfields:28417exactprefix+69408typedoutputpixels+28224actualinputecho+7936guards. IndependentFractionoracle/exactbothcorrectedrefs, actualUInt8/16/32bits reconstructedandchecked. All20bitwiseidentical, originaluncorrectedsourcewitnessretainedandnotpromoted.",
+  "keyconfounds": [
+    "Conditionalcorrectedreferenceonly, nativeoriginal32bilinear+16scalemismatchesobserved; excludeuntouchedCUDAaggregates",
+    "Nearestnativehalfcenter+awayties intentionallyretained, identitynearestshiftsonepixel; no genericidentitynearestclaim",
+    "UInt32fullrangeonlynearestcopy; bilinearbounded<=3520, highrangeF32precisionnotcertified",
+    "Exactdyadicratiosandboundedintermediates giveexactarithmeticdomain, notgeneralnondyadicimageerrorcertificate",
+    "Sourcefixed29184\u00d7256grid mostlyinactive fornamedsmallimages, no largeimagethroughput/bandwidth/rooflineclaim",
+    "Complete8channelbatches only; sourceCnotdivisible8tailunwritten/outsidecertificate, notframeworkunsupported",
+    "Juliafixedtruecoordinateflags removeunselectedbranchcode; nativeboolparamsruntime, sourcebilinearunroll1 versusJuliawhileloop nofinalinstructionmatchclaim",
+    "Falsecoordinateflagvariantsnotauthoredinthisselectedcaller-scope, no APIunsupportedclaim",
+    "ActualnativeGPUwitnessUInt8only; genericunsignedcastdefectsourcebackedforotherunsignedtypes",
+    "HistoricalJulia genuinefloatbilinearbutties-evennearest differednativeawayties, staticfindingnotinventedoldGPUfailure",
+    "Nearestbodyunchanged, bilinearweights/pixelsandhostratioscorrectedwithfulloriginals/provenance/rawfailurespreserved",
+    "Sharedoracle/nativecorrection/helperreferencephase reusedKAthenJACC, orderedmarginaltokenwindow notcoldframeworkcost"
+  ],
+  "boundary_rounding_policy": "Nearestpositiveawayties(floor(z+.5)validboundednonnegativecoords),upperclamp; halfcentertrue no-.5. Bilinearclampcoordinate>=0, upperneighborreplication, exactconvexinterpolationthenunsignedtruncatetowardzero. Identitynearestshiftretained/bilinearidentityexact; all24typedpathsstrictatolrtol0.",
+  "support_boundary": "Named small images,16complete channels/three internal repeats and fixed source launch geometry. Mostly inactive source grid for these sizes; not original1920\u00d71080\u2192256\u00d7256 channels512 CLI or large-image throughput/image-quality validation. Unsigned storage/copy at8/16/32bits; Float32 coordinates and corrected bilinear weights/pixel arithmetic. Exact dyadic rational domain has expanded intermediate numerators<2^21<2^24; no tolerance is needed. High-intensity UInt32 bilinear interpolation can lose precision and remains outside certification.",
+  "interpretation": "For image users, originalsourceagreementcanbe mathematicallywrong: integer weights andscale truncation eraseinterpolation. Concrete GPU witnesses justifya limitedconditionalrepair; preservingcoordinate/quantizationconventions andintensitydomain avoidsclaiminggenericimagequality. Smallfixed-grid timingsareconfiguration-specific; bothcorrectnessandperformance recommendationsmustexcludeuntouched-nativeclaims andunmeasuredhighrangeprecision.",
+  "reference_class": "CUDAjl_corrected_reference_planar_unsigned_resampling",
+  "ka_class": "pure_KA_corrected_reference_planar_unsigned_resampling_CUDA_backend_host_harness",
+  "jacc_class": "pure_JACC_corrected_reference_planar_unsigned_resampling_CUDA_backend_host_harness",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "atomics": 0,
+      "source_reviewed": true,
+      "compiled_register_local": "unprofiled"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "atomics": 0,
+      "source_reviewed": true,
+      "compiled_register_local": "unprofiled"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "atomics": 0,
+      "source_reviewed": true,
+      "compiled_register_local": "unprofiled"
+    }
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAthreadIdx/blockIdx/gridDim",
+      "CUDAhostallocation/copy/completion"
+    ],
+    "ka": [
+      "KAglobalindex/dispatch andordinaryJuliaFloat32/unsignedmath;CUDAhostallocation/completiononly"
+    ],
+    "jacc": [
+      "JACCglobalindex/parallel_for andordinaryJuliaFloat32/unsignedmath;CUDAhostallocation/completiononly"
+    ]
+  },
+  "supported_features": [
+    "UInt8/16/32nearest fullunsignedrange",
+    "ExactboundeddomainFloat32bilinear",
+    "Source8channelbatch/gridstrideloop/sourcefixedgrid",
+    "OnlyCUDAbackendactuallyverified"
+  ]
+}
