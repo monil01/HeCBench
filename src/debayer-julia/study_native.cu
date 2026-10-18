@@ -1,0 +1,14 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <fstream>
+#include <chrono>
+#include <cstdint>
+#include "../debayer-sycl/util.h"
+#include "../debayer-cuda/image.h"
+#include "../debayer-cuda/kernel.h"
+static_assert(OUTPUT_CHANNELS==3&&sizeof(RGBPixelT)==3,"ActualsourceRGB3layout");
+void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}
+template<class T>std::vector<T>load(const char*p){std::ifstream f(p,std::ios::binary|std::ios::ate);size_t n=f.tellg();f.seekg(0);std::vector<T>v(n/sizeof(T));f.read((char*)v.data(),n);return v;}
+struct S{int w,h,pat,mode,reps;uchar*a,*b;std::vector<uchar>raw;};
+int main(){auto fixture=load<uint32_t>(DM_FIXTURE);auto oracle=load<uchar>(DM_ORACLE);std::vector<S>states;size_t off=0;while(off<fixture.size()){S s;s.w=fixture[off];s.h=fixture[off+1];s.pat=fixture[off+2];s.mode=fixture[off+3];s.reps=fixture[off+4];int n=s.w*s.h;s.raw.push_back(165);for(int i=0;i<n;i++)s.raw.push_back(uchar(fixture[off+5+i]));s.raw.push_back(165);off+=5+n;ck(cudaMalloc(&s.a,n+2));ck(cudaMalloc(&s.b,4*n+2));ck(cudaMemcpy(s.a,s.raw.data(),n+2,cudaMemcpyHostToDevice));states.push_back(s);}
+auto run=[&](S&s){int n=s.w*s.h;ck(cudaMemset(s.b,165,4*n+2));ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int rep=0;rep<s.reps;rep++){ck(cudaMemset(s.b+1,0,4*n));malvar_he_cutler_demosaic<<<dim3((s.w+31)/32,(s.h+4)/5),dim3(32,5)>>>(s.h,s.w,s.a+1,s.w,s.b+1,4*s.w,s.pat);}ck(cudaGetLastError());ck(cudaDeviceSynchronize());return std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/s.reps;};for(auto&s:states)run(s);for(int trial=1;trial<=5;trial++){auto out=fixture;size_t oi=0;double elapsed=0;bool ok=true;for(auto&s:states){elapsed+=run(s);int n=s.w*s.h;std::vector<uchar>got(4*n+2),back(n+2);ck(cudaMemcpy(got.data(),s.b,got.size(),cudaMemcpyDeviceToHost));ck(cudaMemcpy(back.data(),s.a,back.size(),cudaMemcpyDeviceToHost));ok&=back==s.raw&&got.front()==165&&got.back()==165;for(int i=1;i<=4*n;i++){ok&=got[i]==oracle[oi++];out.push_back(uint32_t(got[i]));}out.insert(out.end(),{uint32_t(back.front()),uint32_t(back.back()),uint32_t(got.front()),uint32_t(got.back())});}std::string path="trial_"+std::to_string(trial)+".bin";std::ofstream f(path,std::ios::binary);f.write((char*)out.data(),out.size()*4);f.close();printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":0,\"timing_region\":\"sum5_source_memset_plus_demosaic_5repeat_means_complete\",\"jit_excluded\":true,\"internal_repeats\":5,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"uint32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,elapsed,ok?"true":"false",out.size(),path.c_str(),out.size());if(!ok)return 3;}for(auto&s:states){ck(cudaFree(s.a));ck(cudaFree(s.b));}}
