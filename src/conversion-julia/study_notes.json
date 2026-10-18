@@ -1,0 +1,105 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "Historical CUDA.jl executes a one-thread scratch touch for all30 advertised conversion labels; no source data is converted. Restore all30 actual typed casts with native mapping, initialized fixtures and exact bit evidence. CUDA12.0 half->char/uchar overload ambiguity resolves with unchanged source on12.9; this is native toolchain/header compatibility, not a target failure.",
+    "original_source_sha256": "95e283418d7970da6dd1a1fff92235d9bc1c7149665629df661f3aa666258a44",
+    "native_source": {
+      "path": "src/conversion-cuda/main.cu",
+      "sha256": "df7a1738aa448b179c59da4e23477a5943b584fc5060bf116c78786121247bba"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "All30originalpointwise typed conversions, exact outputbitpatterns",
+  "mapping": "Native min(n,256) thread geometry with tail guard and one destination write per item",
+  "launch_geometry": {
+    "threads": [
+      17,
+      256
+    ],
+    "blocks": [
+      1,
+      2
+    ],
+    "typed_pairs": 30,
+    "cases": 60,
+    "timed_repeats_per_case": 10,
+    "timed_kernel_calls_per_trial": 600
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "review_status": "source_reviewed",
+      "application_domain": "Numerical representation / typed data conversion",
+      "scientific_operator": "Pointwise static cast among BF16/FP16/FP32/I32/I8/U8 (30 directed type pairs; no BF16 destination)",
+      "numerical_method": "IEEE nearest-even floating conversions and truncating in-range float-to-int; fixed-width integer narrowing modulo on measured toolchain",
+      "community_use": "Representation fidelity primitive relevant to numerical pipelines; no specific physical or statistical simulation",
+      "accuracy_requirements": "Every destination raw bit against independent IEEE/integer oracle, signed zeros/rounding ties/subnormal and integer extrema, source preservation and exact guards",
+      "source_evidence": [
+        {
+          "path": "src/conversion-cuda/main.cu",
+          "sha256": "df7a1738aa448b179c59da4e23477a5943b584fc5060bf116c78786121247bba"
+        }
+      ],
+      "limitations": [
+        "Native CLI reads uninitialized source allocations; named fixtures initialize all values",
+        "All floating-to-integer inputs finite and in representable range, exceptional/overflow float-cast semantics unmeasured",
+        "Signed integer narrowing is measured implementation policy, not universal C++ language guarantee",
+        "Small17/257sizes are launch dominated, not a large array bandwidth result"
+      ]
+    },
+    "primary_motif": "Pointwise numerical representation conversion",
+    "storage_precision": [
+      "BFloat16",
+      "Float16",
+      "Float32",
+      "Int32",
+      "Int8",
+      "UInt8"
+    ],
+    "compute_precision": [
+      "Typed casts; no accumulation",
+      "Float32 intermediate for BF16 conversion where lowered on sm70"
+    ],
+    "synchronization": [
+      "Full context completion around10launchcase region"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Native min(n,256) blocksize and tail/array layout preserved; source language cast mapped to Julia floating constructors, in-range unsafe_trunc, and integer modulo narrowing"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum60_typed_conversion_10launch_means_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native nvcc12.9 needed for source half-byte overloads; Julia runtime/compiler package pinned12.0",
+      "Source BF16 header conversions on sm70 do not establish BF16 tensor acceleration",
+      "Native extra untimed percase warmup/allocation versus Julia preallocated setup, both excluded from10launchROI",
+      "Allbits encodedFloat64 for artifactonly, not deviceFP64 arithmetic",
+      "Named smallsizes not originallargearraybandwidth"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "observation": "Exact bit-pattern comparisons expose conversion semantics which decimal tolerances can obscure: signed zero, nearest-even half/BF16 ties, half subnormals, signed and unsigned narrow integers. All30 source type-pairs are retained. The original native host uses uninitialized input, so comparison uses explicit bit-backed shared fixtures instead. CUDA12.9 resolves the original half-to-byte header-overload ambiguity without source correction; that toolchain difference remains a performance covariate. These small cases test conversion fidelity and launch overhead rather than sustained memory bandwidth.",
+  "effort_observation": "One source candidate and whole-program GPU process per Julia model. Native unchanged source needed two buildchecks:12.0 rejected ambiguous half->char/uchar conversions,12.9 accepted; native toolchain compatibility event is not a KA/JACC or CUDAjl device candidate failure. Historical scratch-touch cost unknown."
+}
