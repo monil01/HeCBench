@@ -1,0 +1,144 @@
+{
+  "scientific_intent": {
+    "primary_family": "pde_continuum",
+    "primary_domain": "lattice_Boltzmann_fluid_dynamics",
+    "review_status": "source_reviewed",
+    "scientific_task": "Advance a low-Mach moving-wall cavity with the source D3Q19 BGK lattice Boltzmann discretization",
+    "mathematical_operation": "Periodic-addressed pull streaming with local bounce-back and moving-wall corrections, followed by density/momentum moments and BGK relaxation toward second-order equilibrium; boundary obstacle cells retain initialized populations.",
+    "discretization": "17\u00b3 grid including boundary cells,15\u00b3 active fluid cells;19 populations/cell;20 timesteps from rest; moving zmin lid velocity Float32(.02), other faces bounce; source Re100 omega formula. out_u=true each step.",
+    "accuracy_requirements": "Full current/previous population buffers and actual u_star compared with independent generic velocity-vector CPU formulation using atol1e-7+rtol1e-6*abs(ref), declared before trials. All112 guards, immutable rho and full boundary metadata exact; actual initial GPU state prefix byte-identical. Positive populations and active mass relative drift<1e-6 independently checked.",
+    "input_size_regime": "4913 lattice cells,3375 active cells,20-step transient; not steady-state/grid-converged validation or source2000-step CLI performance.",
+    "precision_sensitivity": "Float64 populations/rho coexist with Float32 macroscopic velocity and Float32 equilibrium subexpressions. The independent mathematical vector equilibrium differs slightly from optimized source mixed-precision algebra; absolute errors near zeros matter and huge raw relative-only errors must not imply global inaccuracy or be hidden.",
+    "community_use_case": "Lattice Boltzmann collision/streaming is a computational fluid dynamics component. This is a source-backed transient cavity operator study, not a validated application-scale flow prediction.",
+    "description": "Source STLBM uses unrolled D3Q19 streaming, local boundary treatment and mixed precision. Historical Julia entrypoint aliases unrelated mcpr and is archived. A new genuine solver-core reference is authored. Conditional native initialization defines boundary direction bitsets before original OR operations; original GPU bodies remain unchanged.",
+    "provenance": "STLBM University of Geneva2020, Latt/Coreixas/Beny (bundled license/source). Native setup allocated boundary_values/dirs without initialization; explicit zero seeding is justified by bitset/field meaning, separately recorded before first trial. No undefined native run or full physical continuum correctness is claimed."
+  },
+  "primary_motif": "D3Q19_pull_stream_BGK_collision_with_local_boundaries",
+  "storage_precision": [
+    "Float64_populations_rho",
+    "Float32_u_star",
+    "Int8_boundary_flags_dirs",
+    "Int32_boundary_direction_bits"
+  ],
+  "compute_precision": [
+    "Float64_moments_population_relaxation",
+    "Float32_macroscopic_velocity",
+    "Float32_axis_cu_and_equilibrium_subexpressions_then_Float64",
+    "Int32_grid_indices"
+  ],
+  "synchronization": [
+    "Host completion after every timestep, with population pointer swap",
+    "No interthread or workgroup barriers in collision/stream kernel"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Same D3Q19 directions, population SoA layout, pull/bounce/moving-wall branches, source moment grouping and mixed-precision equilibrium; matched17\u00b3 3D launch with64-thread x blocks and pointer swaps/sync each step. Conditional setup initialization is explicit. Boundary metadata is verified native GPU setup vs identical frozen CPU-generated metadata, not a port of setup kernels."
+  },
+  "reference_class": "CUDAjl_genuine_D3Q19_BGK_cavity_core_conditional_initialized_metadata",
+  "ka_class": "KA_D3Q19_BGK_device_core_shared_math_CUDA_host_harness",
+  "jacc_class": "JACC_D3Q19_BGK_device_core_shared_math_CUDA_host_harness",
+  "verification_contract": "329287 Float64 artifact values/trial:108090 exact input/state/parameter prefix +221197 full current/previous populations, actual velocity, immutable rho, metadata and112 physical guards. Full arrays vs BOTH refs and independent generic vector CPU oracle; guards/rho/metadata exact, state fields predeclared mixed-precision tolerance, mass/positivity controls.",
+  "keyconfounds": [
+    "Native reference initialization repaired before first trial; excluded from untouched-native aggregates, not original undefined-input CLI agreement",
+    "Source population Float64 storage does not imply all-Float64 arithmetic; Float32 equilibrium/velocity stages matter",
+    "Native explicit unrolled direction code and __launch_bounds__(64) vs Julia fixed-tuple direction loop and no matched explicit launch-bounds hint; compiled resources unprofiled",
+    "Source boundary initialization kernels not translated: native GPU setup checked against common frozen CPU metadata; outside timed core",
+    "out_u=true each20step adds velocity stores vs source sparse CLI output schedule; same parameter/work in all4 named studies",
+    "17\u00b3/20step rest transient only; full CLI2000steps/N102 energy regression/steady-state/continuum accuracy/D3Q27 not certified",
+    "One reference-authored math helper reused by all Julia kernels; ordered marginal wrapper cost, not independent cold translations",
+    "Per-step synchronization and host dispatch included; no isolated kernel bandwidth/roofline or intrinsic abstraction cause",
+    "Nearzero reference values produce huge raw relative-only metrics; full absolute/hybrid normalized errors separately reported without dropping values"
+  ],
+  "boundary_rounding_policy": "Closed moving-zmin-lid cavity; periodic index wrapping only implements source neighbor addressing, not periodic physical boundaries. Bounce bitsets seeded0; native boundary bounce cells may retain value4 set by source make_flag. Moving-wall priority overrides bounce at corners. Float32 lid/velocities/source subexpressions retained; allphysicalguards exact; tolerance applies only evolving populations/velocities.",
+  "algorithm": "D3Q19 pull streaming, local bounce/moving-wall correction, grouped moments, source second-order BGK equilibrium and double-population update",
+  "work_item_mapping": "Native grid(1,17,17), block64; KA workgroup(64,1,1), ndrange(64,17,17); JACC matching3D LaunchSpec.17 active x lanes per block before boundary skips. One site/lane,19 private populations plus19 equilibrium values.",
+  "layout": "Direction-major population SoA19\u00d74913 with two guarded buffers; contiguous3\u00d74913 Float32 velocities; guarded rho, Int8 flag/dir and Int32 direction-bit arrays.",
+  "memory_access": {
+    "cuda_jl": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+    "ka": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled.",
+    "jacc": "Pull19 SoA neighbors with periodic address wrapping, local opposite-population reads for bounce, local moving-wall correction. Private19+19 StaticArrays values; global full populations/velocities written for active cells. No requested shared memory; actual registers/local spills/cache traffic unprofiled."
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "block_threads": 64,
+      "grid": [
+        1,
+        17,
+        17
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_shmem_explicit": null,
+      "private_Float64_values": 38,
+      "native_launch_bounds_maxthreads": 64,
+      "Julia_explicit_matching_launch_bounds_hint": false,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "ka": {
+      "block_threads": 64,
+      "grid": [
+        1,
+        17,
+        17
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_shmem_explicit": null,
+      "private_Float64_values": 38,
+      "native_launch_bounds_maxthreads": 64,
+      "Julia_explicit_matching_launch_bounds_hint": false,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "jacc": {
+      "block_threads": 64,
+      "grid": [
+        1,
+        17,
+        17
+      ],
+      "shared_bytes_requested": 0,
+      "JACC_shmem_explicit": 0,
+      "private_Float64_values": 38,
+      "native_launch_bounds_maxthreads": 64,
+      "Julia_explicit_matching_launch_bounds_hint": false,
+      "actual_registers_spills_occupancy": "unprofiled"
+    }
+  },
+  "launch_geometry": {
+    "threads": [
+      64,
+      1,
+      1
+    ],
+    "blocks": [
+      1,
+      17,
+      17
+    ],
+    "active_x_width": 17,
+    "N": 17,
+    "steps": 20,
+    "pointer_swap_and_sync_eachstep": true,
+    "out_u_every_step": true
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+    ],
+    "ka": [
+      "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+    ],
+    "jacc": [
+      "CUDA allocations/transfers/completion in shared host harness; device math uses ordinary Julia/StaticArrays with real framework dispatch, no CUDA-specific device intrinsic"
+    ]
+  },
+  "support_boundary": "Conditional initialized17\u00b3 moving-wall cavity,20 steps/full current+previous buffers and u_star; setup kernel translation, original undefined setup/defaultCLI, source2000step/N102 energy regression, continuum convergence andD3Q27 not covered. Periodic/nonuniform operator control is separate planned secondary, never pooled with primary cavity performance.",
+  "supported_features": [
+    "D3Q19_BGK_collision_stream",
+    "local_bounce_and_movingwall",
+    "mixed_Float64_Float32",
+    "3D_partial_x_workgroups",
+    "private_static_vectors",
+    "complete_discrete_field_validation",
+    "mass_positivity_invariants"
+  ],
+  "interpretation": "The scientifically meaningful contract is a mixed-precision discrete cavity trajectory, not just a kernel checksum or Float64 label. Independent vector math and mass/positivity controls support scoped field agreement. Defined boundary metadata is a justified conditional native setup repair, preventing uninitialized memory from acting as reference truth. Pure framework device math is feasible here; numerical fields pass despite differing compiler/source loop forms, but unprofiled host-inclusive timings cannot locate a roofline bottleneck or isolate framework causality."
+}
