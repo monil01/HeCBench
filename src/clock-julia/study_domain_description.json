@@ -1,0 +1,131 @@
+{
+  "scientific_intent": {
+    "primary_family": "domain_neutral_primitives",
+    "primary_domain": "GPU_per_block_cycle_instrumentation",
+    "review_status": "source_reviewed",
+    "scientific_task": "Compute a cooperative block minimum while observing actual device clock registers around the source reduction",
+    "mathematical_operation": "Everyblock reads same512Float32values and selects strict-less minimum; firstlane recordsperSMstart/end64-bitclockaroundreduction. Clocksnondeterministic, exactminima independentlycertified.",
+    "discretization": "BT256,2values/lane,512sharedFloat32values; grids1/32/8192; sourcecanonicalascending0..511 plus signedmodulardyadicfixtureunique minimum\u22121024.25;6paths.",
+    "accuracy_requirements": "All16450blockminima bitexact vsCPUglobalorderstatistic andbothGPUrefs;96outputguards+96timerguards exact. Perblock64-bitclockformatandmodulardelta>0<2^31 checked fromallrawtimers. No exactclock-valueagreement.",
+    "input_size_regime": "512sharedinputelements reusedbyallblocks,1..8192blocks; sourceMakefile8192blockpathcovered plus1/32. Smallperblockwork/instrumentation sample, notapplication-scalephysicalsimulation.",
+    "precision_sensitivity": "Float32comparison/selection/copy has noaccumulationroundoff. Exactinputbits guardalgorithm; actualnativeLinuxclock_t64 mapsclock64inNVCC12PTX, not32-bitnameassumption. Raw64clockvaluesmustretainwidth.",
+    "community_use_case": "Deviceinstrumentation andblockreductions illustrate HPC kernelmeasurement components; no originalscientificapplication provenance.",
+    "description": "NVIDIA sourceclocksample measuresblockreductionwithclock() andprintscrossblock extrema. HistoricalJulia onlywritesconstant1 andprints hostnanoseconds asclocks. Newreferencecompletesgenuinesharedminimum+actualregisterreads; nofakeGPUtiming.",
+    "provenance": "OriginalNVIDIAsourceheader andkernelreview; actualNVCCPTXauthoritativelyshowsmov.u64 clock64 underLinuxclock_t64. CrossSMclockcomparisonsandsourceefficiencypercentage are NOTvalidated/comparablewalltime metrics."
+  },
+  "primary_motif": "block_min_reduction_with_device_counter_instrumentation",
+  "storage_precision": [
+    "Float32_input_output_shared",
+    "Int64_clock_storage",
+    "UInt64_clock_register"
+  ],
+  "compute_precision": [
+    "Float32_strict_less_selection_no_accumulation",
+    "UInt64_clock_read_and_modular_elapsed",
+    "Int32_indices"
+  ],
+  "synchronization": [
+    "9reduction_blockbarriers_plus_final_barrier",
+    "hostcompletion_aftereach100launchbatch"
+  ],
+  "synchronizations": {
+    "cuda_jl": [
+      "9reduction_blockbarriers_plus_final_barrier",
+      "hostcompletion_aftereach100launchbatch"
+    ],
+    "ka": [
+      "9reduction_blockbarriers_plus_final_barrier",
+      "hostcompletion_aftereach100launchbatch"
+    ],
+    "jacc": [
+      "JACC_shared_template_copy_barrier_before_clockstart",
+      "9reduction_blockbarriers_plus_final_barrier",
+      "hostcompletion_aftereach100launchbatch"
+    ]
+  },
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Same2values/lane, strictlesspairwisemintree,9barriers+finalbarrier andfirstlanestart/endclock64; explicitCUDAclockregisterbackendextensionKA/JACC. JACCpreinitializessharedtemplatebeforedevicetimer butinsidehostkernelROI; physicalinstruction/schedulingnotidentical."
+  },
+  "reference_class": "CUDAjl_block_min_and_actual_clock64",
+  "ka_class": "KA_block_min_with_explicit_CUDA_clock64_extension",
+  "jacc_class": "JACC_block_min_with_explicit_CUDA_clock64_extension",
+  "verification_contract": "34134UInt32canonicalwords:1042exactinput/parameterwords +16450minima +192guards +16450perblockvalidatedclockpropertybits. All20canonicalarrays exactvsbothrefs. Everytrialalso preserves32996rawInt64timer+guardwords inauxbinary, audited independently; rawclockvaluesnotcanonicalizedawayorclaimedequal.",
+  "keyconfounds": [
+    "CUDAclock64backendextension meansnotpurecrossbackendKA/JACC",
+    "Nativeclock() actual64-bitmapping toolchain-specific, provenPTX; initial32-bitassumptionfailedpreservedchecker",
+    "JACCshared512Float32templatecopy+extrabarrier beforedeviceclockstartbutinsidehosttiming",
+    "Deviceclockdeltapropertiesonly, notclockequivalence, crossSMtimestampcomparisonorwalltimeconversion",
+    "Allblocksreusesame512input, cachebehavior/resourceeffects unprofiled",
+    "Hostinclusive6pathbatch timings includeJulia/JACCdispatch andsourcekernelinstrumentation",
+    "JACCDictionaryLaunchSpec lookup insidetimedhostloop",
+    "SourceCLIefficiency/crossSMextrema metric notvalidated/reproducedscientifically",
+    "Orderedreference->KA->JACC helperreuse, sharedwitnesswithinmodelphase; tokensnotcoldframeworkranking"
+  ],
+  "boundary_rounding_policy": "Fullpoweroftwo512elementreduction atBT256, everyblockidenticalinput; strictf1<f0 sourceorder, finite dyadicvalues noNaN/signedzerominambivalence. Sourceclock_t64/UInt64reads with modularUInt64elapsed. Propertyrequiresnonnegative currentuptimesamplesand0<delta<2^31, only sameblockstart/end paired.",
+  "algorithm": "Perblocksharedstrictlessbinaryminimumtree plusfirstlaneclock64beforeloads/afterfinalbarrier",
+  "work_item_mapping": "256lanes/block,2inputloads/lane,512sharedvalues; grids1/32/8192;9treelevels+finalbarrier, nointerblockdependencies",
+  "layout": "2input512Float32arrays;6guardedblockminvectors and6guarded2\u00d7blocksInt64timervectors; allrawtimersretained separately fromcanonicalminima/guard/propertyartifact",
+  "memory_access": {
+    "cuda_jl": "2globalinputloads/lane into2048Bdynamicsharedtile; pairwisemintree,firstlaneglobalmin/timerwrites",
+    "ka": "2globalinputloads/lane into2048Bstaticlocaltile; pairwisemintree,firstlaneglobalmin/timerwrites",
+    "jacc": "JACC.sharedfull512Float32templateinit then2globalinputloads/lane into2048Bdynamicsharedtile; pairwisemintree"
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "threads": 256,
+      "shared_bytes_requested": 2048,
+      "shared_allocation": "dynamicCUDA2048",
+      "registers_occupancy_spills": "unprofiled",
+      "clockintrinsic": "CUDA.clock(UInt64) explicitbackendextension"
+    },
+    "ka": {
+      "threads": 256,
+      "shared_bytes_requested": 2048,
+      "shared_allocation": "KAstatic512Float32",
+      "registers_occupancy_spills": "unprofiled",
+      "clockintrinsic": "CUDA.clock(UInt64) explicitbackendextension"
+    },
+    "jacc": {
+      "threads": 256,
+      "shared_bytes_requested": 2048,
+      "shared_allocation": "JACCexplicit2048+fulltemplatecopy",
+      "registers_occupancy_spills": "unprofiled",
+      "clockintrinsic": "CUDA.clock(UInt64) explicitbackendextension"
+    }
+  },
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": [
+      1,
+      32,
+      8192
+    ],
+    "input_elements_per_block": 512,
+    "cases": 6,
+    "internal_repeats": 100
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDA.clock(UInt64) actualperSMclock64register",
+      "CUDAdeviceallocation/transfer/sync inhostharness"
+    ],
+    "ka": [
+      "CUDA.clock(UInt64) actualperSMclock64register",
+      "CUDAdeviceallocation/transfer/sync inhostharness"
+    ],
+    "jacc": [
+      "CUDA.clock(UInt64) actualperSMclock64register",
+      "CUDAdeviceallocation/transfer/sync inhostharness"
+    ]
+  },
+  "support_boundary": "6fullblockfiniteFloat32minimum+deviceclock64cases onCUDA/V100; portableframeworkdispatch/reductionwithCUDAregisterintrinsic hybrid. Nootherbackendregistersupport, exactclockequality/crossSMtimestamps/walltimeconversion, sourceefficiencyformula, arbitraryNaNsemantics orfullCLIclaim.",
+  "supported_features": [
+    "Float32minsharedreduction",
+    "blockbarriers",
+    "sourceclock64backendextension",
+    "rawnondeterministicobservablesretained",
+    "1_to8192independentblocks"
+  ],
+  "interpretation": "Smallinstrumentedreduction is a source-backedcase for abstractionboundaries: genericreduction/barriersareexpressed inKA/JACC, while a real hardwarecyclecounterusesCUDA-specificintrinsic. Numericaloutputequivalence andtimingobservables needdistinctcontracts. Allminimaareexact; perblockclockdeltaonlypropertychecked andallrawsamplevaluespreserved. No devicecycle-to-walltime orcrossSMclockcomparison, andsharedtemplateinitializationisnotcapturedbytheJACCdevicetimerbutdoescontributetothecommonhostROI."
+}
