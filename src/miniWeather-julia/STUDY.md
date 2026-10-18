@@ -1,0 +1,31 @@
+# miniWeather: scientific and implementation observation
+
+Fullfinite1/2/3stepatmosphericPDE/MPIpipelineall20full39977Float64captures passpointwiseindependentDecimalEOS/finitevolume/RKoracleanddualreferencecomparisons,prefix8342/readonly/guards exact. NativeGPU/RK/MPIbodiesunaltered; onlymeasurementcompletioncorrection. HistoricalrealJuliaS1viscositycoefficientrepair separateP1halostaginganddiagnosticalignment. Own9frameworkdevicekernelspermodel, overallhybrid_host_controlforactualOpenMPIandCUDAhostcopyorchestration; noCUDAdeviceextensionsinKA/JACC. Stateaccuracy/massrestwitnessnot600sforecastorconvergencecertificate. Atomicglobalenergydifferencesreportedseparatelyfromfullfieldabsoluteerrors.
+
+## Reference audit
+
+HistoricalJulia is genuinePDE but usesRKstage dtinviscosity insteadnativeGLOBALfulldt, causing3x/2xearly-stageartificialdiffusion; scalarisolatingthird-differencewitness retained. Fullstepcoefficientcorrected. Historicalfusedperiodichalo/CPUdiag were separateP1workmappings, nowalignedtosourceGPUpack/D2H/actualMPIself/H2D/unpack+GPUatomicdiag. OriginalnativeGPUkernels/RK/MPIhostfunctionsbodies unchanged; timingadapteraddscontextcompletionbeforetimerstop.
+
+## Numerical and performance evidence
+
+Configuration `miniWeather_MPIself_fullsplitRK_integerSpacing_rest_thermal_moving_1_2_3steps_v1`, result `/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T091212643805Z_miniWeather/result.json`. Five in-process trials per model; full outputs checked in every trial against both references; mean trials2–5. Warmup precedes trial1. Native kernel unchanged. This named configuration does not certify all CLI modes or physical model validity.
+
+## Cost and failures
+
+CUDAjl2devicewrappercandidates/2GPUJITprocessattempts,3wholeprogramchecks:sharedhostcomprehensionParseErrorbeforeJIT,thenactualGPUInvalidIRMethodError(Int64coordfromuntyped1vsInt32helper),thenpassaftertypedInt32indexconstants. Underlyingmathbodyunchangedthroughcompilerfeedback; semanticfulldtfixprecededfirstcandidate. KA/JACCfirstfullcandidates/checks. SharedPythonwrappergenerator else3 SyntaxError preservedB2beforeframeworksourcegeneration. ActualCPUOpenMPIinit/Allreduce/finalizeprobe separatefromGPUchecks. Currentreference/source/science/CPUoracle/MPIABIwork separatehistoricalunknowncost; prospectivewindowsnonexclusivecachedcontext/waiting/coordination. Historical CUDA.jl attempts unknown. Reference correction or documented P1 mapping phase is separate from target translation. Prospectiveactivitywindowsavailable/source/PDE/oracle/MPIABI/feedback/waiting/coordination/sharedmetadata/cachedcontext included; notexclusivebilledcoding. Historicaloriginalcostunknown/source-sizeproxyonlypartial.
+
+Reproduce: `python3 tools/verify_portable_julia.py --config src/miniWeather-julia/study_config_ka.json`, then JACC config reusing saved references. Do not run a new series merely to refresh metadata.
+
+## Fullfields versus largeglobaldiagnostics
+
+All20full39977Float64captures pass exact8342serializedprefix/allactualhydroreadonlyarrays/guards/host-vs-deviceMPIbufferbytes, full29608oraclevalues includingallstate/tmp/flux/tend/4deviceMPIarrays+initialfinaldiagnostics. IndependentPythonfinitevolume/mathfsum/Decimal50EOS/matchedfulldtRK/sourceboundarypolicy; actualgloballypositiveρ/ρθ andverticalwallwmom0, reststate,massrelative1e-12 controlsalsoverified. Observedmaxfullfield+MPIabsoluteoracleerror 7.099743015714921e-11, maxrawglobaldiagnosticerror 0.07421875 (energyO(1e13)), maxmassrelativedrift 8.399493162598603e-15. Do notreadlargediagnosticabsoluteerroraspointwisefielderror orclaimbitidenticalatomicreductions. Fullpointwisenumericalaccuracyconfirmedonlyfinitenamedsteps, no600sforecast/convergenceratecertificate. Sourceenergytermrho(u²+w²)nottextbook1/2kineticenergy.
+
+NativeGPU/RK/MPIhostbodiesunchanged; ownedmeasurementadapterrequirescontextcompletionbeforeclockstop, unlikeuncompletedCLIendtiming. ActualOpenMPI4.1.6single-rankIrecv/Isend/Wait+GPUboundpack/D2H/H2D/unpackpreservedall4, notdummyselfcopy. Everyversionoverallhybrid_host_control with9authoredframework_device_kernelcomponents; KA/JACCnoexplicitCUDAdeviceextensions, AtomixpublicFP64atomicdiagnosticoutsideROI;JACCshared0. PrivateNTuple4pair/stateindex/bounds/FMA/hostCABI/copyruntime differencesnotisolatedpureframeworkpenalty. Meantrials2–5 {"cuda": 0.0013677375, "cuda_jl": 0.00174514325, "ka": 0.0029312382500000004, "jacc": 0.0037591892500000003} seconds.
+
+HistoricalgenuineJuliafullstepvsstagehyperviscosityS1fixedseparatelyfromP1haloandGPUdiagnosticalignment. CUDAjl2compileddevicewrappercandidates/2GPUJITprocessattempts/3wholeprogramchecks (sharedhostParseError beforeJIT; actualInvalidIRInt64vsInt32typedcall; finalpass). KA/JACCfirstcandidate/check. PythonwrappergeneratorSyntaxError separatehostsourcegenerationattempt, CPUOpenMPIABIprobe notGPUcompile. Originalcostunknown; prospectivephasewindowscontainfullscientificreferencealignmentwork, notattributabletoonlyCUDAjltyping.
+
+## Scope of the original CLI scalar check
+
+The source check_output.h thresholds target its original600-second default thermal configuration. They are not asserted for the manufactured rest/movingthermal or1–3step named inputs. The study uses predeclared fullpointwise finitevolume/DecimalEOS acceptance plus mass/rest/wall/positivity witnesses. It does not certify the sourceCLI summary check for these alternate inputs. Source author attribution: Matt Norman, Oak Ridge National Laboratory, as retained in unchanged native main.cu.
+
+Postmeasurementread-onlyMPIloader review confirms both nativebasename libmpi.so.40 andJuliaexplicitabsolute path resolve same OpenMPI4.1.6 binary SHA9055018b12757e830591aa0283e485e471f1f2a06d3bc0dd5fb35ab00386c172; no GPU rerun.

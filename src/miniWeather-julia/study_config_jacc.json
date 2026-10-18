@@ -1,0 +1,138 @@
+{
+  "benchmark": "miniWeather",
+  "configuration_id": "miniWeather_MPIself_fullsplitRK_integerSpacing_rest_thermal_moving_1_2_3steps_v1",
+  "gpu": 6,
+  "timeout": 1800,
+  "atol": 2e-08,
+  "rtol": 2e-11,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 8342,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "cases": "16x8rest1step/32x16thermal2/40x20movingthermal3, sourcefullCFLdt exceptlaststep0.5dt, alternatingX/Zsplit3stageRK, source9activekernels/thermalboundary policy",
+    "inputs": "ExactsharedFloat64serializedfullhaloedinitialstate andfivehydroarrays/schedules;actualallreadonlyarrayschecked;integerdx/dz1250/625/500 avoid unmeasuredsourceInt32spacingtruncation",
+    "outputs": "Fullstate/tmp/flux/tend/4deviceMPIbuffers/4actualhostMPIbuffers/initialfinalmass+sourceenergydiagnostics/guards, nottwo-scalaresummary",
+    "oracle": "IndependentPythonfinitevolumephysicalflux+matrixcoefficient/mathfsum/Decimal50EOS+fullRK/periodic/sourceverticalboundaries, allpointwiseatol2e-8rtol2e-11;relativeglobalmassconservation1e-12/reststate",
+    "timing": "SourcefullsplitRKpipeline includingGPUpack\u2192D2H\u2192MPIIrecv/Isend/Waitselfrank\u2192H2D\u2192unpack andall27kernels/step;162kernels/trial across3cases;fullcontextcompletedbeforetimerend;diagnostics/alloc/reset/upload/capture outside,5trialsmean2-5",
+    "scope": "SingleactualMPIrank/oneGPU, thermal/rest/movingthermalfinite1/2/3steps; original600secCLI/fullparameterconvergence/mountain/injection/multirankunverified. Sourceenergyusesrho*(u\u00b2+w\u00b2), no textbooktotalenergycertificate."
+  },
+  "models": {
+    "cuda": {
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "full_splitRK_states_flux_tend_MPIbuffers_independent_decimalEOS_oracle_mass_rest_guards",
+      "cwd": "/home/imo/HeCBench_julia/src/miniWeather-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/fixtures_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/oracle_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/independent_oracle.json",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_fixture_oracle.py",
+        "/home/imo/HeCBench_julia/src/miniWeather-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/miniWeather-cuda/kernels.h",
+        "/home/imo/HeCBench_julia/src/miniWeather-cuda/check_output.h"
+      ],
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "-I/usr/lib/x86_64-linux-gnu/openmpi/include",
+        "-I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi",
+        "-DMINI_FIXTURE=\"/home/imo/HeCBench_julia/src/miniWeather-julia/fixtures_f64.bin\"",
+        "-DMINI_ORACLE=\"/home/imo/HeCBench_julia/src/miniWeather-julia/oracle_f64.bin\"",
+        "study_native.cu",
+        "-L/usr/lib/x86_64-linux-gnu/openmpi/lib",
+        "-lmpi",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ]
+    },
+    "cuda_jl": {
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "full_splitRK_states_flux_tend_MPIbuffers_independent_decimalEOS_oracle_mass_rest_guards",
+      "cwd": "/home/imo/HeCBench_julia/src/miniWeather-julia/miniWeather-julia-cuda.jl",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/fixtures_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/oracle_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/independent_oracle.json",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_fixture_oracle.py",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_device.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_constants.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_mpi.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "implementation_class": "hybrid_host_control",
+      "implementation_components": {
+        "authored_device_kernels": "framework_device_kernel",
+        "host_control": "OpenMPI4.1.6 CABIselfrankhaloexchange+CUDAlegacyhostcopies/contextcompletion"
+      }
+    },
+    "ka": {
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "full_splitRK_states_flux_tend_MPIbuffers_independent_decimalEOS_oracle_mass_rest_guards",
+      "cwd": "/home/imo/HeCBench_julia/src/miniWeather-julia/miniWeather-julia-KA",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/fixtures_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/oracle_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/independent_oracle.json",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_fixture_oracle.py",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_device.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_constants.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_mpi.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "implementation_class": "hybrid_host_control",
+      "implementation_components": {
+        "authored_device_kernels": "framework_device_kernel",
+        "host_control": "OpenMPI4.1.6 CABIselfrankhaloexchange+CUDAlegacyhostcopies/contextcompletion"
+      }
+    },
+    "jacc": {
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "full_splitRK_states_flux_tend_MPIbuffers_independent_decimalEOS_oracle_mass_rest_guards",
+      "cwd": "/home/imo/HeCBench_julia/src/miniWeather-julia/miniWeather-julia-JACC",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/fixtures_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/oracle_f64.bin",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/independent_oracle.json",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_fixture_oracle.py",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_device.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_constants.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/miniWeather-julia/study_mpi.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "main.jl"
+      ],
+      "implementation_class": "hybrid_host_control",
+      "implementation_components": {
+        "authored_device_kernels": "framework_device_kernel",
+        "host_control": "OpenMPI4.1.6 CABIselfrankhaloexchange+CUDAlegacyhostcopies/contextcompletion"
+      }
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T091033811216Z_miniWeather/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl",
+    "ka"
+  ]
+}
