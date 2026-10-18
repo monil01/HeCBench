@@ -1,0 +1,77 @@
+{
+  "benchmark": "lut-gemm",
+  "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+  "gpu": 6,
+  "timeout": 900,
+  "inputs_shared_verified": true,
+  "timed_regions_equivalent_verified": true,
+  "native_reference_repaired": false,
+  "atol": 0,
+  "rtol": 0,
+  "input_prefix_count": 156931,
+  "input_contract": {
+    "inputs": "Seven legal M even/Ktile/group aligned cases, 8/4/3 learned \u00b11 bitplanes with all32 packed positions active, bias/no-bias and zero-input control. Exact F16quarter inputs, learned signedF16scales/bias1/128, dense packedUInt32 weights. Actual allinput bitpayload+guards echoed.",
+    "precision": "Native truehalf LUT/sums/learnedscale accumulation and packedhalf2 atomics, notFloat32substitute. Source defaultnvcc SASS selected32/64 containsHFMA2 despite separate PTXmul/add. Named dyadic class proves every intermediate exact representablehalf, so fusion and atomicorder independent here, not generalrandomhalf stability certificate.",
+    "operator": "Source full compressed GEMV M_inputs=1, outputM34/514/2050,K64/128/256, bits8/4/3, learned pergroup/bit/output alpha notfixedbinary2^bit quantization. Bias corresponds additive dequantoffset. Independentdense integer weightedmatvecoracle doesnot reuseLUTalgorithm.",
+    "metric": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135."
+  },
+  "support_boundary": "EvenM and K divisible32bias/64unbiased, groupalignedtiles, finite exactlyrepresentable dense dyadicclass; nooddM/partialK unsafeGPU, no arbitraryhalfrounding/nativeCLIlargeconfig/fullLLMqualityclaim.",
+  "models": {
+    "cuda": {
+      "cwd": "/home/imo/HeCBench_julia/src/lut-gemm-julia",
+      "command": [
+        "./study_native"
+      ],
+      "build": [
+        "nvcc",
+        "-O3",
+        "-std=c++17",
+        "-arch={arch}",
+        "-DFIXTURE=\"/home/imo/HeCBench_julia/src/lut-gemm-julia/fixture.bin\"",
+        "-DORACLE=\"/home/imo/HeCBench_julia/src/lut-gemm-julia/oracle.bin\"",
+        "study_cuda.cu",
+        "-o",
+        "study_native"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/fixture.bin",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/oracle.bin",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/fixture_description.json",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/generate_study_fixture.py",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/study_cuda.cu",
+        "/home/imo/HeCBench_julia/src/lut-gemm-cuda/mv_fp16.h",
+        "/home/imo/HeCBench_julia/src/lut-gemm-cuda/nQWeight_fp16.h",
+        "/home/imo/HeCBench_julia/src/lut-gemm-cuda/utils.h"
+      ],
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "Exact fullpackedGEMV vsindependentinteger densebitplane matvec, allinputbytes/guards, bothrefs",
+      "native_check_description": "Fulloutputs exactF16 oracle with proofallintermediates on1/512lattice integerbound2048; all actualW/alpha/qbias/xpayload+allguards exact, finite and zero-Xcontrol. No sampled meanerror."
+    },
+    "cuda_jl": {
+      "cwd": "/home/imo/HeCBench_julia/src/lut-gemm-julia/lut-gemm-julia-cuda.jl",
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/fixture.bin",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/oracle.bin",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/fixture_description.json",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/generate_study_fixture.py",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/study_common.jl",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/study_device.jl",
+        "/home/imo/HeCBench_julia/src/lut-gemm-julia/lut-gemm-julia-cuda.jl/main.jl"
+      ],
+      "structured": true,
+      "bind_all_declared_dependencies": true,
+      "verification_method": "Exact fullpackedGEMV vsindependentinteger densebitplane matvec, allinputbytes/guards, bothrefs",
+      "native_check_description": "Fulloutputs exactF16 oracle with proofallintermediates on1/512lattice integerbound2048; all actualW/alpha/qbias/xpayload+allguards exact, finite and zero-Xcontrol. No sampled meanerror."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T084403128391Z_lut-gemm/result.json",
+  "reuse_models": [
+    "cuda_jl"
+  ]
+}
