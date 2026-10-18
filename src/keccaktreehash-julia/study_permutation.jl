@@ -1,0 +1,106 @@
+@inline rot32(a::UInt32,n)=(a<<n)⊻(a>>(32-n))
+@inline function permutation(state::NTuple{25,UInt32},constants)
+ a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23,a24=state
+ for round in 1:22
+  c0=a0⊻a5⊻a10⊻a15⊻a20
+  c1=a1⊻a6⊻a11⊻a16⊻a21
+  c2=a2⊻a7⊻a12⊻a17⊻a22
+  c3=a3⊻a8⊻a13⊻a18⊻a23
+  c4=a4⊻a9⊻a14⊻a19⊻a24
+  temp=c4⊻rot32(c1,1)
+  a0⊻=temp
+  a5⊻=temp
+  a10⊻=temp
+  a15⊻=temp
+  a20⊻=temp
+  temp=c0⊻rot32(c2,1)
+  a1⊻=temp
+  a6⊻=temp
+  a11⊻=temp
+  a16⊻=temp
+  a21⊻=temp
+  temp=c1⊻rot32(c3,1)
+  a2⊻=temp
+  a7⊻=temp
+  a12⊻=temp
+  a17⊻=temp
+  a22⊻=temp
+  temp=c2⊻rot32(c4,1)
+  a3⊻=temp
+  a8⊻=temp
+  a13⊻=temp
+  a18⊻=temp
+  a23⊻=temp
+  temp=c3⊻rot32(c0,1)
+  a4⊻=temp
+  a9⊻=temp
+  a14⊻=temp
+  a19⊻=temp
+  a24⊻=temp
+  temp=a1
+  old=a10;a10=rot32(temp,1);temp=old
+  old=a7;a7=rot32(temp,3);temp=old
+  old=a11;a11=rot32(temp,6);temp=old
+  old=a17;a17=rot32(temp,10);temp=old
+  old=a18;a18=rot32(temp,15);temp=old
+  old=a3;a3=rot32(temp,21);temp=old
+  old=a5;a5=rot32(temp,28);temp=old
+  old=a16;a16=rot32(temp,4);temp=old
+  old=a8;a8=rot32(temp,13);temp=old
+  old=a21;a21=rot32(temp,23);temp=old
+  old=a24;a24=rot32(temp,2);temp=old
+  old=a4;a4=rot32(temp,14);temp=old
+  old=a15;a15=rot32(temp,27);temp=old
+  old=a23;a23=rot32(temp,9);temp=old
+  old=a19;a19=rot32(temp,24);temp=old
+  old=a13;a13=rot32(temp,8);temp=old
+  old=a12;a12=rot32(temp,25);temp=old
+  old=a2;a2=rot32(temp,11);temp=old
+  old=a20;a20=rot32(temp,30);temp=old
+  old=a14;a14=rot32(temp,18);temp=old
+  old=a22;a22=rot32(temp,7);temp=old
+  old=a9;a9=rot32(temp,29);temp=old
+  old=a6;a6=rot32(temp,20);temp=old
+  old=a1;a1=rot32(temp,12);temp=old
+  b0,b1,b2,b3,b4=a0,a1,a2,a3,a4
+  a0=b0⊻((~b1)&b2)
+  a1=b1⊻((~b2)&b3)
+  a2=b2⊻((~b3)&b4)
+  a3=b3⊻((~b4)&b0)
+  a4=b4⊻((~b0)&b1)
+  b0,b1,b2,b3,b4=a5,a6,a7,a8,a9
+  a5=b0⊻((~b1)&b2)
+  a6=b1⊻((~b2)&b3)
+  a7=b2⊻((~b3)&b4)
+  a8=b3⊻((~b4)&b0)
+  a9=b4⊻((~b0)&b1)
+  b0,b1,b2,b3,b4=a10,a11,a12,a13,a14
+  a10=b0⊻((~b1)&b2)
+  a11=b1⊻((~b2)&b3)
+  a12=b2⊻((~b3)&b4)
+  a13=b3⊻((~b4)&b0)
+  a14=b4⊻((~b0)&b1)
+  b0,b1,b2,b3,b4=a15,a16,a17,a18,a19
+  a15=b0⊻((~b1)&b2)
+  a16=b1⊻((~b2)&b3)
+  a17=b2⊻((~b3)&b4)
+  a18=b3⊻((~b4)&b0)
+  a19=b4⊻((~b0)&b1)
+  b0,b1,b2,b3,b4=a20,a21,a22,a23,a24
+  a20=b0⊻((~b1)&b2)
+  a21=b1⊻((~b2)&b3)
+  a22=b2⊻((~b3)&b4)
+  a23=b3⊻((~b4)&b0)
+  a24=b4⊻((~b0)&b1)
+  a0⊻=(@inbounds constants[round])
+ end
+ return (a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23,a24)
+end
+@inline function leaf_state(input,constants,tid,bid)
+ state=ntuple(_->UInt32(0),Val(25))
+ for k in 0:2
+  @inbounds state=(state[1]⊻input[tid+0*64+k*512+bid*1536+1],state[2]⊻input[tid+1*64+k*512+bid*1536+1],state[3]⊻input[tid+2*64+k*512+bid*1536+1],state[4]⊻input[tid+3*64+k*512+bid*1536+1],state[5]⊻input[tid+4*64+k*512+bid*1536+1],state[6]⊻input[tid+5*64+k*512+bid*1536+1],state[7]⊻input[tid+6*64+k*512+bid*1536+1],state[8]⊻input[tid+7*64+k*512+bid*1536+1],state[9],state[10],state[11],state[12],state[13],state[14],state[15],state[16],state[17],state[18],state[19],state[20],state[21],state[22],state[23],state[24],state[25])
+  state=permutation(state,constants)
+ end
+ return state
+end
