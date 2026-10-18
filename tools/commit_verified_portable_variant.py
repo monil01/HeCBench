@@ -39,6 +39,14 @@ if a.shared:
  title='Align '+a.benchmark+' study fixtures and verified references'
 else:
  child=parent/(a.benchmark+'-julia-'+a.variant);proof=[]
+ scoped_children=[child]
+ for _,c,_ in data:
+  execution_cwd=Path(c['models'][key].get('cwd',str(child)))
+  if not execution_cwd.is_absolute():execution_cwd=root/execution_cwd
+  execution_cwd=execution_cwd.resolve()
+  if execution_cwd!=child.resolve() and execution_cwd.is_relative_to(parent.resolve()) and execution_cwd.name==child.name:
+   scoped_children.append(execution_cwd)
+ scoped_children=list(dict.fromkeys(scoped_children))
  for d,c,path in data:
   if not d['variant_verified'].get(key):raise SystemExit('Variant not verified against both references')
   for ref in ('cuda','cuda_jl'):
@@ -55,8 +63,11 @@ else:
    if m.get('mean_seconds') is not None:
     expected=sum(t['time_seconds'] for t in m['trials'][1:])/4
     if len(m['trials'])!=5 or not all(t['correct'] for t in m['trials']) or not math.isclose(expected,m['mean_seconds'],rel_tol=1e-11):raise SystemExit('Five-trial evidence invalid')
-  proof.append({'native_reference_repaired':bool(c.get('native_reference_repaired')),'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),'untouched_native_aggregate_eligible':not c.get('native_reference_repaired') and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),'run_id':d['run_id'],'configuration_id':c['configuration_id'],'protocol':d['protocol'],'variant_verified':True,'reference_agreement':True,'evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if a.benchmark=='feynman-kac' else 'full_output_artifacts'),'comparisons':d['comparisons'][key],'models':d['models'],'ontology_context':d.get('ontology'),'input_contract':d.get('input_contract'),'input_prefix_count':d.get('input_prefix_count',0),'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),'prefix_validation_transition':d.get('prefix_validation_transition'),'attempt_accounting':d.get('attempt_accounting'),'token_accounting':d.get('token_accounting'),'reviewed_dependency_change':{'reason':a.reviewed_dependency_change,'paths':changed} if changed else None,'raw_result':str(path.relative_to(root))})
- child.joinpath('verification.json').write_text(json.dumps({'benchmark':a.benchmark,'variant':'julia-'+key,'configurations':proof},indent=2)+'\n');paths=[f for f in child.rglob('*') if allowed(f)];title=('Remeasure ' if a.measurement_repair else 'Link verified ' if a.evidence_refresh else 'Tune verified ' if a.performance_tuning else 'Add verified ')+a.benchmark+' '+a.variant+(' primary evidence' if a.evidence_refresh else ' implementation')
+  proof.append({'native_reference_repaired':bool(c.get('native_reference_repaired')),'native_behavior_known_scientific_defect':bool(c.get('native_behavior_known_scientific_defect')),'reference_provenance':c.get('reference_provenance'),'configuration_classification_adjudication':c.get('configuration_classification_adjudication'),'untouched_native_aggregate_eligible':not c.get('native_reference_repaired') and not c.get('exclude_untouched_native_aggregates',False) and not c.get('exclude_from_scientific_fidelity_aggregates',False) and not c.get('native_behavior_known_scientific_defect',False),'run_id':d['run_id'],'configuration_id':c['configuration_id'],'protocol':d['protocol'],'variant_verified':True,'reference_agreement':True,'evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if a.benchmark=='feynman-kac' else 'full_output_artifacts'),'comparisons':d['comparisons'][key],'models':d['models'],'ontology_context':d.get('ontology'),'input_contract':d.get('input_contract'),'input_prefix_count':d.get('input_prefix_count',0),'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),'prefix_validation_transition':d.get('prefix_validation_transition'),'declared_execution_model_spec':c['models'][key],'execution_source_bindings':d['models'][key].get('adapter_file_hashes'),'attempt_accounting':d.get('attempt_accounting'),'token_accounting':d.get('token_accounting'),'reviewed_dependency_change':{'reason':a.reviewed_dependency_change,'paths':changed} if changed else None,'raw_result':str(path.relative_to(root))})
+ receipt={'benchmark':a.benchmark,'variant':'julia-'+key,'configurations':proof,
+          'execution_source_scope':'Canonical source hash and explicit executed source dependency bindings are separate. Secondary method entry points retain their scoped directories and configurations.'}
+ for owned_child in scoped_children:owned_child.joinpath('verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
+ paths=list(dict.fromkeys(f for owned_child in scoped_children for f in owned_child.rglob('*') if allowed(f)));title=('Remeasure ' if a.measurement_repair else 'Link verified ' if a.evidence_refresh else 'Tune verified ' if a.performance_tuning else 'Add verified ')+a.benchmark+' '+a.variant+(' primary evidence' if a.evidence_refresh else ' implementation')
 conditional=any(c.get('native_reference_repaired') for _,c,_ in data)
 if conditional:
  if any(c.get('native_reference_repaired') and not c.get('reference_provenance') for _,c,_ in data):raise SystemExit('Corrected native references require explicit provenance.')
