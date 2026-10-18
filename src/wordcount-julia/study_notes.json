@@ -1,0 +1,593 @@
+{
+  "algorithm": "Count starts of maximal runs whose bytes lie in the inclusive native65..122interval, includingfirstbyte. Julia versions compute one predicate perbyte then128thread shared reduction and one global atomic perblock.",
+  "mapping": "128threads/block,512bytes sharedInt32 flags,8algorithm barriers,Int32 global count reset eachnonemptycall. Emptyinput returns0withoutkernel. NativeThrustinternal mapping opaque.",
+  "launch_geometry": {
+    "threads": 128,
+    "shared_bytes": 512,
+    "lengths": [
+      0,
+      1,
+      1,
+      12,
+      256,
+      65573,
+      1025
+    ],
+    "max_blocks": 513,
+    "algorithm_block_barriers": 8,
+    "global_atomics_per_block": 1,
+    "internal_repeats": 3,
+    "native_thrust_version": 200001
+  },
+  "reference_audit": {
+    "phase": "reference_correctness_repair",
+    "taxonomy_code": "S1",
+    "finding": "Historical CUDA.jl only writes a one-element marker and prints hardcoded wordcount/PASS/time lines without processing text. Preserve those bytes; new reference computes actual source byte-run counts. Native is_word_start/is_alpha functors are unchanged; named adapter retains same Thrust inner_product expression on borrowed preallocated input, excluding original CLI allocation/H2D/free for every model.",
+    "original_main_sha256": "aec52e0a3aa73f173b0ccb210169030f9c1f8cb9fff74bc51bcde281311c9ca7",
+    "native_source_sha256": "b10629ff91036f9acdea7e65d5805da3274272e7ad199e0f299ed00721ccfc54",
+    "native_source_unchanged": true,
+    "native_host_driver": "src/wordcount-sycl/main.cpp",
+    "original_driver_sha256": "eee0cc0c70d57bbb46c21abe5c5d3df958a77b6efb4137396d8c870da192d5f5",
+    "source_predicate_policy": "ASCII byte interval65..122 includes six punctuation bytes91..96. Explicit source policy preserved, not linguistic alphabetical word semantics.",
+    "ROI_adaptation": "Original source word_count allocates/copies/frees device_vector percall. Named preallocated operator excludes input allocation/copy/free all4; temporary/reset/reduction/scalarcompletion remain timed. Original fullCLI ROI unmeasured."
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "traits": {
+    "primary_motif": "adjacent_byte_run_start_predicate_and_integer_reduction",
+    "storage_precision": [
+      "UInt8 device input bytes",
+      "Int32 block shared flags and counter"
+    ],
+    "compute_precision": [
+      "Boolean byte range predicate",
+      "Int32 shared addition and global atomic accumulation"
+    ],
+    "synchronization": [
+      "8 block barriers per128-thread reduction",
+      "one global atomic perblock",
+      "host scalar completion and context-wide timer boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native opaque Thrust inner_product reduction replaced by authored128thread shared predicate tree and block-atomic sum; same sourceinterval predicate and complete host scalar output. No native internalgeometry equivalence claim."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum7 means of3preallocated count calls inclreset/reduction/hostscalarcompletion; inputalloc/H2D excludedall4",
+    "verification_contract": "aggregate_count_outputs",
+    "numerical_evidence_strength": "aggregate_count_only",
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "application_domain": "Byte-stream run counting / text-processing primitive",
+      "operator": "Count maximal contiguous byte runs in explicit finite set65..122",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/wordcount-cuda/wc.cu",
+          "sha256": "b10629ff91036f9acdea7e65d5805da3274272e7ad199e0f299ed00721ccfc54"
+        },
+        {
+          "path": "src/wordcount-sycl/main.cpp",
+          "sha256": "eee0cc0c70d57bbb46c21abe5c5d3df958a77b6efb4137396d8c870da192d5f5"
+        }
+      ],
+      "scientific_scope": "Not Unicode, linguistic word tokenization, or ordinary ASCII-letter classification. Complete scalar counts only, not pointwise flag validation."
+    },
+    "keyconfounds": [
+      "Preallocatedoperator excludes original inputallocation/H2D/free ROI",
+      "Thrust opaque library reduction vs customblock reduction/atomic algorithm",
+      "Native char signedness vs UInt8 representation has equivalent65..122predicate for all256bytevalues",
+      "JACC full512Btemplate initialization adds initialbarrier before allslots overwritten",
+      "Onlyaggregate counts exported; wrongindividualflags could cancel without changingcount",
+      "Finiteinputcounts fitInt32; huge-streamoverflow outside scope"
+    ]
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [
+        "CUDA.jl own exported atomic and barriers"
+      ],
+      "resource_policy": "128Int32shared slots=512B;8algorithmbarriers;oneatomic/block.",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Native opaque Thrust inner_product reduction replaced by authored128thread shared predicate tree and block-atomic sum; same sourceinterval predicate and complete host scalar output. No native internalgeometry equivalence claim."
+      },
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer maximal-run count",
+        "Julia exacthostintegercount"
+      ],
+      "artifact_encoding": "UInt32 scalarcount and actualdeviceinput-byte/control encoding; devicecounterInt32",
+      "numerical_evidence_strength": "aggregate_count_only"
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [],
+      "resource_policy": "128Int32shared slots=512B;8algorithmbarriers;oneatomic/block.",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Native opaque Thrust inner_product reduction replaced by authored128thread shared predicate tree and block-atomic sum; same sourceinterval predicate and complete host scalar output. No native internalgeometry equivalence claim."
+      },
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer maximal-run count",
+        "Julia exacthostintegercount"
+      ],
+      "artifact_encoding": "UInt32 scalarcount and actualdeviceinput-byte/control encoding; devicecounterInt32",
+      "numerical_evidence_strength": "aggregate_count_only"
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [],
+      "resource_policy": "128Int32shared slots=512B;8algorithmbarriers;oneatomic/block. JACC copieswhole128slottemplate and adds1initialbarrier.",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Native opaque Thrust inner_product reduction replaced by authored128thread shared predicate tree and block-atomic sum; same sourceinterval predicate and complete host scalar output. No native internalgeometry equivalence claim."
+      },
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer maximal-run count",
+        "Julia exacthostintegercount"
+      ],
+      "artifact_encoding": "UInt32 scalarcount and actualdeviceinput-byte/control encoding; devicecounterInt32",
+      "numerical_evidence_strength": "aggregate_count_only"
+    }
+  },
+  "observation": "Wordcount provides a source-policy and evidence-strength example: the native predicate includes six punctuation bytes between ASCII uppercase and lowercase ranges. An explicit isolated-punctuation fixture gives sourcecount6 but ordinaryASCIIlettercount0; the all256byte fixture gives sourcecount1 versus ordinarylettercount2. All four versions preserve the actual finite byte-set policy, rather than silently repairing it. Independent maximal-run grouping checks complete scalar outputs on seven edge and long fixtures. No linguistic or per-byte flag correctness claim follows from scalar-only native output.",
+  "effort_observation": "Historical CUDA.jl smokestub S1 repaired in separate shared reference phase. One device candidate/program check per Julia model, no observed target compiler/runtime/numerical repair. All3author one actual predicate/reduction definition; native remains source-functor Thrust. Prospective activity windows include metadata/verification, not exclusive coding cost.",
+  "scientific_witness_summary": {
+    "benchmark": "wordcount",
+    "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T011127651328Z_wordcount/result.json",
+    "captured_trials_checked": 20,
+    "numerical_evidence_strength": "aggregate_count_only",
+    "method": "Independent maximal contiguous runs in explicit finite byte set {65,...,122}, using grouping instead of shared adjacent-predicate reduction. Exact integer counts; original outputs are scalars, not per-byte flags.",
+    "source_interval_counts": [
+      0,
+      1,
+      0,
+      6,
+      1,
+      14848,
+      373
+    ],
+    "ordinary_ASCII_letter_run_counts": [
+      0,
+      1,
+      0,
+      0,
+      2,
+      13307,
+      373
+    ],
+    "punctuation_counterexample": {
+      "input_bytes": [
+        91,
+        32,
+        92,
+        32,
+        93,
+        32,
+        94,
+        32,
+        95,
+        32,
+        96,
+        32
+      ],
+      "native_source_count": 6,
+      "ordinary_ASCII_letter_runs": 0,
+      "difference_class": "Explicit source byte-interval policy; not linguistic tokenization certification or silently corrected reference."
+    },
+    "all_byte_values_case": {
+      "source_interval_count": 1,
+      "ordinary_ASCII_letter_runs": 2
+    },
+    "scope": "Preallocated operator; original allocation-inclusive CLI scope unmeasured. Complete seven scalar outputs only; does not establish pointwise flag equivalence. No Unicode/linguistic word semantics.",
+    "reports": [
+      {
+        "model": "cuda",
+        "trial": 1,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda",
+        "trial": 2,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda",
+        "trial": 3,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda",
+        "trial": 4,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda",
+        "trial": 5,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 1,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 2,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 3,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 4,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 5,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "ka",
+        "trial": 1,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "ka",
+        "trial": 2,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "ka",
+        "trial": 3,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "ka",
+        "trial": 4,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "ka",
+        "trial": 5,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "jacc",
+        "trial": 1,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "jacc",
+        "trial": 2,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "jacc",
+        "trial": 3,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "jacc",
+        "trial": 4,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      },
+      {
+        "model": "jacc",
+        "trial": 5,
+        "all7native_scalar_outputs_exact": true,
+        "actual_input_prefix_values": 66882,
+        "sha256": "fa17eea1ddbdeabab28c87cfa8b53346bceaf888ffbb887d771dbb3c94f1bd2d"
+      }
+    ]
+  },
+  "per_component_performance": {
+    "cuda": {
+      "five_trial_seconds": [
+        [
+          3.1666666666666667e-07,
+          3.6340333333333335e-05,
+          4.158366666666667e-05,
+          3.3943666666666665e-05,
+          3.3716999999999996e-05,
+          3.9243666666666665e-05,
+          3.438366666666667e-05
+        ],
+        [
+          2.2666666666666666e-07,
+          3.973366666666667e-05,
+          3.3723666666666664e-05,
+          3.3983666666666664e-05,
+          3.3450333333333334e-05,
+          3.853366666666667e-05,
+          3.4396999999999996e-05
+        ],
+        [
+          3.766666666666667e-07,
+          4.3420333333333335e-05,
+          3.3670333333333335e-05,
+          3.361033333333333e-05,
+          3.361033333333333e-05,
+          3.8407e-05,
+          3.4283666666666665e-05
+        ],
+        [
+          2.1333333333333334e-07,
+          4.570733333333333e-05,
+          3.3557e-05,
+          3.362366666666667e-05,
+          3.372666666666667e-05,
+          3.8230666666666666e-05,
+          3.430666666666667e-05
+        ],
+        [
+          2.533333333333333e-07,
+          4.056033333333333e-05,
+          3.367366666666666e-05,
+          3.353366666666667e-05,
+          3.398333333333333e-05,
+          3.8034e-05,
+          3.421333333333333e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        2.675e-07,
+        4.235541666666667e-05,
+        3.3656166666666665e-05,
+        3.368783333333333e-05,
+        3.369266666666667e-05,
+        3.830133333333333e-05,
+        3.430016666666667e-05
+      ],
+      "component_order": "empty,onealpha,onespace,sixpunctuation,all256bytes,long65573,mixed1025"
+    },
+    "cuda_jl": {
+      "five_trial_seconds": [
+        [
+          1.6433333333333334e-06,
+          3.134666666666667e-05,
+          2.820366666666667e-05,
+          2.6263666666666667e-05,
+          2.593366666666667e-05,
+          2.797e-05,
+          2.6366666666666666e-05
+        ],
+        [
+          1.5e-06,
+          5.1683666666666675e-05,
+          2.6887000000000002e-05,
+          2.8107000000000004e-05,
+          2.64e-05,
+          3.0037e-05,
+          2.785366666666667e-05
+        ],
+        [
+          7.400000000000001e-07,
+          3.829366666666667e-05,
+          2.6947e-05,
+          2.6503333333333334e-05,
+          2.6150000000000002e-05,
+          2.7583666666666668e-05,
+          2.6427e-05
+        ],
+        [
+          7.000000000000001e-07,
+          3.716033333333334e-05,
+          2.7270333333333336e-05,
+          2.6330333333333334e-05,
+          2.630666666666667e-05,
+          2.7987e-05,
+          2.6557e-05
+        ],
+        [
+          6.200000000000001e-07,
+          3.411033333333334e-05,
+          2.6370333333333337e-05,
+          2.6186666666666668e-05,
+          2.6383666666666666e-05,
+          2.8217e-05,
+          2.6740333333333336e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        8.900000000000001e-07,
+        4.0312e-05,
+        2.686866666666667e-05,
+        2.6781833333333335e-05,
+        2.6310083333333334e-05,
+        2.8456166666666667e-05,
+        2.68945e-05
+      ],
+      "component_order": "empty,onealpha,onespace,sixpunctuation,all256bytes,long65573,mixed1025"
+    },
+    "ka": {
+      "five_trial_seconds": [
+        [
+          1.1266666666666667e-06,
+          3.517366666666667e-05,
+          2.8777000000000002e-05,
+          2.8570000000000003e-05,
+          2.861366666666667e-05,
+          2.9990333333333337e-05,
+          2.8810333333333334e-05
+        ],
+        [
+          1.4733333333333333e-06,
+          6.176700000000001e-05,
+          2.854366666666667e-05,
+          2.8590333333333333e-05,
+          3.290366666666667e-05,
+          3.0683666666666666e-05,
+          2.867366666666667e-05
+        ],
+        [
+          7.870000000000002e-07,
+          3.721366666666667e-05,
+          2.8580333333333335e-05,
+          2.8147e-05,
+          2.8263333333333334e-05,
+          2.924366666666667e-05,
+          2.7877e-05
+        ],
+        [
+          6.570000000000001e-07,
+          3.7010333333333334e-05,
+          2.8807e-05,
+          2.8813333333333334e-05,
+          2.8260333333333335e-05,
+          2.9730333333333336e-05,
+          2.8417e-05
+        ],
+        [
+          6.233333333333333e-07,
+          3.4857e-05,
+          2.8436666666666668e-05,
+          3.149033333333334e-05,
+          2.9603666666666666e-05,
+          3.5077e-05,
+          3.075366666666667e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        8.851666666666667e-07,
+        4.271200000000001e-05,
+        2.859191666666667e-05,
+        2.926025e-05,
+        2.975775e-05,
+        3.118366666666667e-05,
+        2.8930333333333337e-05
+      ],
+      "component_order": "empty,onealpha,onespace,sixpunctuation,all256bytes,long65573,mixed1025"
+    },
+    "jacc": {
+      "five_trial_seconds": [
+        [
+          1.42e-06,
+          3.9070666666666665e-05,
+          3.687366666666667e-05,
+          3.413e-05,
+          3.564333333333334e-05,
+          4.9064e-05,
+          3.7123666666666665e-05
+        ],
+        [
+          1.1733333333333335e-06,
+          5.7654e-05,
+          3.327033333333334e-05,
+          3.264366666666667e-05,
+          3.273366666666667e-05,
+          4.520366666666667e-05,
+          3.3200333333333335e-05
+        ],
+        [
+          6.566666666666667e-07,
+          4.020366666666667e-05,
+          3.2337000000000006e-05,
+          3.253e-05,
+          3.2050333333333334e-05,
+          4.4920666666666665e-05,
+          3.5987e-05
+        ],
+        [
+          5.833333333333334e-07,
+          3.954033333333333e-05,
+          3.2600333333333334e-05,
+          3.255366666666667e-05,
+          3.2747000000000003e-05,
+          4.483033333333334e-05,
+          3.557366666666667e-05
+        ],
+        [
+          6.200000000000001e-07,
+          3.840033333333334e-05,
+          3.2490333333333336e-05,
+          3.2320333333333336e-05,
+          3.2613333333333335e-05,
+          4.826733333333333e-05,
+          3.3537e-05
+        ]
+      ],
+      "mean_last_four_seconds": [
+        7.583333333333334e-07,
+        4.3949583333333333e-05,
+        3.26745e-05,
+        3.251191666666667e-05,
+        3.253608333333333e-05,
+        4.58055e-05,
+        3.45745e-05
+      ],
+      "component_order": "empty,onealpha,onespace,sixpunctuation,all256bytes,long65573,mixed1025"
+    }
+  }
+}
