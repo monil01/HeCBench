@@ -1,0 +1,78 @@
+--- src/fpdc-cuda/kernels.h
++++ src/fpdc-julia/native_corrected/kernels.h
+@@ -38,6 +38,7 @@
+   // index within shared prefix sum array
+   iindex = threadIdx.x / WARPSIZE * (3 * WARPSIZE / 2) + lane;
+   ibufs[iindex] = 0;
++  __syncwarp();
+   iindex += WARPSIZE / 2;
+   lastidx = (threadIdx.x / WARPSIZE + 1) * (3 * WARPSIZE / 2) - 1;
+   // warp id
+@@ -53,6 +54,7 @@
+ 
+   prev = 0;
+   for (int i = start + lane; i < term; i += WARPSIZE) {
++    code = (cbufd[i] < prev) ? 8 : 0;
+     // calculate delta between value to compress and prediction
+     // and negate if negative
+     if (cbufd[i] >= prev)
+@@ -66,17 +68,28 @@
+ 
+     // prefix sum to determine start positions of non-zero delta bytes
+     ibufs[iindex] = bcount;
+-    __threadfence_block();
+-    ibufs[iindex] += ibufs[iindex-1];
+-    __threadfence_block();
+-    ibufs[iindex] += ibufs[iindex-2];
+-    __threadfence_block();
+-    ibufs[iindex] += ibufs[iindex-4];
+-    __threadfence_block();
+-    ibufs[iindex] += ibufs[iindex-8];
+-    __threadfence_block();
+-    ibufs[iindex] += ibufs[iindex-16];
+-    __threadfence_block();
++    __syncwarp();
++    int scan_tmp;
++    scan_tmp = ibufs[iindex] + ibufs[iindex-1];
++    __syncwarp();
++    ibufs[iindex] = scan_tmp;
++    __syncwarp();
++    scan_tmp = ibufs[iindex] + ibufs[iindex-2];
++    __syncwarp();
++    ibufs[iindex] = scan_tmp;
++    __syncwarp();
++    scan_tmp = ibufs[iindex] + ibufs[iindex-4];
++    __syncwarp();
++    ibufs[iindex] = scan_tmp;
++    __syncwarp();
++    scan_tmp = ibufs[iindex] + ibufs[iindex-8];
++    __syncwarp();
++    ibufs[iindex] = scan_tmp;
++    __syncwarp();
++    scan_tmp = ibufs[iindex] + ibufs[iindex-16];
++    __syncwarp();
++    ibufs[iindex] = scan_tmp;
++    __syncwarp();
+ 
+     // write out non-zero bytes of delta to compressed buffer
+     beg = off + (WARPSIZE/2) + ibufs[iindex-1];
+@@ -88,9 +101,10 @@
+ 
+     if (bcount >= 3) bcount--; // adjust byte count for the dropped encoding
+     tmp = ibufs[lastidx];
++    __syncwarp();
+     code |= bcount;
+     ibufs[iindex] = code;
+-    __threadfence_block();
++    __syncwarp();
+ 
+     // write out half-bytes of sign and leading-zero-byte count (every other thread
+     // writes its half-byte and neighbor's half-byte)
+@@ -102,6 +116,7 @@
+     // save prediction value from this subchunk (based on provided dimensionality)
+     // for use in next subchunk
+     prev = cbufd[i + offset];
++    __syncwarp();
+   }
+ 
+   // save final value of off, which is total bytes of compressed output for this chunk
