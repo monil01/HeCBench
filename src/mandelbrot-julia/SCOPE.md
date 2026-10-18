@@ -1,0 +1,9 @@
+# Mandelbrot finite Float32 orbit
+
+All four versions preserve the native16x16 grid, row-major integer escape-count image and actual Float32 coordinate/orbit operations. Native source/default nvcc flags are unchanged. Offline original-kernel PTX exposes fused coordinate scales and imaginary update, with separate square/sum/sub/real-add operations; Julia states these roundings explicitly. Full original1080x1920/max100, odd65x97/max100 and32x48/caps0/1/2 run.
+
+All20 captures compare EVERY integer exactly with both GPU references and a separate CPU IEEE binary32 orbit using fmaf and disabled implicit contraction. Same-equation checks are not an independent proof of the mathematics; all-pixel analytic cap0/1/2 controls, bounds and separate extended-precision orbits complement the full computational oracle. A finite100-step capped orbit is not proof of real-arithmetic Mandelbrot membership. Extended-precision differences are precision diagnostics, not translation failures or truth labels. Original host Verify allows5% differing pixels; the study allows none.
+
+Every actual GPU parameter, initial output, and guard is captured and checked exactly. Coordinates are generated inside unchanged native/Julia kernels from shared parameters, not precomputed on CPU. Source kernel timing is retained: one launch/contextcompletion percase, setup/copy/JIT/capture outside. Aggregate is sum5regions; fivecheckedtrials, discard only firsttiming, average2-5, perpathsamples retained. This is not originalwholeEvaluate/serial/Print runtime.
+
+Fullimage count histograms and source16x2warp iteration-slot estimates are descriptive source-derived input/work metrics, not measured hardware branch efficiency/traffic/roofline data. No causal abstraction ranking or crossbackend-performance guarantee follows. Historical Julia marker stub is preserved unchanged.
