@@ -1,0 +1,225 @@
+{
+  "algorithm": "Complex convolution resampling of a regular 64\u00d764 image at 64 irregular points, using an 8\u00d78 subpixel table of 32\u00d732 complex kernels and zero extension outside the image. Each point has 32 lane-wise x contributions and a 32-lane sum reduction.",
+  "mapping": "Native/CUDA.jl 32\u00d78 threads and two blocks; each warp processes four points. Native warp shuffle tree uses no shared memory. KA/JACC emulate the same lane dataflow using 512 Float64 shared slots and 44 block barriers per block.",
+  "launch_geometry": {
+    "threads": [
+      32,
+      8
+    ],
+    "blocks": [
+      2,
+      1
+    ],
+    "points_per_block": 32,
+    "contribution_columns_per_lane": 1,
+    "native_cuda_jl_shared_bytes": 0,
+    "ka_jacc_shared_bytes": 4096,
+    "ka_algorithm_block_barriers": 44,
+    "jacc_algorithm_block_barriers": 44,
+    "jacc_initial_template_barrier": 1
+  },
+  "reference_audit": {
+    "phase": "reference_precision_mapping_alignment",
+    "taxonomy_code": "P1",
+    "finding": "Historical CUDA.jl already implements the complex convolution and native warp reduction. It uses Float64 floor/bins instead of native floorf, guards image loads before bounds rather than using padded source storage, and sorts by kernel sub-bin order rather than the native swapped-axis locality key. These are precision/input/memory mapping differences, not evidence of a wrong configured scientific operator. Named adapter aligns Float32 floorf and fully initialized padded storage.",
+    "original_main_sha256": "01401b23611e978cfd83d1a1214e6ed0608ba5cdff3d707fd5c43472ac4dbe22",
+    "native_source_sha256": "4af5c4d5b9569ac77b17b0b8d7d1651867be9853f5c88a91409d48890da04f5b",
+    "native_kernel_sha256": "8fa80e22a431fec0db1ab69fd96219d26ac9bff2d49f01703ffb16c4c6b63541",
+    "native_source_unchanged": true,
+    "named_configuration": "Guarded-header macros NPOINTS64 IMG_SIZE64 GCF_DIM32 REPEAT3; GCF_GRID8 and 32\u00d78 source geometry retained. Two generated dyadic fixtures replace source default random/transcendental inputs.",
+    "point_sort_scope": "Named comparator uses floor fractions and swapped-axis key. It agrees with source modf comparator for nonnegative points, but differs for negative coordinates included here. The study_common source comment about native ordering is qualified by this statement. All four consume the same complete serialized ordered point list.",
+    "unmeasured_binning_limitation": {
+      "input_x": 4.99999999627471,
+      "input_hex": "0x1.3ffffffc00000p+2",
+      "native_Float32_floor_main": 5,
+      "native_fractional_bin": -1,
+      "Float64_main": 4,
+      "Float64_fractional_bin": 7,
+      "interpretation": "SourceDoublecoordinateFloat32floor mayyieldnegativeGCFbinfornon-Float32representablepointjustbelowinteger. Staticarithmeticwitnessonly,notGPUexecutionfailure;measuredinputsareexactFloat32dyadicsandallbins0..7.",
+      "measured_input_contract_failure": false,
+      "scope_backlog": "Separateoff-latticeFloat64coordinateconfigurationrequiresvalidatedbinningpolicy/conditionalnativecorrection;notcoveredbyprimarydyadicstudy."
+    }
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "traits": {
+    "primary_motif": "irregular_complex_grid_convolution_warp_reduction",
+    "storage_precision": [
+      "Float64 complex grid/coefficients/coordinates/output"
+    ],
+    "compute_precision": [
+      "Float64 complex multiplication/addition/reduction",
+      "Float32 coordinate floor and sub-bin conversion"
+    ],
+    "synchronization": [
+      "CUDA.jl warp shuffle synchronization",
+      "KA/JACC shared-stage block barriers",
+      "context-wide ROI boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "CUDA.jl keeps native warp reduction; KA/JACC use explicitly documented shared-memory emulation. Common named fixture/padding/point order aligns all four inputs; no default-CLI speed claim."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_two_three_kernel_means; all allocations/copies/initialization/oracles outside",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "application_domain": "Complex grid resampling / degridding",
+      "operator": "Local complex convolution at irregular fractional coordinates with zero image extension",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/degrid-cuda/main.cu",
+          "sha256": "4af5c4d5b9569ac77b17b0b8d7d1651867be9853f5c88a91409d48890da04f5b"
+        },
+        {
+          "path": "src/degrid-cuda/kernels.cu",
+          "sha256": "8fa80e22a431fec0db1ab69fd96219d26ac9bff2d49f01703ffb16c4c6b63541"
+        },
+        {
+          "path": "src/degrid-cuda/degrid.h",
+          "sha256": "394a0bc47f0d86c0f4f5043eabcdec3e3b55b790847346961988e8fb3a038e1c"
+        }
+      ],
+      "scope": "Complex local resampling, not a complete Fourier transform, adjoint identity, astronomical data validation, or imaging pipeline. Dyadic Float32-representable coordinates and exact scaled-integer coefficients; broader Float64 binning and ill-conditioned coefficient accuracy are unmeasured."
+    },
+    "keyconfounds": [
+      "Portable shared reduction adds 4KB and44 block barriers versus native warp shuffles; source-observed difference, causal timing attribution unprofiled",
+      "JACC additionally copies4KB initialized template and executes initial barrier",
+      "Native Float32 floorf despite Float64 coordinate storage; off-lattice Float64 negative-bin witness outside measured scope",
+      "Generated point order uses floor-fraction swapped key; original modf sort differs for negative coordinates",
+      "Dyadic exact coefficients avoid floating roundoff stress; does not establish general convolution numerical stability",
+      "Source default dimensions/random/transcendental initialization not measured",
+      "Source syntactic padded read before mask retained; actual hardware predication/load counts unprofiled"
+    ],
+    "host_oracle_precision": [
+      "Int64 exact scaled complex numerator with denominator1024"
+    ],
+    "artifact_encoding": "Float64 raw complete inputs and outputs"
+  },
+  "observation": "The operator is complex resampling from a regular grid at irregular coordinates, with a subpixel convolution table. A delta-kernel fixture provides an independent image-sampling identity, while scaled-integer arithmetic gives exact results for the general dyadic complex fixture. Both cover every subpixel bin, borders and points outside the logical image; the full padded storage and physical load range are checked. Native and CUDA.jl use warp shuffles. KA and JACC use a source-documented shared-memory emulation of that reduction dataflow, adding 4KB and block barriers. This is a selected portable mapping, not proof that either framework lacks all alternative shuffle implementations. Its timing cannot isolate the cost of the abstraction from the chosen reduction mapping without a controlled alternative and profiling.",
+  "effort_observation": "One candidate and one complete compiler/JIT validation process per Julia model, with no observed compiler, runtime or numerical feedback repair. The historical CUDA.jl phase aligns precision and measurement inputs; no wrong-scientific-operator repair is claimed. Static mixed-precision binning and point-order scope findings are preserved separately from measured numerical outcomes.",
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [
+        "CUDA.jl own exported shfl_down_sync"
+      ],
+      "synchronization": [
+        "warp shfl_down_sync; no block barriers"
+      ],
+      "resource_policy": "0 shared bytes; native warp tree",
+      "native_to_julia_mapping": {
+        "status": "matched",
+        "reason": "Same32lane warp tree andlaunchgeometry, sourceFloat32floor/padding aligned"
+      },
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_arithmetic.jl": "5be94c956ef8d2bd05222b758dd9e5fca5cf08d3d651f7b61c9558fd98508494",
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_common.jl": "1c6f99fa38ee0f391dbea3d09bdfaf8567dab76c3c41ec784b77e412089b45bc"
+      }
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [],
+      "synchronization": [
+        "44 algorithm block barriers"
+      ],
+      "resource_policy": "4096 shared bytes; full block shared emulation",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Same32lane reduction dataflow emulated through shared slots and read/write barriers, no CUDA device intrinsics"
+      },
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_arithmetic.jl": "5be94c956ef8d2bd05222b758dd9e5fca5cf08d3d651f7b61c9558fd98508494",
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_common.jl": "1c6f99fa38ee0f391dbea3d09bdfaf8567dab76c3c41ec784b77e412089b45bc"
+      }
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 1,
+      "backend_extensions": [],
+      "synchronization": [
+        "44 algorithm block barriers plus1 JACC template-initialization barrier"
+      ],
+      "resource_policy": "4096 shared bytes; full block shared emulation;JACCtemplatecopy+initialbarrier",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Same32lane reduction dataflow emulated through shared slots and read/write barriers, no CUDA device intrinsics"
+      },
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_arithmetic.jl": "5be94c956ef8d2bd05222b758dd9e5fca5cf08d3d651f7b61c9558fd98508494",
+        "/home/imo/HeCBench_julia/src/degrid-julia/study_common.jl": "1c6f99fa38ee0f391dbea3d09bdfaf8567dab76c3c41ec784b77e412089b45bc"
+      }
+    }
+  },
+  "scientific_witness_summary": {
+    "captured_trials_checked": 20,
+    "all_complex_outputs_exact": true,
+    "output_count": 256,
+    "input_prefix_count": 295694,
+    "all64_subpixel_bins_covered": true,
+    "exact_integer_numerator_denominator": 1024,
+    "delta_kernel_identity": true,
+    "physical_padded_load_ranges": [
+      [
+        975,
+        7213
+      ],
+      [
+        975,
+        7213
+      ]
+    ],
+    "logical_outside_image_points": [
+      22,
+      22
+    ],
+    "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/degrid.json"
+  },
+  "repair_backlog": [
+    {
+      "configuration": "off_Float32_lattice_Float64_coordinate_binning",
+      "status": "not_measured",
+      "witness": {
+        "input_x": 4.99999999627471,
+        "input_hex": "0x1.3ffffffc00000p+2",
+        "native_Float32_floor_main": 5,
+        "native_fractional_bin": -1,
+        "Float64_main": 4,
+        "Float64_fractional_bin": 7,
+        "interpretation": "SourceDoublecoordinateFloat32floor mayyieldnegativeGCFbinfornon-Float32representablepointjustbelowinteger. Staticarithmeticwitnessonly,notGPUexecutionfailure;measuredinputsareexactFloat32dyadicsandallbins0..7.",
+        "measured_input_contract_failure": false,
+        "scope_backlog": "Separateoff-latticeFloat64coordinateconfigurationrequiresvalidatedbinningpolicy/conditionalnativecorrection;notcoveredbyprimarydyadicstudy."
+      },
+      "scope": "Separate validated binning policy/conditionalnativecorrection needed; primary dyadic inputs do not trigger source limitation."
+    }
+  ]
+}
