@@ -1,12 +1,8 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
 main:
 	@true
-
+run: main
+	$(JULIA) $(PROJECT) main.jl
 clean:
 	@true
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl ../haversine-serial/locations.txt 100
