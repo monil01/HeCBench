@@ -88,11 +88,14 @@ if conditional:
 known_defect=any(c.get('native_behavior_known_scientific_defect') for _,c,_ in data)
 if known_defect and conditional:raise SystemExit('Known-defect reproduction and corrected-native evidence need separate commit strata.')
 if known_defect and any(c.get('native_behavior_known_scientific_defect') and not c.get('reference_provenance') for _,c,_ in data):raise SystemExit('Known scientific defects require witness provenance.')
+revised_acceptance=any(c.get('verification_contract_revised') for _,c,_ in data)
+if revised_acceptance and not conditional and not known_defect:
+ title=('Record '+a.benchmark+' revised secondary verification contract') if a.shared else ('Conditionally verify '+a.benchmark+' '+a.variant+' under revised acceptance contract')
 if not paths:raise SystemExit('No owned files to commit')
 subprocess.run(['git','add','-f','--',*[str(f.relative_to(root)) for f in paths]],cwd=root,check=True)
 if known_defect:
  title=('Record '+a.benchmark+' original native behavior with known scientific defect') if a.shared else ('Verify '+a.benchmark+' '+a.variant+' native behavior with known scientific defect')
-body=('Reproduced original native behavior with an independently witnessed scientific defect; not certification of intended algorithm, excluded from scientific-fidelity aggregates.\n\n' if known_defect else '')+('Conditional corrected-native stratum; no untouched-native agreement or aggregate claim.\n\n' if conditional else '')+'Evidence: '+', '.join(d['run_id'] for d,_,_ in data)+'. All five configured output checks pass; time means exclude trial1. Preserve numerical evidence strength, scope, attempt accounting and limitations.\n\nGenerated-By: OpenAI Codex'
+body=('Post-observation revised secondary acceptance contract; original rejected criterion retained, fresh measurements, excluded from untouched-native aggregates. Native algorithm unchanged unless separately stated.\n\n' if revised_acceptance else '')+('Reproduced original native behavior with an independently witnessed scientific defect; not certification of intended algorithm, excluded from scientific-fidelity aggregates.\n\n' if known_defect else '')+('Conditional corrected-native stratum; no untouched-native agreement or aggregate claim.\n\n' if conditional else '')+'Evidence: '+', '.join(d['run_id'] for d,_,_ in data)+'. All five configured output checks pass; time means exclude trial1. Preserve numerical evidence strength, scope, attempt accounting and limitations.\n\nGenerated-By: OpenAI Codex'
 subprocess.run(['git','commit','-m',title,'-m',body],cwd=root,check=True);sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
 if key:
  m=root/'.porting-state/porting_logs'/(a.benchmark+'-julia-'+key)/'manifest.json'
