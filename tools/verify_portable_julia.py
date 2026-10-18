@@ -64,6 +64,64 @@ def artifact_values(row):
 _FINITE_ARTIFACT_CACHE = {}
 _NUMERIC_COMPARISON_CACHE = {}
 
+def file_sha256(path):
+    """Hash every byte without materializing a potentially gigabyte artifact."""
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+def stream_float_comparison(a, b, atol, rtol, use_numpy=None):
+    """Full scalar contract in bounded chunks; optional vector arithmetic only."""
+    fmt = {'float32': ('f', 4), 'float64': ('d', 8)}.get(a.get('dtype'))
+    count = a.get('count', 0)
+    if (not fmt or not count or a.get('dtype') != b.get('dtype')
+            or count != b.get('count')
+            or any(x.get('byte_order', 'little') != 'little' for x in (a, b))
+            or any(Path(x['saved_path']).stat().st_size != count * fmt[1] for x in (a, b))):
+        return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
+    np = None
+    if use_numpy is not False:
+        try:
+            import numpy as np
+        except ImportError:
+            pass
+    maximum_abs = maximum_rel = 0.0
+    valid = True
+    checked = 0
+    chunk_bytes = 4 * 1024 * 1024
+    with Path(a['saved_path']).open('rb') as fa, Path(b['saved_path']).open('rb') as fb:
+        while checked < count:
+            wanted = min(chunk_bytes, (count - checked) * fmt[1])
+            ba, bb = fa.read(wanted), fb.read(wanted)
+            if len(ba) != wanted or len(bb) != wanted:
+                return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
+            if np is not None:
+                # Python struct values are binary64 even for FP32 artifacts.
+                # Promote before subtracting to preserve that exact contract.
+                va = np.frombuffer(ba, dtype='<f' + str(fmt[1])).astype(np.float64, copy=False)
+                vb = np.frombuffer(bb, dtype='<f' + str(fmt[1])).astype(np.float64, copy=False)
+                if not (np.isfinite(va).all() and np.isfinite(vb).all()):
+                    return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
+                with np.errstate(over='ignore', invalid='ignore', under='ignore'):
+                    errors = np.abs(va - vb)
+                    relative = errors / np.maximum(np.maximum(np.abs(va), atol), 1e-300)
+                    valid = valid and bool(np.all(errors <= atol + rtol * np.abs(va)))
+                    maximum_abs = max(maximum_abs, float(np.max(errors)))
+                    maximum_rel = max(maximum_rel, float(np.max(relative)))
+            else:
+                for (av,), (bv,) in zip(struct.iter_unpack('<' + fmt[0], ba), struct.iter_unpack('<' + fmt[0], bb)):
+                    if not (math.isfinite(av) and math.isfinite(bv)):
+                        return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
+                    error = abs(av - bv)
+                    maximum_abs = max(maximum_abs, error)
+                    maximum_rel = max(maximum_rel, error / max(abs(av), atol, 1e-300))
+                    valid = valid and error <= atol + rtol * abs(av)
+            checked += wanted // fmt[1]
+    return {'status': 'pass' if valid else 'mismatch', 'checked_values': checked,
+            'max_abs_error': maximum_abs, 'max_rel_error': maximum_rel,
+            'comparison_engine': 'chunked_numpy_binary64' if np is not None else 'chunked_python_struct_binary64',
+            'comparison_engine_version': np.__version__ if np is not None else None,
+            'full_value_scan': True, 'chunk_bytes': chunk_bytes}
+
 def exact_input_prefix(ref, got, count):
     if isinstance(count,bool) or not isinstance(count,int) or count<0:raise ValueError('input_prefix_count must be a nonnegative integer')
     if not count:return {'status':'not_requested','meaning':'No automatic serialized-prefix claim; independent input audits may be recorded separately.'}
@@ -75,9 +133,13 @@ def exact_input_prefix(ref, got, count):
         return {'status':'unverified','reason':'Declared input prefix exceeds artifact or uses unsupported byte order.'}
     nbytes=count*widths[a['dtype']]
     with Path(a['saved_path']).open('rb') as fa,Path(b['saved_path']).open('rb') as fb:
-        pa=fa.read(nbytes);pb=fb.read(nbytes)
-    if len(pa)!=nbytes or len(pb)!=nbytes or pa!=pb:
-        return {'status':'mismatch','reason':'Serialized input prefix bytes differ; output tolerance does not apply.','values':count,'bytes':nbytes}
+        remaining = nbytes
+        while remaining:
+            wanted = min(4 * 1024 * 1024, remaining)
+            pa, pb = fa.read(wanted), fb.read(wanted)
+            if len(pa) != wanted or len(pb) != wanted or pa != pb:
+                return {'status':'mismatch','reason':'Serialized input prefix bytes differ; output tolerance does not apply.','values':count,'bytes':nbytes}
+            remaining -= wanted
     return {'status':'pass','values':count,'bytes':nbytes,'method':'Exact saved prefix bytes; actual kernel input use still requires source/buffer audit.'}
 
 def review_missing_contract_attestations(config, previous_config, previous_result, result_path):
@@ -186,8 +248,7 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
     # Identical saved bytes need one finite-validation scan, not repeated
     # multi-million-element Python lists for every dual-reference/trial pair.
     if a and b and a.get('sha256') and a['sha256']==b.get('sha256'):
-        a_bytes=Path(a['saved_path']).read_bytes(); b_bytes=Path(b['saved_path']).read_bytes()
-        if hashlib.sha256(a_bytes).hexdigest()!=a['sha256'] or hashlib.sha256(b_bytes).hexdigest()!=b['sha256']:
+        if file_sha256(a['saved_path'])!=a['sha256'] or file_sha256(b['saved_path'])!=b['sha256']:
             return {'status':'unverified','reason':'saved artifact content hash changed'}
         types={'float32':('f',4),'float64':('d',8),'int8':('b',1),'uint8':('B',1),'int16':('h',2),'uint16':('H',2),'int32':('i',4),'uint32':('I',4),'int64':('q',8),'uint64':('Q',8)}
         info=types.get(a.get('dtype'))
@@ -200,8 +261,11 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
         if key not in _FINITE_ARTIFACT_CACHE:
             finite=True
             if a.get('dtype') in ('float32','float64'):
-                data=a_bytes
-                finite=all(math.isfinite(x[0]) for x in struct.iter_unpack('<'+info[0],data))
+                with Path(a['saved_path']).open('rb') as stream:
+                    while chunk := stream.read(4 * 1024 * 1024):
+                        if not all(math.isfinite(x[0]) for x in struct.iter_unpack('<'+info[0],chunk)):
+                            finite=False
+                            break
             _FINITE_ARTIFACT_CACHE[key]=finite
         if not _FINITE_ARTIFACT_CACHE[key]:
             return {'status':'unverified','reason':'nonfinite artifact values'}
@@ -212,7 +276,7 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
     cache_key = None
     if a and b and a.get('sha256') and b.get('sha256'):
         for artifact in (a, b):
-            if hashlib.sha256(Path(artifact['saved_path']).read_bytes()).hexdigest() != artifact['sha256']:
+            if file_sha256(artifact['saved_path']) != artifact['sha256']:
                 return {'status':'unverified','reason':'saved artifact content hash changed'}
         metadata = [{k: artifact.get(k, 'little' if k == 'byte_order' else None)
                      for k in ('sha256','dtype','count','shape','byte_order')}
@@ -223,7 +287,11 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
             comparison['comparison_computation'] = 'reused_after_full_artifact_pair_rehash'
             comparison['input_prefix_check'] = prefix_check
             return comparison
-    comparison=compare(artifact_values(ref),artifact_values(got),atol,rtol)
+    large_float = (a and b and a.get('dtype') in ('float32', 'float64')
+                   and a.get('sha256') and b.get('sha256')
+                   and a.get('count', 0) * (4 if a['dtype'] == 'float32' else 8) >= 64 * 1024 * 1024)
+    comparison = (stream_float_comparison(a, b, atol, rtol) if large_float
+                  else compare(artifact_values(ref),artifact_values(got),atol,rtol))
     if cache_key is not None and comparison.get('status') == 'pass':
         _NUMERIC_COMPARISON_CACHE[cache_key] = copy.deepcopy(comparison)
         comparison['comparison_computation'] = 'computed_from_full_saved_values'
@@ -239,7 +307,7 @@ def save_artifacts(rows, cwd, out, model):
         saved=out/f"{model}_trial{row.get('trial')}_{path.name}"
         shutil.copyfile(path,saved)
         artifact['saved_path']=str(saved)
-        artifact['sha256']=hashlib.sha256(saved.read_bytes()).hexdigest()
+        artifact['sha256']=file_sha256(saved)
 
 def preserve_rejected_records(text, cwd, out, model, events, returncode, reason):
     """Keep diagnostics from failed execution; never feed them to acceptance."""
@@ -298,7 +366,7 @@ def review_missing_timing_region(config,reuse_result,reuse_config,reuse_path,res
     if not evidence:raise ValueError('Timing metadata review requires hashed source evidence')
     for item in evidence:
         f=Path(item['path']);f=f if f.is_absolute() else ROOT/f
-        if not f.is_file() or hashlib.sha256(f.read_bytes()).hexdigest()!=item.get('sha256'):
+        if not f.is_file() or file_sha256(f)!=item.get('sha256'):
             raise ValueError('Timing metadata source evidence mismatch: '+str(f))
     for model in MODELS:
         data=results.get(model,{})
@@ -421,7 +489,7 @@ def verify(config):
             f=Path(arg)
             if not f.is_absolute(): f=source_cwd/f
             if f.is_file() and f.suffix in ('.jl','.cu','.cuh','.h','.hpp','.cpp','.toml'):
-                adapter_file_hashes[str(f)]=hashlib.sha256(f.read_bytes()).hexdigest()
+                adapter_file_hashes[str(f)]=file_sha256(f)
         # Opt in without changing historical reuse bindings: declared include,
         # fixture and runtime-asset files may use arbitrary extensions.
         if spec.get('bind_all_declared_dependencies', False):
@@ -431,7 +499,7 @@ def verify(config):
                 f=f.resolve()
                 if not f.is_file():
                     raise FileNotFoundError('Declared dependency is missing: '+str(f))
-                adapter_file_hashes[str(f)]=hashlib.sha256(f.read_bytes()).hexdigest()
+                adapter_file_hashes[str(f)]=file_sha256(f)
         source_hash=digest_tree(paths[model])
         if reuse_result and model in config.get('reuse_models',['cuda','cuda_jl','ka']):
             old=reuse_result['models'].get(model,{})
@@ -484,7 +552,7 @@ def verify(config):
         provenance_checks=[]
         def sources_stable():
             nonlocal provenance_valid
-            stable=digest_tree(paths[model])==source_hash and all(Path(name).is_file() and hashlib.sha256(Path(name).read_bytes()).hexdigest()==sha for name,sha in adapter_file_hashes.items())
+            stable=digest_tree(paths[model])==source_hash and all(Path(name).is_file() and file_sha256(name)==sha for name,sha in adapter_file_hashes.items())
             provenance_valid=provenance_valid and stable
             provenance_checks.append({'unchanged':stable})
             return stable
