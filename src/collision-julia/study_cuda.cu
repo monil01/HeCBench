@@ -1,0 +1,14 @@
+#include <cuda_runtime.h>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <set>
+#define main historical_main
+#include "../collision-cuda/main.cu"
+#undef main
+#define CHECK(x) do{auto e=(x);if(e!=cudaSuccess){fprintf(stderr,"CUDA %s\n",cudaGetErrorString(e));exit(10);}}while(0)
+struct Case{int*input;std::vector<int>host;int goldflag;uint32_t goldmask;};
+int main(){std::vector<uint32_t>prefix(1282);FILE*f=fopen("/home/imo/HeCBench_julia/src/collision-julia/fixture.bin","rb");if(!f||fread(prefix.data(),4,prefix.size(),f)!=prefix.size())return 4;fclose(f);std::vector<Case>cases;for(int ci=0;ci<40;ci++){Case c;c.host.assign(48,-991827);memcpy(c.host.data()+8,prefix.data()+ci*32,128);std::set<int>seen;c.goldmask=0;for(int i=0;i<32;i++)if(!seen.insert(c.host[8+i]).second)c.goldmask|=1u<<i;c.goldflag=seen.size()!=32;CHECK(cudaMalloc(&c.input,48*4));CHECK(cudaMemcpy(c.input,c.host.data(),48*4,cudaMemcpyHostToDevice));cases.push_back(c);}
+auto launch=[](Case&c){checkDuplicates<<<1,32>>>(32,c.input+8);checkDuplicateMask<<<1,32>>>(32,c.input+8);};for(auto&c:cases){launch(c);CHECK(cudaDeviceSynchronize());}
+for(int trial=1;trial<=5;trial++){bool ok=true;double seconds=0;std::vector<double>path_times;std::vector<uint32_t>art=prefix;for(auto&c:cases){int reset[32];for(int&i:reset)i=-991827;uint32_t mask=0xfedcba98;CHECK(cudaMemcpyToSymbol(hasDuplicate,reset,128));CHECK(cudaMemcpyToSymbol(duplicateMask,&mask,4));auto start=std::chrono::steady_clock::now();for(int rep=0;rep<100;rep++)launch(c);CHECK(cudaDeviceSynchronize());double dt=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/100;seconds+=dt;path_times.push_back(dt);CHECK(cudaMemcpyFromSymbol(reset,hasDuplicate,128));CHECK(cudaMemcpyFromSymbol(&mask,duplicateMask,4));for(int x:reset){ok&=x==c.goldflag;art.push_back(uint32_t(x));}ok&=mask==c.goldmask;art.push_back(mask);std::vector<int>echo(48);CHECK(cudaMemcpy(echo.data(),c.input,48*4,cudaMemcpyDeviceToHost));ok&=echo==c.host;for(int x:echo)art.push_back(uint32_t(x));}
+std::string path=std::string(getenv("STUDY_OUTPUT_DIR")?getenv("STUDY_OUTPUT_DIR"):".")+"/output_trial"+std::to_string(trial)+".bin";FILE*out=fopen(path.c_str(),"wb");fwrite(art.data(),4,art.size(),out);fclose(out);printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":3240,\"max_abs_error\":0,\"max_rel_error\":0,\"timing_region\":\"sum40_warp32_collision_two_kernel_batches_per_repeat\",\"jit_excluded\":true,\"internal_repeats\":100,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"uint32\",\"count\":%zu,\"byte_order\":\"little\"},\"path_times_seconds\":[",trial,seconds,ok?"true":"false",path.c_str(),art.size());for(int i=0;i<40;i++)printf("%s%.17g",i?",":"",path_times[i]);printf("]}\n");}for(auto&c:cases)cudaFree(c.input);}
