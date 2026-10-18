@@ -1,0 +1,156 @@
+{
+  "scientific_intent": {
+    "primary_family": "domain_neutral_primitives",
+    "primary_domain": "in_place_matrix_storage_transform",
+    "review_status": "source_reviewed",
+    "scientific_task": "Pad compact matrix rows in place using a statically partitioned cooperative CPU/GPU pipeline",
+    "mathematical_operation": "For compact row-major m\u00d7n input, write m\u00d7(n+pad) output preserving every input bit and inserting positive-zero padding columns.",
+    "discretization": "Two task-aligned Float64 shapes256\u00d7127(+1) and256\u00d7503(+9), tiles8192=256threads\u00d732privatevalues; six Float32alpha CPUtaskfractions0/.1/.25/.5/.75/1,12paths.",
+    "accuracy_requirements": "ExactinputIEEEbits including signedzero/subnormal, fullpaddedmatrix,16host+16GPUmatrixguards/path and fullCPU/GPUdependencyflags+16flagguards. Independentinputscatteroracle and taskpartitionenumeration, bothnative/CUDAjlfullartifactcomparisons allfive.",
+    "input_size_regime": "32768 and131072 outputcells,4 and16tile tasks,8GPUblocks4CPUworkers; scopedstaticpartition/resident-friendlygrid, notlargeoversubscribedproduction/defaultCLI.",
+    "precision_sensitivity": "Float64 storage/copy, +0 insertion, Float32partitionmultiply/truncation; zero/subnormal signs preserved through UInt64bitcontract, no floating-error tolerance.",
+    "community_use_case": "Storage padding and layout preparation are reusable matrix/pipeline components; no original physical simulation or scientificdataset attribution.",
+    "description": "Original IMPACT2016 source implements CPU/GPU hybrid in-place data sliding with a load-completion flag chain. Historical Julia computes correct out-of-place padding but omits the hybrid pipeline; preserved intact, with a separate faithful study completion.",
+    "provenance": "Native README cites G\u00f3mez-Luna etal2015 Inplace data sliding algorithms for many-core architectures. The study retains original CPU/GPU algorithms but declares legal aligned finite fixtures and static partition scope."
+  },
+  "primary_motif": "hybrid_in_place_backward_layout_slide",
+  "storage_precision": [
+    "Float64",
+    "Int32_flags",
+    "Float32_alpha"
+  ],
+  "compute_precision": [
+    "Float64_bit_copy_no_floating_arithmetic",
+    "Int32_index_and_atomic_flags",
+    "Float32_partition_product"
+  ],
+  "synchronization": [
+    "2blockbarriers_per_GPUtask",
+    "GPUflagatomicRMWzero_spin_and_increment",
+    "CPUstdatomicflag_spin_and_increment",
+    "blockingprefix_and_flag_H2D",
+    "GPUcompletion_before_CPUcoordinator_join"
+  ],
+  "synchronizations": {
+    "cuda_jl": [
+      "2blockbarriers_per_GPUtask",
+      "GPUflagatomicRMWzero_spin_and_increment",
+      "CPUstdatomicflag_spin_and_increment",
+      "blockingprefix_and_flag_H2D",
+      "GPUcompletion_before_CPUcoordinator_join"
+    ],
+    "ka": [
+      "2blockbarriers_per_GPUtask",
+      "GPUflagatomicRMWzero_spin_and_increment",
+      "CPUstdatomicflag_spin_and_increment",
+      "blockingprefix_and_flag_H2D",
+      "GPUcompletion_before_CPUcoordinator_join"
+    ],
+    "jacc": [
+      "2blockbarriers_per_GPUtask",
+      "GPUflagatomicRMWzero_spin_and_increment",
+      "CPUstdatomicflag_spin_and_increment",
+      "blockingprefix_and_flag_H2D",
+      "GPUcompletion_before_CPUcoordinator_join"
+    ]
+  },
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Same static task partition, private32Float64loads, twoGPUbarriers andRMWflagchain pertask, backwardinplacestores; shared unchanged originalC++CPUworker viahash-boundFFI controlsCPUalgorithm all4. Historical out-of-place Julia workflow preserved separately, reference completed."
+  },
+  "reference_class": "CUDAjl_GPU_plus_original_Cpp_CPU_hybrid_static_pipeline",
+  "ka_class": "KA_GPU_plus_original_Cpp_CPU_hybrid_static_pipeline",
+  "jacc_class": "JACC_GPU_plus_original_Cpp_CPU_hybrid_static_pipeline",
+  "verification_contract": "1147828UInt64words/trial:163948input/parameterprefixwords +983880paddedoutput/guards/CPUflag/GPUflagwords. Exactall20arrays; CPUinput-scatter andflagincrementoracles independent ofGPUdestinationgather. No checksum-only/NaNequality pass.",
+  "keyconfounds": [
+    "Allmodels share originalC++CPUFFI worker; notpureJuliaend-to-endCPUtranslation",
+    "Aggregate12pathpipeline time includesreset/H2D/threadspawn/launch/join, notkernelonlyroofline",
+    "ActualCPU/GPUoverlap unprofiledunknown",
+    "Fixed8block flagprogress/residency scope; notgeneraloversubscribedgrid",
+    "StaticseparateCPU/GPUbuffers only; dynamicmanagedsystematomic modeunverified",
+    "Originalnonalignedalpha0 hostcopy canexceedlogicalallocation; bothstudyshapesaligned andprefixcap<=logicalsize",
+    "Requestedalpha.1 on4tasks givescut0; sourceFloat32cuttruncation preserved",
+    "Historical out-of-placeJulianumericaloperator notfaithfulhybridworkflow; oldbody preserved, currentcompletioncostseparate",
+    "MarginalorderedKAthenJACC helperreuse/tokenwindows overlapworkflow; notcoldframeworkranking"
+  ],
+  "boundary_rounding_policy": "Rowmajor compactinputprefix, positivezero padding, actualFloat32 alpha multipliedbytaskcount then truncInt; finite dyadic/signedzero/subnormal sourcebits copiedexact. Matrixsize must divisible8192; allprefixcopies withinhostallocation. \u03b10/1 still spawn/launch emptyoppositecomponent asnative.",
+  "algorithm": "Static CPU/GPU backward in-place data slide with task load-completion dependency chain",
+  "work_item_mapping": "GPU8persistentblocks256lanes,32privateFloat64values/lane/task,task+=8; CPU4stdthreads,8192privatevalues/task,task+=4; cut=floorFloat32(ntasks*alpha)",
+  "layout": "Compact rowmajorinput in initializedexpandedbuffer; guardedCPUfullmatrix +guardedGPUownedprefix, separateCPUstdatomic andGPUInt32flagimages",
+  "memory_access": {
+    "cuda_jl": "Private32GPUvalues preserve allsource reads beforeflagsignal; in-placeglobal stores, no requestedsharedtile. OriginalCPUworker own8192valueprivatearray, separatebuffers mergedafterROI.",
+    "ka": "Private32GPUvalues preserve allsource reads beforeflagsignal; in-placeglobal stores, no requestedsharedtile. OriginalCPUworker own8192valueprivatearray, separatebuffers mergedafterROI.",
+    "jacc": "Private32GPUvalues preserve allsource reads beforeflagsignal; in-placeglobal stores, no requestedsharedtile. OriginalCPUworker own8192valueprivatearray, separatebuffers mergedafterROI."
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "GPU_threads": 256,
+      "GPU_blocks": 8,
+      "GPU_private_values_per_lane": 32,
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem_size": null,
+      "CPU_workers": 4,
+      "CPU_private_values_per_task": 8192,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "ka": {
+      "GPU_threads": 256,
+      "GPU_blocks": 8,
+      "GPU_private_values_per_lane": 32,
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem_size": null,
+      "CPU_workers": 4,
+      "CPU_private_values_per_task": 8192,
+      "actual_registers_spills_occupancy": "unprofiled"
+    },
+    "jacc": {
+      "GPU_threads": 256,
+      "GPU_blocks": 8,
+      "GPU_private_values_per_lane": 32,
+      "shared_bytes_requested": 0,
+      "JACC_explicit_shmem_size": 0,
+      "CPU_workers": 4,
+      "CPU_private_values_per_task": 8192,
+      "actual_registers_spills_occupancy": "unprofiled"
+    }
+  },
+  "launch_geometry": {
+    "GPU_blocks": 8,
+    "GPU_threads": 256,
+    "CPU_workers": 4,
+    "source_REGS": 32,
+    "paths": 12,
+    "repeats_per_path": 3
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAallocations/transfers/sync inhostharness",
+      "originalC++CPUworker dynamicFFI; samecompiledcomponent forallmodels",
+      "StaticArrays.MVector32 privateGPUstate",
+      "CUDAatomic_add flags"
+    ],
+    "ka": [
+      "CUDAallocations/transfers/sync inhostharness",
+      "originalC++CPUworker dynamicFFI; samecompiledcomponent forallmodels",
+      "StaticArrays.MVector32 privateGPUstate",
+      "AtomixatomicRMW flags"
+    ],
+    "jacc": [
+      "CUDAallocations/transfers/sync inhostharness",
+      "originalC++CPUworker dynamicFFI; samecompiledcomponent forallmodels",
+      "StaticArrays.MVector32 privateGPUstate",
+      "AtomixatomicRMW flags"
+    ]
+  },
+  "support_boundary": "Named12staticpartitionlegalalignedFloat64paths only; GPUkernels genuine CUDAjl/KA/JACC, CPUoriginalC++FFI intentionally retained. Dynamicpartition/systemscopeatomics, unalignedhostprefix, arbitraryoversubscribedgrid, fullCLI/unprofiledoverlap notcertified.",
+  "supported_features": [
+    "Float64bitpreservinginplacelayout",
+    "persistentblocktasks",
+    "GPUatomicflags",
+    "workgroupbarriers",
+    "CPU/GPUstaticpartition",
+    "originalCPUFFIhybrid",
+    "alphaendpoints"
+  ],
+  "interpretation": "Numericalequivalence requires bitpreservinglayout plusflag-chain/progress andownershipconditions. FrameworkGPUportsretain identicalload-before-store taskprotocol andsharedCPUalgorithm. Aggregatepipelineperformance includessubstantialCPUthreadstartup/transfer/resetwork, so cannotinferGPUbandwidth/rooflineorintrinsicframeworkoverhead. ActualCPU/GPUtemporaloverlap remainsunknown. Endpointsretainemptyoppositecomponentlaunch/spawn semantics."
+}
