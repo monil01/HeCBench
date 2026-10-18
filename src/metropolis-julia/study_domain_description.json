@@ -1,0 +1,117 @@
+{
+  "scientific_intent": {
+    "primary_family": "stochastic_statistics",
+    "primary_domain": "classical_statistical_mechanics_random_field_Ising_Monte_Carlo",
+    "review_status": "source_reviewed",
+    "scientific_task": "Advance a periodic three-dimensional nearest-neighbor Ising spin configuration by seeded Metropolis proposals under a spatial magnetic field.",
+    "mathematical_operation": "Hamiltonian E=-sum_<ij>s_i*s_j-h*sum_i H_i*s_i. Propose spin sign reversal with \u0394E=2*s_i*(sum_6neighbors s_j+h*H_i), accept if \u0394E<=0 or u<exp(-beta*\u0394E), B=-2beta. PCG XSH-RR state advances for every proposal, even unconditional acceptance.",
+    "discretization": "Periodic L32 cubic volume32768spins, two-level block checkerboard with source logical16x4x4threads/16x8x4spin tiles and one white/black update peractiveblock. alt0+alt1 is a full sweep, threecases with2/1/3 sweeps; sourceBLOCK_STEPS1.",
+    "accuracy_requirements": "Exact every spin,64bit PCGstate/inc, actualinitialinputecho andguards against independent direct-global-neighbor CPU oracle andbothGPUrefs. SourceFloat32uniformrounding exactlyretained; Float64probability CPUoracle, decisionmargins frozen beforeGPU. Zero-beta/h0 analyticalcontrol inverts everyspin afterodd3sweeps.",
+    "input_size_regime": "Three L32 fullspin-update component cases, nonuniformH/h.5/beta.25, uniformH/h.125/beta.125, beta0control. Doesnotinclude complete replicaexchange/temperatureadaptation CLI, seeding/randomfieldgeneration orGPUenergyreduction.",
+    "precision_sensitivity": "Spin/H Int32, PCGstate/incUInt64 modulo2^64, outputXSH-RRUInt32, Float32uniform/deltaH/exp. h/B dyadic makes selected deltaH/probabilityarguments exactF32; independentFloat64exp withstrictrecordeddecisionmargins makesacceptancewellseparated. Stateencodedaslow/high32bitF64words, noUInt64loss.",
+    "community_use_case": "Source trueke byCristobal A.Navarro andWeiHuang2015 targets exchange Monte Carlo. The measured corrected spin-update component is relevant to classical statistical mechanics sampling, but no equilibrium observable, mixing, thermalization, phase-transition or fullparalleltempering accuracy is established.",
+    "description": "Historical Julia onlyalternates spins and fabricates exchange counters. Actual shared-halo periodic Metropolis/PCG component restored. Originalnative random-field loads were attached to even/oddrows ratherthan actual white/blackspin parity. Preserve unchangedGPUwitness242spin disagreements withphysicaloracle, then scopedtwo-expression field-load correction in explicit secondary study.",
+    "provenance": "Original trueke GPLheader inmain/kernel_metropolis.h, sourceenergykernel defines Hamiltonian couplingfieldH[actualsite]. Independent localenergyflipwitness andfullunchangedGPUstate check confirm fieldmismatch; currentcorrectedcopy changesonlytwofield-load expressions.",
+    "source_evidence": [
+      {
+        "path": "src/metropolis-cuda/kernel_metropolis.h",
+        "sha256": "0a6dfff1fe89522e9284dfa09fcc956b8b473d328e814269b8db0c5958c28f2b"
+      },
+      {
+        "path": "src/metropolis-cuda/kernel_reduction.h",
+        "sha256": "57dfa6643cd03e457431540a8e30e4d4dd459047cac7412345a0d199ccfb3194"
+      },
+      {
+        "path": "src/metropolis-cuda/kernel_prng.h",
+        "sha256": "40575293a0ff04d45b0cbc9500ef0b40b8dae657b4737cbb06d57da9c1f4af30"
+      },
+      {
+        "path": "src/metropolis-julia/original_main.jl",
+        "sha256": "c746995baf077d24647ba18b3f9a24d9abfb2604444dd26bd2cea32d76d17534"
+      },
+      {
+        "path": "src/metropolis-julia/witness_description.json",
+        "sha256": "861d2576e16f4af0d3bb691d32b3b5ec007ef8ad8cf459989e7cc9ffd6b05c40"
+      },
+      {
+        "path": "src/metropolis-julia/native_witness_result.json",
+        "sha256": "d2436692897fc0f08852fe29b1ec1d4701ce6f2c85084ad0ba982ded653bd7ca"
+      }
+    ]
+  },
+  "primary_motif": "periodic_shared_halo_stochastic_spin_stencil_with_PCG_state",
+  "storage_precision": [
+    "Int32_spins_and_site_fields",
+    "UInt64_PCG_state_and_increment",
+    "Float32_h_and_B",
+    "Float64_lossless_int32_uint32_halfword_artifact_encoding_only"
+  ],
+  "compute_precision": [
+    "Int32_nearest_neighbor_sum",
+    "UInt64_mod2pow64_PCG_LCG",
+    "UInt32_XSH_RR_rotation",
+    "Float32_uniform_probability_argument_exp_and_acceptance"
+  ],
+  "synchronization": [
+    "Source shared halo completion barrier",
+    "White then black in-block proposal barriers",
+    "Host completion aftereach alt0/alt1 kernel asoriginaltimedMetropolisloop",
+    "JACC whole shared-templatecopy andentrybarrierextra"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Same complete seeded spin-update component and logicalsourcegrid/block/sharedhalo/PCG; conditionalnative2field-loadparitycorrection. CUDAjl/KA physical3Dsourcegrid, JACC flattened2Dpreserveslogicalcoordinates/linearwarpid toavoid pinnedsharedvectorinitializer ignoringz. No backenddeviceintrinsics needed."
+  },
+  "algorithm": "Load source16x8x4spin tile plusperiodic6-facehalo into1080Int32sharedslots. Eachthreadupdates pairedwhite/blackspins withtwoPCGdraws andcorrectsitefield, barriersbetweenphases, storealltiles/PCGstate. Twoaltkernels completevolume, repeatns. FrozenPCGinitialstates ratherthanfullGPUsetupkernel.",
+  "work_item_mapping": "Logicalthread(tx0..15,ty0..3,tz0..3), group(bx0..1,by0..1,bz0..7). Eachthreadowns two spins andonePCGstate. Sourceblockscheckerboard preventadjacentactiveblocks. JACC physical(16,16)flattenlocaly=tz*4+ty andgridy=bz*2+by, preservingnativewarp-linearorder.",
+  "layout": "FlatInt32spin/H[C(x,y,z)], shared[(z+1)*180+(y+1)*18+x+1],1080slots4320B. PCGtid=z*256+(by*4+ty)*32+x. Eachfullfieldbuffer8guards/side, input/afterecho repeatedsamephysicalguards, UInt64lossless2xUInt32wordencoding.",
+  "launch_geometry": "CUDAjl/KAthreads(16,4,4),blocks(2,2,8),ndrange(32,8,32); JACCthreads(16,16),blocks(2,16),ndrange(32,256), exactlogicalremap.12 total launches across2+1+3 sweeps.",
+  "verification_contract": "All20artifacts885325Float64losslesswords:294925exactprefix+590400fullpre/posttypedfields. Threecases fullspins/H/PCGstate/inc allactualinputecho/guards exact; independentglobalIsingoracle andbothrefs. Explicitrawunchangednative diagnostic65536fieldsmatches sourcebehavior but242spinmismatches physicalIsingoracle retained. NoNaN/Inf/propertycanonicalization.",
+  "keyconfounds": [
+    "Explicit corrected-native secondary field-load parity fix; sourceoriginalCLIrandomfieldscientificcontract failedwitness, excludeduntouchednativeaggregates",
+    "Only Metropolis fullspin-update component, exactlyoriginaltimedkernelregion; no completePCGsetup/randomfield-generation/GPUenergyreduction/replicaexchange/adaptationclaim",
+    "FixedfiniteL32trajectories andprobabilitymargins confirmnumericupdate, notequilibriumthermodynamics/statisticalcalibration/mixing",
+    "JACC2Dlogicalflattening avoids3Dsharedvectorinitializer duplicatez-writers in pinnedimplementation; static hazard observedsourceonly, no actualJACC3Dfailedtrial/unsupportedclaim",
+    "JACCwhole1080element sharedtemplatecopy+entrybarrier extra, allmodels4320Bshared",
+    "Sourcecrossblockcheckerboard preserved, completefullstateexactchecks; sourcefixedfieldpairbug distinct from concurrencyhazards",
+    "HistoricalJulia alternatingtouchstub/referenceS1 andnativefielddefect separateorigins, portablefirstcandidates notblamed",
+    "Shared physicaloracle/devicehelper authoredreferencephase reused KAthenJACC; prospectiveorderedmarginalcost no intrinsicframeworkranking"
+  ],
+  "boundary_rounding_policy": "Periodic cubicL32 and exactsourcelegaltiles, allspins/H\u00b11. CorrectedH indexedactualspin ratherthan sourcewrongpairparity. PCGdrawunconditional eachproposal, UInt64wrap/UInt32rotate, Float32u=Float32(word)*2.3283064e-10f. Strict sourceepsilon1e-11/expcomparison retained. Actualdecisionmargins recorded; exactfullstateacceptance.",
+  "support_boundary": "Three L32 fullspin-update component cases, nonuniformH/h.5/beta.25, uniformH/h.125/beta.125, beta0control. Doesnotinclude complete replicaexchange/temperatureadaptation CLI, seeding/randomfieldgeneration orGPUenergyreduction. Source trueke byCristobal A.Navarro andWeiHuang2015 targets exchange Monte Carlo. The measured corrected spin-update component is relevant to classical statistical mechanics sampling, but no equilibrium observable, mixing, thermalization, phase-transition or fullparalleltempering accuracy is established.",
+  "interpretation": "Domain scientists need physicalsitefield/energy consistency beyondGPUequivalence: unchangedkernel/sourceCPUagree yetfailIsing\u0394E. Conditionalrepairandrawwitnessmustremainseparate. Exactseededtrajectories are computationalchecks, not equilibrium/statisticalphysicsvalidity. Frameworkmapping, sharedcopy andlogicalflattening covariates remainexplicit; no unprofiledoccupancy/rooflinecause.",
+  "reference_class": "CUDAjl_corrected_randomfield_Ising_fullsweep_component_ordinary_Julia",
+  "ka_class": "KA_corrected_Ising_sharedhalo_PCG_ordinary_Julia",
+  "jacc_class": "JACC_corrected_Ising_sharedhalo_PCG_2Dlogicalflatten_ordinary_Julia",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 4320,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "extra_work": "none",
+      "physical_geometry": "original3D"
+    },
+    "ka": {
+      "shared_bytes": 4320,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "extra_work": "none",
+      "physical_geometry": "original3D"
+    },
+    "jacc": {
+      "shared_bytes": 4320,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "extra_work": "whole1080Int32templatecopy+entrybarrier",
+      "physical_geometry": "flattened2Dpreservinglogical3D/linearwarp"
+    }
+  },
+  "backend_extensions": {
+    "ka": [
+      "CUDAhostallocation/copy/completiononly; ordinaryJuliaInt32/UInt64/UInt32/math plus frameworklocal/shared/barrier/index APIs"
+    ],
+    "jacc": [
+      "CUDAhostallocation/copy/completiononly; ordinaryJuliaInt32/UInt64/UInt32/math plus frameworklocal/shared/barrier/index APIs"
+    ]
+  }
+}

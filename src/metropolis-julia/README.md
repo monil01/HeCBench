@@ -1,0 +1,25 @@
+# Corrected random-field Ising Metropolis component
+
+This separately named conditional study ports the complete source Metropolis spin-update component. It does not certify the full trueke replica-exchange/temperature-adaptation CLI, GPU PRNG setup, random-field generation or energy-reduction kernels. Historical Julia only alternated spins and fabricated exchange counters; its source and original native sources remain archived intact.
+
+## Independent diagnosis and scoped correction
+
+The source white/black target rows swap when(local x+z) is odd, but the original h1/h2 loads remain attached to even/odd rows. The independent Ising Hamiltonian uses H at the actual spin, as does the source energy kernel. For a+1 spin with six+1 neighbors, h=.5 and odd target field−1, correct ΔE/2 is5.5; using its paired+1 field gives6.5. At B=−.5, acceptance probabilities are.06393 and.03877, and u=.05 changes the decision.
+
+An unchanged native invocation on legal L32/source block16x4x4/grid2x2x8/alt0 captured all65536 spin/PCGstate/increment fields. It agrees exactly with an independent CPU model of source behavior, while242 spin decisions differ from the physically indexed Ising oracle. PCG states/increments agree. All actual GPU input readbacks are exact and the field stays unchanged. This observed mathematical disagreement, not a static race concern, establishes the need for the two field-load parity corrections. The original source, raw diagnostic output, logs, CPU oracles and local counterexample remain available. native_correction.diff shows only the two expressions. The corrected native reference is explicitly excluded from untouched-native aggregates.
+
+## Contract
+
+Three full periodic L32 volumes cover nonuniform field with2 sweeps,h=.5,beta=.25; uniform field with1 sweep,h=.125,beta=.125; and h0/beta0 with3 sweeps. The last analytically negates every initial spin. One full sweep executes alt0+alt1 and updates every physical spin once. Each active tile performs white and black proposals with periodic six-neighbor halos, advances PCG for every proposal, and preserves original BLOCK_STEPS1 and checkerboard schedule.
+
+An independent direct-global-neighbor CPU oracle evaluates the Ising energy-flip rule and exact PCG XSH-RR state. Actual Float32 uniforms are retained, with Float64 exp and predeclared minimum decision margins recorded before GPU work. All outputs are exact typed state, not statistical property equivalence. Three seeded short trajectories establish computational agreement; they do not establish thermalization, equilibrium observables, mixing or physical phase-transition accuracy.
+
+Each of20 saved artifacts contains885325 Float64 words encoding integers losslessly:294925 exact prefix and590400 complete pre/post spin/H/PCGstate/increment/guard fields. UInt64 is serialized as two actual UInt32 halves, never converted whole to Float64. All input bytes, full output fields and guards are exact against the independent oracle and both references. The same physical guards are read before/after; no additional guard allocation is invented. All actual final spin fields also have their Hamiltonian and magnetization recomputed outside timing and checked against the independent oracle. Raw states remain saved without canonicalization.
+
+## Mapping and timing
+
+CUDA.jl/KA retain the original logical and physical16x4x4 block, with4320bytes shared halo and the three original proposal barriers. JACC uses physical16x16 threads with logical ty/tz and grid by/bz flattened, preserving source logical coordinates and linear warp order. Pinned JACC.shared(vector) does not guard thread z in its template initializer; flattening avoids duplicate template writers without claiming3D dispatch unsupported or reporting an unrun failure. JACC also copies all1080 shared template entries and adds an entry barrier, an explicit work/resource covariate. Device code otherwise uses ordinary Julia integer arithmetic, math, framework shared memory/indexing/barriers, with CUDA host allocation/copies/completion only.
+
+Each of five checked in-process trials times the sum of three complete spin-update components,12 launches total, with completion after every alt as in the source timed loop. Input reset/readback, JIT warmup, output readback/oracle, derived CPU Hamiltonian and serialization are outside. Mean timing uses only trials2–5, with every raw time retained. This conditional component timing cannot be presented as original full exchange-Monte-Carlo time-to-solution, dynamic FLOP/s or roofline evidence.
+
+The unchanged native diagnostic and two-line correction are separate source/reference phases. Corrected CUDA.jl and each portable GPU candidate pass their first compiler/check invocation. Shared oracle/device logic was authored in reference work and reused KA then JACC. Prospective usage windows include repeated/cached context, coordination and annotation and overlap the outer workflow; they are not additive or exclusive billed costs. Historical creation cost remains unknown. Root alone commits shared/reference work and each verified portable version separately.
