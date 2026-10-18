@@ -1,0 +1,104 @@
+{
+  "scientific_intent": {
+    "primary_family": "pde_continuum",
+    "review_status": "source_reviewed",
+    "scientific_task": "Continuous-energy neutron macroscopic cross-section lookup",
+    "description": "XSBenchsource explicitlymodels event-basedmacroscopiccrosssectionlookups asaneutrontransportbuildingblock. It samplesenergy/material, searchesnuclidemicroscopicgrids, linearlyinterpolatesfivechannels andsumsconcentrationweightedmacros. H-Msmall68nuclidematerialcompositionisretained, buttablesaresyntheticcontrolsratherthanmeasurednucleardata. No fulltransport/historysolver orreactorpredictionclaim.",
+    "mathematical_operation": "LCGskip-ahead yieldsindependentqueryindices, choose12materialsourceprobabilitybins, interpolatepernuclide5XS values usingnuclide/unionized/hashgrids, weightedaddandfirststrictmaximumlabel.",
+    "accuracy_requirements": "ExactLCGqueryenergy/material/argmaxlabels andallinput/guardbits; allfiveindependentlyobservedF64macrochannels vssequentialbigintLCG+exactFractionbracket/interpolation/mixes. Fixed1e-10+2e-12relativeengineeringbudget, positivechannel/total-partial/fissionrelations.",
+    "community_use_case": "NeutronMonteCarlodevelopers canreuse independentlookup/searchandmaterialmix patterns; numericalsearch/physicsbuildingblock fidelitydistinctfromtransporthistory/realcrosssectiondata/convergedobservables.",
+    "provenance": [
+      {
+        "path": "src/xsbench-cuda/Main.cu",
+        "sha256": "4bc8bb1026dc2761c92af8138c53a712d36020ae780cbe5973c9a6ded1feee0b",
+        "evidence": "CommentsidentifyrealisticcontinuousenergyMonteCarlomacroscopiclookup, CUDAhistorypathunimplemented"
+      },
+      {
+        "path": "src/xsbench-cuda/Simulation.cu",
+        "sha256": "07fe4f05e8a16f933e6c274df7f4b1367d8579aae240de0fda45b5f5b09a3d33",
+        "evidence": "Originaleventkernel/all3gridsearches/full5channelmacros/LCG/materialselection/argmax"
+      },
+      {
+        "path": "src/xsbench-cuda/Materials.cu",
+        "sha256": "124a200dd087028a6986162bcd62a93820bbe599d297d2abb82213ed526b55ed",
+        "evidence": "SourceH-Msmall68nuclide12materialcompositionloadedunchangedCPUfunctions; unusedslotsinitializedintheownedfixture"
+      }
+    ]
+  },
+  "primary_motif": "Irregularbinarysearch/gather/linearinterpolation/materialweightedreduction",
+  "storage_precision": [
+    "Float64NuclideGridPointAoS6channelsinclenergy/48bytesalign8",
+    "Float64concentrations/unionenergy/observermacros",
+    "Int32nuclidecounts/materialIDs/indexgrid/verificationlabels",
+    "UInt64LCG"
+  ],
+  "compute_precision": [
+    "Float64search/interpolation/concentrationweightedfivechannelaccumulation",
+    "UInt64wrapmod2^63LCG/skip-ahead,round-to-Float64query",
+    "ExactFractionindependentoracleplusbigintsequentialLCG"
+  ],
+  "synchronization": [
+    "Independentlookupperthread,noatomics/sharedbarriers",
+    "Kernelrepeatsorderedwithendcompletion",
+    "SeparateobserverlaunchandfullreadbacksoutsideROI"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Replacehistoricalhashplaceholderwithactualeventlookup,source12material/68nuclidecomposition,all3searchmethods,LCGfastforward,48byteAoS and5channelmacro+firstargmax. Originalnativeprimarybodyunchanged, 1untimedobserverauthoredforall4 toexpose5channels/queriesviacorehelpers, notprimaryprivatevectors."
+  },
+  "reference_class": "cuda_jl_device_kernel_with_untimed_observer",
+  "ka_class": "pure_ka_device_kernel_with_untimed_observer",
+  "jacc_class": "pure_jacc_device_kernel_with_untimed_observer",
+  "algorithm": "Oneeventperthread:fastforwardLCG2*i,energy/materialdraw,sourcealgorithmselectsglobalunionbinarysearch/pernuclidebinarysearch/binnedhashlocalbracket, scalarinterpolate5channels,serialpositiveweightednuclidesum,firstmax1basedlabel. Observerrecomputessamequery/helperoutofROI.",
+  "work_item_mapping": "256threadsceillookupsblocks, lookups257/1025 tails;sameI68G17/33tablephysicsacrossall3gridmethods;repeats2/3;sourcefinalrepeatlabelsretained,notalloverwrittenintermediaterepeats.",
+  "layout": "NuclideGridPoint/XPoint6Float64AoS48bytesalignment8matchingnative/Julia,scalarInt32/F64otherbuffers;materialrow-major12\u00d734(flat),nuclide-majorI\u00d7G andenergy-majorindex\u00d7I;all64elementguardsandactualpayload256Baligned.",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0;allindependentperlookupscalar/registeralgorithm,noGPUatomicorworkgroupsharedstate",
+      "registers_and_local_spills": "Unprofiled;5Doublemacroaccumulatorssourceonly,notactualregistercount"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0;allindependentperlookupscalar/registeralgorithm,noGPUatomicorworkgroupsharedstate",
+      "registers_and_local_spills": "Unprofiled;5Doublemacroaccumulatorssourceonly,notactualregistercount"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "shared_policy": "JACCexplicit0;allindependentperlookupscalar/registeralgorithm,noGPUatomicorworkgroupsharedstate",
+      "registers_and_local_spills": "Unprofiled;5Doublemacroaccumulatorssourceonly,notactualregistercount"
+    }
+  },
+  "launch_geometry": "256threadsblocks2/5;G17/L257/repeat2 andG33/L1025/repeat3 \u00d7all3gridtypes=15primarytimedlaunches;6untimedobserverlaunches;1authoredprimary+1scientificobserverkernel/model.",
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAhostalloc/transfer/sync/readback only; nodevicewarp/register/atomicintrinsicextensions"
+    ],
+    "ka": [
+      "CUDAhostalloc/transfer/sync/readback only; nodevicewarp/register/atomicintrinsicextensions"
+    ],
+    "jacc": [
+      "CUDAhostalloc/transfer/sync/readback only; nodevicewarp/register/atomicintrinsicextensions"
+    ]
+  },
+  "supported_features": [
+    "UInt64LCGskip-ahead",
+    "AoSFloat64microscopicgrids",
+    "Binarysearch/unionized/hashlookup",
+    "FP64fivechannelinterpolation/materialsum",
+    "Twoownframeworkentrypoints"
+  ],
+  "verification_contract": "All20full647795Float64words:303549exactinputprefix+344246fullstatewords. Fullsource-definedprimarylabels, separateuntimedenergy/material/5macrochannels, actualall6readonlybuffers and64elementguards; exactmasksquery/labels/inputs/guards. IndependentexactFractionmicroscopicbracket/interpolation/weights andsequentialbigintLCG. All3algorithmcontrolsagreedeclaredchannels+labels. Fixed1e-10+2e-12relative/F64physicalinvariants,5checkedtrialsmean2-5.",
+  "keyconfounds": [
+    "Sourceprimaryonlywritesargmaxlabels; private5channelvectorsnotdirectlycaptured. Separateobserverusescoresourcehelpersbutitsloweringcanbedaifferent, so nohiddenprimaryprivatearraycertification",
+    "MaterialcompositionoriginalH-Msmall, tables/concentrationscontrolledsyntheticnotrealnuclearcatalog;nofulltransport/reactor/historypathaccuracy",
+    "Kernelonlytiming15primarylaunches excludes6observerlaunches/fulloutputreads/oracles/inputallocation",
+    "ActualF64nuclide/tablelookupoperator, syntheticresonance/physicalsumcontrols notsourceoriginal11303gridpointlargeCLI/memorypressure",
+    "NoactualFLOP/traffic/cache/registercounters, noautomaticmemorybound/rooflinebottleneckclaim",
+    "Referencecandidate1B4boxedclosure, candidate2R1exactInt64conversioninsteadC++trunc, candidate3passes; compilerfeedbackrepairscreditedreferencebeforeportablehelperreuse",
+    "Sharedalgorithm/helper/oraclesauthoredreferenceonce, KA/JACCorderedmarginalframeworkwrappersnotindependentcoldtranslations"
+  ],
+  "boundary_rounding_policy": "Sourcegridbinarysearchlowerbracket andlastpointguards retained, uniquepernuclidesorted0..1energygrid/positiveinterpolation; allrandomqueriesfinitein0..1. ExplicittruncInt64 forC++hashdivision, sourcefirststrictmaximumtiepolicy/12volumebinthresholdsummationorder. Exactendpoint/extrapolationtiesnotexplicitGPUquerycontrols.",
+  "support_boundary": "Eventmodekernel/H-Msmall68composition/controlledG17/33,N257/1025 andall3gridmethods;not355nuclide11303gridpointCLI/fullhistorysolving/measuredcrosssectiondata. SourceCUDAhistorymodeunimplemented,notframeworkunsupported. Primaryprivatechannelsnotcaptured,observedsecondarychannelsindependentchecksqualified.",
+  "interpretation": "Forneutrontransportdevelopers, anargmaxchecksumcanhidecrosssectionamplitudeerrors. Fullsource-definedlabelsplusseparatefivechannelobserver/independentFractionandphysicalsumrules providemoreinformativecheck. Searchalgorithm/datafootprintandFP64layoutareauditedtraits; packageabstractiontimingsrequirethissamephysical/queryscopeandcannotexplaincache/rooflinewithoutcounters."
+}
