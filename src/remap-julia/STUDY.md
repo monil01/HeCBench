@@ -1,0 +1,17 @@
+# Remap: complete dense ranks with explicit shared vendor preprocessing
+
+Native CUDA, CUDA.jl, KA and JACC agree exactly on all five full captures. Each has 25083 Int32 words, including the 5695-word actual input prefix. Eight cases span singleton, source EXAMPLE, duplicates, partial256-thread groups, all unique/reverse, all equal and signed Int32 extremes. Independent Python sorted-set/dictionary rank and group-start checks cover every rank, sorted key, unique key/start and outer guard; a second saved-capture checker repeats full byte checks. Complete actual internal sort permutations are retained and checked as bijections with correct key membership. Tie order is unspecified; no stable-tie/raw-permutation identity claim. Unique tails unspecified and unobserved.
+
+## Mapping and scope
+
+Historical Julia genuinely computed the rank kernel but moved unique preprocessing to CPU and used GPU sortperm/gather. This is P1 mapping/boundary difference, not demonstrated S1 wrong mathematics. Restored source GPU sequence2/sort_by_key/unique_by_key through a shared explicit Thrust C ABI shim, then each frontend's own 256-thread interval scatter. One authored device kernel per frontend; no native custom-kernel fallback. Whole class `mixed_kernel_library_pipeline`, authored component `framework_device_kernel`, preprocessing `vendor_library_interop`. Shared library algorithm, host FFI/dispatch and synchronization confound whole-pipeline comparisons; do not infer pure framework lowering penalties.
+
+Named ROI sums separately context-completed sequence, sort, unique and authored-remap stages across eight cases. Preallocation/upload/reset and intermediate capture are outside each interval. Vendor internal allocations remain inside vendor stages. The original allocation-inclusive CLI and random-generator/large cases remain unverified. Excluded from untouched allocation-inclusive timing claims; no mathematical native correction. Separate stage means are in stage_performance.json; authored stage includes host dispatch/completion, not isolated device-event latency. Runtime/Thrust provenance is recorded, no measured bottleneck/counter claim.
+
+## Effort and failure units
+
+CUDA.jl one authored device body/one authored JIT process but three whole-program checks: shared checker parser B2 then stream symbol B3, both before authored JIT. Native two valid five-trial series, second adds actual loaded-runtime path evidence, no faster-series selection. KA first wrapper/process. JACC two host wrappers/one unchanged device body/one authored JIT: LaunchSpec module constructor B3 fixed to public launch_spec. Independent CPU postcapture path T1 fixed saved_path lookup, no GPU failure or acceptance change. Original historical consumption/attempts unknown. Shared vendor/algorithm restoration cost separate; KA/JACC costs conditional on that reuse, JACC additionally saw validated KA. Prospective counters measure nonexclusive cached/repeated-context activity, coordination/metadata/waiting included, workflow overlaps phases, not exclusive billed coding.
+
+## Evidence
+
+Final result `.porting-state/portable_julia/runs/20261018T114530460261Z_remap/result.json`; canonical config `src/remap-julia/study_config_jacc.json`; exact independent audit `independent_capture_witness.json`. Five checked trials per model; report mean trials2–5, warmup outside. Sources frozen after proof, no retiming for annotation.
