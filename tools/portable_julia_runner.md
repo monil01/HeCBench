@@ -167,3 +167,9 @@ Do not edit a benchmark or its dependencies until its entire runner process
 has completed. This detects a mutation even when the new file happens to pass
 numerical checks. It does not infer unlisted dependencies: declare every
 included support file in `source_dependencies`.
+
+For new configurations set `bind_all_declared_dependencies: true` per model.
+Every declared `source_dependencies` and `runtime_assets` file is then required
+and hashed before execution and at stability/reuse checks, including `.inc`,
+`.bin`, and `.txt` files. Legacy default bindings are preserved. Do not switch
+this option on in a reused model spec and imply historical hashes existed.

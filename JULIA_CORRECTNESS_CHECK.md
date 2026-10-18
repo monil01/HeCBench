@@ -1,5 +1,7 @@
 # Julia Correctness Check
 
+For newly measured configurations, enable `bind_all_declared_dependencies: true` in every model specification and explicitly list executed includes, fixtures/oracles and runtime assets before the first measurement. This binds arbitrary extensions such as `.inc`, `.bin` and `.txt`; retain historical configs and their manual hash/audit evidence, and never imply that old runs had this additional automatic binding. Changing a reused model specification requires a fresh series or an explicitly reviewed provenance transition.
+
 ## Current authority: remaining-150 expansion (2026-10-18 UTC)
 
 A nondeterministic property contract is not identical numerical output. Record `numerical_agreement_kind`, retain all raw states, and report property-equivalent cases separately from exact/tolerant numerical agreement in extension tables, receipts and checkpoints. Never serialize or alter a concurrent source algorithm merely to manufacture equal final values. If raw equality cannot be established under the original semantics, keep that requirement explicitly unmet while reporting the demonstrated property evidence. Library delegation is not an authored device-kernel port; record zero authored kernels and actual model-specific orchestration.

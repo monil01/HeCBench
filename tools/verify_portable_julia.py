@@ -297,6 +297,16 @@ def verify(config):
             if not f.is_absolute(): f=source_cwd/f
             if f.is_file() and f.suffix in ('.jl','.cu','.cuh','.h','.hpp','.cpp','.toml'):
                 adapter_file_hashes[str(f)]=hashlib.sha256(f.read_bytes()).hexdigest()
+        # Opt in without changing historical reuse bindings: declared include,
+        # fixture and runtime-asset files may use arbitrary extensions.
+        if spec.get('bind_all_declared_dependencies', False):
+            for name in [*spec.get('source_dependencies', []), *spec.get('runtime_assets', [])]:
+                f=Path(name)
+                if not f.is_absolute(): f=source_cwd/f
+                f=f.resolve()
+                if not f.is_file():
+                    raise FileNotFoundError('Declared dependency is missing: '+str(f))
+                adapter_file_hashes[str(f)]=hashlib.sha256(f.read_bytes()).hexdigest()
         source_hash=digest_tree(paths[model])
         if reuse_result and model in config.get('reuse_models',['cuda','cuda_jl','ka']):
             old=reuse_result['models'].get(model,{})
