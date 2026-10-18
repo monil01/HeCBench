@@ -1,0 +1,44 @@
+using CUDA,KernelAbstractions
+@kernel function pathfinder_ka!(wall,src,dst,debug,it,border,cols,t)
+ tx=Int32(@index(Local,Linear))-Int32(1);bx=Int32(@index(Group,Linear))-Int32(1)
+ shared=@localmem Int32 (500,)
+ small=Int32(250)-2it;start=small*bx-border;stop=start+249;x=start+tx
+ validmin=max(-start,Int32(0));validmax=min(Int32(249),Int32(249)-(stop-cols+1))
+ w=max(tx-1,validmin);e=min(tx+1,validmax);valid=validmin<=tx<=validmax
+ if 0<=x<cols
+  @inbounds shared[tx+1]=src[x+2]
+ end
+ @synchronize
+ computed=false
+ for i in Int32(0):it-1
+  computed=false
+  if i+1<=tx<=248-i && valid
+   computed=true
+   @inbounds shared[tx+251]=min(shared[w+1],shared[tx+1],shared[e+1])+wall[cols*(t+i)+x+2]
+   if tx==11 && i==0
+    @inbounds debug[src[x+2]+2]=Int32(1)
+   end
+  end
+  @synchronize
+  if i==it-1
+   break
+  end
+  if computed
+   @inbounds shared[tx+1]=shared[tx+251]
+  end
+  @synchronize
+ end
+ if computed
+  @inbounds dst[x+2]=shared[tx+251]
+ end
+ nothing
+end
+allocate(v)=begin
+ a=KernelAbstractions.allocate(CUDA.CUDABackend(),Int32,size(v));copyto!(a,v);a
+end
+function launch(w,s,d,dbg,it,h,c,t,template)
+ pathfinder_ka!(KernelAbstractions.get_backend(d),250)(w,s,d,dbg,Int32(it),Int32(h),Int32(c.cols),Int32(t);ndrange=(c.rows*c.cols÷250)*250)
+ nothing
+end
+include(joinpath(@__DIR__,"..","study_common.jl"))
+study(allocate,launch)
