@@ -1,0 +1,21 @@
+# TSP: source tiled parallel 2-opt under explicit deterministic controls
+
+Allfourversions passfive complete captures:31378UInt32words/trial,469wordactualreadonlycoordinateprefix,fullglobalscratchnegativeedges/closedtours/padding,allclimbs/best,completeuntimedGPUallpairdistancegrids,and64wordprefix/suffixguards6buffers/case. IndependentpreGPUperlanereplay/oraclechecks everybyte. Not checksum-only or scalarbestacceptance.
+
+## Scientific contract
+
+100/131cities,3restarts,originalbestthreadcounts98/128,128elementtiles. Seed-selectedcoordinatecontrols have exactlyone winninglane for every strictlynegativebestmove acrossallactualcandidate lanes/restarts/iterations, provenbeforeGPU andpreservedfullscores/routes/draws. Originalnondeterministicequalbest-lanestore unchanged; terminalzero tiesno-op. No serialized winner. Originald493/24restart/100repeat/general-tie rawidentityunmeasured,notunsupported. Thisis routing/geometricgraphlocaloptimization, not globallyshortesttourcertificate or industrialpredictionvalidation.
+
+SourceFloat32LCG/stateand Float32sqrtthenInt32truncatedcost faithfullyretained. Integerbasecoords×256 makeeverydifference/squaredsum exactlyFloat32;70digitDecimalprovesRNmidpoints,allactualGPUdistanceentriesexact. Completefinalpermutation/strictimprovement/2optlocalmin checked. Independent70digitrealEuclidean assessment on samefinalroutes showsone tourcost sourceinteger differsby1 fromsum floor(realEuclideanedge); approximationnotframeworkerror. NoTSPLIBcompliance/globaloptimumclaim. Rawartifacterror0denotesencoded-source-contract equality,notzeroEuclideanapproximationerror.
+
+## Implementations/performance
+
+Genuinecomplete sourceTwoOptalgorithm authoredJulia devicecode, no CPUheuristicsubstitute/vendor kernel/@cudafallback inKA/JACC. CUDAjl ownpublicbarriers/atomics framework_device_kernel. KA/JACC ownallocation/dispatch/sharedmapping plussharedbody CUDA.sync_threads/atomic_add!/atomic_min!: hybrid_device_intrinsics, CUDA-specificdependencies explicit andcrossbackendcapabilityuntested. One timed kerneldefinition plusoneuntimeddistance diagnostic/model.
+
+Native static1536Btiles+dynamic4T; portscombinedInt32rawbitsharedlayout total1928/2048B. CUDAjldynamic/KAstatic/JACCdynamicwholetemplatecopy+barrier; JACCadditional482/512globalInt32initializationperblock mappingoverhead, notoriginalscientificinput. NativeInt32vsJuliaInt64indices, registers/ISA/countersunprofiled; no causalabstraction/bottleneckclaim. Sum2originalkernellaunch/contextcompletionROIs,warmupbefore5,mean2–5; input/reset/diagnostic/captureoutside.
+
+## Effort/failures
+
+Legacytimedmarkerincrement whileCPU2optoutsideROI: T1invalidmeasurement/P1mapping, not blanketproofeveryCPUheuristicanswerwrong. NativeunchangedTwoOptincludedinownedharness; nativeadapter3builds(twoB2macrocollision/declarationtypos)/1GPUprocess. CUDAjl2wholechecks(firstR1hostbulkcopyfallbackbeforeauthoredJIT),1authoredbundle/1deviceJIT; KA/JACCfirstbundle/processpasses. Everybundle2definitions(oneactualoperator/oneuntimeddistancediagnostic), mathematicaloperator1. Sharedhostfailures preserve originalcandidates/logs, notframeworkdevicealgorithmfailures. Actualbackendcompileinvocationsunknown. KAactivitywindowincludes70digitCPUcostreview, sharedworkflow overlapsphases/context/science/metadata/verificationwaiting/coordination; no exclusivecoding/billedcost. Historicaleffortunknown,mainchar4proxyomitssharedbody.
+
+Final proof `.porting-state/portable_julia/runs/20261018T133003869307Z_tsp/result.json`,means2–5 {'cuda': 0.0047446929999999995, 'cuda_jl': 0.00737348975, 'ka': 0.0066351725000000005, 'jacc': 0.00745982225}seconds. Sources frozen.
