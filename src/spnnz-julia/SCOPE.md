@@ -1,0 +1,9 @@
+# Dense nonzero counts
+
+HistoricalCUDAjl fill_counts! neverreadsanymatrix anddistributesrequestednnzuniformly; replacedbyoriginalvendorAPI, staticS1finding nofabricatedhistoricalGPUfailure. Nonew authoredkernels. Nativecalls/descriptor/stream/direction unchangedfornamedsquares.
+
+Sourceuseslda=N/COLUMN yetallocatesMcounts; squarecasesvalid transpose logicalrowinterpretation. RectangularM>N invalidlda, N>M inputextent(N-1)*N+M>M*N andNcounts>M capacity. StaticextentanalysisnotobservedunsafeGPUrun; rectanglesexcluded notcorrected. Original20082/41490squares/full1000repeatsunmeasured.
+
+All4sameactualsystemcuSPARSE12001DSO/stream0/HOSTtotalpointermode/descriptor. Julia CUDAallocation/taskstream uploads completedbeforevendorlegacycalls; hostGC-preservation/functionpointerCABIwrapper/contextdifferences. KA/JACC imports exercisehostintegration only; nosupportedkernelabstraction/ranking claim.
+
+Prospectiveinclusiveworkflow/referencewindows includecontextcache/paper/coordination/audits. KA/JACC evaluationwindows beganAFTERsharedwrapperdraft, so partialnotcompleteexclusiveportcost. Sharedworkflowoverlapsallsubphases; do notsum. Sourcechars/4partialproxy notconsumedtokens, historicalunknown.
