@@ -1,0 +1,1680 @@
+{
+  "algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+  "mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+  "launch_geometry": {
+    "block_sort_threads": 128,
+    "offset_reorder_threads": 128,
+    "scan_threads": 256,
+    "keys_per_local_block": 512,
+    "bits_per_digit": 4,
+    "digits": 8,
+    "kernel_launches_per_sort": 48,
+    "internal_full_sorts": 3,
+    "sizes": [
+      32768,
+      65536
+    ],
+    "native_shared_bytes_per_stage": [
+      2052,
+      1088,
+      2048,
+      2048,
+      4,
+      1152
+    ],
+    "julia_shared_bytes_per_stage": [
+      2048,
+      1088,
+      2048,
+      2048,
+      4,
+      1152
+    ]
+  },
+  "reference_audit": {
+    "phase": "reference_algorithm_and_measurement_alignment",
+    "taxonomy_code": "P1",
+    "finding": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+    "original_main_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+    "native_source_sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22",
+    "native_source_unchanged": true
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "runtime_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "implementation_model": "cuda_jl",
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "pass",
+        "run_id": "20261018T002159654395Z_radixsort",
+        "configuration_phase": "valid v1 fixture; later strengthened upper-nibble tie coverage before KA/JACC drafting",
+        "failure": false
+      }
+    ]
+  },
+  "traits": {
+    "primary_motif": "cooperative_radix_partition_histogram_hierarchical_prefix_scatter",
+    "storage_precision": [
+      "UInt32 keys, counters, scratch"
+    ],
+    "compute_precision": [
+      "UInt32 bitwise/rank/count arithmetic",
+      "Int32 bounded indices"
+    ],
+    "synchronization": [
+      "block barriers",
+      "kernel launch boundaries",
+      "context-wide timing boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum of two means of three full 48-kernel sorts; input reset before each outer trial only",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "application_domain": "Key sorting as a generic computational preprocessing primitive",
+      "operator": "Ascending unsigned 32-bit key ordering",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/radixsort-cuda/main.cu",
+          "sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22"
+        },
+        {
+          "path": "src/radixsort-cuda/RadixSort_kernels.cu",
+          "sha256": "3982632f81cb3a594017fb1bdd7e94e2be9f687dfcd29d78702cccee1fae9118"
+        }
+      ],
+      "scientific_scope": "No associated-value/stability certification or physical-model accuracy claim."
+    },
+    "keyconfounds": [
+      "Explicit block scan increases synchronization versus source warp scan",
+      "Scalar UInt32 loads replace C++ uint4 access syntax; actual compiler vectorization unprofiled",
+      "Three internal sorts do not reset keys: two sort already sorted data",
+      "Named small fixtures do not certify default four-million-key CLI performance"
+    ]
+  },
+  "observation": "The two sizes (32,768 and 65,536 keys) exercise the complete eight-digit SDK radix pipeline, including all six kernel stages per digit. Independent Python integer simulation checks every final key, local temporary key, histogram, local start, global prefix, and top-level scan buffer in all 20 captures. The second fixture has 1,024 lower-28-bit groups, every upper nibble in each group, and four copies of each full key. This is stronger than the legacy monotonic-only check, which cannot prove multiset preservation. All three Julia versions retain the pipeline but use an explicit block scan instead of the native warp-synchronous helper. Thus synchronization adaptation is a concrete performance explanation candidate; no bottleneck or occupancy claim is made without counters.",
+  "effort_observation": "One authored device candidate per model. CUDA.jl has two successful program checks across a fixture-only coverage refinement, not a compiler or numerical repair. KA and JACC each have one successful program/JIT check compiling six authored kernels. Prospective usage windows include verification and metadata, not exclusive billed coding cost.",
+  "measurement_phase": {
+    "historical_S2": "Single measured sort divided by repeat without repeated work; statically observed in archived historical source.",
+    "current_protocol": "Warmup outside five trials; average last four outer trials; each case averages three actual full sorts without resetting between internal sorts."
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 6,
+      "backend_extensions": [],
+      "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+      "synchronization": [
+        "Local sort: 72 algorithm block barriers versus source approximately 25",
+        "Other stages preserve scan/offset/reorder barrier structure"
+      ],
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+        "/home/imo/HeCBench_julia/src/radixsort-julia/study_reference_kernels.jl": "cf24822db00dfd12a595e4029a5c81312bebded7299343a51c10279792c1fb83"
+      },
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+      },
+      "distinct_device_candidates": 1,
+      "successful_program_checks": 2,
+      "configuration_experiments": 2,
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer"
+      ],
+      "artifact_encoding": "UInt32 little-endian"
+    },
+    "ka": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 6,
+      "backend_extensions": [],
+      "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+      "synchronization": [
+        "Local sort: 72 algorithm block barriers versus source approximately 25",
+        "Other stages preserve scan/offset/reorder barrier structure"
+      ],
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+        "/home/imo/HeCBench_julia/src/radixsort-julia/radixsort-julia-KA/study_kernels.jl": "5262fa21dbe96e22a309cbb30f63977602156fcfc565481e5046d394c13e9a78"
+      },
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+      },
+      "distinct_device_candidates": 1,
+      "successful_program_checks": 1,
+      "configuration_experiments": 1,
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer"
+      ],
+      "artifact_encoding": "UInt32 little-endian"
+    },
+    "jacc": {
+      "implementation_class": "framework_device_kernel",
+      "authored_device_kernel_definitions": 6,
+      "backend_extensions": [],
+      "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152]. JACC copies each complete zero template and adds one initial barrier per block.",
+      "synchronization": [
+        "Local sort: 72 algorithm block barriers versus source approximately 25",
+        "Other stages preserve scan/offset/reorder barrier structure",
+        "JACC initial template copy/barrier in every stage"
+      ],
+      "source_dependencies_sha256": {
+        "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+        "/home/imo/HeCBench_julia/src/radixsort-julia/radixsort-julia-JACC/study_kernels.jl": "1e9446af891b3751cd9b0b20d1e56422b7993e461414d6b1c57755d4465bf9ae"
+      },
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+      },
+      "distinct_device_candidates": 1,
+      "successful_program_checks": 1,
+      "configuration_experiments": 1,
+      "host_oracle_precision": [
+        "Python arbitrary-precision integer"
+      ],
+      "artifact_encoding": "UInt32 little-endian"
+    }
+  },
+  "scientific_witness_summary": {
+    "benchmark": "radixsort",
+    "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T002733261235Z_radixsort/result.json",
+    "captured_trials_checked": 20,
+    "distinct_complete_artifacts_independently_checked": 1,
+    "verification_contract": "Fullkeys equalitytoindependentsort, exactmultiset, lastlocal512digitblocks/temp,radixcounters/starts,exclusiveprefixandtopbuffer after3nonresetfull32bitsorts.",
+    "legacy_checker_blindspot": {
+      "input": [
+        1,
+        2
+      ],
+      "wrong_output": [
+        0,
+        0
+      ],
+      "monotonic_check_passes": true,
+      "exact_multiset_fails": true,
+      "scope": "Minimalcheckerweakness,notobservedfailureofnativeconfiguredpipeline."
+    },
+    "scope": "Key-only32bitintegerordering;noassociatedvalue/stabilitycertificate,twovalidpoweroftwosizes,not4MdefaultCLIperf. V1validfixturepreserved;V2intentionallystrengthenslower28/uppernibbletiesbeforeportablefork,notperformance selection.",
+    "reports": [
+      {
+        "model": "cuda",
+        "trial": 1,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda",
+        "trial": 2,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda",
+        "trial": 3,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda",
+        "trial": 4,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda",
+        "trial": 5,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 1,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 2,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 3,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 4,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "cuda_jl",
+        "trial": 5,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "ka",
+        "trial": 1,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "ka",
+        "trial": 2,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "ka",
+        "trial": 3,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "ka",
+        "trial": 4,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "ka",
+        "trial": 5,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "jacc",
+        "trial": 1,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "jacc",
+        "trial": 2,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "jacc",
+        "trial": 3,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "jacc",
+        "trial": 4,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      },
+      {
+        "model": "jacc",
+        "trial": 5,
+        "artifact_sha256": "c5da313fd7756d6247da36ae8a3d450c0e97f4415cea8f237da5983f95398c4f",
+        "cases": [
+          {
+            "n": 32768,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 32768
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 2048
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 2
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 2
+          },
+          {
+            "n": 65536,
+            "full_sorted_keys_and_multiset_exact": true,
+            "complete_scratch_arrays": [
+              {
+                "name": "keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "local_temporary_keys",
+                "all_values_checked": 65536
+              },
+              {
+                "name": "digit_major_counters",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "block_major_starts",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "exclusive_counter_scan",
+                "all_values_checked": 4096
+              },
+              {
+                "name": "top_scan_buffer",
+                "all_values_checked": 4
+              }
+            ],
+            "lower28_groups_with_multiple_upper_nibbles": 1024,
+            "maximum_distinct_upper_nibbles_for_same_lower28": 16,
+            "all_exact_keys_duplicated_four_times": true
+          }
+        ]
+      }
+    ]
+  },
+  "fixture_refinement_provenance": {
+    "prior_valid_config": "radixsort_sdk32bit32768_65536_threepasses_fullkeys_scratch_v1",
+    "prior_valid_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T002159654395Z_radixsort/result.json",
+    "reason": "Firststructuredfixtureupper=i%16correlatedwithlower10bits;newupper=(i/1024)%16ensuresdistinctuppernibblesfortiedlower28bits. CoveragechangebeforeKA/JACC,notperformanceorcorrectnessacceptanceselection.",
+    "authored_kernel_bodies_changed": false
+  }
+}
