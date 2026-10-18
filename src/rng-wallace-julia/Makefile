@@ -1,12 +1,11 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+REPEATS ?= 3
+.PHONY: main run clean
 main:
-	@true
-
+	@echo "Named stateful Wallace study; captured fixture retained."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(REPEATS)
 clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1000
+	@echo "Study fixtures retained."
