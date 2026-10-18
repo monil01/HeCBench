@@ -1,1 +1,1 @@
-include("../mcpr-julia/main.jl")
+include("seam-carving-julia-cuda.jl/main.jl")
