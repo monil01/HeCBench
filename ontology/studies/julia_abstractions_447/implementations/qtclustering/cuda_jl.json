@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "qtclustering",
   "implementation_model": "cuda_jl",
-  "status": "existing_cuda_jl_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/qtclustering.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,18 +14,598 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "qtclustering",
+    "configuration_id": "qtclustering_compact_full_5kernel_singleGPU_dyadic_clouds_192_128_65_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d",
+    "status": "verified",
+    "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+    "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+    "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+    "precision": {
+      "storage": [
+        "Float32_compact_distances_and_cache",
+        "Int32_graph_degrees_active_indices_cardinalities_result",
+        "Int8_candidate_and_clustered_masks",
+        "Float64_lossless_artifact_encoding_only"
+      ],
+      "compute": [
+        "Float32_max_distance_and_threshold",
+        "Int32_stored_indices",
+        "Julia_Int64_loop_and_address_indexing"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+      "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+      "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+    ],
+    "resource_policy": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+      "source_reviewed": true
+    },
+    "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+    "backend_extensions": [
+      "CUDA.CuStaticSharedArray",
+      "CUDA.sync_threads",
+      "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+      "CUDAhostallocation/copy/completion"
+    ],
+    "host_device_boundary": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering",
+    "numerical_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.008978907999999999,
+      0.009045065000000001,
+      0.009015033000000002,
+      0.008961562,
+      0.008954313
+    ],
+    "mean_last_four_seconds": 0.00899399325,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/qtclustering-julia/qtclustering-julia-cuda.jl/main.jl",
+        "sha256": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d"
+      },
+      {
+        "path": "src/qtclustering-julia/qt_device.jl",
+        "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+      },
+      {
+        "path": "src/qtclustering-julia/study_common.jl",
+        "sha256": "ed13ab12fc02e7309e48b5e6a8e744127934852c1adb49f29087c23facc9b724"
+      }
+    ],
+    "implementation_source_digest": "5c10bb789e3d38e7549ca60041ff15a81ba701a00f9a298fdb9cd4d15b03d02f",
+    "full_original_program_coverage": false,
+    "source_kernel_stage_count": 5,
+    "authored_dispatch_kernel_wrappers": 1,
+    "compiled_operation_specializations": 5,
+    "source_scope_adjudication": "All5nativekernelstagesandcompleteconvergencefornamedclouds;original4096randomCLI/distributedMPI/degree>768prefetchtailnotcertified.",
+    "Julia_only_safety_synchronization": "Uniformmaskedtrimtailandextra read-lifetimebarrierbeforeinplacewrites;originalnativeunchanged,noobservednativefailure.",
+    "verification_output_audit": {
+      "path": "src/qtclustering-julia/output_audit.json",
+      "sha256": "53826bec5e7196155db185b5da206bf1fdc9ec3c4b1774cba5bb61dc73179706"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+    "implementation_class": "CUDAjl_full_QT_compact_pipeline_CUDA_staticshared_barrier_backend_extension",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+    "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+    "storage_precision": [
+      "Float32_compact_distances_and_cache",
+      "Int32_graph_degrees_active_indices_cardinalities_result",
+      "Int8_candidate_and_clustered_masks",
+      "Float64_lossless_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float32_max_distance_and_threshold",
+      "Int32_stored_indices",
+      "Julia_Int64_loop_and_address_indexing"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+      "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+      "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+      "source_reviewed": true
+    },
+    "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+    "library_backend_boundary": [
+      "CUDA.CuStaticSharedArray",
+      "CUDA.sync_threads",
+      "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+      "CUDAhostallocation/copy/completion"
+    ],
+    "host_control_boundary": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+    "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/qtclustering-julia/qtclustering-julia-cuda.jl/main.jl",
+        "sha256": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d"
+      },
+      {
+        "path": "src/qtclustering-julia/qt_device.jl",
+        "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+      },
+      {
+        "path": "src/qtclustering-julia/study_common.jl",
+        "sha256": "ed13ab12fc02e7309e48b5e6a8e744127934852c1adb49f29087c23facc9b724"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "qtclustering",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "quality_threshold_clustering",
+      "review_status": "source_reviewed",
+      "scientific_task": "Cluster Euclidean points with a diameter threshold using greedy complete-link candidates from every remaining seed.",
+      "mathematical_operation": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+      "discretization": "Three exact dyadic 1D point clouds embedded in the source 2D domain:192 points in cliques67/65/60,128 points spaced by0.25, and65 points containing a duplicate pair and63 isolated points. Sorted compact nonself neighbor graph uses strict Euclidean distance<1.",
+      "accuracy_requirements": "Exact complete per-iteration seed/cardinality/ordered members/remaining active list/clustered masks/degrees versus an independent full-coordinate complete-link oracle. Full raw GPU workspaces compare exactly with both references; actual input bits and all guards exact. No NaN accepted.",
+      "input_size_regime": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI.",
+      "precision_sensitivity": "All distances and threshold margins are exact dyadic Float32 values; Float32 caches/threshold, Int32 indices/cards, Int8 masks. No threshold ambiguity or arbitrary tolerance. Julia host/device address indexing uses Int64 while stored graph indices remain Int32.",
+      "community_use_case": "Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+      "description": "Historical Julia marked an array and fabricated convergence/timing statistics. The current study restores all five source device kernels and complete source convergence for named geometric fixtures; source singleton residual behavior is retained explicitly.",
+      "provenance": "Native QTC.cu and compact/common kernel headers; source benchmark comments identify Anthony Danalis and2011 creation. No additional paper or application provenance inferred.",
+      "source_evidence": [
+        {
+          "path": "src/qtclustering-cuda/QTC.cu",
+          "sha256": "3bf34596e9b009516d4b3ce0f3c664c5c8f67176ce3a97ba5f634d65b9734ec2"
+        },
+        {
+          "path": "src/qtclustering-cuda/libdata.cpp",
+          "sha256": "5fadae169c6c528f6004e27566b77a27ba626f49f741678cce33ecfc9704c68a"
+        },
+        {
+          "path": "src/qtclustering-cuda/kernels_common.h",
+          "sha256": "c63e50ad555cb507b3a842bce2c2c1e8b3abbe9f966959597c195ee3d29b3fd0"
+        },
+        {
+          "path": "src/qtclustering-cuda/kernels_compact_storage.h",
+          "sha256": "ec3ffb8017856a3d3d573370767bc2511bed33f84137ac3f3966dacf9fdeeae6"
+        },
+        {
+          "path": "src/qtclustering-julia/original_main.jl",
+          "sha256": "04d0b8cb2187c14b9fdb04902899fa955d819c62b46a0ff194a2cbbeb6dffe6e"
+        }
+      ],
+      "secondary_domains": [
+        "unsupervised_clustering",
+        "Euclidean_point_geometry"
+      ]
+    },
+    "primary_motif": "iterative_compact_graph_complete_link_clustering_with_workgroup_reduction_and_compaction",
+    "storage_precision": [
+      "Float32_compact_distances_and_cache",
+      "Int32_graph_degrees_active_indices_cardinalities_result",
+      "Int8_candidate_and_clustered_masks",
+      "Float64_lossless_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float32_max_distance_and_threshold",
+      "Int32_stored_indices",
+      "Julia_Int64_loop_and_address_indexing"
+    ],
+    "synchronization": [
+      "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+      "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+      "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Full same compact-neighbor candidate/reduction/trim/update pipeline, source64threadworkgroups andper-blockworkspace. Julia12-tupleprefetch versusnamednative12registercandidates; staticshared/barriersviaCUDAextensions. Juliaextrauniformtail/read-lifetimebarrierprotectsin-placecompaction; staticnativehazardnotanobservedfailure."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_full_QT_compact_pipeline_CUDA_staticshared_barrier_backend_extension",
+      "ka": "KA_dispatch_full_QT_CUDA_staticshared_barrier_hybrid",
+      "jacc": "JACC_dispatch_full_QT_CUDA_staticshared_barrier_hybrid"
+    },
+    "timing_scope": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+    "verification_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+    "keyconfounds": [
+      "Sourcegreedycandidateheuristic notglobalmaximumclique/optimalpartition",
+      "Sourcecard<=1stop leaves62 actualunassignedisolatedpoints; do notinventexplicitfullpartition",
+      "Degree66exercisesfirsttwoof12prefetchslots; degree>768fallback/default4096randomCLI/distributedMPIunverified",
+      "AllJuliaframeworksuseCUDAstaticshared/barrierbackendextensions, notpureportableAPI",
+      "Juliauniformmaskedtrimtailandextra shared-readlifetimebarrier are synchronizationcovariates; nativebodyunchangedandallcapturedscientificchecks pass",
+      "Native12namedprefetchedcandidates versusJulia12tuple; actualregister/localmemoryplacement/compiledresourcecountunprofiled",
+      "NamedROI includesdegreeandglobalreduction omittedfromoriginalprintedqtc+trim+updatetotal; all4timedsamecompletepipeline",
+      "CPUreadbacks/control/oracle/reset/serializationoutsidekernel launch+completion regions; notfullCLIend-to-endtime",
+      "Observerinitializes otherwiseunreadoutput/staleworkspacestoexactcanaries; no nativeGPUalgorithm/inputrepair",
+      "Historicalmarker/fabricatedstatistics referenceS1, no inventedportablecompilerfailure",
+      "Exactdyadicfixture avoidsrealdata near-threshold error; notgeneralFloat32numericalrobustnesscertificate",
+      "Sharedalgorithm/oracle referencephase reusedKAthenJACC; marginalorderedworkflowcost notintrinsiccoldframeworkranking"
+    ],
+    "boundary_rounding_policy": "Compactneighborsstrictdistance<1/nonself/sortedID, \u22121/FLT_MAXpadding; sourcecandidate paircondition respectscompactmissingedges, minimumdiametertieslowestID andwinnercardtiesearliestactiveindex. Sourceaftercard1stopswithresidualunassignedlist. ExactF32dyadicgeometry, noNaNoutputs.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "qtclustering",
+        "configuration_id": "qtclustering_compact_full_5kernel_singleGPU_dyadic_clouds_192_128_65_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d",
+        "status": "verified",
+        "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+        "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+        "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+        "precision": {
+          "storage": [
+            "Float32_compact_distances_and_cache",
+            "Int32_graph_degrees_active_indices_cardinalities_result",
+            "Int8_candidate_and_clustered_masks",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_max_distance_and_threshold",
+            "Int32_stored_indices",
+            "Julia_Int64_loop_and_address_indexing"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+          "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+          "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+          "source_reviewed": true
+        },
+        "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+        "backend_extensions": [
+          "CUDA.CuStaticSharedArray",
+          "CUDA.sync_threads",
+          "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+          "CUDAhostallocation/copy/completion"
+        ],
+        "host_device_boundary": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering",
+        "numerical_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.008978907999999999,
+          0.009045065000000001,
+          0.009015033000000002,
+          0.008961562,
+          0.008954313
+        ],
+        "mean_last_four_seconds": 0.00899399325,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/qtclustering-julia/qtclustering-julia-cuda.jl/main.jl",
+            "sha256": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d"
+          },
+          {
+            "path": "src/qtclustering-julia/qt_device.jl",
+            "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+          },
+          {
+            "path": "src/qtclustering-julia/study_common.jl",
+            "sha256": "ed13ab12fc02e7309e48b5e6a8e744127934852c1adb49f29087c23facc9b724"
+          }
+        ],
+        "implementation_source_digest": "5c10bb789e3d38e7549ca60041ff15a81ba701a00f9a298fdb9cd4d15b03d02f",
+        "full_original_program_coverage": false,
+        "source_kernel_stage_count": 5,
+        "authored_dispatch_kernel_wrappers": 1,
+        "compiled_operation_specializations": 5,
+        "source_scope_adjudication": "All5nativekernelstagesandcompleteconvergencefornamedclouds;original4096randomCLI/distributedMPI/degree>768prefetchtailnotcertified.",
+        "Julia_only_safety_synchronization": "Uniformmaskedtrimtailandextra read-lifetimebarrierbeforeinplacewrites;originalnativeunchanged,noobservednativefailure.",
+        "verification_output_audit": {
+          "path": "src/qtclustering-julia/output_audit.json",
+          "sha256": "53826bec5e7196155db185b5da206bf1fdc9ec3c4b1774cba5bb61dc73179706"
+        }
+      },
+      "ka": {
+        "benchmark_id": "qtclustering",
+        "configuration_id": "qtclustering_compact_full_5kernel_singleGPU_dyadic_clouds_192_128_65_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "b83b34df615cb20e959b2afdbd77ca6c5a6a63048bade3144fb744d41ce9356e",
+        "status": "verified",
+        "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+        "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+        "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+        "precision": {
+          "storage": [
+            "Float32_compact_distances_and_cache",
+            "Int32_graph_degrees_active_indices_cardinalities_result",
+            "Int8_candidate_and_clustered_masks",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_max_distance_and_threshold",
+            "Int32_stored_indices",
+            "Julia_Int64_loop_and_address_indexing"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+          "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+          "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+          "source_reviewed": true
+        },
+        "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+        "backend_extensions": [
+          "CUDA.CuStaticSharedArray",
+          "CUDA.sync_threads",
+          "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+          "CUDAhostallocation/copy/completion"
+        ],
+        "host_device_boundary": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering",
+        "numerical_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.010222921999999999,
+          0.010139627000000002,
+          0.010010597000000001,
+          0.009916994,
+          0.010043014000000003
+        ],
+        "mean_last_four_seconds": 0.010027558000000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/qtclustering-julia/qtclustering-julia-KA/main.jl",
+            "sha256": "b83b34df615cb20e959b2afdbd77ca6c5a6a63048bade3144fb744d41ce9356e"
+          },
+          {
+            "path": "src/qtclustering-julia/qt_device.jl",
+            "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+          },
+          {
+            "path": "src/qtclustering-julia/study_common.jl",
+            "sha256": "ed13ab12fc02e7309e48b5e6a8e744127934852c1adb49f29087c23facc9b724"
+          }
+        ],
+        "implementation_source_digest": "eafa6be386b2496e414b9fb9f7aba01be58c920b0518b8516d1930169e647618",
+        "full_original_program_coverage": false,
+        "source_kernel_stage_count": 5,
+        "authored_dispatch_kernel_wrappers": 1,
+        "compiled_operation_specializations": 5,
+        "source_scope_adjudication": "All5nativekernelstagesandcompleteconvergencefornamedclouds;original4096randomCLI/distributedMPI/degree>768prefetchtailnotcertified.",
+        "Julia_only_safety_synchronization": "Uniformmaskedtrimtailandextra read-lifetimebarrierbeforeinplacewrites;originalnativeunchanged,noobservednativefailure.",
+        "verification_output_audit": {
+          "path": "src/qtclustering-julia/output_audit.json",
+          "sha256": "53826bec5e7196155db185b5da206bf1fdc9ec3c4b1774cba5bb61dc73179706"
+        }
+      },
+      "jacc": {
+        "benchmark_id": "qtclustering",
+        "configuration_id": "qtclustering_compact_full_5kernel_singleGPU_dyadic_clouds_192_128_65_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "6b21db1ea41a678c830ed71da425908c53ac086c51979c2705e674c72bec60e2",
+        "status": "verified",
+        "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+        "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+        "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+        "precision": {
+          "storage": [
+            "Float32_compact_distances_and_cache",
+            "Int32_graph_degrees_active_indices_cardinalities_result",
+            "Int8_candidate_and_clustered_masks",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_max_distance_and_threshold",
+            "Int32_stored_indices",
+            "Julia_Int64_loop_and_address_indexing"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+          "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+          "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+          "source_reviewed": true
+        },
+        "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+        "backend_extensions": [
+          "CUDA.CuStaticSharedArray",
+          "CUDA.sync_threads",
+          "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+          "CUDAhostallocation/copy/completion"
+        ],
+        "host_device_boundary": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering",
+        "numerical_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.011142438000000001,
+          0.011054498999999999,
+          0.010875227999999999,
+          0.010915963,
+          0.010903750000000002
+        ],
+        "mean_last_four_seconds": 0.01093736,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/qtclustering-julia/qtclustering-julia-JACC/main.jl",
+            "sha256": "6b21db1ea41a678c830ed71da425908c53ac086c51979c2705e674c72bec60e2"
+          },
+          {
+            "path": "src/qtclustering-julia/qt_device.jl",
+            "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+          },
+          {
+            "path": "src/qtclustering-julia/study_common.jl",
+            "sha256": "ed13ab12fc02e7309e48b5e6a8e744127934852c1adb49f29087c23facc9b724"
+          }
+        ],
+        "implementation_source_digest": "34c4d4a9ab23c95e1da93a5a42308f2f1767e618d93bfe6f5fbdc7ba203eb3e0",
+        "full_original_program_coverage": false,
+        "source_kernel_stage_count": 5,
+        "authored_dispatch_kernel_wrappers": 1,
+        "compiled_operation_specializations": 5,
+        "source_scope_adjudication": "All5nativekernelstagesandcompleteconvergencefornamedclouds;original4096randomCLI/distributedMPI/degree>768prefetchtailnotcertified.",
+        "Julia_only_safety_synchronization": "Uniformmaskedtrimtailandextra read-lifetimebarrierbeforeinplacewrites;originalnativeunchanged,noobservednativefailure.",
+        "verification_output_audit": {
+          "path": "src/qtclustering-julia/output_audit.json",
+          "sha256": "53826bec5e7196155db185b5da206bf1fdc9ec3c4b1774cba5bb61dc73179706"
+        }
+      }
+    },
+    "source_sha256": {
+      "src/qtclustering-julia/qtclustering-julia-cuda.jl/main.jl": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d",
+      "src/qtclustering-julia/qtclustering-julia-KA/main.jl": "b83b34df615cb20e959b2afdbd77ca6c5a6a63048bade3144fb744d41ce9356e",
+      "src/qtclustering-julia/qtclustering-julia-JACC/main.jl": "6b21db1ea41a678c830ed71da425908c53ac086c51979c2705e674c72bec60e2"
+    },
+    "ontology_sha256": null,
+    "verification_output_audit": {
+      "path": "src/qtclustering-julia/output_audit.json",
+      "sha256": "53826bec5e7196155db185b5da206bf1fdc9ec3c4b1774cba5bb61dc73179706"
+    },
+    "native_reference_repaired": false
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/qtclustering-julia/main.jl",
-    "sha256": "04d0b8cb2187c14b9fdb04902899fa955d819c62b46a0ff194a2cbbeb6dffe6e",
+    "path": "src/qtclustering-julia/qtclustering-julia-cuda.jl/main.jl",
+    "sha256": "8750cb053564196fc10ccac8444f4efda70d2ee2290746864f0a025baeba5d4d",
     "syntax_features": {
       "cuda_kernel_launch": [
-        61
+        9
       ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
@@ -36,15 +616,132 @@
       "explicit_zero_dynamic_shared": []
     },
     "placeholder_signals": {
-      "include_alias": false,
+      "include_alias": true,
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "qtclustering_compact_full_5kernel_singleGPU_dyadic_clouds_192_128_65_v1",
+      "run_id": "20261018T103505599016Z_qtclustering",
+      "result": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "1ba3957cc8fc527caafed8ae06dcbc27a56cd08324bea304ef55ef4e536f69c1",
+      "source_hash": "3312a48b5d20a4f67342fcfc373c43f7e8f04ffa7c64544e507ba8526eb65e00",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T103505599016Z_qtclustering/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.008978907999999999,
+        0.009045065000000001,
+        0.009015033000000002,
+        0.008961562,
+        0.008954313
+      ],
+      "mean_last_four_seconds": 0.00899399325,
+      "contract": {
+        "inputs": "Threeexactdyadic1Din2DEuclideanclouds:192pointsin67/65/60cliques,128point.25spacedchain,65pointsduplicatepair+63isolated. Nativecompactsortednonselfneighborsstrictdistance<1,-1/FLT_MAXpadding. FullactualGPUindex/distanceechoandall144guardfields/trial.",
+        "precision": "Float32sourcecompactdistances/cache/threshold, Int32indices/cards/result, Int8masks. Everydistanceexactdyadic, fixturegraphvalidatedfromindependentfullcoordinategeometry; allrawoutputs/workspacesexactatolrtol0, noNaNpass.",
+        "operator": "All5nativekernelscompute_degrees,QTC_device,reduce_card_device,trim_ungrouped_pnts_indr_array,update_clustered_pnts_mask; fullgreedyperseedcandidateconvergence andsourcecard<=1termination. Independentglobalgeometryoracle checkschosencluster/order/ties/card/seed/remaininglist/masks/degrees; fullactualmutableworkspacescrosscheckedbothrefsseparately.",
+        "metric": "Sumall5kernellaunch+completionregions/degreesonceandall37iterationsacross3cases, perstageclocksretained. Hostcard/outputreadback, allocation/reset/fixtures/oracle/serialization andcompletepipelinecompilewarmupoutsideROI. 5checkedtrials,mean2-5. Namedpipelineincludessourcedegree/reductionwhichoriginalprintedqtc+trim+updatetotalomits."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "qtclustering:cuda_jl:historical_marker:S1",
+        "benchmark_id": "qtclustering",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/qtclustering.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "qtclustering:cuda_jl:historical_marker:S1",
+          "benchmark_id": "qtclustering",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_repair",
+          "code": "S1",
+          "is_failure": true,
+          "root_cause": "HistoricalJuliaonlymarkedflagsandfabricatediterations/clusterstats/timing;nogenuineQTcandidate/reduce/compact/updatepipeline.",
+          "root_cause_evidence": [
+            {
+              "path": "src/qtclustering-julia/original_main.jl",
+              "sha256": "04d0b8cb2187c14b9fdb04902899fa955d819c62b46a0ff194a2cbbeb6dffe6e"
+            }
+          ],
+          "retrospective_static_finding": true,
+          "historical_attempts_unknown": true
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "qtclustering:cuda_jl:shared_lifetime_mapping:P1",
+        "benchmark_id": "qtclustering",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/qtclustering.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "qtclustering:cuda_jl:shared_lifetime_mapping:P1",
+          "benchmark_id": "qtclustering",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_repair",
+          "code": "P1",
+          "is_failure": false,
+          "root_cause": "AllJuliamodelsadduniformmaskedtailandshared-readlifetimebarrierbeforeinplacecompaction;sourcepreserved,noobservednativefailure.",
+          "root_cause_evidence": [
+            {
+              "path": "src/qtclustering-julia/qt_device.jl",
+              "sha256": "8e59f83571b4c6104d424d3a1bf799a533a5438dbf43b7003d666cc30efe9b5d"
+            },
+            {
+              "path": "src/qtclustering-cuda/kernels_common.h",
+              "sha256": "c63e50ad555cb507b3a842bce2c2c1e8b3abbe9f966959597c195ee3d29b3fd0"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -54,7 +751,57 @@
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "a227543ab80ba2d1e2199c8f",
+        "begin_event_id": "20f73e3d58febacd6e62dd5d",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T10:32:23.783754+00:00",
+        "usage_event_timestamp": "2026-10-18T10:32:14.637Z",
+        "elapsed_usage_event_start": "2026-10-18T10:24:24.874Z",
+        "delta_usage": {
+          "input_tokens": 1344297,
+          "cached_input_tokens": 1336960,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 17785,
+          "reasoning_output_tokens": 8257,
+          "total_tokens": 1362082
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 9.146754,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "eabb4ff370e99cffb0f724fcb2034bcabe2036cb3d3d35ad6b66571cc4d06e00",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 50.906519,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/qtclustering/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "7e9046b181c60d3f349e72aed4835179c6f845cd9391ece54f1288ae48e6e84d",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/qtclustering/measurement_scope_review.json",
+      "sha256": "523c4088a0ad0d58de7b3a7a99f2eacac48289063dc55df324e802924bdd5527",
+      "record": {
+        "benchmark_id": "qtclustering",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_field_provenance": {
     "candidate_attempts": {
@@ -85,5 +832,72 @@
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "CUDAjl_full_QT_compact_pipeline_CUDA_staticshared_barrier_backend_extension",
+    "annotation_path": ".porting-state/portable_julia/traits/qtclustering.json",
+    "annotation_sha256": "996337e2d2472e041780f6efa41cfc5915c692707bb96200cb4f4113db5a3b94",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/qtclustering-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "a6bb4911b955f415717cdf32d409c22864b2f3a07a1123ecce00860be26e8c4b",
+      "record": {
+        "benchmark_id": "qtclustering",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_repair_sharedalgorithm_separate",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 1,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 99,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "One current CUDAjl devicecandidate/check restores all5specialized sourcekernel stages plus sharedcompactgraphalgorithm/oracle/nativeadapter. Current wrapper tokenproxy ispartial; sharedscientifichelper attributedonce toreferencephase, historicalmarkercreationcostunknown.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 1344297,
+          "cached_input_tokens": 1336960,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 17785,
+          "reasoning_output_tokens": 8257,
+          "total_tokens": 1362082
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/qtclustering/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/qtclustering-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "a6bb4911b955f415717cdf32d409c22864b2f3a07a1123ecce00860be26e8c4b",
+    "record": {
+      "benchmark_id": "qtclustering",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_repair_sharedalgorithm_separate",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 1,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 99,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "One current CUDAjl devicecandidate/check restores all5specialized sourcekernel stages plus sharedcompactgraphalgorithm/oracle/nativeadapter. Current wrapper tokenproxy ispartial; sharedscientifichelper attributedonce toreferencephase, historicalmarkercreationcostunknown.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 1344297,
+        "cached_input_tokens": 1336960,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 17785,
+        "reasoning_output_tokens": 8257,
+        "total_tokens": 1362082
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/qtclustering/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
 }
