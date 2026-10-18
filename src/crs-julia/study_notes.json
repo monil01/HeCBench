@@ -1,0 +1,176 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "Historical CUDA.jl uses synthetic byte XOR with j+m mix, no native GF Cauchy bitmatrix or shared64bit coding groups; MAX_K10 also differs native4. Restore actual source20kernel variants undergenericVal(m,w) with native128thread/block/group geometry. Fullyinitialized deterministic data and actualsourceCPUmatrices are explicit fixtures. Nativekernel and hostGFsource untouched.",
+    "original_source_sha256": "37f738dd76ad4be00302072fcec90f227f542f33f81a84f5fa78c7e76ec20e68",
+    "native_source": {
+      "path": "src/crs-cuda/main.cu",
+      "sha256": "0b71ca8e64bec581b9cc8647147e2feb570e03e6b3d6c0c0f7c09a9624b12650"
+    },
+    "native_evidence": [
+      {
+        "path": "src/crs-cuda/main.cu",
+        "sha256": "0b71ca8e64bec581b9cc8647147e2feb570e03e6b3d6c0c0f7c09a9624b12650"
+      },
+      {
+        "path": "src/crs-cuda/kernels.cu",
+        "sha256": "d927532dd118ae699bb987fc844b3ea65ab3f78168284026243619dafd890c98"
+      },
+      {
+        "path": "src/crs-cuda/GCRSMatrix.cu",
+        "sha256": "da81d869a60d4d8874da25ede1e0f07f0ea9fc3c45404508da167b4b18c712bf"
+      },
+      {
+        "path": "src/crs-cuda/galois.cu",
+        "sha256": "f815dce4cb91478a215807502466919e5a3536c146da92f97620c0e197dbbd14"
+      },
+      {
+        "path": "src/crs-cuda/jerasure.cu",
+        "sha256": "9a67cf86ea21c6f6d9a6a79b325beec257a51d28d364e84df451eef27dae7f41"
+      },
+      {
+        "path": "src/crs-cuda/utils.h",
+        "sha256": "053c5e079d40bcb4229818a3c430c504c16882b3856fc9561eb03ead2c13de55"
+      }
+    ],
+    "original_native_unchanged": true
+  },
+  "algorithm": "Cauchy Reed\u2013Solomon GF(2^w) bitmatrix parity over64-bit bitplanes",
+  "mapping": "Native128threads,block-wgroup indices, shared128words/1024bytes, private m<=4 parity accumulators and2barriers/dataword; paddedinactive targetlanes staythroughbarriers, active completegroupdata unchanged",
+  "launch_geometry": {
+    "threads": 128,
+    "native_kernel_definitions": 20,
+    "target_generic_kernel_definitions": 1,
+    "requested_m_w_variants": 20,
+    "all_m_k_w_combinations": 50,
+    "cases": 100,
+    "tasks": [
+      1,
+      3
+    ],
+    "timed_kernel_calls_per_trial": 200,
+    "shared_bytes": 1024
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "discrete_crypto",
+      "review_status": "source_reviewed",
+      "application_domain": "Erasure coding / fault-tolerant data storage",
+      "scientific_operator": "Systematic Cauchy Reed\u2013Solomon GF(2^w) parity encoding, bitmatrix applied to64 parallel bitplanes",
+      "numerical_method": "Finite-field Cauchy inverse coefficients, polynomial-basis linear map and XOR parity",
+      "community_use": "Fault-tolerant storage/checkpoint parity primitive relevant to HPC data integrity; no encryption/security or physical-model claim",
+      "accuracy_requirements": "Every64bitparityword exact; independentGFpolynomial Cauchycoefficient+nativecolumn check, MDSallkrowsubset invertibility and zero-inputlinearity witness",
+      "source_evidence": [
+        {
+          "path": "src/crs-cuda/main.cu",
+          "sha256": "0b71ca8e64bec581b9cc8647147e2feb570e03e6b3d6c0c0f7c09a9624b12650"
+        },
+        {
+          "path": "src/crs-cuda/kernels.cu",
+          "sha256": "d927532dd118ae699bb987fc844b3ea65ab3f78168284026243619dafd890c98"
+        },
+        {
+          "path": "src/crs-cuda/GCRSMatrix.cu",
+          "sha256": "da81d869a60d4d8874da25ede1e0f07f0ea9fc3c45404508da167b4b18c712bf"
+        },
+        {
+          "path": "src/crs-cuda/galois.cu",
+          "sha256": "f815dce4cb91478a215807502466919e5a3536c146da92f97620c0e197dbbd14"
+        },
+        {
+          "path": "src/crs-cuda/jerasure.cu",
+          "sha256": "9a67cf86ea21c6f6d9a6a79b325beec257a51d28d364e84df451eef27dae7f41"
+        },
+        {
+          "path": "src/crs-cuda/utils.h",
+          "sha256": "053c5e079d40bcb4229818a3c430c504c16882b3856fc9561eb03ead2c13de55"
+        }
+      ],
+      "limitations": [
+        "GPU encoder only, noGPUdecoder or complete storage-recovery pipeline validated",
+        "HostGFmatrixgeneration source-exported frozen fixture, not translated hostlibrary",
+        "Kernel-only region excludes original H2D/D2H taskcopies and matrixsetup; noendtoend sourceCLI bandwidth claim",
+        "Task counts1/3 andsmallgroupcomplete sizes, notMB-throughput"
+      ]
+    },
+    "primary_motif": "GF bitmatrix / shared-memory grouped parity encoding",
+    "storage_precision": [
+      "UInt64",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "UInt64",
+      "UInt32",
+      "Int32"
+    ],
+    "synchronization": [
+      "Two blockbarriers per k dataword exchange",
+      "Ordered taskkernels andfullcontextcompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Active source128thread/group mapping, masks andsharedexchange retained. Native earlyreturn lanes keptinactive through unconditional targetbarriers; KAprivate/registerstorage explicit. Noalgorithm/math substitution."
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum100_preallocated_CauchyRS_kernel_pipelines_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Named kernel-onlyROI excludes original H2D/D2Htasktransfers; noendtoend claim",
+      "Native dynamic1024B shared vsKAstatic1024B; JACCpublic sharedtemplatepreload adds globalread/setup cost",
+      "One generictarget definition specialized20m/w variants vs20native authoredkernels, not20observedcompilerprocesses",
+      "Small groupcomplete inputstripes, notlarge streaming throughput",
+      "Hostmatrix librarysetup frozen sharedinput and not ported"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "observation": "Restoring parity semantics requires the actual Cauchy finite-field matrix rather than the historical synthetic XOR surrogate. Independent polynomial field arithmetic checks every packed native matrix column, parity output and all systematic k-row-subset invertibilities. Complete w-word groups make all shared-memory group neighbors initialized, including partial128-thread blocks. Portable inactive lanes remain at barriers rather than native early-return, without changing active data dependencies. Measured preallocated kernel pipelines include all20native variants/all50mkw and tasks1/3; source H2D/D2H taskcopy endtoend timing and GPU decoding remain unmeasured.",
+  "effort_observation": "First saved candidate and whole-program GPU/JIT process for eachJulia model. Shared source-reviewed reference, native hostmatrix export and independent GF oracle reused sequentially forKA thenJACC. Observed activitywindow alsoincludes brief root-requested conversionontology precisionmetadata correction, explicitlynonexclusive.",
+  "implementation_overrides": {
+    "cuda_jl": {
+      "resource_policy": {
+        "dynamic_shared_bytes": 1024,
+        "static_shared_bytes": 0,
+        "private_parity_words": "m<=4 MVector"
+      },
+      "backend_extensions": []
+    },
+    "ka": {
+      "resource_policy": {
+        "dynamic_shared_bytes": 0,
+        "static_shared_bytes": 1024,
+        "private_parity_words": "m<=4 @private"
+      },
+      "backend_extensions": []
+    },
+    "jacc": {
+      "resource_policy": {
+        "dynamic_shared_bytes": 1024,
+        "static_shared_bytes": 0,
+        "private_parity_words": "m<=4 MVector",
+        "shared_template_preload_words": 128
+      },
+      "backend_extensions": []
+    }
+  }
+}
