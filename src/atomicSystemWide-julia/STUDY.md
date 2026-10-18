@@ -1,0 +1,21 @@
+# atomicSystemWide: defined concurrent system-atomic property study
+
+## Scope and numerical meaning
+
+This is a runtime/concurrency primitive, not a domain-science application. The source GPU/CPU functions operate on the same migratable memory with eight atomics per participant update. The declared configuration uses eight GPU threads, eight CPU participant IDs and 1,000 updates. Native device and CPU bodies are unchanged. The original 32,768-participant geometry has out-of-word-width `1 << tid`; this smaller defined configuration does not certify that original CLI. Native CPU CAS-loop initial plain reads are retained; no formal race-freedom proof is claimed.
+
+**Property equivalence, not identical raw numerical values.** All ten actual state fields are retained in each trial JSON. Eight deterministic fields are checked exactly; exchange/CAS use the source membership predicates [0,16). Each binary capture contains the exact actual initial-state/parameter prefix, eight actual deterministic outputs, two explicitly labeled membership scores and 32 exact guards. A score vector is not a raw output array. `saved_output_audit.json` independently reconstructs the integer/bitwise invariants and audits all20 full states/captures. Initial minimum0 makes that final invariant insensitive to omitting min on nonnegative IDs; no complete linearizability/instruction-execution proof is claimed.
+
+## Reference restoration and abstractions
+
+The historical Julia reference ran device-scope updates in a CuArray, synchronized/copied, then updated a different host array sequentially. It is archived. Current Julia implementations use one unified allocation shared by CPU and GPU. The same unchanged native CPU function is compiled as an isolated helper and called after asynchronous GPU launch, followed by device-wide completion. Installed CUDA.jl emitted `atom.global.add.u32` for add but system-scope CAS; explicit `atom.relaxed.sys.global.*` PTX preserves the required system scope for all operations. All three Julia implementations are mixed host/device pipelines whose device components use a CUDA backend extension, not pure portable atomics. Native/Julia host dispatch and UM orchestration remain performance covariates. Launch order allows concurrency; actual temporal overlap was not independently profiled.
+
+## Correctness, timing and effort
+
+Five checked executions/model follow an explicit warmup; reset/readback/recording are outside the interval. Timed region includes GPU launch, CPU arithmetic and blocking whole-device completion, without internal averaging. Mean is trials2–5. Actual seconds: {"cuda": 0.000924646, "cuda_jl": 0.00051137725, "ka": 0.00060809075, "jacc": 0.0006008755}. Do not label these GPU kernel latencies.
+
+Reference device candidate1; three host-driver process evaluations (first environment KeyError, then host-pointer MethodError, both before device JIT; third reaches first device JIT and passes). Two host-driver feedback repairs are separate from the historical algorithm/concurrency restoration. Native diagnostic/build and CPU-helper builds are separately counted. KA and JACC each used one target device candidate and one real device-JIT check, no repairs. Five trials are not five attempts. Context/cache-inclusive usage windows are recorded separately by phase, unknown historical cost remains unknown; KA window also includes shared accounting annotations.
+
+## Provenance and reproduction
+
+Use `make run` or `study_config.json`; runner builds original native source and each Julia CPU helper in isolated directories under the GPU6 lock. No generated shared library or measured GPU output is required in source Git. Reference originals/history and native capability/PTX diagnostics are archived by source hash; the V100 actual native diagnostic passes managed concurrency despite hostNativeAtomicSupported=0. Package pins are CUDA.jl6.2.1, KA0.9.45, JACC1.4.0, Julia1.12.6 and local CUDA12.0, target sm70. No native repair or framework-unsupported conclusion is claimed. Final bundle: `.porting-state/portable_julia/runs/20261018T034722675393Z_atomicSystemWide/result.json`. Paper observation is ready for coordinator integration; worker did not edit paper sections.
