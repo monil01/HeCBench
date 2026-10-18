@@ -165,6 +165,9 @@ out.write_text('# Translation and scientific-paper checkpoint\n\n'
                + json.dumps(payload, indent=2)+'\n```\n')
 latest = {'checkpoint_id': stamp, 'path': str(out.relative_to(root)),
           'created_at': now.isoformat(), 'status': status, 'verified_pairs': pairs,
+          'accepted_contract_names':pairs,
+          'matched_counter_meaning':payload['matched_counter_meaning'],
+          'explicitly_tagged_property_equivalence_names':payload['explicit_property_equivalence_names'],
           'verified_portable_versions': versions, 'target_pairs': target,
           'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
           'performance_protocol': 'five_trials_last_four_v1',
