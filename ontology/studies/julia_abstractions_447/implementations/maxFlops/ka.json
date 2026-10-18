@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "maxFlops",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/maxFlops.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,13 +14,581 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "maxFlops",
+    "configuration_id": "maxFlops_all16_true_unroll_FP32_FP64_finite_runtime_controls_192paths_v1",
+    "implementation_model": "ka",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b",
+    "status": "verified",
+    "algorithm": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored. 192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+    "work_item_mapping": "One output element/thread, independent scalar accumulator chains in registers/localstorage selectedbycompiler,256threads/block,one/twoblocks. No sharedmemory or atomics. Actual register/local placement and compiled eliminated instruction counts unprofiled.",
+    "layout": "Guarded in-place contiguous FP32/FP64 data vector,8 guards eachside. Actual GPU buffer is copied back before each timed launch as exact inputecho, then full postkernel buffer captured. Same16 physicalguards read before/after, nottwoindependent allocations.",
+    "precision": {
+      "storage": [
+        "Float32_input_output",
+        "Float64_input_output"
+      ],
+      "compute": [
+        "Float32_arithmetic_fma",
+        "Float64_arithmetic_fma",
+        "Float32_initial_literals_promoted_to_Float64_when_applicable"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "No inter-thread communication or device workgroup barriers",
+      "Host completion after each of192 source network launches"
+    ],
+    "resource_policy": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "actual_dynamic_executed_operations": "unmeasured; sourcecounts only"
+    },
+    "launch_geometry": "Source256threads, N256/512 exactlydivisible.192 launches eachtrial andmatching preexecution inputcopy/readback outsideROI.",
+    "backend_extensions": [
+      "CUDAhostallocation/copy/completion only; ordinaryJulia arithmetic/muladd device code and framework-owned indexing/dispatch"
+    ],
+    "host_device_boundary": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment. Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops",
+    "numerical_contract": "All20 artifacts228673 Float64 lossless encoded words:75073 exactprefix+73728 completeoutputs+73728 actualpreexecution inputecho+6144guardchecks(3072 physicalguards). Independent per-dtype scalar rounded recurrence plus bothrefs. Exact Add/Mul/zero-repeat; fixedfloatingbudget on MAdd/MulMAdd; noNaN/Infaccepted.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.005690481000000001,
+      0.004604403000000002,
+      0.004452873,
+      0.004176786000000001,
+      0.004241511
+    ],
+    "mean_last_four_seconds": 0.00436889325,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/maxFlops-julia/maxFlops-julia-KA/main.jl",
+        "sha256": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b"
+      },
+      {
+        "path": "src/maxFlops-julia/study_common.jl",
+        "sha256": "7026f6eceb078180178d0d9b80b9e5d5d1ad59ee0a920b0735b8236a6950862a"
+      },
+      {
+        "path": "src/maxFlops-julia/arithmetic_device.jl",
+        "sha256": "74c8a23d1bc784310ed467c613a36730b855084b97cb995bfd93074dc3ca5f91"
+      }
+    ],
+    "implementation_source_digest": "0a30143be849bf6f47052751bd45984e49c9d613a2ef61133880d78b131393c2"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored. 192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+    "implementation_class": "KA_generated_unrolled_arithmetic_ordinary_Julia",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One output element/thread, independent scalar accumulator chains in registers/localstorage selectedbycompiler,256threads/block,one/twoblocks. No sharedmemory or atomics. Actual register/local placement and compiled eliminated instruction counts unprofiled.",
+    "layout": "Guarded in-place contiguous FP32/FP64 data vector,8 guards eachside. Actual GPU buffer is copied back before each timed launch as exact inputecho, then full postkernel buffer captured. Same16 physicalguards read before/after, nottwoindependent allocations.",
+    "storage_precision": [
+      "Float32_input_output",
+      "Float64_input_output"
+    ],
+    "compute_precision": [
+      "Float32_arithmetic_fma",
+      "Float64_arithmetic_fma",
+      "Float32_initial_literals_promoted_to_Float64_when_applicable"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "No inter-thread communication or device workgroup barriers",
+      "Host completion after each of192 source network launches"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "actual_dynamic_executed_operations": "unmeasured; sourcecounts only"
+    },
+    "launch_geometry": "Source256threads, N256/512 exactlydivisible.192 launches eachtrial andmatching preexecution inputcopy/readback outsideROI.",
+    "library_backend_boundary": [
+      "CUDAhostallocation/copy/completion only; ordinaryJulia arithmetic/muladd device code and framework-owned indexing/dispatch"
+    ],
+    "host_control_boundary": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+    "support_boundary": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment. Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/maxFlops-julia/maxFlops-julia-KA/main.jl",
+        "sha256": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b"
+      },
+      {
+        "path": "src/maxFlops-julia/study_common.jl",
+        "sha256": "7026f6eceb078180178d0d9b80b9e5d5d1ad59ee0a920b0735b8236a6950862a"
+      },
+      {
+        "path": "src/maxFlops-julia/arithmetic_device.jl",
+        "sha256": "74c8a23d1bc784310ed467c613a36730b855084b97cb995bfd93074dc3ca5f91"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "maxFlops",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "floating_point_arithmetic_microbenchmark",
+      "review_status": "source_reviewed",
+      "scientific_task": "Exercise arithmetic dependency chains and independent accumulator counts in FP32 and FP64.",
+      "mathematical_operation": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored.",
+      "discretization": "192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+      "accuracy_requirements": "Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+      "input_size_regime": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment.",
+      "precision_sensitivity": "Actual Float32 andFloat64 arithmetic; source0.999f/0.0001f... literals promoted fromFloat32 even inFloat64, grouped pair reductions retained. Explicit muladd maps native default fusion intent. Independent libm fmaf/fma oracle. No arbitrary mathematical real-arithmetic accuracy or chaotic-default trajectory certification.",
+      "community_use_case": "Domain-neutral arithmetic stress workload can inform compiler/code-generation experiments. It does not implement a scientific application, establish peak hardware FLOPs or support a measured roofline position without dynamic work evidence.",
+      "description": "Historical generic Julia implementation uses120 updates for every label and a different reduction grouping/literal conversion. Full source arithmetic networks restored, original historical/native sources preserved. Native selected bodies unchanged, named runtime arguments finite controls differ from unstable defaultCLI.",
+      "provenance": "Original kernels.h macro expansion and main.cu launches; LICENSEcopyright2011UT-Battelle/OakRidgeNationalLaboratory. Native original defaultMul1.01 overflows finiteFP32 recurrence, CPUwitness preserved as arithmetic stress scope, not scientific defect.",
+      "source_evidence": [
+        {
+          "path": "src/maxFlops-cuda/kernels.h",
+          "sha256": "0f8af1438fd1d3e39ae70285867f1da02d26c73678564f637afc79492b5ce8a4"
+        },
+        {
+          "path": "src/maxFlops-cuda/main.cu",
+          "sha256": "813349d14233bda02804e380f8e82a4174a7e8b4df119be7e25c69352bffe303"
+        },
+        {
+          "path": "src/maxFlops-julia/original_main.jl",
+          "sha256": "53d025732aaa2549a8dca744bd193c476461c7974b6ceeb22db3388611b29883"
+        },
+        {
+          "path": "src/maxFlops-julia/original_argument_witness.json",
+          "sha256": "19200ec97dd64ef89f25ce3ae63a05929ede3bebe103aa06de3981d9d5e92597"
+        }
+      ]
+    },
+    "primary_motif": "unrolled_independent_accumulator_arithmetic_dependency_chains",
+    "storage_precision": [
+      "Float32_input_output",
+      "Float64_input_output"
+    ],
+    "compute_precision": [
+      "Float32_arithmetic_fma",
+      "Float64_arithmetic_fma",
+      "Float32_initial_literals_promoted_to_Float64_when_applicable"
+    ],
+    "synchronization": [
+      "No inter-thread communication or device workgroup barriers",
+      "Host completion after each of192 source network launches"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native original16kernel bodies and source counts retained; Julia generated fullyunrolled networks specialized op andlane count with same outer repeatloop/grouped reduction/F32literalpromotion. Ordinary Julia arithmetic/muladd, framework-owned index/dispatch. Runtime finite-control arguments explicitly differ from original unstableCLI."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_restored_source_unroll_arithmetic_network_ordinary_Julia",
+      "ka": "KA_generated_unrolled_arithmetic_ordinary_Julia",
+      "jacc": "JACC_generated_unrolled_arithmetic_ordinary_Julia"
+    },
+    "timing_scope": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+    "verification_contract": "All20 artifacts228673 Float64 lossless encoded words:75073 exactprefix+73728 completeoutputs+73728 actualpreexecution inputecho+6144guardchecks(3072 physicalguards). Independent per-dtype scalar rounded recurrence plus bothrefs. Exact Add/Mul/zero-repeat; fixedfloatingbudget on MAdd/MulMAdd; noNaN/Infaccepted.",
+    "keyconfounds": [
+      "Named finite runtimecontrols Mulv.5 andMulMAddv1=1/v2=.125 differ from originaldefaultMul1.01/nonfinite andchaoticMulMAdd3.75/.355; originalargument certification remains unmet",
+      "Small1/2blockgrid and repeat0/1/2 notoriginal2m-element/5000iteration throughput regime",
+      "Restoring generic120count Julia mismatch is reference S1 work, not currentcompilerfailure",
+      "Numerically invariant Add/even-count and underflowMul controls cannot prove actual executed operation count; only source-expanded counts reported, dynamic work andcompiled eliminatedinstructions unknown",
+      "OrdinaryJulia muladd maps source defaultfusionintent; engineered tolerances predeclared with dtype-specific selfchecks, no globalFloat32budget relaxation ofFP64oracle",
+      "Shared generated arithmetic helper/oracle authored referencephase and reused KA thenJACC; ordered marginal translationcosts notcold frameworkeffort",
+      "No independent physical scientific model/application claims from a domain-neutral microbenchmark"
+    ],
+    "boundary_rounding_policy": "Finiteinput3.25..6.75 ensures all sourceinitialized lanes positive; runtime Mul.5 andcontractiveMulMAdd1/.125 keepselectedcasesfinite. Preserve exactsourceF32literalpromotions and grouped additions. Overfloworiginaldefault CPUwitness notrununsafeGPU; no tolerancechangedafterfailure.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "maxFlops",
+        "configuration_id": "maxFlops_all16_true_unroll_FP32_FP64_finite_runtime_controls_192paths_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "ec46d5b899beaf2580e1f19ef664ffae97d2a5f6ef9fda73eae37c1a4e4566bd",
+        "status": "verified",
+        "algorithm": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored. 192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+        "work_item_mapping": "One output element/thread, independent scalar accumulator chains in registers/localstorage selectedbycompiler,256threads/block,one/twoblocks. No sharedmemory or atomics. Actual register/local placement and compiled eliminated instruction counts unprofiled.",
+        "layout": "Guarded in-place contiguous FP32/FP64 data vector,8 guards eachside. Actual GPU buffer is copied back before each timed launch as exact inputecho, then full postkernel buffer captured. Same16 physicalguards read before/after, nottwoindependent allocations.",
+        "precision": {
+          "storage": [
+            "Float32_input_output",
+            "Float64_input_output"
+          ],
+          "compute": [
+            "Float32_arithmetic_fma",
+            "Float64_arithmetic_fma",
+            "Float32_initial_literals_promoted_to_Float64_when_applicable"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread communication or device workgroup barriers",
+          "Host completion after each of192 source network launches"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0,
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "actual_dynamic_executed_operations": "unmeasured; sourcecounts only"
+        },
+        "launch_geometry": "Source256threads, N256/512 exactlydivisible.192 launches eachtrial andmatching preexecution inputcopy/readback outsideROI.",
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment. Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops",
+        "numerical_contract": "All20 artifacts228673 Float64 lossless encoded words:75073 exactprefix+73728 completeoutputs+73728 actualpreexecution inputecho+6144guardchecks(3072 physicalguards). Independent per-dtype scalar rounded recurrence plus bothrefs. Exact Add/Mul/zero-repeat; fixedfloatingbudget on MAdd/MulMAdd; noNaN/Infaccepted.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.005120352,
+          0.004613461,
+          0.004402825,
+          0.004206966999999998,
+          0.004222623999999999
+        ],
+        "mean_last_four_seconds": 0.00436146925,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/maxFlops-julia/maxFlops-julia-cuda.jl/main.jl",
+            "sha256": "ec46d5b899beaf2580e1f19ef664ffae97d2a5f6ef9fda73eae37c1a4e4566bd"
+          },
+          {
+            "path": "src/maxFlops-julia/study_common.jl",
+            "sha256": "7026f6eceb078180178d0d9b80b9e5d5d1ad59ee0a920b0735b8236a6950862a"
+          },
+          {
+            "path": "src/maxFlops-julia/arithmetic_device.jl",
+            "sha256": "74c8a23d1bc784310ed467c613a36730b855084b97cb995bfd93074dc3ca5f91"
+          }
+        ],
+        "implementation_source_digest": "b7a8be59a4bfeec8c331ea53ef856df9b12d1295449154bf9390f449b869274f"
+      },
+      "ka": {
+        "benchmark_id": "maxFlops",
+        "configuration_id": "maxFlops_all16_true_unroll_FP32_FP64_finite_runtime_controls_192paths_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b",
+        "status": "verified",
+        "algorithm": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored. 192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+        "work_item_mapping": "One output element/thread, independent scalar accumulator chains in registers/localstorage selectedbycompiler,256threads/block,one/twoblocks. No sharedmemory or atomics. Actual register/local placement and compiled eliminated instruction counts unprofiled.",
+        "layout": "Guarded in-place contiguous FP32/FP64 data vector,8 guards eachside. Actual GPU buffer is copied back before each timed launch as exact inputecho, then full postkernel buffer captured. Same16 physicalguards read before/after, nottwoindependent allocations.",
+        "precision": {
+          "storage": [
+            "Float32_input_output",
+            "Float64_input_output"
+          ],
+          "compute": [
+            "Float32_arithmetic_fma",
+            "Float64_arithmetic_fma",
+            "Float32_initial_literals_promoted_to_Float64_when_applicable"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread communication or device workgroup barriers",
+          "Host completion after each of192 source network launches"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0,
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "actual_dynamic_executed_operations": "unmeasured; sourcecounts only"
+        },
+        "launch_geometry": "Source256threads, N256/512 exactlydivisible.192 launches eachtrial andmatching preexecution inputcopy/readback outsideROI.",
+        "backend_extensions": [
+          "CUDAhostallocation/copy/completion only; ordinaryJulia arithmetic/muladd device code and framework-owned indexing/dispatch"
+        ],
+        "host_device_boundary": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment. Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops",
+        "numerical_contract": "All20 artifacts228673 Float64 lossless encoded words:75073 exactprefix+73728 completeoutputs+73728 actualpreexecution inputecho+6144guardchecks(3072 physicalguards). Independent per-dtype scalar rounded recurrence plus bothrefs. Exact Add/Mul/zero-repeat; fixedfloatingbudget on MAdd/MulMAdd; noNaN/Infaccepted.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.005690481000000001,
+          0.004604403000000002,
+          0.004452873,
+          0.004176786000000001,
+          0.004241511
+        ],
+        "mean_last_four_seconds": 0.00436889325,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/maxFlops-julia/maxFlops-julia-KA/main.jl",
+            "sha256": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b"
+          },
+          {
+            "path": "src/maxFlops-julia/study_common.jl",
+            "sha256": "7026f6eceb078180178d0d9b80b9e5d5d1ad59ee0a920b0735b8236a6950862a"
+          },
+          {
+            "path": "src/maxFlops-julia/arithmetic_device.jl",
+            "sha256": "74c8a23d1bc784310ed467c613a36730b855084b97cb995bfd93074dc3ca5f91"
+          }
+        ],
+        "implementation_source_digest": "0a30143be849bf6f47052751bd45984e49c9d613a2ef61133880d78b131393c2"
+      },
+      "jacc": {
+        "benchmark_id": "maxFlops",
+        "configuration_id": "maxFlops_all16_true_unroll_FP32_FP64_finite_runtime_controls_192paths_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "cf744b787b03c8493b45b8c71c718691618248200996dd0ee5349bffcc8b992b",
+        "status": "verified",
+        "algorithm": "Four recurrences: s=v-s; s=(s*s)*v; s=v1-s*v2; s=(v1-v2*s)*s. One/two/four/eight independent accumulators with source-specific initialization and grouped reduction. Explicit source macro expansions are restored. 192 named paths: two precisions,two sizes256/512,three outer repeats0/1/2,four recurrences andfour accumulator counts. Per-lane source counts Add/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 per outer repeat.",
+        "work_item_mapping": "One output element/thread, independent scalar accumulator chains in registers/localstorage selectedbycompiler,256threads/block,one/twoblocks. No sharedmemory or atomics. Actual register/local placement and compiled eliminated instruction counts unprofiled.",
+        "layout": "Guarded in-place contiguous FP32/FP64 data vector,8 guards eachside. Actual GPU buffer is copied back before each timed launch as exact inputecho, then full postkernel buffer captured. Same16 physicalguards read before/after, nottwoindependent allocations.",
+        "precision": {
+          "storage": [
+            "Float32_input_output",
+            "Float64_input_output"
+          ],
+          "compute": [
+            "Float32_arithmetic_fma",
+            "Float64_arithmetic_fma",
+            "Float32_initial_literals_promoted_to_Float64_when_applicable"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread communication or device workgroup barriers",
+          "Host completion after each of192 source network launches"
+        ],
+        "resource_policy": {
+          "shared_bytes": 0,
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "actual_dynamic_executed_operations": "unmeasured; sourcecounts only"
+        },
+        "launch_geometry": "Source256threads, N256/512 exactlydivisible.192 launches eachtrial andmatching preexecution inputcopy/readback outsideROI.",
+        "backend_extensions": [
+          "CUDAhostallocation/copy/completion only; ordinaryJulia arithmetic/muladd device code and framework-owned indexing/dispatch"
+        ],
+        "host_device_boundary": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Compact256/512-element arrays, named finite runtime parameters; one/two256-threadblocks. Not original2m-element repeat5000 CLI or saturating throughput experiment. Full73728outputs finite against independent scalar rounded recurrence, exact Add/Mul/zero-repeat controls, fixed FP32 engineering1e-4+1e-5relative andFP641e-11+1e-12relative. Every preexecution input byte and guard checked exactly. Dualref global FP32budget supplemented by strict independent per-dtype selfchecks.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops",
+        "numerical_contract": "All20 artifacts228673 Float64 lossless encoded words:75073 exactprefix+73728 completeoutputs+73728 actualpreexecution inputecho+6144guardchecks(3072 physicalguards). Independent per-dtype scalar rounded recurrence plus bothrefs. Exact Add/Mul/zero-repeat; fixedfloatingbudget on MAdd/MulMAdd; noNaN/Infaccepted.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.006362751999999999,
+          0.005330789000000001,
+          0.004782633000000002,
+          0.0047675619999999995,
+          0.004804952000000002
+        ],
+        "mean_last_four_seconds": 0.004921484000000001,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/maxFlops-julia/maxFlops-julia-JACC/main.jl",
+            "sha256": "cf744b787b03c8493b45b8c71c718691618248200996dd0ee5349bffcc8b992b"
+          },
+          {
+            "path": "src/maxFlops-julia/study_common.jl",
+            "sha256": "7026f6eceb078180178d0d9b80b9e5d5d1ad59ee0a920b0735b8236a6950862a"
+          },
+          {
+            "path": "src/maxFlops-julia/arithmetic_device.jl",
+            "sha256": "74c8a23d1bc784310ed467c613a36730b855084b97cb995bfd93074dc3ca5f91"
+          }
+        ],
+        "implementation_source_digest": "7911071c0586e22927ea6a545ff987880b907a4e5dac736efc122aee4636dec8"
+      }
+    },
+    "source_sha256": {
+      "src/maxFlops-julia/maxFlops-julia-cuda.jl/main.jl": "ec46d5b899beaf2580e1f19ef664ffae97d2a5f6ef9fda73eae37c1a4e4566bd",
+      "src/maxFlops-julia/maxFlops-julia-KA/main.jl": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b",
+      "src/maxFlops-julia/maxFlops-julia-JACC/main.jl": "cf744b787b03c8493b45b8c71c718691618248200996dd0ee5349bffcc8b992b"
+    },
+    "ontology_sha256": null
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/maxFlops-julia/maxFlops-julia-KA/main.jl",
+    "sha256": "67a990de1dde3e48da005f142f033640a58a64302c91feb927d711c9baa9215b",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": true
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "maxFlops_all16_true_unroll_FP32_FP64_finite_runtime_controls_192paths_v1",
+      "run_id": "20261018T085635342867Z_maxFlops",
+      "result": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "64c751fe6abe806c45e6128bd9d10cf07fe463c0eb399ac4dd6d0695e22c9d8f",
+      "source_hash": "8e7674b14e3f60228d868c680cd89d3db9f69bb183c9c6d787c234664d31d427",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T085635342867Z_maxFlops/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.005690481000000001,
+        0.004604403000000002,
+        0.004452873,
+        0.004176786000000001,
+        0.004241511
+      ],
+      "mean_last_four_seconds": 0.00436889325,
+      "contract": {
+        "inputs": "192 paths:FP32/FP64,N256/512,repeat0/1/2,all16 actual source arithmetic networks. Dense dyadic3.25..6.75 input interval keeps all independent initialized lanes positive. SourceGPU bodies unchanged, named runtimeMulv.5 andMulMAddv1=1/v2=.125 finite controls, originalAdd10/MAdd10,.9899.",
+        "precision": "SourceFP32 andFP64 with F32 initialliteral promotion exactlyretained. Independent scalar IEEEround peroperation andlibm fmaf/fma sourcefusionintent. Actual grouped finalreductions, exact Add/Mul/zero-repeat, fixedengineeringFP32atol1e-4+rtol1e-5 andFP64atol1e-11+rtol1e-12selfchecks. GlobaldualtoleranceFP32 budget doesnotweaken per-field independentFP64 acceptance.",
+        "operator": "Actual source fullyexpanded macros: per-laneAdd/MAdd240/120/60/30,Mul200/100/50/25,MulMAdd160/80/40/20 eachouterrepeat. OriginaldefaultMul1.01 overflow witnesspreservedCPUonly; defaultchaoticMulMAdd3.75,.355 unverified. GenericoldJulia120countswerewrong.",
+        "metric": "Sum192 fullkernel launch+completion regions. Reset/inputpreexecutionGPUreadback, guards, setup/JIT/readback/oracleoutsideROI. Nativeunmodified kernels, Juliafullygeneratedunrollnetworksamecounts. Fivecheckedinprocess trialsmean2\u20135. Nominalsourceopcounts are not dynamic executedFLOPs/roofline/peakthroughput."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
@@ -28,42 +596,114 @@
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "93e3c820ce1fc11f212aad3e",
+        "begin_event_id": "92f8ad2a194f168cec41695d",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T08:56:15.520406+00:00",
+        "usage_event_timestamp": "2026-10-18T08:56:07.435Z",
+        "elapsed_usage_event_start": "2026-10-18T08:54:38.271Z",
+        "delta_usage": {
+          "input_tokens": 533027,
+          "cached_input_tokens": 531200,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2960,
+          "reasoning_output_tokens": 488,
+          "total_tokens": 535987
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 8.085406,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "1ac77796990f46e9bbb0e2a0aa13d54340aa7851fff34737d6ee045314b6576a",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 7.923225,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/maxFlops/ka_translation.jsonl",
+        "evidence_sha256": "70de4ee74a9384ebb499c52cf55e3fa781f26843f654bc14a8fa825f31c9bf91",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/maxFlops/measurement_scope_review.json",
+      "sha256": "9d030c298c784586b86932e2080f6e7a473ff8d86237f0ed77dda270bdee3831",
+      "record": {
+        "benchmark_id": "maxFlops",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/maxFlops-julia-ka/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "f0378809666dd43f59c0830391e276dbf130271bb40c38a561d6db1719602ff7",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/maxFlops-julia-ka/manifest.json",
+        "sha256": "f0378809666dd43f59c0830391e276dbf130271bb40c38a561d6db1719602ff7"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "82de951534d6a6da673129d73274adfe3ad8c4f6",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "KA_generated_unrolled_arithmetic_ordinary_Julia",
+    "annotation_path": ".porting-state/portable_julia/traits/maxFlops.json",
+    "annotation_sha256": "51b4c1306d08c60b81e54683df844b750c2c07276024bc2e9f386369a731fdf6",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

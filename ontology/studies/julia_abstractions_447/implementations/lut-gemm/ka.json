@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "lut-gemm",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/lut-gemm.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,13 +14,619 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "lut-gemm",
+    "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+    "implementation_model": "ka",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79",
+    "status": "verified",
+    "algorithm": "Build256-entry shared half lookup for each8 input elements; source incremental expansion from32/64 columns. Sum4byte lookups per32 packed bits and learned plane scales for two outputs/lane, add optional offset term, packed half2 atomicAdd over K tiles. Clear output inside timed region.",
+    "work_item_mapping": "256 threads/block, each writes one base lookup column and its incremental expansions; two output channels per lane with stride512 inside M tile2048. K tile32biased/64unbiased, group aligned. M tails are even and native m+1 remains valid.",
+    "layout": "Native row-major flattened LUT[KT/8][256], W[K/32][bits][M], alpha[groups][bits][M], offset[groups][M]. Julia identical linear layout and FP16x2 aligned adjacent outputs;8 guards each side of every allocated input/output, empty bias still guarded.",
+    "precision": {
+      "storage": [
+        "UInt32_packed_sign_bitplanes",
+        "Float16_input_learned_scales_offsets_output_shared_LUT",
+        "Float64_lossless_artifact_encoding_only"
+      ],
+      "compute": [
+        "Float16_add_multiply_fma",
+        "Float16x2_atomic_add",
+        "UInt32_bit_extract"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+      "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+      "Packed half2 atomic reduction across K tiles",
+      "Host completion per clear+kernel region"
+    ],
+    "resource_policy": {
+      "shared_bytes_by_bias": {
+        "true": 2048,
+        "false": 4096
+      },
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "extra_work": "none in shared LUT initialization"
+    },
+    "launch_geometry": "Source block256; grid(ceil(M/2048),K/Ktile). Original selected source kernel bodies; initialization/device-only allocation harness scoped separately from original managed class/CLI.",
+    "backend_extensions": [
+      "CUDA inline PTX half add/mul/FMA and atom.add.noftz.f16x2 through framework-owned dispatch; CUDA host allocation/copy/completion"
+    ],
+    "host_device_boundary": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM. True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm",
+    "numerical_contract": "All20 captures 319609 Float64 lossless typed words each: 156931 exact input prefix plus 162678 full output/input/guard fields. Exact all output values against independent integer dense bit expansion; actual payload byte identity and guards. Source original mean-error-only cuBLAS print checker not relied upon.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.00044674199999999997,
+      0.00040437299999999997,
+      0.00029717299999999997,
+      0.000297881,
+      0.00045551300000000006
+    ],
+    "mean_last_four_seconds": 0.000363735,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/lut-gemm-julia/lut-gemm-julia-KA/main.jl",
+        "sha256": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79"
+      },
+      {
+        "path": "src/lut-gemm-julia/study_common.jl",
+        "sha256": "1f8cdb00357dff6d28a655e6b8756c37d5481139d2c756b6684f0c6139267c65"
+      },
+      {
+        "path": "src/lut-gemm-julia/study_device.jl",
+        "sha256": "da1c31e3c764d7a3eab72b4ad450e5b9fa97ce8f1e58853b08562b1a7cba0112"
+      }
+    ],
+    "implementation_source_digest": "fcaa608191e890307151c6e02b14ca75115b405cb5b5875a8ca67dbe67593848"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Build256-entry shared half lookup for each8 input elements; source incremental expansion from32/64 columns. Sum4byte lookups per32 packed bits and learned plane scales for two outputs/lane, add optional offset term, packed half2 atomicAdd over K tiles. Clear output inside timed region.",
+    "implementation_class": "KA_shared_LUT_GEMV_CUDA_half_instruction_atomic_hybrid",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "256 threads/block, each writes one base lookup column and its incremental expansions; two output channels per lane with stride512 inside M tile2048. K tile32biased/64unbiased, group aligned. M tails are even and native m+1 remains valid.",
+    "layout": "Native row-major flattened LUT[KT/8][256], W[K/32][bits][M], alpha[groups][bits][M], offset[groups][M]. Julia identical linear layout and FP16x2 aligned adjacent outputs;8 guards each side of every allocated input/output, empty bias still guarded.",
+    "storage_precision": [
+      "UInt32_packed_sign_bitplanes",
+      "Float16_input_learned_scales_offsets_output_shared_LUT",
+      "Float64_lossless_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float16_add_multiply_fma",
+      "Float16x2_atomic_add",
+      "UInt32_bit_extract"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+      "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+      "Packed half2 atomic reduction across K tiles",
+      "Host completion per clear+kernel region"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes_by_bias": {
+        "true": 2048,
+        "false": 4096
+      },
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled",
+      "extra_work": "none in shared LUT initialization"
+    },
+    "launch_geometry": "Source block256; grid(ceil(M/2048),K/Ktile). Original selected source kernel bodies; initialization/device-only allocation harness scoped separately from original managed class/CLI.",
+    "library_backend_boundary": [
+      "CUDA inline PTX half add/mul/FMA and atom.add.noftz.f16x2 through framework-owned dispatch; CUDA host allocation/copy/completion"
+    ],
+    "host_control_boundary": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+    "support_boundary": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM. True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/lut-gemm-julia/lut-gemm-julia-KA/main.jl",
+        "sha256": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79"
+      },
+      {
+        "path": "src/lut-gemm-julia/study_common.jl",
+        "sha256": "1f8cdb00357dff6d28a655e6b8756c37d5481139d2c756b6684f0c6139267c65"
+      },
+      {
+        "path": "src/lut-gemm-julia/study_device.jl",
+        "sha256": "da1c31e3c764d7a3eab72b4ad450e5b9fa97ce8f1e58853b08562b1a7cba0112"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "lut-gemm",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "compressed_weight_neural_inference_linear_operator",
+      "review_status": "source_reviewed",
+      "scientific_task": "Evaluate a matrix-vector product whose weights are compressed into learned signed bit planes with per-group scales and optional offsets.",
+      "mathematical_operation": "y[m]=sum_k x[k]*(bias[group(k),m]+sum_b alpha[group(k),b,m]*sign(W[k,b,m])). Bit sign is +1 for set bits and -1 for unset bits. Alpha is learned per group, bit plane and output; it is not a fixed power-of-two integer quantizer.",
+      "discretization": "Seven legal even-output configurations: M34/514/2050,K64/128/256,8/4/3 planes, group sizes32/64/128, bias and no-bias, plus zero-input control. Source Ktile32 with bias,64 without bias, M_tile2048 and256threads retained.",
+      "accuracy_requirements": "Every output and actual input/guard value exact against independent dense integer weighted matvec. Dense quarter-integer inputs and half scales \u00b11/128 give all intermediate values exactly representable in half: absolute integer coefficient bound <=2048 on1/512 lattice. All32 packed bit positions active except explicit zero control.",
+      "input_size_regime": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM.",
+      "precision_sensitivity": "True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+      "community_use_case": "Source NAVER LUT-GEMM compressed-weight inference operator, useful to study learned bit-plane lookup GEMV mapping. No end-to-end model quality, quantization calibration or production inference recommendation.",
+      "description": "Historical Julia source is dense Float32 matvec without packed planes, learned scales, offsets or LUT. Preserve it and restore actual source operator and shared lookup/packed atomic mapping in all Julia versions.",
+      "provenance": "Original source mv_fp16.h and kernels.cu, NAVER Cloud copyright2024 Apache2.0. Source headers and full originals archived. Independent oracle expands every packed bit directly; no LUT source reuse.",
+      "source_evidence": [
+        {
+          "path": "src/lut-gemm-cuda/mv_fp16.h",
+          "sha256": "331b21634ad2443d9de3c28bde442ed59575c9f3732deaf90e1fca1e8e43b3bd"
+        },
+        {
+          "path": "src/lut-gemm-cuda/kernels.cu",
+          "sha256": "2490e5a367d9aaefca0a17a87f1a6656bec135be0b5de6b41edf50c1ef169f06"
+        },
+        {
+          "path": "src/lut-gemm-cuda/nQWeight_fp16.cu",
+          "sha256": "9023b7f0192accd44514c1acab03b9de3aed72c54c544e10841846fc6cba2882"
+        },
+        {
+          "path": "src/lut-gemm-julia/original_main.jl",
+          "sha256": "0ef88565f62b8514834555d26b4079e1aaf556c913f356e6e14c12b6eb3dd7bd"
+        }
+      ]
+    },
+    "primary_motif": "shared_lookup_table_compressed_bitplane_GEMV_with_packed_half_atomic_reduction",
+    "storage_precision": [
+      "UInt32_packed_sign_bitplanes",
+      "Float16_input_learned_scales_offsets_output_shared_LUT",
+      "Float64_lossless_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float16_add_multiply_fma",
+      "Float16x2_atomic_add",
+      "UInt32_bit_extract"
+    ],
+    "synchronization": [
+      "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+      "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+      "Packed half2 atomic reduction across K tiles",
+      "Host completion per clear+kernel region"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same source LUT construction and packed byte lookup/output-pair half2 atomic reduction, same grid/block/tile settings. Native source functions unchanged. CUDA intrinsic FP16 instructions are backend extensions in all Julia models. JACC copies shared template before LUT fill; Julia fill! clear dispatch differs from native cudaMemset."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_restored_compressed_LUT_GEMV_CUDA_half_instruction_atomic_hybrid",
+      "ka": "KA_shared_LUT_GEMV_CUDA_half_instruction_atomic_hybrid",
+      "jacc": "JACC_shared_LUT_GEMV_CUDA_half_instruction_atomic_hybrid"
+    },
+    "timing_scope": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+    "verification_contract": "All20 captures 319609 Float64 lossless typed words each: 156931 exact input prefix plus 162678 full output/input/guard fields. Exact all output values against independent integer dense bit expansion; actual payload byte identity and guards. Source original mean-error-only cuBLAS print checker not relied upon.",
+    "keyconfounds": [
+      "Named dense exactly representable half fixture class; arbitraryhalf rounding or trained-model quality unverified",
+      "Source operator is learned-bitplane GEMV, not fixed2^bit INT8 dequantization or batched GEMM",
+      "Julia backend-specific truehalf arithmetic and packed half2 atomic; no pure portable implementation claim",
+      "Native defaultnvcc SASS fuses half operations; named dyadic proof avoids prescribing general contraction equivalence",
+      "Native cudaMemset versus Julia fill! output clear included inside timed scope; separate dispatch cost may differ",
+      "JACC whole shared-template initialization and entry barrier are extra work; explicit exact2048/4096 shared bytes",
+      "Shared reference/device helper authored in reference repair phase and reused KA then JACC; not independent cold-start translation costs",
+      "Historical Julia algorithm restoration is S1 reference work, not compiler rejection; first native host half-bit checker build rejection is T1 only"
+    ],
+    "boundary_rounding_policy": "Only evenM and K divisible selectedtile, group_size multiple selectedtile and dividingK. No oddM/partialK known-unsafe GPU run. Half sum/fma and packed half2 atomic, all accepted values exact on bounded lattice. Outputcanary+.5 reset outsideROI, clear0 insideROI, guard-123; no NaN pass.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "lut-gemm",
+        "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "e994c7ad0af461029053314445f70b47c8861c6dc8d8e96826e3e9dd24418a9d",
+        "status": "verified",
+        "algorithm": "Build256-entry shared half lookup for each8 input elements; source incremental expansion from32/64 columns. Sum4byte lookups per32 packed bits and learned plane scales for two outputs/lane, add optional offset term, packed half2 atomicAdd over K tiles. Clear output inside timed region.",
+        "work_item_mapping": "256 threads/block, each writes one base lookup column and its incremental expansions; two output channels per lane with stride512 inside M tile2048. K tile32biased/64unbiased, group aligned. M tails are even and native m+1 remains valid.",
+        "layout": "Native row-major flattened LUT[KT/8][256], W[K/32][bits][M], alpha[groups][bits][M], offset[groups][M]. Julia identical linear layout and FP16x2 aligned adjacent outputs;8 guards each side of every allocated input/output, empty bias still guarded.",
+        "precision": {
+          "storage": [
+            "UInt32_packed_sign_bitplanes",
+            "Float16_input_learned_scales_offsets_output_shared_LUT",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float16_add_multiply_fma",
+            "Float16x2_atomic_add",
+            "UInt32_bit_extract"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+          "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+          "Packed half2 atomic reduction across K tiles",
+          "Host completion per clear+kernel region"
+        ],
+        "resource_policy": {
+          "shared_bytes_by_bias": {
+            "true": 2048,
+            "false": 4096
+          },
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "extra_work": "none in shared LUT initialization"
+        },
+        "launch_geometry": "Source block256; grid(ceil(M/2048),K/Ktile). Original selected source kernel bodies; initialization/device-only allocation harness scoped separately from original managed class/CLI.",
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM. True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm",
+        "numerical_contract": "All20 captures 319609 Float64 lossless typed words each: 156931 exact input prefix plus 162678 full output/input/guard fields. Exact all output values against independent integer dense bit expansion; actual payload byte identity and guards. Source original mean-error-only cuBLAS print checker not relied upon.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000322743,
+          0.00029094200000000003,
+          0.000211572,
+          0.00029470200000000004,
+          0.000221713
+        ],
+        "mean_last_four_seconds": 0.00025473225,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/lut-gemm-julia/lut-gemm-julia-cuda.jl/main.jl",
+            "sha256": "e994c7ad0af461029053314445f70b47c8861c6dc8d8e96826e3e9dd24418a9d"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_common.jl",
+            "sha256": "1f8cdb00357dff6d28a655e6b8756c37d5481139d2c756b6684f0c6139267c65"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_device.jl",
+            "sha256": "da1c31e3c764d7a3eab72b4ad450e5b9fa97ce8f1e58853b08562b1a7cba0112"
+          }
+        ],
+        "implementation_source_digest": "602812566fe7fbb688175658782f74b45901cdcb8c900f72438c3ce959925f45"
+      },
+      "ka": {
+        "benchmark_id": "lut-gemm",
+        "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79",
+        "status": "verified",
+        "algorithm": "Build256-entry shared half lookup for each8 input elements; source incremental expansion from32/64 columns. Sum4byte lookups per32 packed bits and learned plane scales for two outputs/lane, add optional offset term, packed half2 atomicAdd over K tiles. Clear output inside timed region.",
+        "work_item_mapping": "256 threads/block, each writes one base lookup column and its incremental expansions; two output channels per lane with stride512 inside M tile2048. K tile32biased/64unbiased, group aligned. M tails are even and native m+1 remains valid.",
+        "layout": "Native row-major flattened LUT[KT/8][256], W[K/32][bits][M], alpha[groups][bits][M], offset[groups][M]. Julia identical linear layout and FP16x2 aligned adjacent outputs;8 guards each side of every allocated input/output, empty bias still guarded.",
+        "precision": {
+          "storage": [
+            "UInt32_packed_sign_bitplanes",
+            "Float16_input_learned_scales_offsets_output_shared_LUT",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float16_add_multiply_fma",
+            "Float16x2_atomic_add",
+            "UInt32_bit_extract"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+          "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+          "Packed half2 atomic reduction across K tiles",
+          "Host completion per clear+kernel region"
+        ],
+        "resource_policy": {
+          "shared_bytes_by_bias": {
+            "true": 2048,
+            "false": 4096
+          },
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "extra_work": "none in shared LUT initialization"
+        },
+        "launch_geometry": "Source block256; grid(ceil(M/2048),K/Ktile). Original selected source kernel bodies; initialization/device-only allocation harness scoped separately from original managed class/CLI.",
+        "backend_extensions": [
+          "CUDA inline PTX half add/mul/FMA and atom.add.noftz.f16x2 through framework-owned dispatch; CUDA host allocation/copy/completion"
+        ],
+        "host_device_boundary": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM. True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm",
+        "numerical_contract": "All20 captures 319609 Float64 lossless typed words each: 156931 exact input prefix plus 162678 full output/input/guard fields. Exact all output values against independent integer dense bit expansion; actual payload byte identity and guards. Source original mean-error-only cuBLAS print checker not relied upon.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00044674199999999997,
+          0.00040437299999999997,
+          0.00029717299999999997,
+          0.000297881,
+          0.00045551300000000006
+        ],
+        "mean_last_four_seconds": 0.000363735,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/lut-gemm-julia/lut-gemm-julia-KA/main.jl",
+            "sha256": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_common.jl",
+            "sha256": "1f8cdb00357dff6d28a655e6b8756c37d5481139d2c756b6684f0c6139267c65"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_device.jl",
+            "sha256": "da1c31e3c764d7a3eab72b4ad450e5b9fa97ce8f1e58853b08562b1a7cba0112"
+          }
+        ],
+        "implementation_source_digest": "fcaa608191e890307151c6e02b14ca75115b405cb5b5875a8ca67dbe67593848"
+      },
+      "jacc": {
+        "benchmark_id": "lut-gemm",
+        "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "f6920feb7a1ca0a0d1e9de5b8f8acfd79dd1eb43bc0bd83142898b384e28dd8d",
+        "status": "verified",
+        "algorithm": "Build256-entry shared half lookup for each8 input elements; source incremental expansion from32/64 columns. Sum4byte lookups per32 packed bits and learned plane scales for two outputs/lane, add optional offset term, packed half2 atomicAdd over K tiles. Clear output inside timed region.",
+        "work_item_mapping": "256 threads/block, each writes one base lookup column and its incremental expansions; two output channels per lane with stride512 inside M tile2048. K tile32biased/64unbiased, group aligned. M tails are even and native m+1 remains valid.",
+        "layout": "Native row-major flattened LUT[KT/8][256], W[K/32][bits][M], alpha[groups][bits][M], offset[groups][M]. Julia identical linear layout and FP16x2 aligned adjacent outputs;8 guards each side of every allocated input/output, empty bias still guarded.",
+        "precision": {
+          "storage": [
+            "UInt32_packed_sign_bitplanes",
+            "Float16_input_learned_scales_offsets_output_shared_LUT",
+            "Float64_lossless_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float16_add_multiply_fma",
+            "Float16x2_atomic_add",
+            "UInt32_bit_extract"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA shared LUT completion barrier before consumers",
+          "JACC whole template copy and entry barrier in addition to LUT completion barrier",
+          "Packed half2 atomic reduction across K tiles",
+          "Host completion per clear+kernel region"
+        ],
+        "resource_policy": {
+          "shared_bytes_by_bias": {
+            "true": 2048,
+            "false": 4096
+          },
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled",
+          "extra_work": "whole template copy plus entry barrier"
+        },
+        "launch_geometry": "Source block256; grid(ceil(M/2048),K/Ktile). Original selected source kernel bodies; initialization/device-only allocation harness scoped separately from original managed class/CLI.",
+        "backend_extensions": [
+          "CUDA inline PTX half add/mul/FMA and atom.add.noftz.f16x2 through framework-owned dispatch; CUDA host allocation/copy/completion"
+        ],
+        "host_device_boundary": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM. True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm",
+        "numerical_contract": "All20 captures 319609 Float64 lossless typed words each: 156931 exact input prefix plus 162678 full output/input/guard fields. Exact all output values against independent integer dense bit expansion; actual payload byte identity and guards. Source original mean-error-only cuBLAS print checker not relied upon.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000550767,
+          0.000538926,
+          0.000401773,
+          0.000370206,
+          0.0005196850000000001
+        ],
+        "mean_last_four_seconds": 0.0004576475,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/lut-gemm-julia/lut-gemm-julia-JACC/main.jl",
+            "sha256": "f6920feb7a1ca0a0d1e9de5b8f8acfd79dd1eb43bc0bd83142898b384e28dd8d"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_common.jl",
+            "sha256": "1f8cdb00357dff6d28a655e6b8756c37d5481139d2c756b6684f0c6139267c65"
+          },
+          {
+            "path": "src/lut-gemm-julia/study_device.jl",
+            "sha256": "da1c31e3c764d7a3eab72b4ad450e5b9fa97ce8f1e58853b08562b1a7cba0112"
+          }
+        ],
+        "implementation_source_digest": "08abf2f1f5df011dd613045c6a056f965617ad5c5f76369b51af9e988616749d"
+      }
+    },
+    "source_sha256": {
+      "src/lut-gemm-julia/lut-gemm-julia-cuda.jl/main.jl": "e994c7ad0af461029053314445f70b47c8861c6dc8d8e96826e3e9dd24418a9d",
+      "src/lut-gemm-julia/lut-gemm-julia-KA/main.jl": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79",
+      "src/lut-gemm-julia/lut-gemm-julia-JACC/main.jl": "f6920feb7a1ca0a0d1e9de5b8f8acfd79dd1eb43bc0bd83142898b384e28dd8d"
+    },
+    "ontology_sha256": null
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/lut-gemm-julia/lut-gemm-julia-KA/main.jl",
+    "sha256": "9db225085a38842e5dc30b57267b881107e5a77e411ffdc816df4ed87a000e79",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        5
+      ],
+      "barrier": [
+        6
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "lut_gemm_packed_FP16_learned_bitplanes_dense_exact_dyadic_7cases_v1",
+      "run_id": "20261018T084754136421Z_lut-gemm",
+      "result": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "4412c60c598a045d35de88a7b2af103aa509730dc000e00adb7740d888bdf47c",
+      "source_hash": "2fc7f13a9b4a1a987e78bdb0bb595ed787ff954ecc7a36bb449aec704a3aeb2b",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T084754136421Z_lut-gemm/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00044674199999999997,
+        0.00040437299999999997,
+        0.00029717299999999997,
+        0.000297881,
+        0.00045551300000000006
+      ],
+      "mean_last_four_seconds": 0.000363735,
+      "contract": {
+        "inputs": "Seven legal M even/Ktile/group aligned cases, 8/4/3 learned \u00b11 bitplanes with all32 packed positions active, bias/no-bias and zero-input control. Exact F16quarter inputs, learned signedF16scales/bias1/128, dense packedUInt32 weights. Actual allinput bitpayload+guards echoed.",
+        "precision": "Native truehalf LUT/sums/learnedscale accumulation and packedhalf2 atomics, notFloat32substitute. Source defaultnvcc SASS selected32/64 containsHFMA2 despite separate PTXmul/add. Named dyadic class proves every intermediate exact representablehalf, so fusion and atomicorder independent here, not generalrandomhalf stability certificate.",
+        "operator": "Source full compressed GEMV M_inputs=1, outputM34/514/2050,K64/128/256, bits8/4/3, learned pergroup/bit/output alpha notfixedbinary2^bit quantization. Bias corresponds additive dequantoffset. Independentdense integer weightedmatvecoracle doesnot reuseLUTalgorithm.",
+        "metric": "Sum7 outputcudaMemset-equivalent clear+sourceLUTkernel+completion regions. Payload .5canary resetoutsideROI; clearINSIDEROIall4. Allocation,inputcopies,lookup-templatecreation,JITwarmup,oracle/readback/serializationoutside. Fivecheckedinprocess trials mean2\u20135."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
@@ -28,42 +634,114 @@
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "6c28a41072a6422b9daf198a",
+        "begin_event_id": "8c17d6ad64c802d461cb0a74",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T08:47:30.296422+00:00",
+        "usage_event_timestamp": "2026-10-18T08:47:19.576Z",
+        "elapsed_usage_event_start": "2026-10-18T08:46:15.210Z",
+        "delta_usage": {
+          "input_tokens": 398601,
+          "cached_input_tokens": 389632,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1382,
+          "reasoning_output_tokens": 170,
+          "total_tokens": 399983
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 10.720422,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "ae9979081083d12ac9df84427940d4da73a5ea08fa46c93b18902725250d081a",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 5.677036,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lut-gemm/ka_translation.jsonl",
+        "evidence_sha256": "7d10ea7cefd97022dcc773ff0e323d41cc5611a94e2e5904b66d3193f26739ca",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/lut-gemm/measurement_scope_review.json",
+      "sha256": "8142f84721f31099b9bd4968ed769aa48f0a2f65d19e0df194a77922c0adb8c5",
+      "record": {
+        "benchmark_id": "lut-gemm",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/lut-gemm-julia-ka/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "d6f9c260b72819bc82b3729fc0d9ab7fcf4c57d6268c5d9b6c41788fabbc65cb",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/lut-gemm-julia-ka/manifest.json",
+        "sha256": "d6f9c260b72819bc82b3729fc0d9ab7fcf4c57d6268c5d9b6c41788fabbc65cb"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "a44ee1fe7eaf7c73f84bdd7a3f496ffc4bdc46f1",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "KA_shared_LUT_GEMV_CUDA_half_instruction_atomic_hybrid",
+    "annotation_path": ".porting-state/portable_julia/traits/lut-gemm.json",
+    "annotation_sha256": "ecc4753222f9ba5155d942da19a5ec79ef0ef81852ad28a340735a35cff228b8",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }
