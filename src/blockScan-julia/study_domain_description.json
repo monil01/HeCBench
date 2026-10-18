@@ -1,0 +1,126 @@
+{
+  "scientific_intent": {
+    "primary_family": "domain_neutral_primitives",
+    "primary_domain": "parallel_exclusive_prefix_sum",
+    "review_status": "source_reviewed",
+    "scientific_task": "Compute every exclusiveInt32prefixsum and total of a1024-elementtile",
+    "mathematical_operation": "output[i]=sum(input[1:i-1]); aggregate=sum(input)",
+    "discretization": "3named1024-itemfixtures,6native(threads,items)geometries,3nativeCUBstrategies;54pathssingleblock",
+    "accuracy_requirements": "Exactintegeragreement forall1025payloadvalues/path and16guardvalues/path; everypartialsumfitsInt32; Int64CPUoracle/differenceidentity.",
+    "input_size_regime": "oneblock/tile1024; allsourceBT1024..32; notoverlappingmulti-blockdefaultCLIthroughput",
+    "precision_sensitivity": "BoundedexactInt32arithmetic, no floating tolerance; guardbytesexact.",
+    "community_use_case": "Prefixsum isadomain-neutralparallelprimitive useful foroffset/index construction andcompaction; illustrativeuses, notclaimedoriginalapplicationprovenance.",
+    "description": "Native CUBexample genuinely benchmarks3algorithms. HistoricalCUDAjl genuinely computesexactprefixes seriallyinthread0, despiteprintingthreeCUBlabels. Portableversions implementonecooperativeBlellochscan and arecomparedwithall3native strategies without claimingidenticalalgorithms.",
+    "provenance": "ReviewedactualnativeCUBsample/historicalCUDAjl source; originalCUBlicenseheader preservedinunchangednativefile. No inferredscientificapplication orhardwarebottleneck."
+  },
+  "primary_motif": "block_exclusive_scan",
+  "storage_precision": [
+    "Int32"
+  ],
+  "compute_precision": [
+    "Int32"
+  ],
+  "synchronization": [
+    "hostCUDA.synchronizeatROIbounds"
+  ],
+  "synchronizations": {
+    "cuda_jl": [
+      "nointer-threadcooperation",
+      "hostCUDA.synchronizeatROIbounds"
+    ],
+    "ka": [
+      "22unconditionalworkgroupbarriers",
+      "hostCUDA.synchronizeatROIbounds"
+    ],
+    "jacc": [
+      "22explicitworkgroupbarriers+JACC.sharedtemplatecopybarrier",
+      "hostCUDA.synchronizeatROIbounds"
+    ]
+  },
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "ThreeCUBstrategies vsoriginalCUDAjlserialscan vsportableBlellochsharedtile; mathematicaloperator/inputs/54pathcount matched, internalalgorithm/transposition/resourceworkdiffers."
+  },
+  "reference_class": "historical_genuine_serial_CUDAjl_scan",
+  "ka_class": "cooperative_Blelloch_KA_scan",
+  "jacc_class": "cooperative_Blelloch_JACC_scan",
+  "verification_contract": "Full59286Int32artifact:3072inputprefix,54\u00d7(1024exclusiveprefix+aggregate+16guards). All20CPUchecks andeverytargettrialvsBOTHrefs exact, Int64CPUoracle anddifferenceidentity; fullinputsdevicecopychecked.",
+  "keyconfounds": [
+    "Native3CUBstrategies vsoneJuliaalgorithmpermodel; portablelabelsnotdifferentimplementations",
+    "CUDAjloneactivethread vscooperativeKA/JACC",
+    "JACCcopies1024templatezerosbeforeoverwritingwithinput",
+    "SourceCUBwarp-transpose blockedload/store notliteralportablecoalescedsharedtileload/store",
+    "Grid1only; defaultmulti-blockcoincidentwrites/sourceCLIunverified",
+    "Allsizes1024, noarbitrarylength/tails",
+    "Fiveoneprocessoutertrials/internal3repeats; notstatisticalindependent54experiments",
+    "Resourcesunprofiled; no intrinsicframework-onlycausalclaim"
+  ],
+  "boundary_rounding_policy": "ExactInt32nocastrelaxation; sumsboundedwithinInt32;16exactguards/path; blockaligned1024items,no tails",
+  "algorithm": "Exclusiveintegerprefixscan; actualmodelalgorithmrecordedseparately",
+  "algorithms": {
+    "cuda_jl": "Unchangedhistoricalserialthread0loop readingall1024items, writes1024prefixes+aggregate",
+    "ka": "Cooperativeinplaceshared-memoryBlellochupsweep10levels/rootclear/downsweep10levels",
+    "jacc": "SamecooperativeBlellochscheme usingJACC.sharedfull1024Int32templatecopy/explicit4096Bdynamicshared"
+  },
+  "work_item_mapping": "oneblockper1024tile,6blockthreadsvalues1024,512,256,128,64,32; repeatednativealgorithm-label paths",
+  "work_item_mappings": {
+    "cuda_jl": "Oneactivethread0perspecifiedblock; remainingthreadsdo notcompute",
+    "ka": "AllBTlanes cooperativelyload/scan/store1024shareditems, BT-strided loops",
+    "jacc": "AllBTlanes cooperativelycopyJACCtemplateandload/scan/store1024items, BT-strided loops"
+  },
+  "layout": "3contiguous1024Int32inputs;54contiguous1041Int32outputs each8prefixguards+1025payload+8suffixguards",
+  "memory_access": {
+    "cuda_jl": "Serialcontiguousglobalinputread/outputwrite bythread0",
+    "ka": "BT-stripedglobalto4KBsharedtile, binarytreeupdates, stripedglobalstore",
+    "jacc": "JACCtemplatecopy+BT-stripedglobaltosharer, binarytree, stripedglobalstore"
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "private_scalar_accumulator": "Int32"
+    },
+    "ka": {
+      "shared_bytes_requested": 4096,
+      "barriers": 22,
+      "hardware_registers_spills_unprofiled": true
+    },
+    "jacc": {
+      "shared_bytes_requested": 4096,
+      "LaunchSpec": "explicitthreadsBT,blocks1,shmem4096,syncfalse",
+      "barriers": 23,
+      "template_bytes": 4096,
+      "hardware_registers_spills_unprofiled": true
+    }
+  },
+  "launch_geometry": {
+    "grid_size": 1,
+    "block_threads": [
+      1024,
+      512,
+      256,
+      128,
+      64,
+      32
+    ],
+    "tile": 1024,
+    "paths": 54
+  },
+  "support_boundary": "Exactsingleblock1024Int32scan,3fixtures/6geometries/all3nativealgorithms; noCUDAjlCUBalgorithmidentityclaim, nooriginalmulti-blockCLI/tails/otherprecisionverification",
+  "supported_features": [
+    "1024threadworkgroup",
+    "cooperativesharedmemory",
+    "workgroupbarriers",
+    "Int32exactexclusiveprefix"
+  ],
+  "interpretation": "Thisdomain-neutralprimitiveillustratesalgorithm/mappingcost: historicalserialCUDAjl iscorrect, nativeCUB usesoptimizedcooperativevariants, KA/JACC useonecooperativeBlellochscheme. Numericalagreement doesnotmake theirruntime an intrinsicabstraction comparison; sourceCUBalgorithmparameters shouldnotbeinterpretedasimplementedJuliaAPIstrategies.",
+  "attempt_overrides": {
+    "jacc": {
+      "candidate_attempts": 2,
+      "compiler_check_invocations": 2,
+      "runtime_repair_rounds": 1,
+      "compiler_feedback_repair_rounds": 0,
+      "first_compilation_attempt": 1,
+      "first_verified_success_attempt": 2
+    }
+  }
+}
