@@ -1,0 +1,29 @@
+# extrema: Identify source-defined relative maxima along a sampled one-dimensional signal or selected row/column axis of a two-dimensional grid
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: extrema_148paths_all4types_clip1to128_wrap_nan_inf_plateau_v1
+
+## Scientific intent and fidelity
+
+HistoricalJulia onlylaunchesonesmokemarker andprints96fabricatedtiminglines, preservedintact. NewCUDAjl/KA/JACCcomputeactualsource1D/2Dfullmasks forall4types. Independentcoordinateoracle usesclamp/mathmodulo neighborhoods andexplicitasymmetrictiepredicates; actualtypedinputbits/guards checkedwithoutfloatconversion.
+
+Scientific task: For eachsample andalloffsets1..order, require sample>positive_neighbor andsample>=negative_neighbor, in1Doralongselected2Daxis. Requirements and precision sensitivity: 123972UInt64artifactwords/trial:3260exactactualtypedinput/dimensionprefix +120712fullmask/inputecho/guardwords. All57988maskbits/trial exactbothrefs andindependentcoordinateoracle;4736physicalguards andtypedinputbitsecho exact. 148paths,all96originalparametercombos onsmallfixtures pluswrap/degeneratecontrols. Inputrawbits avoidInt64widening andNaNcanonicalization.. Community use case: Genericrelativepeak identification in sampled signals/images; sourcehasNVIDIABOOLRELEXTREMAheaders butnoparticularscientificapplicationprovenance inferred. Nopeakprominence/noisefiltering/physicaleventvalidation.. Provenance/uncertainty: NativeNVIDIA2019-2020Apache2main/kernels/referenceheaders. SourceCPUchecker sharesstrictpositive/nonstrictnegativepredicate; thisisrecordedcontractnotunilaterallychangedtoidealstrictpeaksemantics.. Domain-neutral examples are illustrative uses, not claimed original application provenance.
+
+## Numerical evidence and implementation ontology
+
+123972UInt64artifactwords/trial:3260exactactualtypedinput/dimensionprefix +120712fullmask/inputecho/guardwords. All57988maskbits/trial exactbothrefs andindependentcoordinateoracle;4736physicalguards andtypedinputbitsecho exact. 148paths,all96originalparametercombos onsmallfixtures pluswrap/degeneratecontrols. Inputrawbits avoidInt64widening andNaNcanonicalization.
+
+Mapping: Sameoneelement/lane 1Dgridstride256threads and2D16x16threadsceilgeometry; sourceclamp/singlewrapandstrictforward/nonstrictbackwardrules preserved. NativeBool1bytestore representedJuliaUInt8(0/1), physicalguardstypedrawbits.. Support boundary: 148typedrelative-max smallcases coveringall96originalparamcombos andlegalwrap/NaN/Inf/Int64extreme/plateau/singletoncontrols; notfull1M-elementCLI oroutofdomainwraporder.. Per-model implementation records include actual algorithm, layout, mapping, synchronization, resources, pinned versions, allfive samples and hash-linked evidence. The scientific requirement is distinct from the implementation choice.
+
+Accepted bundle `.porting-state/portable_julia/runs/20261018T062434577629Z_extrema/`. Mean trials 2–5 microseconds: cuda 507.82352750, cuda_jl 1146.42877500, ka 1450.91780000, jacc 4268.54911750. Timed scope: Sum148hostinclusive100launchbatchtimes /100, all5checkedmean2-5, matching256thread1D and16x16thread2Dceilgrids; inputcopy/reset/JIT/oracle/readbackoutside. Notoriginal1M-elementCLIwalltime.. Allfivechecks passbothreferences; firsttimingonlyexcluded, nooutlierdrop. Candidate/checkhistory is ineachmodelmanifest; reference/adapterrepairs separatefromportabletranslation. HistoricalCUDA.jlcost remainsunknown, notzero. Current tokenproxies arepartialretainedsourcecharacters/4, input/totalunknown, sharedadaptercountedonce.
+
+## Interpretation for domain scientists
+
+Numericalverificationofcomparisonoperatorsneedsboundary/tie/NaNcontracts aswellasdatatypeidentity. PureKA/JACC canexpressfulltyped1D/2Doperator; preservingrawinputbits avoidsincorrectFloat64serialization ofInt64extremes. StaticO(n*order)neighborwork isclearfromsource, butsmallhostaggregatecannotassignactualbottleneck/rooflineposition.
+
+Confounds: All96originalparametercombinationscoveredon257/17x31namedfixtures, notoriginal1M-elementfullCLI; Wrapsingleperiodsourceadjust onlysafeorder<=axislength, respectedallwrapcases; noorder>lengthcertificate; Sourcepositive-neighborstrict>/negative>= chooseslastplateaumember, notstrictbothsides/prominence/physicalpeakvalidation; InputNaNs areintentionalorderedcomparisoncontrols, notNaNoutputacceptedasmatching; outputalwaysfullBool0/1; UInt64artifactencodesactualrawInt32/Int64/F32/F64bits andBoolbytes, notUInt64GPUcompute orFloat64arithmetic; GuardedmaskstorageJuliaUInt8whileoriginalboolsizeof1 checkedstatic, payloadsemantics0/1 identical; Hostinclusive100launchaggregate andJACCDictspec lookupincluded; actualloadreuse/branchoptimization/cache/occupancyunprofiled; Historicaltiminglines-onlyreference archived, newreferenceauthoredsharedhelper thenKA/JACCreuse; notcoldintrinsicframeworktokenranking; Typedparameteraggregate mixesorders/axes/precisions; allperpathtimingsandtruecounts retained, nooutlierdrop. RQ1/E1 has configuration-scoped numerical fidelity; RQ2/E2 separates model/phase taxonomy and effort; RQ3/E3 has paired four-model timings; RQ4/E4 links scientific intent to audited implementation traits, with profiler mechanisms pending; RQ5/E5 gives no universal winner. No unsupported feature is inferred from an unfinished translation or an environment error.
+
+## Predicate and raw-bit evidence
+
+Scientific contract issource-asymmetricrelative maximum, notstrictbothsides/promenence. RawUInt64encodingpreserves actualInt64extremes/IEEEinputs withoutprecisionloss, all57988maskbits/4736guards/trial fullchecked. NaNinputcomparisonsfalse, noNaNoutputpass. Uncomputedfloatingmaxerrorsnull; actualwordmismatches0. NoactualGPUfailure/repair orunsupportedclaim, historicalsmokemarkerS1separate. Allperpathtimings/spikesretained, no unprofiledrooflinecauseclaim.
