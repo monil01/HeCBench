@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "hybridsort",
   "implementation_model": "ka",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/hybridsort.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,831 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "review_status": "actualpermodelsource_and_all5fullsorted_artifacts_reviewed",
+    "implementation_class": "mixed_host_device_pipeline",
+    "device_component_class": "hybrid_device_intrinsics",
+    "algorithm": "Source1024histogram\u2192CPUadaptivepivot\u2192bucketcount/prefix/scatter\u2192sort4\u2192iterativemerge\u2192pack; no vendorGPU sort delegated",
+    "work_item_mapping": "Hist64groups\u00d796threads; bucketceilN4096\u00d732;prefix8\u00d7128;sort4\u00d7256; sourceadaptive208threadmerge/floor8groups;pack2Dgroups\u00d71024buckets",
+    "layout": "FlatFloat32keys; tuple4loads/stores, flatblock\u00d7bucketUInt32prefixes;UInt32metadata",
+    "storage_precision": [
+      "Float32_keys",
+      "UInt32_histogram_prefix_offsets",
+      "Int32_bucket_indices_sizes"
+    ],
+    "compute_precision": [
+      "Float32_pivots_comparisons",
+      "UInt32_atomics",
+      "Int64_indices"
+    ],
+    "resource_policy": {
+      "histogram_static_shared_bytes": 12288,
+      "bucket_count_scatter_static_shared_bytes": 4096,
+      "other_stage_shared": "unused_shared_declaration_expected_compiler_elision_unprofiled",
+      "dynamic_shared_bytes": 0,
+      "logical_stages": 7,
+      "generic_kernel_definitions": 1,
+      "actual_register_occupancy": "unmeasured",
+      "allocator": "JuliapooledCuArray_andunsafe_free; nativecudaMalloc/free",
+      "host_allocations": "Juliavectors/broadcast/copies versusnativeCmalloc; extra scratchinitialization included"
+    },
+    "synchronization": [
+      "GPUblockbarriers_sharedhistogram_offsets",
+      "GPUglobalatomic_histogram",
+      "CPUdependentreadbacks_control_pivots_andmergegrid",
+      "wholedevicecompletion"
+    ],
+    "backend_boundary": "Shared devicehelpers callCUDAjl blockbarriers/pointeratomics;KAprovidesindex/localmemory mapping",
+    "portability_limit": "ChosenCUDA-specificdeviceinterop, notprovenframeworkunsupported. Wholepipeline hasCPUcontrol/readbacks bysource.",
+    "pinned_environment": {
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "runtime": "local12.0",
+      "native_flags": "-O3 -arch=sm70"
+    },
+    "source_evidence": [
+      {
+        "path": "src/hybridsort-julia/hybridsort-julia-KA/main.jl",
+        "sha256": "490a94ca45158ee86bd9828fd30cef130234ee2943a874ef491267c9ff85fdd7"
+      },
+      {
+        "path": "src/hybridsort-julia/study_device.jl",
+        "sha256": "bd58dbe00b52e4126aef873a20357fd0308e4762be7eaf5054c4b0b43dc3be56"
+      },
+      {
+        "path": "src/hybridsort-julia/study_common.jl",
+        "sha256": "78cb92489660024e1e3619179c72cecccb7fa5ed919faa2366930cdfa390a5ac"
+      }
+    ],
+    "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+    "verification_contract": "raw_numeric_outputs_exact_fullsorted_keys_bucketmetadata_inputbits_hostguards_plus_independent_CPU_sort_multiset",
+    "keyconfounds": [
+      "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+      "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+      "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+      "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+      "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+      "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+      "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+      "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+      "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+      "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+      "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+      "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+      "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+      "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+      "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+      "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+    ],
+    "status": "verified",
+    "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source1024histogram\u2192CPUadaptivepivot\u2192bucketcount/prefix/scatter\u2192sort4\u2192iterativemerge\u2192pack; no vendorGPU sort delegated",
+    "implementation_class": "mixed_host_device_pipeline",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Hist64groups\u00d796threads; bucketceilN4096\u00d732;prefix8\u00d7128;sort4\u00d7256; sourceadaptive208threadmerge/floor8groups;pack2Dgroups\u00d71024buckets",
+    "layout": "FlatFloat32keys; tuple4loads/stores, flatblock\u00d7bucketUInt32prefixes;UInt32metadata",
+    "storage_precision": [
+      "Float32_keys",
+      "UInt32_histogram_prefix_offsets",
+      "Int32_bucket_indices_sizes"
+    ],
+    "compute_precision": [
+      "Float32_pivots_comparisons",
+      "UInt32_atomics",
+      "Int64_indices"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "GPUblockbarriers_sharedhistogram_offsets",
+      "GPUglobalatomic_histogram",
+      "CPUdependentreadbacks_control_pivots_andmergegrid",
+      "wholedevicecompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "histogram_static_shared_bytes": 12288,
+      "bucket_count_scatter_static_shared_bytes": 4096,
+      "other_stage_shared": "unused_shared_declaration_expected_compiler_elision_unprofiled",
+      "dynamic_shared_bytes": 0,
+      "logical_stages": 7,
+      "generic_kernel_definitions": 1,
+      "actual_register_occupancy": "unmeasured",
+      "allocator": "JuliapooledCuArray_andunsafe_free; nativecudaMalloc/free",
+      "host_allocations": "Juliavectors/broadcast/copies versusnativeCmalloc; extra scratchinitialization included"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Shared devicehelpers callCUDAjl blockbarriers/pointeratomics;KAprovidesindex/localmemory mapping",
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": [
+      {
+        "path": "src/hybridsort-julia/hybridsort-julia-KA/main.jl",
+        "sha256": "490a94ca45158ee86bd9828fd30cef130234ee2943a874ef491267c9ff85fdd7"
+      },
+      {
+        "path": "src/hybridsort-julia/study_device.jl",
+        "sha256": "bd58dbe00b52e4126aef873a20357fd0308e4762be7eaf5054c4b0b43dc3be56"
+      },
+      {
+        "path": "src/hybridsort-julia/study_common.jl",
+        "sha256": "78cb92489660024e1e3619179c72cecccb7fa5ed919faa2366930cdfa390a5ac"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "hybridsort",
+    "scientific_intent": {
+      "review_status": "all7source_stages_hostpivot_mapping_20saved_artifacts_40independent_fullsort_checks_reviewed",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "hybrid_histogram_bucket_merge_sort",
+      "secondary_domains": [
+        "data_ordering",
+        "GPU_histogram",
+        "adaptive_partitioning"
+      ],
+      "scientific_task": "Order positive finite Float32 keys by GPUhistogram/CPUadaptivequantilepivots, bucketpartition, float4 local sorting/merging and removal of alignednullpadding.",
+      "mathematical_operation": "Return nondecreasing permutation of every inputkey; GPUhistogram bins feedCPU1024pivots, bucketcounts/prefixes/scatter, sorted4tuples iterativepairmerge, finalpaddingremoval.",
+      "accuracy_requirements": [
+        "All32768 finalkeys exact independent CPUcomparison-sort andcomplete multiplicity preservation",
+        "All4096size/null arrays+2050originaloffsets exactdualreference andeachbucketaccounting invariant",
+        "All32786actualinputbit/launchparameterprefix values and128hostguard values exact;5trials/model"
+      ],
+      "input_size_regimes": "Two16384key finitepositive dyadicfixtures; multiplicities2/8;1024buckets; source64\u00d796histogram/count32/adaptivefloat4merge launches;R1",
+      "community_use_case": "Reusable sorting/partitioning primitive forscientificdata pipelines; noapplicationquality or50million-keyperformanceclaim.",
+      "source_evidence": [
+        {
+          "path": "src/hybridsort-cuda/hybridsort.cu",
+          "sha256": "948fef0d650a58b2129c284664141e7e83dd27f7dfac91be0787cffbf39850a7"
+        },
+        {
+          "path": "src/hybridsort-cuda/bucketsort.cu",
+          "sha256": "383ab7e9d0132f2148962c8138359d268ba9755f834f9a14b45fec2738130d46"
+        },
+        {
+          "path": "src/hybridsort-cuda/mergesort.cu",
+          "sha256": "bfb1f3de10405ef903de13547147a1fb3e22df4581b0c2429c3ca364cd37e047"
+        },
+        {
+          "path": "src/hybridsort-cuda/kernel_histogram.h",
+          "sha256": "9499dab9797175b409567d6b49f940bb4c0a895affc08b00c147f3aa5a03c5ad"
+        },
+        {
+          "path": "src/hybridsort-cuda/kernel_bucketcount.h",
+          "sha256": "6c9641798c8ae62fe652e5607f3fc5ef6985f2877d096418fdfc66ef04888af5"
+        },
+        {
+          "path": "src/hybridsort-cuda/kernel_bucketprefix.h",
+          "sha256": "be0de09d9ef56998b6b8733fc5dc21de841ad0ee8d6d965eb52c0ae4ce0adbbf"
+        },
+        {
+          "path": "src/hybridsort-cuda/kernel_bucketsort.h",
+          "sha256": "7326a6edad0f9acc7e103f29308c4311109ad6ca0ed40d463d371e1b51d4ca23"
+        },
+        {
+          "path": "src/hybridsort-cuda/kernel_mergeSortPass.h",
+          "sha256": "069da00a52d321b4eafda6bbeded88c49ab12fe73e3504891f3c56a7e3b241d5"
+        },
+        {
+          "path": "src/hybridsort-julia/generate_oracle.py",
+          "sha256": "522ef1d1218886b6d463ca3aeb368b5fa82ef15cf17f791453f7e9961c981bba"
+        },
+        {
+          "path": "src/hybridsort-julia/fixture_provenance.json",
+          "sha256": "6383748eea401c35f09c2bcdcbbb2404e3a589da10e49b74b4023f6f61b43e04"
+        },
+        {
+          "path": "src/hybridsort-julia/saved_output_audit.json",
+          "sha256": "3f5474555f5062afb0fa1bfcb13c986e75cafda9edcdffef7f827321ca9e353d"
+        }
+      ],
+      "uncertainty": [
+        "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+        "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+        "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+        "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+        "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+        "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+        "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+        "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+        "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+        "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+        "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+        "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+        "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+        "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+        "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+        "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+      ]
+    },
+    "primary_motif": "histogram_adaptive_quantile_bucket_partition_float4_merge_sort",
+    "storage_precision": [
+      "Float32_keys",
+      "UInt32_histogram_prefix_offsets",
+      "Int32_bucket_indices_sizes"
+    ],
+    "compute_precision": [
+      "Float32_pivots_comparisons",
+      "UInt32_atomic_counts",
+      "Int32_native_indices",
+      "Int64_Julia_indices"
+    ],
+    "synchronization": [
+      "GPUblockbarriers_sharedhistogram_offsets",
+      "GPUglobalatomic_histogram",
+      "CPUdependentreadbacks_control_pivots_andmergegrid",
+      "wholedevicecompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "All7sourceGPUstages/hostpivotalgorithm/launchshapes retained; nativefloat4loadstore mapsJulia4tuples, nativeallocation/free versusJuliapool differs."
+    },
+    "implementation_class": {
+      "cuda_jl": "mixed_host_device_pipeline",
+      "ka": "mixed_host_device_pipeline",
+      "jacc": "mixed_host_device_pipeline"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "actualpermodelsource_and_all5fullsorted_artifacts_reviewed",
+        "implementation_class": "mixed_host_device_pipeline",
+        "device_component_class": "framework_device_kernel",
+        "algorithm": "Source1024histogram\u2192CPUadaptivepivot\u2192bucketcount/prefix/scatter\u2192sort4\u2192iterativemerge\u2192pack; no vendorGPU sort delegated",
+        "work_item_mapping": "Hist64groups\u00d796threads; bucketceilN4096\u00d732;prefix8\u00d7128;sort4\u00d7256; sourceadaptive208threadmerge/floor8groups;pack2Dgroups\u00d71024buckets",
+        "layout": "FlatFloat32keys; tuple4loads/stores, flatblock\u00d7bucketUInt32prefixes;UInt32metadata",
+        "storage_precision": [
+          "Float32_keys",
+          "UInt32_histogram_prefix_offsets",
+          "Int32_bucket_indices_sizes"
+        ],
+        "compute_precision": [
+          "Float32_pivots_comparisons",
+          "UInt32_atomics",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "histogram_static_shared_bytes": 12288,
+          "bucket_count_scatter_static_shared_bytes": 4096,
+          "other_stage_shared": "unused_shared_declaration_expected_compiler_elision_unprofiled",
+          "dynamic_shared_bytes": 0,
+          "logical_stages": 7,
+          "generic_kernel_definitions": 1,
+          "actual_register_occupancy": "unmeasured",
+          "allocator": "JuliapooledCuArray_andunsafe_free; nativecudaMalloc/free",
+          "host_allocations": "Juliavectors/broadcast/copies versusnativeCmalloc; extra scratchinitialization included"
+        },
+        "synchronization": [
+          "GPUblockbarriers_sharedhistogram_offsets",
+          "GPUglobalatomic_histogram",
+          "CPUdependentreadbacks_control_pivots_andmergegrid",
+          "wholedevicecompletion"
+        ],
+        "backend_boundary": "OwnCUDAjl shared/barrier/atomic APIs",
+        "portability_limit": "ChosenCUDA-specificdeviceinterop, notprovenframeworkunsupported. Wholepipeline hasCPUcontrol/readbacks bysource.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/hybridsort-julia/hybridsort-julia-cuda.jl/main.jl",
+            "sha256": "8c3c785a81654cba205dd232d42586d0031117e4d42864af964e3d20125c10be"
+          },
+          {
+            "path": "src/hybridsort-julia/study_device.jl",
+            "sha256": "bd58dbe00b52e4126aef873a20357fd0308e4762be7eaf5054c4b0b43dc3be56"
+          },
+          {
+            "path": "src/hybridsort-julia/study_common.jl",
+            "sha256": "78cb92489660024e1e3619179c72cecccb7fa5ed919faa2366930cdfa390a5ac"
+          }
+        ],
+        "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+        "verification_contract": "raw_numeric_outputs_exact_fullsorted_keys_bucketmetadata_inputbits_hostguards_plus_independent_CPU_sort_multiset",
+        "keyconfounds": [
+          "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+          "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+          "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+          "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+          "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+          "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+          "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+          "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+          "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+          "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+          "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+          "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+          "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+          "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+          "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+          "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+        ],
+        "status": "verified",
+        "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1"
+      },
+      "ka": {
+        "review_status": "actualpermodelsource_and_all5fullsorted_artifacts_reviewed",
+        "implementation_class": "mixed_host_device_pipeline",
+        "device_component_class": "hybrid_device_intrinsics",
+        "algorithm": "Source1024histogram\u2192CPUadaptivepivot\u2192bucketcount/prefix/scatter\u2192sort4\u2192iterativemerge\u2192pack; no vendorGPU sort delegated",
+        "work_item_mapping": "Hist64groups\u00d796threads; bucketceilN4096\u00d732;prefix8\u00d7128;sort4\u00d7256; sourceadaptive208threadmerge/floor8groups;pack2Dgroups\u00d71024buckets",
+        "layout": "FlatFloat32keys; tuple4loads/stores, flatblock\u00d7bucketUInt32prefixes;UInt32metadata",
+        "storage_precision": [
+          "Float32_keys",
+          "UInt32_histogram_prefix_offsets",
+          "Int32_bucket_indices_sizes"
+        ],
+        "compute_precision": [
+          "Float32_pivots_comparisons",
+          "UInt32_atomics",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "histogram_static_shared_bytes": 12288,
+          "bucket_count_scatter_static_shared_bytes": 4096,
+          "other_stage_shared": "unused_shared_declaration_expected_compiler_elision_unprofiled",
+          "dynamic_shared_bytes": 0,
+          "logical_stages": 7,
+          "generic_kernel_definitions": 1,
+          "actual_register_occupancy": "unmeasured",
+          "allocator": "JuliapooledCuArray_andunsafe_free; nativecudaMalloc/free",
+          "host_allocations": "Juliavectors/broadcast/copies versusnativeCmalloc; extra scratchinitialization included"
+        },
+        "synchronization": [
+          "GPUblockbarriers_sharedhistogram_offsets",
+          "GPUglobalatomic_histogram",
+          "CPUdependentreadbacks_control_pivots_andmergegrid",
+          "wholedevicecompletion"
+        ],
+        "backend_boundary": "Shared devicehelpers callCUDAjl blockbarriers/pointeratomics;KAprovidesindex/localmemory mapping",
+        "portability_limit": "ChosenCUDA-specificdeviceinterop, notprovenframeworkunsupported. Wholepipeline hasCPUcontrol/readbacks bysource.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/hybridsort-julia/hybridsort-julia-KA/main.jl",
+            "sha256": "490a94ca45158ee86bd9828fd30cef130234ee2943a874ef491267c9ff85fdd7"
+          },
+          {
+            "path": "src/hybridsort-julia/study_device.jl",
+            "sha256": "bd58dbe00b52e4126aef873a20357fd0308e4762be7eaf5054c4b0b43dc3be56"
+          },
+          {
+            "path": "src/hybridsort-julia/study_common.jl",
+            "sha256": "78cb92489660024e1e3619179c72cecccb7fa5ed919faa2366930cdfa390a5ac"
+          }
+        ],
+        "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+        "verification_contract": "raw_numeric_outputs_exact_fullsorted_keys_bucketmetadata_inputbits_hostguards_plus_independent_CPU_sort_multiset",
+        "keyconfounds": [
+          "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+          "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+          "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+          "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+          "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+          "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+          "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+          "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+          "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+          "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+          "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+          "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+          "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+          "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+          "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+          "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+        ],
+        "status": "verified",
+        "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1"
+      },
+      "jacc": {
+        "review_status": "actualpermodelsource_and_all5fullsorted_artifacts_reviewed",
+        "implementation_class": "mixed_host_device_pipeline",
+        "device_component_class": "hybrid_device_intrinsics",
+        "algorithm": "Source1024histogram\u2192CPUadaptivepivot\u2192bucketcount/prefix/scatter\u2192sort4\u2192iterativemerge\u2192pack; no vendorGPU sort delegated",
+        "work_item_mapping": "Hist64groups\u00d796threads; bucketceilN4096\u00d732;prefix8\u00d7128;sort4\u00d7256; sourceadaptive208threadmerge/floor8groups;pack2Dgroups\u00d71024buckets",
+        "layout": "FlatFloat32keys; tuple4loads/stores, flatblock\u00d7bucketUInt32prefixes;UInt32metadata",
+        "storage_precision": [
+          "Float32_keys",
+          "UInt32_histogram_prefix_offsets",
+          "Int32_bucket_indices_sizes"
+        ],
+        "compute_precision": [
+          "Float32_pivots_comparisons",
+          "UInt32_atomics",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "histogram_static_shared_bytes": 12288,
+          "bucket_count_scatter_static_shared_bytes": 4096,
+          "other_stage_shared": "unused_shared_declaration_expected_compiler_elision_unprofiled",
+          "dynamic_shared_bytes": 0,
+          "logical_stages": 7,
+          "generic_kernel_definitions": 1,
+          "actual_register_occupancy": "unmeasured",
+          "allocator": "JuliapooledCuArray_andunsafe_free; nativecudaMalloc/free",
+          "host_allocations": "Juliavectors/broadcast/copies versusnativeCmalloc; extra scratchinitialization included"
+        },
+        "synchronization": [
+          "GPUblockbarriers_sharedhistogram_offsets",
+          "GPUglobalatomic_histogram",
+          "CPUdependentreadbacks_control_pivots_andmergegrid",
+          "wholedevicecompletion"
+        ],
+        "backend_boundary": "Shared devicehelpers callCUDAjl blockbarriers/pointeratomics;JACCcallback usesCUDAjlblock/thread/shared APIs",
+        "portability_limit": "ChosenCUDA-specificdeviceinterop, notprovenframeworkunsupported. Wholepipeline hasCPUcontrol/readbacks bysource.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/hybridsort-julia/hybridsort-julia-JACC/main.jl",
+            "sha256": "c5e2067cedd3b50d6703e9466877d6f81e8c4c2694414c189f70afac58609649"
+          },
+          {
+            "path": "src/hybridsort-julia/study_device.jl",
+            "sha256": "bd58dbe00b52e4126aef873a20357fd0308e4762be7eaf5054c4b0b43dc3be56"
+          },
+          {
+            "path": "src/hybridsort-julia/study_common.jl",
+            "sha256": "78cb92489660024e1e3619179c72cecccb7fa5ed919faa2366930cdfa390a5ac"
+          }
+        ],
+        "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+        "verification_contract": "raw_numeric_outputs_exact_fullsorted_keys_bucketmetadata_inputbits_hostguards_plus_independent_CPU_sort_multiset",
+        "keyconfounds": [
+          "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+          "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+          "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+          "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+          "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+          "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+          "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+          "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+          "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+          "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+          "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+          "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+          "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+          "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+          "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+          "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+        ],
+        "status": "verified",
+        "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1"
+      }
+    },
+    "timing_scope": "sum2_full_histogram_cpu_pivot_bucket_merge_pack_pipelines",
+    "verification_contract": "raw_numeric_outputs_exact_fullsorted_keys_bucketmetadata_inputbits_hostguards_plus_independent_CPU_sort_multiset",
+    "keyconfounds": [
+      "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+      "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+      "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+      "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+      "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+      "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+      "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+      "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+      "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+      "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+      "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+      "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+      "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+      "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+      "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+      "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T073846061263Z_hybridsort/result.json",
+        "matched_performance_valid": true,
+        "variant_verified": {
+          "ka": true,
+          "jacc": true
+        },
+        "native_reference_repaired": false,
+        "original_full_cli_certified": false,
+        "mean_seconds": {
+          "cuda": 0.0024517,
+          "cuda_jl": 0.0013806325,
+          "ka": 0.0016722450000000002,
+          "jacc": 0.0019992680000000002
+        }
+      }
+    ]
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/hybridsort-julia/hybridsort-julia-KA/main.jl",
+    "sha256": "490a94ca45158ee86bd9828fd30cef130234ee2943a874ef491267c9ff85fdd7",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        6
+      ],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1",
+      "run_id": "20261018T073846061263Z_hybridsort",
+      "result": ".porting-state/portable_julia/runs/20261018T073846061263Z_hybridsort/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "0ed6841af33ea8ba66910fab8ba6f1b7437ddc3353f8d2bab5265b804da83254",
+      "source_hash": "93dc09a79120711a28dae7f808a8795440c429cc306b68a8244447c16fb65e89",
+      "declared_environment": {
+        "Julia": "1.12.6",
+        "CUDA_jl": "6.2.1",
+        "KA": "0.9.45",
+        "JACC": "1.4.0",
+        "runtime": "local12.0",
+        "native_flags": "-O3 -arch=sm70"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T073846061263Z_hybridsort/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0017891160000000003,
+        0.0014910230000000002,
+        0.001532883,
+        0.0017723260000000003,
+        0.001892748
+      ],
+      "mean_last_four_seconds": 0.0016722450000000002,
+      "contract": {
+        "n": 16384,
+        "divisions": 1024,
+        "cases": 2,
+        "input_prefix_count": 32786,
+        "outputs": 38914,
+        "host_guard_values": 128,
+        "artifact_count": 71828,
+        "R": 1,
+        "padding": "Namedhostinput/output zero padding4096; original hostCLI uninitializedpadding notcertified",
+        "limits": [
+          "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+          "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+          "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+          "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+          "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified."
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 6672,
+      "output_tokens": 206,
+      "cached_tokens": null,
+      "total_tokens": 6878,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/hybridsort-cuda/hybridsort.cu",
+        "src/hybridsort-cuda/bucketsort.cu",
+        "src/hybridsort-cuda/mergesort.cu",
+        "src/hybridsort-cuda/kernel_histogram.h",
+        "src/hybridsort-cuda/mergesort.h",
+        "src/hybridsort-cuda/bucketsort.h",
+        "src/hybridsort-cuda/kernel_bucketcount.h",
+        "src/hybridsort-cuda/kernel_mergeSortPass.h",
+        "src/hybridsort-cuda/kernel_bucketprefix.h",
+        "src/hybridsort-cuda/kernel_bucketsort.h",
+        "src/hybridsort-julia/hybridsort-julia-cuda.jl/main.jl",
+        "src/hybridsort-julia/hybridsort-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/hybridsort/ka_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "0ce7aa4cc105ebf5a6e99c09",
+        "begin_event_id": "f967f7fde9257685857c7fdd",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T07:37:58.284127+00:00",
+        "usage_event_timestamp": "2026-10-18T07:37:51.151Z",
+        "elapsed_usage_event_start": "2026-10-18T07:36:51.952Z",
+        "delta_usage": {
+          "input_tokens": 507728,
+          "cached_input_tokens": 505472,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1701,
+          "reasoning_output_tokens": 331,
+          "total_tokens": 509429
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 7.133127,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "84824d4931cd7ebb1dce07a31d4dfa9ffd2a651a1ce61f4f800945065c9ee4ac",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "KAfirstcandidate/processGPUcheck passed5full71828value exactcaptures againstbothrefs;genericfrontend1/7stages,0feedbackrepairs. CUDA-specificblockbarrier/atomichelpers choseninterop disclosed, source/mechanicalreuse included.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 9.427275,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/hybridsort/ka_translation.jsonl",
+        "evidence_sha256": "c3c6a4118e139a0ee1d131c60c6fa65db44c46feb1bed078bc628456444998cd",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/hybridsort-julia-ka/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "f210271e64ec8189b64c14b7e9c9261a20a9d8b4520f9e87ecd7aa0cc319e962",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/hybridsort-julia-ka/manifest.json",
+        "sha256": "f210271e64ec8189b64c14b7e9c9261a20a9d8b4520f9e87ecd7aa0cc319e962"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "00277fc73e3ab2e794d3cc544b25eb577f8c5595",
+  "explicit_outcome_evidence": {
+    "benchmark": "hybridsort",
+    "model": "ka",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261018T073846061263Z_hybridsort/result.json"
+    ],
+    "contract": {
+      "n": 16384,
+      "divisions": 1024,
+      "cases": 2,
+      "input_prefix_count": 32786,
+      "outputs": 38914,
+      "host_guard_values": 128,
+      "artifact_count": 71828,
+      "R": 1,
+      "padding": "Namedhostinput/output zero padding4096; original hostCLI uninitializedpadding notcertified",
+      "limits": [
+        "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+        "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+        "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+        "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+        "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified."
+      ]
+    },
+    "limitations": [
+      "Positivefinite dyadicfixtures only, two multiplicities; no negative/nonfinite/full50millionCLI claim.",
+      "Originalfileloader writes50million irrespectivefilesize, staticOOB excluded bydirectsourcefunctionadapter.",
+      "All7sourceGPUstages/CPUadaptivepivot/alignment/alloc/transfers retained; wholemixedhostdevicepipelines not kernelonly.",
+      "Internalbucketatomicordering nondeterministic but completefinalsort anddeterministiccounts exact; no intermediateorder equalityclaim.",
+      "Hostguards64/case exact; originalfunctioninternaldeviceallocations notguarded orsanitizercertified.",
+      "NativefileCLI emits50million input values irrespectiveactualfileN, reading beyondallocation forsmallfiles; directnamedfixture callsunchangedbucketSort/runMergeSort andexcludesCLI. Staticfinding, notactualsanitizer/GPUfailure.",
+      "Sourceassumesnullpadding sortsbelowpositivevalues. Namedinput/output paddingzeroed beforeROI, positivefinitefixtures; originaluninitializedhostpadding behaviorandnegative/nonfiniteinputs notcertified.",
+      "WholeROI includesGPUhistogram,CPUadaptivepivot/alignment,devicebucketstages,iterativefloat4merge/pack,allocations/H2D/DtoH/free. Notkernel-only orpurefrontendcomparison.",
+      "NativecudaMalloc/cudaFree perpipeline versusJuliapooledCUDAallocations/unsafe_free is an explicitallocatorcovariate. Julia createsextra initializedindex/prefix arrays andhostvectors comparedwithnativeuninitializedscratch; allocation/reset/dispatch costs differ.",
+      "Nativehistoresult hostallocationisnotfreed bysourcebucketSort; smallretainedsourceleak/hostallocator behavior retained, noresourcecleanup-equivalenceclaim.",
+      "JuliausesflatFloat32 storage andtupleloads/stores versusnativefloat4; noidenticalvectorISA/register/occupancy claim. Actualresources/countersunmeasured.",
+      "CPU pivalgorithm sourcecontrol/mathretainedincludingmaxbinwrap/finalbincondition; no correction toquantilepolicy. Independentmathematicalcheck is exactfullsort/multiset, notscientificqualityclaim.",
+      "Nativehistorysizes50million/randominput andoriginalCLInotexecuted. Named16384/twofixtures/R1 coversallsourceGPUstages, notproductioncache/scalability.",
+      "HistoricalCUDAjl GPU sort delegation numericallyreasonable but differentalgorithm; replacedwithsourcepipeline, historicalcostunknown. CurrentreferenceparsepreJITfailure anddeviceIRfailure archived separately.",
+      "One genericfront-end kernel permodel specializes7source stages; semanticstage/mergeiteration/grid/trial counts are nottranslationattempts. Sharedhelpers/hostdriver mechanicallyreused.",
+      "Prospectiveusagewindows context/cache/coordination-inclusive andnestedworkflow overlap; savedsourceproxies partial/reused, noexclusivebilledcostranking."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "hybridsort_fullsource_positive16384_1024buckets_2fixtures_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T073846061263Z_hybridsort/result.json",
+        "matched_performance_valid": true,
+        "variant_verified": {
+          "ka": true,
+          "jacc": true
+        },
+        "native_reference_repaired": false,
+        "original_full_cli_certified": false,
+        "mean_seconds": {
+          "cuda": 0.0024517,
+          "cuda_jl": 0.0013806325,
+          "ka": 0.0016722450000000002,
+          "jacc": 0.0019992680000000002
+        }
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "mixed_host_device_pipeline",
+    "annotation_path": ".porting-state/portable_julia/traits/hybridsort.json",
+    "annotation_sha256": "582709e1d656a9927c16095ea8eb0604a25acec9d9cda3d108fb3ae1723cb7c5",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

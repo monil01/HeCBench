@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "f16sp",
   "implementation_model": "cuda_jl",
-  "status": "existing_cuda_jl_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/f16sp.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,41 +14,1592 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "review_status": "actualsource_percomponentprecision_all20artifact_review",
+    "implementation_class": "mixed_kernel_library_pipeline",
+    "component_traits": [
+      {
+        "mode": 1,
+        "implementation_class": "framework_device_kernel",
+        "input_storage": "Float16interleavedpairs",
+        "compute": "Float16FMA/tree thenFloat32pair+atomic",
+        "reduction": "pairedsharedtree",
+        "grids": [
+          256,
+          128,
+          64,
+          32,
+          16
+        ],
+        "threads": 128,
+        "Julia_shared_bytes": 512,
+        "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+      },
+      {
+        "mode": 2,
+        "implementation_class": "framework_device_kernel",
+        "input_storage": "Float16interleavedpairs",
+        "compute": "Float32FMA/accumulation/tree/atomic",
+        "reduction": "pairedsharedtree",
+        "grids": [
+          256,
+          128,
+          64,
+          32,
+          16
+        ],
+        "threads": 128,
+        "Julia_shared_bytes": 1024,
+        "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+      },
+      {
+        "mode": 3,
+        "implementation_class": "framework_device_kernel",
+        "input_storage": "Float16interleavedpairs",
+        "compute": "Float32FMA/accumulation/tree/atomic",
+        "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+        "grids": [
+          256,
+          128,
+          64,
+          32,
+          16
+        ],
+        "threads": 128,
+        "Julia_shared_bytes": 16,
+        "backend_dependency": "CUDAshuffle"
+      },
+      {
+        "mode": 4,
+        "implementation_class": "vendor_library_interop",
+        "operation": "actualcublasDotEx_64",
+        "input_precision": "Float16",
+        "compute_precision": "Float32",
+        "result_precision": "Float16",
+        "actual_library": {
+          "cublas_version": 120900,
+          "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+          "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+          "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "log_evidence": {
+            "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+            "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+          },
+          "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+        }
+      },
+      {
+        "mode": 5,
+        "implementation_class": "vendor_library_interop",
+        "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+        "product_precision": "Float16roundedhalf2multiply",
+        "pair_and_reduce_precision": "Float32",
+        "timed_query_allocation_free": true,
+        "code": {
+          "path": "src/f16sp-julia/vendor_bridge.cu",
+          "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+        }
+      }
+    ],
+    "algorithm": "Parametricpairtrees+warpkernel+actualcuBLAS/CUBAPI",
+    "work_item_mapping": "128workers/block andsourcegridstrideoverhalf2positions, two scalarhalf lanes/worker",
+    "layout": "InterleavedFloat16pairs,64bytealignedinputguardoffset;Float32atomicorFloat16cuBLASresult",
+    "storage_precision": [
+      "Float16"
+    ],
+    "compute_precision": [
+      "Float16FMA/tree",
+      "Float32accumulation_reduction_atomic",
+      "Float16vendorresult"
+    ],
+    "synchronization": [
+      "blockbarriers",
+      "warpshuffle",
+      "globalFloat32atomicfinish",
+      "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+    ],
+    "resource_policy": {
+      "threads": 128,
+      "grids": [
+        256,
+        128,
+        64,
+        32,
+        16
+      ],
+      "dynamic_shared_bytes": 0,
+      "Julia_static_shared_bytes_by_mode": [
+        512,
+        1024,
+        16
+      ],
+      "native_CUB_storage_and_registers": "unprofiled/unknown"
+    },
+    "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+    "verification_contract": "raw_numeric_outputs",
+    "source_evidence": [
+      {
+        "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+        "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803"
+      },
+      {
+        "path": "src/f16sp-julia/study_device.jl",
+        "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+      },
+      {
+        "path": "src/f16sp-julia/study_common.jl",
+        "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+      },
+      {
+        "path": "src/f16sp-julia/vendor_bridge.cu",
+        "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+      }
+    ],
+    "limitations": [
+      "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+      "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+      "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+      "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+      "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+      "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+      "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+      "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+      "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+      "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+      "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+      "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+      "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+      "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+      "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+      "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+      "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+      "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+    ],
+    "environment": {
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "Julia_runtime": "local12.0",
+      "native_nvcc": "12.9.41",
+      "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+      "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+      "native_flags": "-O3 -std=c++17 -arch=sm70",
+      "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+      "vendor_cublas_pinned": {
+        "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+        "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+        "preload_before_Julia": true
+      }
+    },
+    "actual_vendor": {
+      "cublas_version": 120900,
+      "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+      "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+      "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+      "log_evidence": {
+        "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+        "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+      },
+      "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+    },
+    "configuration_overrides": {
+      "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2": {
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "component_traits": [
+          {
+            "mode": 1,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float16FMA/tree thenFloat32pair+atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 512,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 2,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 1024,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 3,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 16,
+            "backend_dependency": "CUDAshuffle"
+          },
+          {
+            "mode": 4,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualcublasDotEx_64",
+            "input_precision": "Float16",
+            "compute_precision": "Float32",
+            "result_precision": "Float16",
+            "actual_library": {
+              "cublas_version": 120900,
+              "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+              "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+              "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+              "log_evidence": {
+                "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+                "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+              },
+              "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+            }
+          },
+          {
+            "mode": 5,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+            "product_precision": "Float16roundedhalf2multiply",
+            "pair_and_reduce_precision": "Float32",
+            "timed_query_allocation_free": true,
+            "code": {
+              "path": "src/f16sp-julia/vendor_bridge.cu",
+              "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+            }
+          }
+        ]
+      }
+    },
+    "status": "verified",
+    "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Parametricpairtrees+warpkernel+actualcuBLAS/CUBAPI",
+    "implementation_class": "mixed_kernel_library_pipeline",
+    "declared_environment": {
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "Julia_runtime": "local12.0",
+      "native_nvcc": "12.9.41",
+      "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+      "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+      "native_flags": "-O3 -std=c++17 -arch=sm70",
+      "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+      "vendor_cublas_pinned": {
+        "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+        "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+        "preload_before_Julia": true
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "128workers/block andsourcegridstrideoverhalf2positions, two scalarhalf lanes/worker",
+    "layout": "InterleavedFloat16pairs,64bytealignedinputguardoffset;Float32atomicorFloat16cuBLASresult",
+    "storage_precision": [
+      "Float16"
+    ],
+    "compute_precision": [
+      "Float16FMA/tree",
+      "Float32accumulation_reduction_atomic",
+      "Float16vendorresult"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "blockbarriers",
+      "warpshuffle",
+      "globalFloat32atomicfinish",
+      "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 128,
+      "grids": [
+        256,
+        128,
+        64,
+        32,
+        16
+      ],
+      "dynamic_shared_bytes": 0,
+      "Julia_static_shared_bytes_by_mode": [
+        512,
+        1024,
+        16
+      ],
+      "native_CUB_storage_and_registers": "unprofiled/unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": [
+      {
+        "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+        "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803"
+      },
+      {
+        "path": "src/f16sp-julia/study_device.jl",
+        "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+      },
+      {
+        "path": "src/f16sp-julia/study_common.jl",
+        "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+      },
+      {
+        "path": "src/f16sp-julia/vendor_bridge.cu",
+        "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "f16sp",
+    "scientific_intent": {
+      "review_status": "all17sourcepaths_precisionpolicy_and20full_artifacts_reviewed",
+      "primary_family": "linear_algebra",
+      "primary_domain": "mixed_precision_inner_product_and_reduction",
+      "secondary_domains": [
+        "numerical_accuracy",
+        "low_precision_arithmetic",
+        "GPU_reduction_algorithms"
+      ],
+      "scientific_task": "Compare three custom half/mixedprecision reduction policies, actualhalf-resultFP32cuBLASdot androunded-half-productCUBsum.",
+      "mathematical_operation": "Ideal sum_j a_j*b_j overactualFloat16inputbits versus explicit source-stage rounding/reductionpolicies; fidelity and mathematicalaccuracy separate.",
+      "accuracy_requirements": [
+        "All34scalaroutputs withinpredeclared.02+2e-6*abs(policyoracle), dualnative/CUDAjlagreement",
+        "Full262168actualverifiedinputbit/configprefix and7616guards exact; cuBLAShalfresult exactoracle",
+        "IndependentRNEhierarchy plus separate trueFloat64dotaccuracy; lowprecisioncancellationerrordoesnotbecomeportfailure"
+      ],
+      "input_size_regimes": "32768half2/65536half scalars/vector;grids256..16,128threads; signedcancellation+originaluniformgenerator,R3,all17paths",
+      "community_use_case": "Lowprecisionlinearalgebra arithmetic-policy accuracy/performance study; noapplication/trainingqualityclaim.",
+      "source_evidence": [
+        {
+          "path": "src/f16sp-cuda/main.cu",
+          "sha256": "c7287e224e5cd14a74cec24042106b1e710057400b0010f4a3f60bca189859a2"
+        },
+        {
+          "path": "src/f16sp-cuda/kernels.h",
+          "sha256": "bb7e624e77e29d59552b82c5e45b1cd99a73cb5f395e1a5b1f4ba9b2a8d13f22"
+        },
+        {
+          "path": "src/f16sp-julia/generate_oracle.py",
+          "sha256": "ddcc9b514fe3378d0addd75868e0f2a5facfc368ea4805190fc27d9f049ff33c"
+        },
+        {
+          "path": "src/f16sp-julia/fixture_provenance.json",
+          "sha256": "dfdc8c8a8d140e76e46bddf4218df83254b6894f32eefbf63e38741bbe16e0e8"
+        },
+        {
+          "path": "src/f16sp-julia/precision_quality.json",
+          "sha256": "50c264078e95ff3943f97e4d622906c01167c29c702a863549530ed6585100fe"
+        }
+      ],
+      "uncertainty": [
+        "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+        "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+        "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+        "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+        "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+        "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+        "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+        "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+        "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+        "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+        "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+        "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+        "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+        "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+        "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+        "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+        "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+        "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+      ]
+    },
+    "primary_motif": "mixed_precision_grid_stride_dot_block_reduction_global_atomic_vendor_reductions",
+    "storage_precision": [
+      "Float16"
+    ],
+    "compute_precision": [
+      "Float16FMA/tree",
+      "Float32accumulation_reduction_atomic",
+      "Float16vendorresult"
+    ],
+    "synchronization": [
+      "blockbarriers",
+      "warpshuffle",
+      "globalFloat32atomicfinish",
+      "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Sourceprecision/stride/block/hierarchy retained; packedhalf2 maps scalarhalfoperations, CUBBlockReducetemplate maps explicitwarphierarchy, actualvendorAPIs retainedthroughCUDA-specificCABI."
+    },
+    "implementation_class": {
+      "cuda_jl": "mixed_kernel_library_pipeline",
+      "ka": "mixed_kernel_library_pipeline",
+      "jacc": "mixed_kernel_library_pipeline"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "actualsource_percomponentprecision_all20artifact_review",
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "component_traits": [
+          {
+            "mode": 1,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float16FMA/tree thenFloat32pair+atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 512,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 2,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 1024,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 3,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 16,
+            "backend_dependency": "CUDAshuffle"
+          },
+          {
+            "mode": 4,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualcublasDotEx_64",
+            "input_precision": "Float16",
+            "compute_precision": "Float32",
+            "result_precision": "Float16",
+            "actual_library": {
+              "cublas_version": 120900,
+              "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+              "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+              "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+              "log_evidence": {
+                "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+                "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+              },
+              "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+            }
+          },
+          {
+            "mode": 5,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+            "product_precision": "Float16roundedhalf2multiply",
+            "pair_and_reduce_precision": "Float32",
+            "timed_query_allocation_free": true,
+            "code": {
+              "path": "src/f16sp-julia/vendor_bridge.cu",
+              "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+            }
+          }
+        ],
+        "algorithm": "Parametricpairtrees+warpkernel+actualcuBLAS/CUBAPI",
+        "work_item_mapping": "128workers/block andsourcegridstrideoverhalf2positions, two scalarhalf lanes/worker",
+        "layout": "InterleavedFloat16pairs,64bytealignedinputguardoffset;Float32atomicorFloat16cuBLASresult",
+        "storage_precision": [
+          "Float16"
+        ],
+        "compute_precision": [
+          "Float16FMA/tree",
+          "Float32accumulation_reduction_atomic",
+          "Float16vendorresult"
+        ],
+        "synchronization": [
+          "blockbarriers",
+          "warpshuffle",
+          "globalFloat32atomicfinish",
+          "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "grids": [
+            256,
+            128,
+            64,
+            32,
+            16
+          ],
+          "dynamic_shared_bytes": 0,
+          "Julia_static_shared_bytes_by_mode": [
+            512,
+            1024,
+            16
+          ],
+          "native_CUB_storage_and_registers": "unprofiled/unknown"
+        },
+        "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+            "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803"
+          },
+          {
+            "path": "src/f16sp-julia/study_device.jl",
+            "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+          },
+          {
+            "path": "src/f16sp-julia/study_common.jl",
+            "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+          },
+          {
+            "path": "src/f16sp-julia/vendor_bridge.cu",
+            "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+          }
+        ],
+        "limitations": [
+          "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+          "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+          "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+          "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+          "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+          "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+          "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+          "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+          "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+          "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+          "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+          "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+          "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+          "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+          "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+          "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+          "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+          "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "Julia_runtime": "local12.0",
+          "native_nvcc": "12.9.41",
+          "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+          "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+          "native_flags": "-O3 -std=c++17 -arch=sm70",
+          "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "vendor_cublas_pinned": {
+            "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+            "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+            "preload_before_Julia": true
+          }
+        },
+        "actual_vendor": {
+          "cublas_version": 120900,
+          "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+          "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+          "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "log_evidence": {
+            "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+            "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+          },
+          "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+        },
+        "configuration_overrides": {
+          "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2": {
+            "implementation_class": "mixed_kernel_library_pipeline",
+            "component_traits": [
+              {
+                "mode": 1,
+                "implementation_class": "framework_device_kernel",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float16FMA/tree thenFloat32pair+atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 512,
+                "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+              },
+              {
+                "mode": 2,
+                "implementation_class": "framework_device_kernel",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 1024,
+                "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+              },
+              {
+                "mode": 3,
+                "implementation_class": "framework_device_kernel",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 16,
+                "backend_dependency": "CUDAshuffle"
+              },
+              {
+                "mode": 4,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualcublasDotEx_64",
+                "input_precision": "Float16",
+                "compute_precision": "Float32",
+                "result_precision": "Float16",
+                "actual_library": {
+                  "cublas_version": 120900,
+                  "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+                  "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+                  "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+                  "log_evidence": {
+                    "path": ".porting-state/portable_julia/runs/20261018T065712191603Z_f16sp/cuda_jl_run1.log",
+                    "sha256": "343a1be2bbd777a82094dc94324c2cfbfb447bba10abc778c148efdb8f62ad1d"
+                  },
+                  "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+                }
+              },
+              {
+                "mode": 5,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+                "product_precision": "Float16roundedhalf2multiply",
+                "pair_and_reduce_precision": "Float32",
+                "timed_query_allocation_free": true,
+                "code": {
+                  "path": "src/f16sp-julia/vendor_bridge.cu",
+                  "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+                }
+              }
+            ]
+          }
+        },
+        "status": "verified",
+        "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2"
+      },
+      "ka": {
+        "review_status": "actualsource_percomponentprecision_all20artifact_review",
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "component_traits": [
+          {
+            "mode": 1,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float16FMA/tree thenFloat32pair+atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 512,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 2,
+            "implementation_class": "framework_device_kernel",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 1024,
+            "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+          },
+          {
+            "mode": 3,
+            "implementation_class": "hybrid_device_intrinsics",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 16,
+            "backend_dependency": "CUDAshuffle"
+          },
+          {
+            "mode": 4,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualcublasDotEx_64",
+            "input_precision": "Float16",
+            "compute_precision": "Float32",
+            "result_precision": "Float16",
+            "actual_library": {
+              "cublas_version": 120900,
+              "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+              "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+              "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+              "log_evidence": {
+                "path": ".porting-state/portable_julia/runs/20261018T065923345855Z_f16sp/ka_run1.log",
+                "sha256": "8dafa3d02624452d3225296016ca3005af29b7ccf6e28c0f5879cec0e058d768"
+              },
+              "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+            }
+          },
+          {
+            "mode": 5,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+            "product_precision": "Float16roundedhalf2multiply",
+            "pair_and_reduce_precision": "Float32",
+            "timed_query_allocation_free": true,
+            "code": {
+              "path": "src/f16sp-julia/vendor_bridge.cu",
+              "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+            }
+          }
+        ],
+        "algorithm": "Parametricpairtrees+warpkernel+actualcuBLAS/CUBAPI",
+        "work_item_mapping": "128workers/block andsourcegridstrideoverhalf2positions, two scalarhalf lanes/worker",
+        "layout": "InterleavedFloat16pairs,64bytealignedinputguardoffset;Float32atomicorFloat16cuBLASresult",
+        "storage_precision": [
+          "Float16"
+        ],
+        "compute_precision": [
+          "Float16FMA/tree",
+          "Float32accumulation_reduction_atomic",
+          "Float16vendorresult"
+        ],
+        "synchronization": [
+          "blockbarriers",
+          "warpshuffle",
+          "globalFloat32atomicfinish",
+          "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "grids": [
+            256,
+            128,
+            64,
+            32,
+            16
+          ],
+          "dynamic_shared_bytes": 0,
+          "Julia_static_shared_bytes_by_mode": [
+            512,
+            1024,
+            16
+          ],
+          "native_CUB_storage_and_registers": "unprofiled/unknown"
+        },
+        "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/f16sp-julia/f16sp-julia-KA/main.jl",
+            "sha256": "940e2254bb47bc12fabc508a5cdc79ceb7c2fad97966d56d532e5c6d8726036c"
+          },
+          {
+            "path": "src/f16sp-julia/study_device.jl",
+            "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+          },
+          {
+            "path": "src/f16sp-julia/study_common.jl",
+            "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+          },
+          {
+            "path": "src/f16sp-julia/vendor_bridge.cu",
+            "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+          }
+        ],
+        "limitations": [
+          "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+          "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+          "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+          "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+          "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+          "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+          "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+          "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+          "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+          "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+          "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+          "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+          "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+          "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+          "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+          "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+          "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+          "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "Julia_runtime": "local12.0",
+          "native_nvcc": "12.9.41",
+          "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+          "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+          "native_flags": "-O3 -std=c++17 -arch=sm70",
+          "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "vendor_cublas_pinned": {
+            "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+            "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+            "preload_before_Julia": true
+          }
+        },
+        "actual_vendor": {
+          "cublas_version": 120900,
+          "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+          "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+          "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "log_evidence": {
+            "path": ".porting-state/portable_julia/runs/20261018T065923345855Z_f16sp/ka_run1.log",
+            "sha256": "8dafa3d02624452d3225296016ca3005af29b7ccf6e28c0f5879cec0e058d768"
+          },
+          "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+        },
+        "configuration_overrides": {
+          "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2": {
+            "implementation_class": "mixed_kernel_library_pipeline",
+            "component_traits": [
+              {
+                "mode": 1,
+                "implementation_class": "framework_device_kernel",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float16FMA/tree thenFloat32pair+atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 512,
+                "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+              },
+              {
+                "mode": 2,
+                "implementation_class": "framework_device_kernel",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 1024,
+                "backend_dependency": "ownframeworklocalmemory/barrier/atomic"
+              },
+              {
+                "mode": 3,
+                "implementation_class": "hybrid_device_intrinsics",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 16,
+                "backend_dependency": "CUDAshuffle"
+              },
+              {
+                "mode": 4,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualcublasDotEx_64",
+                "input_precision": "Float16",
+                "compute_precision": "Float32",
+                "result_precision": "Float16",
+                "actual_library": {
+                  "cublas_version": 120900,
+                  "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+                  "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+                  "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+                  "log_evidence": {
+                    "path": ".porting-state/portable_julia/runs/20261018T065923345855Z_f16sp/ka_run1.log",
+                    "sha256": "8dafa3d02624452d3225296016ca3005af29b7ccf6e28c0f5879cec0e058d768"
+                  },
+                  "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+                }
+              },
+              {
+                "mode": 5,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+                "product_precision": "Float16roundedhalf2multiply",
+                "pair_and_reduce_precision": "Float32",
+                "timed_query_allocation_free": true,
+                "code": {
+                  "path": "src/f16sp-julia/vendor_bridge.cu",
+                  "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+                }
+              }
+            ]
+          }
+        },
+        "status": "verified",
+        "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2"
+      },
+      "jacc": {
+        "review_status": "actualsource_percomponentprecision_all20artifact_review",
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "component_traits": [
+          {
+            "mode": 1,
+            "implementation_class": "hybrid_device_intrinsics",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float16FMA/tree thenFloat32pair+atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 512,
+            "backend_dependency": "CUDAstaticshared/barrier/atomic"
+          },
+          {
+            "mode": 2,
+            "implementation_class": "hybrid_device_intrinsics",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "pairedsharedtree",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 1024,
+            "backend_dependency": "CUDAstaticshared/barrier/atomic"
+          },
+          {
+            "mode": 3,
+            "implementation_class": "hybrid_device_intrinsics",
+            "input_storage": "Float16interleavedpairs",
+            "compute": "Float32FMA/accumulation/tree/atomic",
+            "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+            "grids": [
+              256,
+              128,
+              64,
+              32,
+              16
+            ],
+            "threads": 128,
+            "Julia_shared_bytes": 16,
+            "backend_dependency": "CUDAshuffle"
+          },
+          {
+            "mode": 4,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualcublasDotEx_64",
+            "input_precision": "Float16",
+            "compute_precision": "Float32",
+            "result_precision": "Float16",
+            "actual_library": {
+              "cublas_version": 120900,
+              "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+              "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+              "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+              "log_evidence": {
+                "path": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/jacc_run1.log",
+                "sha256": "3cd6d219acf8f81af70584aabf8583cb789e693994f41d5d6c9e33597dfae622"
+              },
+              "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+            }
+          },
+          {
+            "mode": 5,
+            "implementation_class": "vendor_library_interop",
+            "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+            "product_precision": "Float16roundedhalf2multiply",
+            "pair_and_reduce_precision": "Float32",
+            "timed_query_allocation_free": true,
+            "code": {
+              "path": "src/f16sp-julia/vendor_bridge.cu",
+              "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+            }
+          }
+        ],
+        "algorithm": "Parametricpairtrees+warpkernel+actualcuBLAS/CUBAPI",
+        "work_item_mapping": "128workers/block andsourcegridstrideoverhalf2positions, two scalarhalf lanes/worker",
+        "layout": "InterleavedFloat16pairs,64bytealignedinputguardoffset;Float32atomicorFloat16cuBLASresult",
+        "storage_precision": [
+          "Float16"
+        ],
+        "compute_precision": [
+          "Float16FMA/tree",
+          "Float32accumulation_reduction_atomic",
+          "Float16vendorresult"
+        ],
+        "synchronization": [
+          "blockbarriers",
+          "warpshuffle",
+          "globalFloat32atomicfinish",
+          "wholedevicecompletion_covers_vendorstream0_andJuliataskstreams"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "grids": [
+            256,
+            128,
+            64,
+            32,
+            16
+          ],
+          "dynamic_shared_bytes": 0,
+          "Julia_static_shared_bytes_by_mode": [
+            512,
+            1024,
+            16
+          ],
+          "native_CUB_storage_and_registers": "unprofiled/unknown"
+        },
+        "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/f16sp-julia/f16sp-julia-JACC/main.jl",
+            "sha256": "ab10e9eab5f46792bc2e75383931fb2ff13edd6fe07b75e8daee5209a94222f8"
+          },
+          {
+            "path": "src/f16sp-julia/study_device.jl",
+            "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+          },
+          {
+            "path": "src/f16sp-julia/study_common.jl",
+            "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+          },
+          {
+            "path": "src/f16sp-julia/vendor_bridge.cu",
+            "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+          }
+        ],
+        "limitations": [
+          "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+          "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+          "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+          "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+          "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+          "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+          "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+          "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+          "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+          "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+          "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+          "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+          "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+          "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+          "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+          "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+          "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+          "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "Julia_runtime": "local12.0",
+          "native_nvcc": "12.9.41",
+          "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+          "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+          "native_flags": "-O3 -std=c++17 -arch=sm70",
+          "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "vendor_cublas_pinned": {
+            "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+            "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+            "preload_before_Julia": true
+          }
+        },
+        "actual_vendor": {
+          "cublas_version": 120900,
+          "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+          "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+          "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+          "log_evidence": {
+            "path": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/jacc_run1.log",
+            "sha256": "3cd6d219acf8f81af70584aabf8583cb789e693994f41d5d6c9e33597dfae622"
+          },
+          "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+        },
+        "configuration_overrides": {
+          "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2": {
+            "implementation_class": "mixed_kernel_library_pipeline",
+            "component_traits": [
+              {
+                "mode": 1,
+                "implementation_class": "hybrid_device_intrinsics",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float16FMA/tree thenFloat32pair+atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 512,
+                "backend_dependency": "CUDAstaticshared/barrier/atomic"
+              },
+              {
+                "mode": 2,
+                "implementation_class": "hybrid_device_intrinsics",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "pairedsharedtree",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 1024,
+                "backend_dependency": "CUDAstaticshared/barrier/atomic"
+              },
+              {
+                "mode": 3,
+                "implementation_class": "hybrid_device_intrinsics",
+                "input_storage": "Float16interleavedpairs",
+                "compute": "Float32FMA/accumulation/tree/atomic",
+                "reduction": "warp shuffles offsets1,2,4,8,16 thensequential4warps",
+                "grids": [
+                  256,
+                  128,
+                  64,
+                  32,
+                  16
+                ],
+                "threads": 128,
+                "Julia_shared_bytes": 16,
+                "backend_dependency": "CUDAshuffle"
+              },
+              {
+                "mode": 4,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualcublasDotEx_64",
+                "input_precision": "Float16",
+                "compute_precision": "Float32",
+                "result_precision": "Float16",
+                "actual_library": {
+                  "cublas_version": 120900,
+                  "cublas_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+                  "cublas_sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+                  "bridge_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+                  "log_evidence": {
+                    "path": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/jacc_run1.log",
+                    "sha256": "3cd6d219acf8f81af70584aabf8583cb789e693994f41d5d6c9e33597dfae622"
+                  },
+                  "cublas_resolved_path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13"
+                }
+              },
+              {
+                "mode": 5,
+                "implementation_class": "vendor_library_interop",
+                "operation": "actualCUBDeviceReduce::Sum CUDA-specificCABI",
+                "product_precision": "Float16roundedhalf2multiply",
+                "pair_and_reduce_precision": "Float32",
+                "timed_query_allocation_free": true,
+                "code": {
+                  "path": "src/f16sp-julia/vendor_bridge.cu",
+                  "sha256": "d516535ec7eb11c77ffef3ae637b8edd26768b1f7d64fb77e341ee69b24244b3"
+                }
+              }
+            ]
+          }
+        },
+        "status": "verified",
+        "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2"
+      }
+    },
+    "timing_scope": "sum34_reset_customkernel_or_actualvendorAPI_perrepeatmeans",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+      "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+      "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+      "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+      "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+      "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+      "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+      "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+      "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+      "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+      "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+      "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+      "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+      "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+      "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+      "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+      "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+      "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2",
+        "config": "src/f16sp-julia/study_config.json",
+        "result": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/result.json",
+        "mean_seconds": {
+          "cuda": 0.0003173433333335,
+          "cuda_jl": 0.00035259208333350003,
+          "ka": 0.00043163366666674997,
+          "jacc": 0.0006069563333330001
+        }
+      }
+    ],
+    "precision_quality": "src/f16sp-julia/precision_quality.json",
+    "component_timings": "src/f16sp-julia/component_timings.json"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/f16sp-julia/main.jl",
-    "sha256": "b84d3c0e0871eefc73101c5061deb28769342450cb27690f7186fdffc5931a71",
+    "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+    "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803",
     "syntax_features": {
       "cuda_kernel_launch": [
-        42,
-        49
+        35,
+        37,
+        39
       ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
       "local_storage": [],
       "barrier": [
-        21,
-        28
+        8,
+        14,
+        25
       ],
       "atomic": [
-        33
+        17,
+        28
       ],
-      "vendor_library": [
-        116
-      ],
+      "vendor_library": [],
       "explicit_zero_dynamic_shared": []
     },
     "placeholder_signals": {
-      "include_alias": false,
+      "include_alias": true,
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cuda129vendor_v1",
+      "run_id": "20261018T065521371610Z_f16sp",
+      "result": ".porting-state/portable_julia/runs/20261018T065521371610Z_f16sp/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": {
+        "status": "superseded_vendor_runtime_alignment",
+        "numerical_success_retained": true,
+        "native_cublas": "12.9.0.13",
+        "Julia_cublas": "12.0.2.224",
+        "target": "both12.9.0.13",
+        "no_speed_selection": true
+      },
+      "reference_provenance": null,
+      "configuration_classification_adjudication": {
+        "path": "src/f16sp-julia/study_adjudications.json",
+        "sha256": "85b38017dff8a269a27c9bcaa36d6d522eeb01db8d4d4bdf28bc044d0238a4ad",
+        "run_id": "20261018T065521371610Z_f16sp",
+        "reason": "ObservedELFinterpositionbindsJuliaCABIcuBLAS12.0while native12.9. Numericalsuccessretained; environmentalignmentv2selectedbeforefreshmeasurement, notspeed. Unchangedactual12.9nativefive-series reused explicitly.",
+        "recorded_at": null,
+        "updated_fields": [
+          "exclude_from_aggregate",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "3f216dd87104d65a4a8fdd3fea598043613855ee4ea956e895cd84fc056dee4d",
+      "source_hash": "d10e814dd949e7ef42a0858603a0bca119c78f234bd119b1f0191ac0c39e667a",
+      "declared_environment": {
+        "Julia": "1.12.6",
+        "CUDA_jl": "6.2.1",
+        "KA": "0.9.45",
+        "JACC": "1.4.0",
+        "Julia_runtime": "local12.0",
+        "native_nvcc": "12.9.41",
+        "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+        "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+        "native_flags": "-O3 -std=c++17 -arch=sm70",
+        "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T065521371610Z_f16sp/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000430020666667,
+        0.000436830333333,
+        0.000379113,
+        0.000413494,
+        0.000381424666667
+      ],
+      "mean_last_four_seconds": 0.0004027155,
+      "contract": {
+        "half2_count": 32768,
+        "grids": [
+          256,
+          128,
+          64,
+          32,
+          16
+        ],
+        "threads": 128,
+        "internal_repeats": 3,
+        "cases": [
+          "signed_half_cancellation",
+          "original_uniform_generator"
+        ],
+        "custom_semantic_modes": 3,
+        "vendor_paths": [
+          "cublasDotEx_64_FP16result_FP32compute",
+          "CUB_DeviceReduce_roundhalfproduct_floatpairs"
+        ],
+        "outputs": 34,
+        "guards": 7616,
+        "input_prefix_count": 262168,
+        "artifact_count": 269818,
+        "limits": [
+          "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+          "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+          "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+          "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+          "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+          "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+          "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+          "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+          "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+          "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters."
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2",
+      "run_id": "20261018T070105511666Z_f16sp",
+      "result": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "7c50ff48abe6691206a2dde8afb9898b271692a6fa541ff2f8cb78093f9bb78a",
+      "source_hash": "d10e814dd949e7ef42a0858603a0bca119c78f234bd119b1f0191ac0c39e667a",
+      "declared_environment": {
+        "Julia": "1.12.6",
+        "CUDA_jl": "6.2.1",
+        "KA": "0.9.45",
+        "JACC": "1.4.0",
+        "Julia_runtime": "local12.0",
+        "native_nvcc": "12.9.41",
+        "native_sdk": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9",
+        "native_cublas_library_search": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib",
+        "native_flags": "-O3 -std=c++17 -arch=sm70",
+        "bridge_binary_sha256": "388097f7f40b6aa91c3b265af81dfb90ffc6288a5543b1fe2673c5c2a7b0be81",
+        "vendor_cublas_pinned": {
+          "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/math_libs/12.9/targets/x86_64-linux/lib/libcublas.so.12.9.0.13",
+          "sha256": "6880ea769f9e1e6d3887b1ee457889ff06e7cb576c03fe82f4d6ec181a1f2a6e",
+          "preload_before_Julia": true
+        }
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000377437666667,
+        0.000391611,
+        0.000342487,
+        0.000345120666667,
+        0.000331149666667
+      ],
+      "mean_last_four_seconds": 0.00035259208333350003,
+      "contract": {
+        "half2_count": 32768,
+        "grids": [
+          256,
+          128,
+          64,
+          32,
+          16
+        ],
+        "threads": 128,
+        "internal_repeats": 3,
+        "cases": [
+          "signed_half_cancellation",
+          "original_uniform_generator"
+        ],
+        "custom_semantic_modes": 3,
+        "vendor_paths": [
+          "cublasDotEx_64_FP16result_FP32compute",
+          "CUB_DeviceReduce_roundhalfproduct_floatpairs"
+        ],
+        "outputs": 34,
+        "guards": 7616,
+        "input_prefix_count": 262168,
+        "artifact_count": 269818,
+        "limits": [
+          "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+          "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+          "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+          "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+          "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+          "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+          "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+          "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+          "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+          "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters."
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
@@ -62,7 +1613,40 @@
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "39a63fc2ec127829fd15acd9",
+        "begin_event_id": "1c03656aa33595d31c5e567f",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_audit",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T06:58:33.355389+00:00",
+        "usage_event_timestamp": "2026-10-18T06:58:17.312Z",
+        "elapsed_usage_event_start": "2026-10-18T06:41:48.743Z",
+        "delta_usage": {
+          "input_tokens": 7401409,
+          "cached_input_tokens": 7323264,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 35150,
+          "reasoning_output_tokens": 18596,
+          "total_tokens": 7436559
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 16.043389,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "e70d70c0b7a140d7b5ce7eee947fda4736c2f7b77fc1a60d585edf700f76fe83",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "Alignedv2refs all17paths passed5fullcaptures; actualcuBLAS12.9path/version/hashsame afterobservedELF12.0interpositionfixedwithLD_PRELOADbeforeJulia. Nativeunchanged5reused, oldv1excludedforscope/environmentbeforefreshnot speed. Reference1genuineGPUcandidate/2kerneldefs3semanticmodes;3processevals(firsthostparsebeforeJIT,secondnumericpass/vendorconfound,thirdalignedpass),2JITcheckprocesses,1parsefix+1environmentalignmentfix+proactivehistoricalaliasrestoration. Vendorbridge2nativecompiles:12.0unchangedsourcefrontendfail,12.9samebodypass. Nativeadapterbuild1. Allseparatefromtargettranslation.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 6.205905,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/f16sp/cuda_jl_reference_audit.jsonl",
+        "evidence_sha256": "2627cc794076d54b5867832daae859d9c6a39ba324f64e563b7424afb6f9dbb0",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
@@ -93,5 +1677,211 @@
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "f16sp",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/result.json"
+    ],
+    "contract": {
+      "half2_count": 32768,
+      "grids": [
+        256,
+        128,
+        64,
+        32,
+        16
+      ],
+      "threads": 128,
+      "internal_repeats": 3,
+      "cases": [
+        "signed_half_cancellation",
+        "original_uniform_generator"
+      ],
+      "custom_semantic_modes": 3,
+      "vendor_paths": [
+        "cublasDotEx_64_FP16result_FP32compute",
+        "CUB_DeviceReduce_roundhalfproduct_floatpairs"
+      ],
+      "outputs": 34,
+      "guards": 7616,
+      "input_prefix_count": 262168,
+      "artifact_count": 269818,
+      "limits": [
+        "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+        "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+        "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+        "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+        "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+        "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+        "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+        "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+        "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+        "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters."
+      ]
+    },
+    "limitations": [
+      "All17source mode/gridpaths covered atnamed32768half2/5grids256..16/R3, twofixtures; original134217728half2/5grids1048576..65536/R1000 unmeasured.",
+      "NativeCUDA12.9.41 compiler/headers/CUB andcuBLAS12.9 toolchainstratum; originalCUDA12.0 frontendfails unchangedhostdeviceHalf2Mulcallingdeviceonlyhmul2. Noarithmetic/sourcekernelpatch. Julia customcompiler/runtime pinnedCUDAjl6.2.1/local12.0, separatefromCABIbridge12.9compiledcomponent.",
+      "ActualCUBLASandCUBDeviceReduce paths are CUDA-specific vendorinterop via sharedCABIbridge; no claimKA/JACCindependentportablelibraryimplementation.",
+      "Nativehalf2packedISA versus scalarFloat16Juliaoperations; arithmeticFMA/rounding/orderpreserved butpacking/register/resource/codegen covariates.",
+      "CUBBlockReduce sourcewarp-shuffle hierarchy mappedexplicitly, notsamecompiledvendorimplementation.",
+      "Predeclaredmixedbudget .02+2e-6*absoracle peroutput; exact inputbitprefix/guards andexacthalfcuBLASoracle separatelychecked. ScalarFP32atomic-orderdifferences allowed, notuniversalbitidentityclaim.",
+      "Half-mode fidelity is to sourceFP16FMA/treepolicy, not idealFP64dot accuracy; signedcancellation showslargepolicyerror, originaluniformquantization differsnominal65504.",
+      "Timing summed34componentmeans mixesreset+customkernels withactualcuBLASAPI andCUBtemporaryquery/allocation/free, notpurekernelorfrontendcausalcomparison; percomponenttimesretained.",
+      "One explicitsource-pathwarmup per34cases replaces1000sourceuntimedwarmups, JITexcluded; all5inprocessoutertrialsmeanlast4.",
+      "Smallcache-residentinputs; noDRAMroofline/BWclaimwithoutcounters.",
+      "Selectedv2 preloads exactcuBLAS12.9beforeJulia; actualv1Juliaused12.0despiteRUNPATH12.9. Rawv1preserved/excludedbeforev2, notspeed; unchangednative12.9firstfive-seriesreused.",
+      "Native prefix stores fixture bits after complete GPU readbackmemcmp succeeds; recheckedafterallmodes. Equivalent actualverifiedbits, not literal serialization ofnative readbackbuffer.",
+      "Original native warmup uses atomic result before initialization; namedwarmups explicitlyreset. Timedsourcealreadyresets, kernelmathunchanged; nooriginalhugeCLIwarmupcertification.",
+      "TwoJulia kerneldefinitions: Float16/Float32 pair-tree specializations andFP32warp path, three semanticmodes;34cases,grids andtrials notattempts; internalcompilerjobsunknown.",
+      "Nativepackedhalf2 versus scalarhalf sourceoperations, sourceCUBBlockReducetemplate versus explicitJuliawarphierarchy, resources/codegen/reset anddispatchwrappers areperformancecovariates.",
+      "Wholeclassmixed_kernel_library_pipeline; componentsframework/hybrid/vendor withdifferentprecision. No causalabstraction-only interpretation oftotaltime.",
+      "Originalfixednominal65504errorbaselineprecedesinputquantization; actualuniformquantizeddot65472.015625. Somehalfoutputsaccidentallyequalnominal65504whileworseactualdotaccuracy.",
+      "Historicalcostunknown. Savedsourceproxiesincludemechanicallyreusedbody; cumulativecontext/cache/coordinationusagewindows andworkflowoverlap notexclusivebilledcost."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "f16sp_all17paths_half2n32768_twofixtures_R3_cublas129pinned_v2",
+        "config": "src/f16sp-julia/study_config.json",
+        "result": ".porting-state/portable_julia/runs/20261018T070105511666Z_f16sp/result.json",
+        "mean_seconds": {
+          "cuda": 0.0003173433333335,
+          "cuda_jl": 0.00035259208333350003,
+          "ka": 0.00043163366666674997,
+          "jacc": 0.0006069563333330001
+        }
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "mixed_kernel_library_pipeline",
+    "annotation_path": ".porting-state/portable_julia/traits/f16sp.json",
+    "annotation_sha256": "ae2e58b5c56c6735b32cdae7b2b7965787f8cde7d5ee03eef26eb81c00a63368",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/f16sp-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "224c03c38bfdac5781ac2e539022809f9fc7d034297bcf179053363f4ec0f006",
+      "record": {
+        "benchmark_id": "f16sp",
+        "implementation_model": "cuda_jl",
+        "phase": "genuine_precision_vendor_restoration_toolchain_loader_alignment",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 3,
+        "device_kernel_definitions": 2,
+        "kernel_semantic_repair_rounds": 1,
+        "guard_or_adapter_only": false,
+        "historical_translation_attempts": null,
+        "historical_total_tokens": null,
+        "current_input_tokens": null,
+        "current_output_tokens_proxy": 1836,
+        "current_total_tokens": null,
+        "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+        "observed_consumed_usage": {
+          "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/f16sp/cuda_jl_reference_audit.jsonl",
+          "delta_usage": {
+            "input_tokens": 7401409,
+            "cached_input_tokens": 7323264,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 35150,
+            "reasoning_output_tokens": 18596,
+            "total_tokens": 7436559
+          },
+          "scope": "Proactivehistoricalrestoration: originalall3customkernelaliasesandfakecuBLAS/CUBsumlabels replacedby2parametrickerneldefs/3semanticmodes andactualCABIvendorAPIs. One authoredGPUprogramcandidate/2hostprogramrevisions/2processevaluations; first sharedcommonparseextra-parenthesis beforeauthoredJIT, host-onlyfix thenfirstactualJIT/evaluationpass. No devicecompiler/numericalfeedbackrepair. Nativefirstaccepted5seriesreusedunchanged. Sharedvendorbridgecompile12.0fail\u219212.9pass separatetoolchainstratum, nottargetattempts. Twofixtures/all17paths, fullinputbits/guards independentRNEoracles; originalhugeCLIunmeasured. ObservedruntimeinterpositionfirstnumericallypassingJuliausescuBLAS12.0while native12.9; preserved/excludedv1beforecontrolledLD_PRELOADv2. Sameauthoredkernels andcommonbody, sourcecustomnativefirst5reused; freshJuliav2actualcuBLASpath/version/hashmatchnative12.9 exactly. Total3Juliaexternalprocesschecks(firstparsepreJIT, secondvalidbutvendorconfounded, thirdvalidaligned),2authoredJITcheckprocesses,1hostparsefix/1environmentalignmentfix, no numerical/compilerfeedbackrepair."
+        },
+        "source_files": [
+          {
+            "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+            "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803"
+          },
+          {
+            "path": "src/f16sp-julia/study_device.jl",
+            "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+          },
+          {
+            "path": "src/f16sp-julia/study_common.jl",
+            "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+          }
+        ],
+        "actual_device_jit_check_invocations": 2,
+        "internal_compiler_job_count": null,
+        "host_program_revisions": 2,
+        "host_frontend_parse_repairs": 1,
+        "environment_alignment_repairs": 1,
+        "shared_vendor_bridge_build_invocations": 2,
+        "shared_vendor_bridge_frontend_failures": 1,
+        "proactive_historical_semantic_restoration_rounds": 1,
+        "historical_reference_preserved": {
+          "path": "src/f16sp-julia/reference_original/main.jl",
+          "sha256": "b84d3c0e0871eefc73101c5061deb28769342450cb27690f7186fdffc5931a71"
+        },
+        "source_proxy_limitations": "Includesreusedmath/sharedbody, notexclusivegenerationorbilledusage; bridge/oracle separatelyprepared."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/f16sp-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "224c03c38bfdac5781ac2e539022809f9fc7d034297bcf179053363f4ec0f006",
+    "record": {
+      "benchmark_id": "f16sp",
+      "implementation_model": "cuda_jl",
+      "phase": "genuine_precision_vendor_restoration_toolchain_loader_alignment",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 3,
+      "device_kernel_definitions": 2,
+      "kernel_semantic_repair_rounds": 1,
+      "guard_or_adapter_only": false,
+      "historical_translation_attempts": null,
+      "historical_total_tokens": null,
+      "current_input_tokens": null,
+      "current_output_tokens_proxy": 1836,
+      "current_total_tokens": null,
+      "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+      "observed_consumed_usage": {
+        "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/f16sp/cuda_jl_reference_audit.jsonl",
+        "delta_usage": {
+          "input_tokens": 7401409,
+          "cached_input_tokens": 7323264,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 35150,
+          "reasoning_output_tokens": 18596,
+          "total_tokens": 7436559
+        },
+        "scope": "Proactivehistoricalrestoration: originalall3customkernelaliasesandfakecuBLAS/CUBsumlabels replacedby2parametrickerneldefs/3semanticmodes andactualCABIvendorAPIs. One authoredGPUprogramcandidate/2hostprogramrevisions/2processevaluations; first sharedcommonparseextra-parenthesis beforeauthoredJIT, host-onlyfix thenfirstactualJIT/evaluationpass. No devicecompiler/numericalfeedbackrepair. Nativefirstaccepted5seriesreusedunchanged. Sharedvendorbridgecompile12.0fail\u219212.9pass separatetoolchainstratum, nottargetattempts. Twofixtures/all17paths, fullinputbits/guards independentRNEoracles; originalhugeCLIunmeasured. ObservedruntimeinterpositionfirstnumericallypassingJuliausescuBLAS12.0while native12.9; preserved/excludedv1beforecontrolledLD_PRELOADv2. Sameauthoredkernels andcommonbody, sourcecustomnativefirst5reused; freshJuliav2actualcuBLASpath/version/hashmatchnative12.9 exactly. Total3Juliaexternalprocesschecks(firstparsepreJIT, secondvalidbutvendorconfounded, thirdvalidaligned),2authoredJITcheckprocesses,1hostparsefix/1environmentalignmentfix, no numerical/compilerfeedbackrepair."
+      },
+      "source_files": [
+        {
+          "path": "src/f16sp-julia/f16sp-julia-cuda.jl/main.jl",
+          "sha256": "943b79de161e955140b93222a9dc7b75b59893bbd0b3db6a3c32fdfa0a0b1803"
+        },
+        {
+          "path": "src/f16sp-julia/study_device.jl",
+          "sha256": "e3d1ab38f5bf8e427ce423a3271a76c7644af1b900977aac8e5dabf3190e6529"
+        },
+        {
+          "path": "src/f16sp-julia/study_common.jl",
+          "sha256": "c4ea2b291adc6a8ee7796a956eb01b3c4fde125468445f48448d0eba94390e75"
+        }
+      ],
+      "actual_device_jit_check_invocations": 2,
+      "internal_compiler_job_count": null,
+      "host_program_revisions": 2,
+      "host_frontend_parse_repairs": 1,
+      "environment_alignment_repairs": 1,
+      "shared_vendor_bridge_build_invocations": 2,
+      "shared_vendor_bridge_frontend_failures": 1,
+      "proactive_historical_semantic_restoration_rounds": 1,
+      "historical_reference_preserved": {
+        "path": "src/f16sp-julia/reference_original/main.jl",
+        "sha256": "b84d3c0e0871eefc73101c5061deb28769342450cb27690f7186fdffc5931a71"
+      },
+      "source_proxy_limitations": "Includesreusedmath/sharedbody, notexclusivegenerationorbilledusage; bridge/oracle separatelyprepared."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
 }

@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "hungarian",
   "implementation_model": "cuda_jl",
-  "status": "existing_cuda_jl_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/hungarian.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,19 +14,579 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "hungarian",
+    "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017",
+    "status": "verified",
+    "algorithm": "FullHungarian source state machine: row/column reductions, atomic compressedzeros andparallelstarring, covers/priming, green alternatingpaths, two-stage uncovered minimum andslackadd/sub, repeatuntil256matches.",
+    "work_item_mapping": "n256: init/vectorphases4x64, fullmatrix256x256, row/colmin256x256, zero/prime oneblock min(zeros_count,256), step6 reduction256x256 then1x128.",
+    "layout": "Column-major Int32densecost/slack;13persistentstatearrays. Native staticdeviceglobals unguarded;JuliaeachstateCuArrayhas8Int32guards/side,208physicalguardwords total checkedaftereachcase. Four nativeUM scalars Bool/int vsJulia4Int32 UMarray withrawdeviceviews andpreservedowner.",
+    "precision": {
+      "storage": [
+        "Int32_cost_slack_indices",
+        "native_Bool_vs_Julia_Int32_controlflags"
+      ],
+      "compute": [
+        "Int32_exact",
+        "host_Int64_costsum"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Host device_synchronize every GPUphase",
+      "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+      "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+      "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+    ],
+    "resource_policy": {
+      "shared_bytes": "phase-specific0,12,512,1024; native row/col static1024, flagsnativeBool vsJulia12B",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "launch_geometry": "Same n256sourcegrids/threads anddynamiczerocountlocalworkgroupwidth allmodels;16specializedphases",
+    "backend_extensions": [
+      "CUDA.CuDynamicSharedArray",
+      "CUDA.sync_threads/sync_warp",
+      "CUDA.atomic_add!/atomic_xchg!",
+      "Inline PTX volatile.global/shared Int32load/store",
+      "CUDA.threadfence",
+      "CUDAcontextwidecompletion andmanagedmemory hostflags"
+    ],
+    "host_device_boundary": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "FullnativeGPUHungarianstate machine on3unique256-squareInt32costmatrices, sourceN compileoverride. NotcompleteoriginalrandomdefaultCLI, n4smallunsafeunneededwarps, CHAR_DATA_TYPE, rectangular/nonunique/negative-costsolverclaim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian",
+    "numerical_contract": "All20 primaryartifacts394757Int32words/trial:196610exactprefix +198147fulloutputs (1539assignment/inverse/totalcost and196608costecho). Uniqueoptima40/1268/175, independentexhaustivecore/plantedproof. Exactallrawoutputvsbothrefs; Juliaextra208physicalscratchguards checked3times/trial; nativeglobalsnoguards. 15Julia finalslack/assignmentdiagnosticauxcaptures persistwithhash/bytes; initialnativeauxgapexplicit.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.007972063,
+      0.007979351,
+      0.003815794,
+      0.0038202440000000004,
+      0.003883905
+    ],
+    "mean_last_four_seconds": 0.0048748235,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/hungarian-julia/hungarian-julia-cuda.jl/main.jl",
+        "sha256": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017"
+      },
+      {
+        "path": "src/hungarian-julia/study_common.jl",
+        "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+      },
+      {
+        "path": "src/hungarian-julia/hungarian_math.jl",
+        "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+      }
+    ],
+    "implementation_source_digest": "4e84aaf3d406c31216906e7801330fba8a122a3bd36ac3b0a5009d357b4e9a51",
+    "numerical_agreement_kind": "exact_full_unique_optimal_assignment_and_inverse",
+    "source_kernel_scope": "Full16nativeHungarianphases specializedN256, notsinglephase/greedy approximation",
+    "no_framework_unsupported_inference": true,
+    "independent_output_audit": "src/hungarian-julia/output_audit.json",
+    "auxiliary_states": "Savedpersistentfinalslackandassignmentdiagnostics withhashes, nondeterministicstate excludeddualcomparison",
+    "native_reference_repaired": false,
+    "current_reference_gpu_candidates": 1,
+    "current_program_checks": 4,
+    "current_GPUkernel_repairs": 0,
+    "historical_creation_cost_unknown": true
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "FullHungarian source state machine: row/column reductions, atomic compressedzeros andparallelstarring, covers/priming, green alternatingpaths, two-stage uncovered minimum andslackadd/sub, repeatuntil256matches.",
+    "implementation_class": "CUDAjl_restored_full_concurrent_Hungarian_CUDA_backend_kernel",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "n256: init/vectorphases4x64, fullmatrix256x256, row/colmin256x256, zero/prime oneblock min(zeros_count,256), step6 reduction256x256 then1x128.",
+    "layout": "Column-major Int32densecost/slack;13persistentstatearrays. Native staticdeviceglobals unguarded;JuliaeachstateCuArrayhas8Int32guards/side,208physicalguardwords total checkedaftereachcase. Four nativeUM scalars Bool/int vsJulia4Int32 UMarray withrawdeviceviews andpreservedowner.",
+    "storage_precision": [
+      "Int32_cost_slack_indices",
+      "native_Bool_vs_Julia_Int32_controlflags"
+    ],
+    "compute_precision": [
+      "Int32_exact",
+      "host_Int64_costsum"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Host device_synchronize every GPUphase",
+      "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+      "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+      "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": "phase-specific0,12,512,1024; native row/col static1024, flagsnativeBool vsJulia12B",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "launch_geometry": "Same n256sourcegrids/threads anddynamiczerocountlocalworkgroupwidth allmodels;16specializedphases",
+    "library_backend_boundary": [
+      "CUDA.CuDynamicSharedArray",
+      "CUDA.sync_threads/sync_warp",
+      "CUDA.atomic_add!/atomic_xchg!",
+      "Inline PTX volatile.global/shared Int32load/store",
+      "CUDA.threadfence",
+      "CUDAcontextwidecompletion andmanagedmemory hostflags"
+    ],
+    "host_control_boundary": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+    "support_boundary": "FullnativeGPUHungarianstate machine on3unique256-squareInt32costmatrices, sourceN compileoverride. NotcompleteoriginalrandomdefaultCLI, n4smallunsafeunneededwarps, CHAR_DATA_TYPE, rectangular/nonunique/negative-costsolverclaim.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/hungarian-julia/hungarian-julia-cuda.jl/main.jl",
+        "sha256": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017"
+      },
+      {
+        "path": "src/hungarian-julia/study_common.jl",
+        "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+      },
+      {
+        "path": "src/hungarian-julia/hungarian_math.jl",
+        "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "hungarian",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "graph_irregular",
+      "primary_domain": "discrete_optimization_linear_sum_assignment",
+      "review_status": "source_reviewed",
+      "scientific_task": "Find a minimum-cost perfect bipartite assignment by the full concurrent Hungarian algorithm",
+      "mathematical_operation": "Row/column slack reductions; independent zero starring; covers/priming; alternating-path augmentation; uncovered-minimum slack adjustment until all256columns matched.",
+      "discretization": "Dense square256x256 bounded Int32costs, two exhaustively solved6x6cores plus250 forceddiagonalvertices and one planted256permutation. Uniqueoptimum gap1/core and>=99989/planted.",
+      "accuracy_requirements": "Exact all256rowassignments,256inversecolumnassignments,Int32totalcost,completecostecho for3cases; permutation/inverse checks, independently provenuniqueoptimum andexhaustive720corepermutations; finalslacknonnegative/assignedzero diagnostics, no floatingtolerance.",
+      "input_size_regime": "Three N256 named matrices, all6algorithmsteps exercised acrosshardcases; not original1000padded1024randomCLI or historicalJulia2048shape.",
+      "precision_sensitivity": "Int32 boundedslack/cost/index/atomic operations, no overflowing sentinels inselectedmatrix; hostInt64sum fitInt32. NativeBoolmanaged/sharedflags vsJuliaInt32flags changesphysicalresourcewidth only, actualcontrolcondition same.",
+      "community_use_case": "Minimum-cost one-to-one matching can model resource/task assignment; these are illustrative uses of the mathematical optimization operator, not claimed originalapplicationprovenance.",
+      "description": "Restore historical Julia rowmin/unusedchecksum plus suboptimalCPUgreedy to source-faithful concurrent starred/primed/green GPUHungarian. OriginalnativeGPUbodies preserved; frameworkversions use explicit CUDAbackendextension primitives to retain sourcecooperative andvolatile/fence semantics.",
+      "provenance": "Native README annex to Lopes,Yadav,Ilic,Patra Fast Block Distributed CUDA Implementation of the Hungarian Algorithm, Journal Parallel Distributed Computing; native741line source andlicense reviewed. No invented externalapplicationdomain. Historicalunchangedgreedyfunction actualCPUwitnesscost101 vsindependentoptimum3 embedded1000square.",
+      "source_evidence": [
+        {
+          "path": "src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d"
+        },
+        {
+          "path": "src/hungarian-cuda/README",
+          "sha256": "2b8cc2804d632a6f9cd5e44c9edd2589669d78ae2e84df478efaf2017ea532cc"
+        },
+        {
+          "path": "src/hungarian-julia/original_main.jl",
+          "sha256": "d306e63aec71e12477ea595e0df224f1d3425123dfc5d5934cd5629d7de23f54"
+        },
+        {
+          "path": "src/hungarian-julia/scientific_witness.json",
+          "sha256": "bbe83bb8c22bd6c088c29af38d087f7d09243fd992d8b9a0fe37325d3d9819fb"
+        }
+      ]
+    },
+    "primary_motif": "concurrent_augmenting_path_assignment_with_dense_slack_reductions",
+    "storage_precision": [
+      "Int32_cost_slack_indices",
+      "native_Bool_vs_Julia_Int32_controlflags"
+    ],
+    "compute_precision": [
+      "Int32_exact",
+      "host_Int64_costsum"
+    ],
+    "synchronization": [
+      "Host device_synchronize every GPUphase",
+      "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+      "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+      "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Fullsource16specializedGPUphases andhostcontrol restored, sameworkgroup/grids/sourcewarpnetworks andzero-list atomics. Nativeglobals->Juliaargumentbuffers, Bool->Int32flags; explicitvolatile/fence/sharedCUDAbackendhybrids; KArequiresresourcebindinghostadapter. No serialsolver/greedy substitute."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_restored_full_concurrent_Hungarian_CUDA_backend_kernel",
+      "ka": "KA_generated_kernel_CUDA_dynamicshared_launch_and_device_primitive_hybrid",
+      "jacc": "JACC_dispatch_CUDA_shared_volatile_warp_atomic_fence_hybrid"
+    },
+    "timing_scope": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+    "verification_contract": "All20 primaryartifacts394757Int32words/trial:196610exactprefix +198147fulloutputs (1539assignment/inverse/totalcost and196608costecho). Uniqueoptima40/1268/175, independentexhaustivecore/plantedproof. Exactallrawoutputvsbothrefs; Juliaextra208physicalscratchguards checked3times/trial; nativeglobalsnoguards. 15Julia finalslack/assignmentdiagnosticauxcaptures persistwithhash/bytes; initialnativeauxgapexplicit.",
+    "keyconfounds": [
+      "KA/JACC are explicit CUDA backend-extension hybrids, not pure deviceportable implementations",
+      "Native staticglobalbuffers vsJuliaguardedargumentbuffers andmanagedBool vsInt32controlflags",
+      "KA CUDAsharedmemory hostadapter calls KA-generatedkernel throughCUDA.@cuda becausepinnedKAcall lacks shmemkeyword; JACCusesLaunchSpec exactbytes",
+      "Concurrent zero-list order andmatchingsearch route mayvary; uniqueoptimum makes rawfinalassignmentexact, stagecountsretainednotforcedsame",
+      "NamedN256uniquematrices, no nonunique-tie/rawequivalence or originalrandom1024CLIcertification",
+      "Hostinclusiveconvergentmultikernel solver withmanagedCPU/GPUcontrol, notsinglekernellatency orrooflinepoint",
+      "Nativeinitialrawslackauxiliary files lostintempcleanup; no reconstructednativeinternalstateevidence. Primaryrawassignments/inputs/counts preserved",
+      "Native artifactcostecho hostcopywithhash-boundcudaMemcpyToSymbolsource, notsavedpreexecutionGPUreadback; Julia preexecutiondeviceinputreadbackexact"
+    ],
+    "boundary_rounding_policy": "ExactInt32no floatingbudget; allcosts bounded0..100256, noMAX_INTpadding/arithmeticoverflow. Uniqueoptima predeclaredbeforetrials, not posthoccanonicalization. Nonunique assignments nottested. Cap10000launches a failurediagnostic only, neverusedasconvergencecriterion.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "hungarian",
+        "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017",
+        "status": "verified",
+        "algorithm": "FullHungarian source state machine: row/column reductions, atomic compressedzeros andparallelstarring, covers/priming, green alternatingpaths, two-stage uncovered minimum andslackadd/sub, repeatuntil256matches.",
+        "work_item_mapping": "n256: init/vectorphases4x64, fullmatrix256x256, row/colmin256x256, zero/prime oneblock min(zeros_count,256), step6 reduction256x256 then1x128.",
+        "layout": "Column-major Int32densecost/slack;13persistentstatearrays. Native staticdeviceglobals unguarded;JuliaeachstateCuArrayhas8Int32guards/side,208physicalguardwords total checkedaftereachcase. Four nativeUM scalars Bool/int vsJulia4Int32 UMarray withrawdeviceviews andpreservedowner.",
+        "precision": {
+          "storage": [
+            "Int32_cost_slack_indices",
+            "native_Bool_vs_Julia_Int32_controlflags"
+          ],
+          "compute": [
+            "Int32_exact",
+            "host_Int64_costsum"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Host device_synchronize every GPUphase",
+          "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+          "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+          "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+        ],
+        "resource_policy": {
+          "shared_bytes": "phase-specific0,12,512,1024; native row/col static1024, flagsnativeBool vsJulia12B",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "Same n256sourcegrids/threads anddynamiczerocountlocalworkgroupwidth allmodels;16specializedphases",
+        "backend_extensions": [
+          "CUDA.CuDynamicSharedArray",
+          "CUDA.sync_threads/sync_warp",
+          "CUDA.atomic_add!/atomic_xchg!",
+          "Inline PTX volatile.global/shared Int32load/store",
+          "CUDA.threadfence",
+          "CUDAcontextwidecompletion andmanagedmemory hostflags"
+        ],
+        "host_device_boundary": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "FullnativeGPUHungarianstate machine on3unique256-squareInt32costmatrices, sourceN compileoverride. NotcompleteoriginalrandomdefaultCLI, n4smallunsafeunneededwarps, CHAR_DATA_TYPE, rectangular/nonunique/negative-costsolverclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian",
+        "numerical_contract": "All20 primaryartifacts394757Int32words/trial:196610exactprefix +198147fulloutputs (1539assignment/inverse/totalcost and196608costecho). Uniqueoptima40/1268/175, independentexhaustivecore/plantedproof. Exactallrawoutputvsbothrefs; Juliaextra208physicalscratchguards checked3times/trial; nativeglobalsnoguards. 15Julia finalslack/assignmentdiagnosticauxcaptures persistwithhash/bytes; initialnativeauxgapexplicit.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.007972063,
+          0.007979351,
+          0.003815794,
+          0.0038202440000000004,
+          0.003883905
+        ],
+        "mean_last_four_seconds": 0.0048748235,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/hungarian-julia/hungarian-julia-cuda.jl/main.jl",
+            "sha256": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017"
+          },
+          {
+            "path": "src/hungarian-julia/study_common.jl",
+            "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+          },
+          {
+            "path": "src/hungarian-julia/hungarian_math.jl",
+            "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+          }
+        ],
+        "implementation_source_digest": "4e84aaf3d406c31216906e7801330fba8a122a3bd36ac3b0a5009d357b4e9a51",
+        "numerical_agreement_kind": "exact_full_unique_optimal_assignment_and_inverse",
+        "source_kernel_scope": "Full16nativeHungarianphases specializedN256, notsinglephase/greedy approximation",
+        "no_framework_unsupported_inference": true,
+        "independent_output_audit": "src/hungarian-julia/output_audit.json",
+        "auxiliary_states": "Savedpersistentfinalslackandassignmentdiagnostics withhashes, nondeterministicstate excludeddualcomparison",
+        "native_reference_repaired": false,
+        "current_reference_gpu_candidates": 1,
+        "current_program_checks": 4,
+        "current_GPUkernel_repairs": 0,
+        "historical_creation_cost_unknown": true
+      },
+      "ka": {
+        "benchmark_id": "hungarian",
+        "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "5c12f9fa3f977d0d75f5591dcf9af637e4cbcea76a01af5d5370c9f0996e3d1e",
+        "status": "verified",
+        "algorithm": "FullHungarian source state machine: row/column reductions, atomic compressedzeros andparallelstarring, covers/priming, green alternatingpaths, two-stage uncovered minimum andslackadd/sub, repeatuntil256matches.",
+        "work_item_mapping": "n256: init/vectorphases4x64, fullmatrix256x256, row/colmin256x256, zero/prime oneblock min(zeros_count,256), step6 reduction256x256 then1x128.",
+        "layout": "Column-major Int32densecost/slack;13persistentstatearrays. Native staticdeviceglobals unguarded;JuliaeachstateCuArrayhas8Int32guards/side,208physicalguardwords total checkedaftereachcase. Four nativeUM scalars Bool/int vsJulia4Int32 UMarray withrawdeviceviews andpreservedowner.",
+        "precision": {
+          "storage": [
+            "Int32_cost_slack_indices",
+            "native_Bool_vs_Julia_Int32_controlflags"
+          ],
+          "compute": [
+            "Int32_exact",
+            "host_Int64_costsum"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Host device_synchronize every GPUphase",
+          "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+          "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+          "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+        ],
+        "resource_policy": {
+          "shared_bytes": "phase-specific0,12,512,1024; native row/col static1024, flagsnativeBool vsJulia12B",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "Same n256sourcegrids/threads anddynamiczerocountlocalworkgroupwidth allmodels;16specializedphases",
+        "backend_extensions": [
+          "CUDA.CuDynamicSharedArray",
+          "CUDA.sync_threads/sync_warp",
+          "CUDA.atomic_add!/atomic_xchg!",
+          "Inline PTX volatile.global/shared Int32load/store",
+          "CUDA.threadfence",
+          "CUDAcontextwidecompletion andmanagedmemory hostflags",
+          "KA.launch_config/mkcontext generatedkernel explicitCUDA.@cuda shmem adapter"
+        ],
+        "host_device_boundary": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "FullnativeGPUHungarianstate machine on3unique256-squareInt32costmatrices, sourceN compileoverride. NotcompleteoriginalrandomdefaultCLI, n4smallunsafeunneededwarps, CHAR_DATA_TYPE, rectangular/nonunique/negative-costsolverclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian",
+        "numerical_contract": "All20 primaryartifacts394757Int32words/trial:196610exactprefix +198147fulloutputs (1539assignment/inverse/totalcost and196608costecho). Uniqueoptima40/1268/175, independentexhaustivecore/plantedproof. Exactallrawoutputvsbothrefs; Juliaextra208physicalscratchguards checked3times/trial; nativeglobalsnoguards. 15Julia finalslack/assignmentdiagnosticauxcaptures persistwithhash/bytes; initialnativeauxgapexplicit.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.007862411,
+          0.008794729000000001,
+          0.004276319000000001,
+          0.004491221,
+          0.00443321
+        ],
+        "mean_last_four_seconds": 0.0054988697500000005,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/hungarian-julia/hungarian-julia-KA/main.jl",
+            "sha256": "5c12f9fa3f977d0d75f5591dcf9af637e4cbcea76a01af5d5370c9f0996e3d1e"
+          },
+          {
+            "path": "src/hungarian-julia/study_common.jl",
+            "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+          },
+          {
+            "path": "src/hungarian-julia/hungarian_math.jl",
+            "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+          }
+        ],
+        "implementation_source_digest": "cbf84c0fb472db3f851cb8ff175dc71cad2ab52607dfacb54218d646d5e1f762",
+        "numerical_agreement_kind": "exact_full_unique_optimal_assignment_and_inverse",
+        "source_kernel_scope": "Full16nativeHungarianphases specializedN256, notsinglephase/greedy approximation",
+        "no_framework_unsupported_inference": true,
+        "independent_output_audit": "src/hungarian-julia/output_audit.json",
+        "auxiliary_states": "Savedpersistentfinalslackandassignmentdiagnostics withhashes, nondeterministicstate excludeddualcomparison",
+        "native_reference_repaired": false
+      },
+      "jacc": {
+        "benchmark_id": "hungarian",
+        "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "67ce9c161ea854a3fb3f7a5e0b8273d899105766a54c615417400209f51f5fb7",
+        "status": "verified",
+        "algorithm": "FullHungarian source state machine: row/column reductions, atomic compressedzeros andparallelstarring, covers/priming, green alternatingpaths, two-stage uncovered minimum andslackadd/sub, repeatuntil256matches.",
+        "work_item_mapping": "n256: init/vectorphases4x64, fullmatrix256x256, row/colmin256x256, zero/prime oneblock min(zeros_count,256), step6 reduction256x256 then1x128.",
+        "layout": "Column-major Int32densecost/slack;13persistentstatearrays. Native staticdeviceglobals unguarded;JuliaeachstateCuArrayhas8Int32guards/side,208physicalguardwords total checkedaftereachcase. Four nativeUM scalars Bool/int vsJulia4Int32 UMarray withrawdeviceviews andpreservedowner.",
+        "precision": {
+          "storage": [
+            "Int32_cost_slack_indices",
+            "native_Bool_vs_Julia_Int32_controlflags"
+          ],
+          "compute": [
+            "Int32_exact",
+            "host_Int64_costsum"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Host device_synchronize every GPUphase",
+          "CUDA workgroupbarriers andwarp sync insidecooperativereductions/zero processing",
+          "GlobalInt32atomic add/exchange; volatilecoverloads/stores anddevicefence",
+          "UnifiedmemoryCPUflagreset/read aftercontextwidecompletion, rawdeviceviewpreventsautomaticprefetch"
+        ],
+        "resource_policy": {
+          "shared_bytes": "phase-specific0,12,512,1024; native row/col static1024, flagsnativeBool vsJulia12B",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "Same n256sourcegrids/threads anddynamiczerocountlocalworkgroupwidth allmodels;16specializedphases",
+        "backend_extensions": [
+          "CUDA.CuDynamicSharedArray",
+          "CUDA.sync_threads/sync_warp",
+          "CUDA.atomic_add!/atomic_xchg!",
+          "Inline PTX volatile.global/shared Int32load/store",
+          "CUDA.threadfence",
+          "CUDAcontextwidecompletion andmanagedmemory hostflags"
+        ],
+        "host_device_boundary": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "FullnativeGPUHungarianstate machine on3unique256-squareInt32costmatrices, sourceN compileoverride. NotcompleteoriginalrandomdefaultCLI, n4smallunsafeunneededwarps, CHAR_DATA_TYPE, rectangular/nonunique/negative-costsolverclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian",
+        "numerical_contract": "All20 primaryartifacts394757Int32words/trial:196610exactprefix +198147fulloutputs (1539assignment/inverse/totalcost and196608costecho). Uniqueoptima40/1268/175, independentexhaustivecore/plantedproof. Exactallrawoutputvsbothrefs; Juliaextra208physicalscratchguards checked3times/trial; nativeglobalsnoguards. 15Julia finalslack/assignmentdiagnosticauxcaptures persistwithhash/bytes; initialnativeauxgapexplicit.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.010179321000000002,
+          0.008907889,
+          0.0050714060000000005,
+          0.004979075,
+          0.005010955
+        ],
+        "mean_last_four_seconds": 0.00599233125,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/hungarian-julia/hungarian-julia-JACC/main.jl",
+            "sha256": "67ce9c161ea854a3fb3f7a5e0b8273d899105766a54c615417400209f51f5fb7"
+          },
+          {
+            "path": "src/hungarian-julia/study_common.jl",
+            "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+          },
+          {
+            "path": "src/hungarian-julia/hungarian_math.jl",
+            "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+          }
+        ],
+        "implementation_source_digest": "6d55df0a32954c88a4805fe4464ae22a0f601c8ee340e4725a3981213c5974a4",
+        "numerical_agreement_kind": "exact_full_unique_optimal_assignment_and_inverse",
+        "source_kernel_scope": "Full16nativeHungarianphases specializedN256, notsinglephase/greedy approximation",
+        "no_framework_unsupported_inference": true,
+        "independent_output_audit": "src/hungarian-julia/output_audit.json",
+        "auxiliary_states": "Savedpersistentfinalslackandassignmentdiagnostics withhashes, nondeterministicstate excludeddualcomparison",
+        "native_reference_repaired": false
+      }
+    },
+    "source_sha256": {
+      "src/hungarian-julia/hungarian-julia-cuda.jl/main.jl": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017",
+      "src/hungarian-julia/hungarian-julia-KA/main.jl": "5c12f9fa3f977d0d75f5591dcf9af637e4cbcea76a01af5d5370c9f0996e3d1e",
+      "src/hungarian-julia/hungarian-julia-JACC/main.jl": "67ce9c161ea854a3fb3f7a5e0b8273d899105766a54c615417400209f51f5fb7"
+    },
+    "ontology_sha256": null,
+    "native_reference_repaired": false,
+    "numerical_agreement_kind": "exact_full_unique_optimal_assignment_and_inverse",
+    "independent_numerical_audit": "src/hungarian-julia/output_audit.json",
+    "native_output_guard_scope": "Originalstaticglobalshavenone,notclaimed",
+    "Julia_extra_physical_guard_words": 208,
+    "auxiliary_evidence_gap": "Initial5native tempslack auxiliary files were not capturedbyrunner; not reconstructed. Primaryfullassignments/inputs preserved and valid.",
+    "hardware_mechanism_evidence": "unprofiled"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/hungarian-julia/main.jl",
-    "sha256": "d306e63aec71e12477ea595e0df224f1d3425123dfc5d5934cd5629d7de23f54",
+    "path": "src/hungarian-julia/hungarian-julia-cuda.jl/main.jl",
+    "sha256": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017",
     "syntax_features": {
       "cuda_kernel_launch": [
-        66,
-        67
+        9
       ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
@@ -41,11 +601,198 @@
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+      "run_id": "20261018T072938003131Z_hungarian",
+      "result": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "f1ed5ba0b2a9dc1937cb3ed4e951264ef25d4b10c1395aab3083d2506fb7f0ee",
+      "source_hash": "10abc41e53a61ce37b8ee1c78938b1bce7a95a95fcea221ae5227c97ab619d6d",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T072938003131Z_hungarian/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.007972063,
+        0.007979351,
+        0.003815794,
+        0.0038202440000000004,
+        0.003883905
+      ],
+      "mean_last_four_seconds": 0.0048748235,
+      "contract": {
+        "inputs": "3fullyinitializedInt32 columnmajor256x256costmatrices.2unique6x6hardcores embeddedwith250forceddiagonal/offblock100000; thirduniqueplantedfullpermutation. Independentall720corepermutations proveuniqueoptimalassignment andgap1; full64kcostsprovidedallmodels.",
+        "precision": "ExactInt32cost/slack/index operations boundedtoavoid overflow; Int64hosttotal thencheckedInt32range; no floating arithmetic tolerance. Nativeboolmanaged flags vsJuliaInt32managedflags, explicitstorageadaptation.",
+        "operator": "FullnativeHungarian starred/primed/green augmentingpathstate machine, allsteps1\u20136 andhostconvergenceloops. OriginalhistoricalJulia CPUgreedy iswrongoperator andarchived. No serialHungariansubstitute. Uniqueoptimumenablesexactrawassignment/inverse/costcomparison; nonuniquetiesunverified.",
+        "metric": "Sum3hostinclusive fullHungarian iterative GPUsolverregions, everykernelsynchronized andmanagedCPUflags/polling/countinginROI matchingnativehostcontrol. Costsload/JITwarmup/readback/independentoracle/serializationoutside. Fivecheckedtrialsmean2\u20135. JuliaUMflagsrawdeviceviews avoidimplicitprefetch; Bool->Int32 flags/sharedflags andgenericdispatch overhead remainconfounds."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "hungarian:cuda_jl:historical_greedy",
+        "benchmark_id": "hungarian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_source_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/hungarian.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "hungarian:cuda_jl:historical_greedy",
+          "benchmark_id": "hungarian",
+          "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_source_audit",
+          "code": "S1",
+          "is_failure": true,
+          "root_cause": "OriginalJulia computesCPUgreedy, notnativeHungarian; GPUchecksum discarded modulo1. ActualunchangedCPUgreedyfunction embedded1000squarewitnesscost101 vsprovableoptimum3.",
+          "evidence_kind": "static_historical_algorithm_witness",
+          "root_cause_evidence": [
+            {
+              "path": "src/hungarian-julia/original_main.jl",
+              "sha256": "d306e63aec71e12477ea595e0df224f1d3425123dfc5d5934cd5629d7de23f54"
+            }
+          ],
+          "candidate_id": null,
+          "final_outcome": "verified_full_named_Hungarian_after_hostadapter_repairs",
+          "historical_attempts_unknown": true
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "hungarian:cuda_jl:reference_managed_lifetime",
+        "benchmark_id": "hungarian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "R1",
+        "phase": "reference_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/hungarian.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "hungarian:cuda_jl:reference_managed_lifetime",
+          "benchmark_id": "hungarian",
+          "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_verification",
+          "code": "R1",
+          "is_failure": true,
+          "root_cause": "ObservedCUDA700warmup; rawmanageddevice/hostview owners notkeptalive. GC.@preserve inhostadapter fixeswithoutchangingGPUhelper.",
+          "evidence_kind": "current_reference_adapter_or_runtime_diagnostic",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T072132353910Z_hungarian/cuda_jl_run1.log",
+              "sha256": "bc87cac84eb02a818536e3bd52fb2d69daa6666182fa1d6a40a08d9472d79993"
+            }
+          ],
+          "candidate_id": 1,
+          "final_outcome": "verified_full_named_Hungarian_after_hostadapter_repairs",
+          "historical_attempts_unknown": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "hungarian:cuda_jl:reference_aux_hash",
+        "benchmark_id": "hungarian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "T1",
+        "phase": "reference_instrumentation",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/hungarian.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "hungarian:cuda_jl:reference_aux_hash",
+          "benchmark_id": "hungarian",
+          "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_instrumentation",
+          "code": "T1",
+          "is_failure": true,
+          "root_cause": "sha256VectorInt32 rejectedbyCPUmetadataadapter; changedtoreinterpretUInt8 only. NoGPUkernelrepair orcompilerfailure.",
+          "evidence_kind": "current_reference_adapter_or_runtime_diagnostic",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T072409958484Z_hungarian/cuda_jl_run1.log",
+              "sha256": "113e734d277237db71cce85c4275ab66be571a1985b3955f84a9ff8f60f67635"
+            }
+          ],
+          "candidate_id": 1,
+          "final_outcome": "verified_full_named_Hungarian_after_hostadapter_repairs",
+          "historical_attempts_unknown": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "hungarian:cuda_jl:reference_lifetime_resolution",
+        "benchmark_id": "hungarian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "T1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/hungarian.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "hungarian:cuda_jl:reference_lifetime_resolution",
+          "benchmark_id": "hungarian",
+          "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_repair",
+          "code": "T1",
+          "is_failure": false,
+          "root_cause": "KeepUnifiedMemoryowner aliveviaGC.@preserve; sameGPUsourcecandidate hash, tracingphaseexcludedperformanceseparately.",
+          "evidence_kind": "current_reference_adapter_or_runtime_diagnostic",
+          "root_cause_evidence": [
+            {
+              "path": "src/hungarian-julia/scientific_witness.json",
+              "sha256": "bbe83bb8c22bd6c088c29af38d087f7d09243fd992d8b9a0fe37325d3d9819fb"
+            }
+          ],
+          "candidate_id": 1,
+          "final_outcome": "verified_full_named_Hungarian_after_hostadapter_repairs",
+          "historical_attempts_unknown": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 3,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -55,7 +802,57 @@
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "de081a6b2f43179b5818865b",
+        "begin_event_id": "992b7fb72d19bbe4488de4cb",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T07:25:47.648498+00:00",
+        "usage_event_timestamp": "2026-10-18T07:25:18.412Z",
+        "elapsed_usage_event_start": "2026-10-18T07:16:20.104Z",
+        "delta_usage": {
+          "input_tokens": 3399538,
+          "cached_input_tokens": 3325568,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 17664,
+          "reasoning_output_tokens": 5046,
+          "total_tokens": 3417202
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 29.236498,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "4ab8f21a197dcb527434c3dc6de8b18c62f9b283ab5f89f017781be502706382",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 7.650302,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/hungarian/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "4d565afdc77be9736eb824c7146a7e4fb73804eb6a0bd687424d4eeaf55ac7e9",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/hungarian/measurement_scope_review.json",
+      "sha256": "8073740c5e44f56bfd562b0efb2f778ba13fdb5e996e4b04bc3f46a667f47996",
+      "record": {
+        "benchmark_id": "hungarian",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_field_provenance": {
     "candidate_attempts": {
@@ -86,5 +883,72 @@
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "CUDAjl_restored_full_concurrent_Hungarian_CUDA_backend_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/hungarian.json",
+    "annotation_sha256": "f9d5d23792579bd718f1225a5078cb9760fe376dc06635d793f43de370f5f337",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/hungarian-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "1f788ff71b57b3083d778dadcb0ff247a402175f09036db82a14da8eba827990",
+      "record": {
+        "benchmark_id": "hungarian",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_repair_sharedalgorithm_separate",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 4,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 104,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "FullGPUreferencealgorithmrestoration onecandidate/fourprogramchecks, unchangedGPUhelperbytes; runtimeR1managedownerT1repair andhostT1SHAmetadatarepair, tracedcheckexcludedtiming. Sharedhelperauthoredreferencephase reusedKA/JACC.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 3399538,
+          "cached_input_tokens": 3325568,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 17664,
+          "reasoning_output_tokens": 5046,
+          "total_tokens": 3417202
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/hungarian/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/hungarian-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "1f788ff71b57b3083d778dadcb0ff247a402175f09036db82a14da8eba827990",
+    "record": {
+      "benchmark_id": "hungarian",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_repair_sharedalgorithm_separate",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 4,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 104,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "FullGPUreferencealgorithmrestoration onecandidate/fourprogramchecks, unchangedGPUhelperbytes; runtimeR1managedownerT1repair andhostT1SHAmetadatarepair, tracedcheckexcludedtiming. Sharedhelperauthoredreferencephase reusedKA/JACC.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 3399538,
+        "cached_input_tokens": 3325568,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 17664,
+        "reasoning_output_tokens": 5046,
+        "total_tokens": 3417202
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/hungarian/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
 }

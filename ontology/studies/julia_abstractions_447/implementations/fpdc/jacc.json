@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "fpdc",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "conditionally_verified_native_reference_repaired",
   "scientific_intent_record": "../../domains/fpdc.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,923 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "review_status": "actual_model_source_hash_and_all5_saved_wire_artifacts_reviewed",
+    "implementation_class": "hybrid_device_intrinsics",
+    "algorithm": "Complete predictive delta codec, warp-shared phase-safe scan, nibble-header and little-endian payload packing; no size-only surrogate",
+    "work_item_mapping": "One lane/value,32 lanes/group,8 warps each own64-value chunk;4 blocks of64 threads",
+    "layout": "FlatUInt64 input; fixed chunk byte regions; Int32 absolute end offsets/cuts; source scratch allocation1536Int32",
+    "storage_precision": [
+      "opaque_IEEE_binary64_as_UInt64",
+      "UInt8_payload",
+      "Int32_offsets_and_cuts"
+    ],
+    "compute_precision": [
+      "UInt64_integer",
+      "Int64_indices"
+    ],
+    "resource_policy": {
+      "threads": 64,
+      "blocks": 4,
+      "static_shared_bytes": 6144,
+      "dynamic_shared_bytes": 0,
+      "source_scratch_capacity_warps": 32,
+      "actual_active_warps_per_block": 2,
+      "registers_and_occupancy": "unmeasured"
+    },
+    "synchronization": [
+      "warp_phase_barriers",
+      "warp_shared_inclusive_prefix_scan",
+      "per_repeat_whole_device_completion"
+    ],
+    "backend_boundary": "CUDA backend-specific warp barrier via shared helper; CUDA.jl shared-memory/thread-index APIs inside JACC callback",
+    "portability_limit": "Chosen backend interop; no unsupported-feature claim or evidence that pure portable expression impossible.",
+    "pinned_environment": {
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "runtime": "local12.0",
+      "native_flags": "-O3 -arch=sm70"
+    },
+    "source_evidence": [
+      {
+        "path": "src/fpdc-julia/fpdc-julia-JACC/main.jl",
+        "sha256": "bdfa61e83ba87dbf26b48c5d0f4b94dc173dcf91986f649705ab6f133bbb5669"
+      },
+      {
+        "path": "src/fpdc-julia/study_device.jl",
+        "sha256": "c9d33e4063bdc1e53db6d23bd076e69bf71c7d7feeb5225287c0a2526618bee5"
+      },
+      {
+        "path": "src/fpdc-julia/study_common.jl",
+        "sha256": "6bcebf0965ba1eaa85bc660b576cc7ecb1c9d9c0ee27647dace5bba14af41ec7"
+      }
+    ],
+    "configuration_role": "corrected_reference_secondary",
+    "native_reference_repaired": true,
+    "original_primary_status": "reference_blocked",
+    "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+    "verification_contract": "raw_numeric_outputs_exact_integer_wire_bytes_offsets_and_guards_plus_independent_lossless_bit_roundtrip",
+    "keyconfounds": [
+      "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+      "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+      "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+      "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+      "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+      "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+      "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+      "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+      "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+      "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+      "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+      "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+      "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+      "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+      "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+    ],
+    "status": "verified",
+    "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Complete predictive delta codec, warp-shared phase-safe scan, nibble-header and little-endian payload packing; no size-only surrogate",
+    "implementation_class": "hybrid_device_intrinsics",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One lane/value,32 lanes/group,8 warps each own64-value chunk;4 blocks of64 threads",
+    "layout": "FlatUInt64 input; fixed chunk byte regions; Int32 absolute end offsets/cuts; source scratch allocation1536Int32",
+    "storage_precision": [
+      "opaque_IEEE_binary64_as_UInt64",
+      "UInt8_payload",
+      "Int32_offsets_and_cuts"
+    ],
+    "compute_precision": [
+      "UInt64_integer",
+      "Int64_indices"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "warp_phase_barriers",
+      "warp_shared_inclusive_prefix_scan",
+      "per_repeat_whole_device_completion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 64,
+      "blocks": 4,
+      "static_shared_bytes": 6144,
+      "dynamic_shared_bytes": 0,
+      "source_scratch_capacity_warps": 32,
+      "actual_active_warps_per_block": 2,
+      "registers_and_occupancy": "unmeasured"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "CUDA backend-specific warp barrier via shared helper; CUDA.jl shared-memory/thread-index APIs inside JACC callback",
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": [
+      {
+        "path": "src/fpdc-julia/fpdc-julia-JACC/main.jl",
+        "sha256": "bdfa61e83ba87dbf26b48c5d0f4b94dc173dcf91986f649705ab6f133bbb5669"
+      },
+      {
+        "path": "src/fpdc-julia/study_device.jl",
+        "sha256": "c9d33e4063bdc1e53db6d23bd076e69bf71c7d7feeb5225287c0a2526618bee5"
+      },
+      {
+        "path": "src/fpdc-julia/study_common.jl",
+        "sha256": "6bcebf0965ba1eaa85bc660b576cc7ecb1c9d9c0ee27647dace5bba14af41ec7"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "fpdc",
+    "scientific_intent": {
+      "review_status": "source_full_codec_original_failure_and_20_saved_artifacts_160_independent_bitroundtrips_reviewed",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "lossless_floating_point_bitstream_compression",
+      "secondary_domains": [
+        "scientific_data_storage",
+        "integer_predictive_delta_coding",
+        "compression_correctness"
+      ],
+      "scientific_task": "Compress opaque binary64 bit patterns with warp-cooperative predictive unsigned deltas, sign/byte-count nibbles and compact per-chunk payloads; verify exact lossless recovery.",
+      "mathematical_operation": "For each 32-value group, unsigned delta = abs(current_bits - predictor_bits); encode sign and byte length in 4-bit header (length2 maps3), emit little-endian delta bytes; next predictors repeat previous group final dim values.",
+      "accuracy_requirements": [
+        "Every full payload byte, absolute offset, hole sentinel and guard exact against independent sequential encoder",
+        "160 CPU decoder round trips recover every original UInt64 bit, including exceptional IEEE64 encodings",
+        "All4224 actual input/parameter prefix values exact; dual CUDA/CUDA.jl comparisons all5 trials, no tolerance"
+      ],
+      "input_size_regimes": "N512,8 chunks of64 values,4 blocks\u00d72 warps,dimensions1/2/3/32,two fixtures,R3; original64million/255blocks\u00d78warps/R100 excluded",
+      "community_use_case": "Source-backed primitive for lossless scientific data storage and reference-quality assurance; no production compression scalability claim.",
+      "source_evidence": [
+        {
+          "path": "src/fpdc-cuda/main.cu",
+          "sha256": "daa49e054280fe8ad811da53c3e154fe549218951c6ffa2045b2505340dbac89"
+        },
+        {
+          "path": "src/fpdc-cuda/kernels.h",
+          "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+        },
+        {
+          "path": "src/fpdc-julia/native_quality_witness.json",
+          "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+        },
+        {
+          "path": "src/fpdc-julia/native_correction_provenance.json",
+          "sha256": "75f158c8b8e15d5bdfe51a79b297648dcaf666b8a638ca27d38b29079480637f"
+        },
+        {
+          "path": "src/fpdc-julia/native_codec_correction.patch",
+          "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+        },
+        {
+          "path": "src/fpdc-julia/generate_oracle.py",
+          "sha256": "911d60275b56cf4785df9311800c1788a9f6fb6587a27f09b466cc98ac2b70fb"
+        },
+        {
+          "path": "src/fpdc-julia/fixture_provenance.json",
+          "sha256": "7eec1dd8d1f1cd33ffb6db0b182ece6de9160e6ad643824fbf1b2248e5bf994c"
+        },
+        {
+          "path": "src/fpdc-julia/saved_output_audit.json",
+          "sha256": "26ac4f53978cc4b1103e7ccd27912642128ff1e8205ee9aa4f9313c224f02649"
+        }
+      ],
+      "uncertainty": [
+        "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+        "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+        "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+        "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+        "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+        "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+        "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+        "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+        "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+        "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+        "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+        "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+        "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+        "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+        "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+      ]
+    },
+    "primary_motif": "warp_cooperative_predictive_delta_byte_packing_prefix_scan",
+    "storage_precision": [
+      "opaque_IEEE_binary64_as_UInt64",
+      "UInt8_payload",
+      "Int32_offsets_and_cuts"
+    ],
+    "compute_precision": [
+      "UInt64_integer_bit_operations",
+      "Int32_native_indices",
+      "Int64_Julia_indices"
+    ],
+    "synchronization": [
+      "warp_phase_barriers",
+      "warp_shared_inclusive_prefix_scan",
+      "per_repeat_whole_device_completion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched_to_explicitly_corrected_secondary",
+      "reason": "Same warp/lane predictor, byte-count/nibble format, fixed chunk regions and scan tree. Original racy code not emulated."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "hybrid_device_intrinsics",
+      "jacc": "hybrid_device_intrinsics"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "actual_model_source_hash_and_all5_saved_wire_artifacts_reviewed",
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Complete predictive delta codec, warp-shared phase-safe scan, nibble-header and little-endian payload packing; no size-only surrogate",
+        "work_item_mapping": "One lane/value,32 lanes/group,8 warps each own64-value chunk;4 blocks of64 threads",
+        "layout": "FlatUInt64 input; fixed chunk byte regions; Int32 absolute end offsets/cuts; source scratch allocation1536Int32",
+        "storage_precision": [
+          "opaque_IEEE_binary64_as_UInt64",
+          "UInt8_payload",
+          "Int32_offsets_and_cuts"
+        ],
+        "compute_precision": [
+          "UInt64_integer",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "threads": 64,
+          "blocks": 4,
+          "static_shared_bytes": 6144,
+          "dynamic_shared_bytes": 0,
+          "source_scratch_capacity_warps": 32,
+          "actual_active_warps_per_block": 2,
+          "registers_and_occupancy": "unmeasured"
+        },
+        "synchronization": [
+          "warp_phase_barriers",
+          "warp_shared_inclusive_prefix_scan",
+          "per_repeat_whole_device_completion"
+        ],
+        "backend_boundary": "Own CUDA.jl thread/shared-memory/warp-barrier API",
+        "portability_limit": "Chosen backend interop; no unsupported-feature claim or evidence that pure portable expression impossible.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/fpdc-julia/fpdc-julia-cuda.jl/main.jl",
+            "sha256": "f2a8372e19e2599a50656b9eaad57b9b9b64a2f8d185ca915c8f5c6d92f2e03b"
+          },
+          {
+            "path": "src/fpdc-julia/study_device.jl",
+            "sha256": "c9d33e4063bdc1e53db6d23bd076e69bf71c7d7feeb5225287c0a2526618bee5"
+          },
+          {
+            "path": "src/fpdc-julia/study_common.jl",
+            "sha256": "6bcebf0965ba1eaa85bc660b576cc7ecb1c9d9c0ee27647dace5bba14af41ec7"
+          }
+        ],
+        "configuration_role": "corrected_reference_secondary",
+        "native_reference_repaired": true,
+        "original_primary_status": "reference_blocked",
+        "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+        "verification_contract": "raw_numeric_outputs_exact_integer_wire_bytes_offsets_and_guards_plus_independent_lossless_bit_roundtrip",
+        "keyconfounds": [
+          "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+          "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+          "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+          "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+          "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+          "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+          "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+          "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+          "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+          "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+          "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+          "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+          "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+          "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+          "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+        ],
+        "status": "verified",
+        "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2"
+      },
+      "ka": {
+        "review_status": "actual_model_source_hash_and_all5_saved_wire_artifacts_reviewed",
+        "implementation_class": "hybrid_device_intrinsics",
+        "algorithm": "Complete predictive delta codec, warp-shared phase-safe scan, nibble-header and little-endian payload packing; no size-only surrogate",
+        "work_item_mapping": "One lane/value,32 lanes/group,8 warps each own64-value chunk;4 blocks of64 threads",
+        "layout": "FlatUInt64 input; fixed chunk byte regions; Int32 absolute end offsets/cuts; source scratch allocation1536Int32",
+        "storage_precision": [
+          "opaque_IEEE_binary64_as_UInt64",
+          "UInt8_payload",
+          "Int32_offsets_and_cuts"
+        ],
+        "compute_precision": [
+          "UInt64_integer",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "threads": 64,
+          "blocks": 4,
+          "static_shared_bytes": 6144,
+          "dynamic_shared_bytes": 0,
+          "source_scratch_capacity_warps": 32,
+          "actual_active_warps_per_block": 2,
+          "registers_and_occupancy": "unmeasured"
+        },
+        "synchronization": [
+          "warp_phase_barriers",
+          "warp_shared_inclusive_prefix_scan",
+          "per_repeat_whole_device_completion"
+        ],
+        "backend_boundary": "CUDA backend-specific warp barrier via shared helper; KA @localmem and index macros for allocation/mapping",
+        "portability_limit": "Chosen backend interop; no unsupported-feature claim or evidence that pure portable expression impossible.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/fpdc-julia/fpdc-julia-KA/main.jl",
+            "sha256": "8bdb68d04e502e7b742f25f3389bbabdf654bc6e7e84f21271ac2ac848a67f39"
+          },
+          {
+            "path": "src/fpdc-julia/study_device.jl",
+            "sha256": "c9d33e4063bdc1e53db6d23bd076e69bf71c7d7feeb5225287c0a2526618bee5"
+          },
+          {
+            "path": "src/fpdc-julia/study_common.jl",
+            "sha256": "6bcebf0965ba1eaa85bc660b576cc7ecb1c9d9c0ee27647dace5bba14af41ec7"
+          }
+        ],
+        "configuration_role": "corrected_reference_secondary",
+        "native_reference_repaired": true,
+        "original_primary_status": "reference_blocked",
+        "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+        "verification_contract": "raw_numeric_outputs_exact_integer_wire_bytes_offsets_and_guards_plus_independent_lossless_bit_roundtrip",
+        "keyconfounds": [
+          "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+          "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+          "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+          "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+          "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+          "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+          "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+          "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+          "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+          "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+          "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+          "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+          "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+          "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+          "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+        ],
+        "status": "verified",
+        "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2"
+      },
+      "jacc": {
+        "review_status": "actual_model_source_hash_and_all5_saved_wire_artifacts_reviewed",
+        "implementation_class": "hybrid_device_intrinsics",
+        "algorithm": "Complete predictive delta codec, warp-shared phase-safe scan, nibble-header and little-endian payload packing; no size-only surrogate",
+        "work_item_mapping": "One lane/value,32 lanes/group,8 warps each own64-value chunk;4 blocks of64 threads",
+        "layout": "FlatUInt64 input; fixed chunk byte regions; Int32 absolute end offsets/cuts; source scratch allocation1536Int32",
+        "storage_precision": [
+          "opaque_IEEE_binary64_as_UInt64",
+          "UInt8_payload",
+          "Int32_offsets_and_cuts"
+        ],
+        "compute_precision": [
+          "UInt64_integer",
+          "Int64_indices"
+        ],
+        "resource_policy": {
+          "threads": 64,
+          "blocks": 4,
+          "static_shared_bytes": 6144,
+          "dynamic_shared_bytes": 0,
+          "source_scratch_capacity_warps": 32,
+          "actual_active_warps_per_block": 2,
+          "registers_and_occupancy": "unmeasured"
+        },
+        "synchronization": [
+          "warp_phase_barriers",
+          "warp_shared_inclusive_prefix_scan",
+          "per_repeat_whole_device_completion"
+        ],
+        "backend_boundary": "CUDA backend-specific warp barrier via shared helper; CUDA.jl shared-memory/thread-index APIs inside JACC callback",
+        "portability_limit": "Chosen backend interop; no unsupported-feature claim or evidence that pure portable expression impossible.",
+        "pinned_environment": {
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "runtime": "local12.0",
+          "native_flags": "-O3 -arch=sm70"
+        },
+        "source_evidence": [
+          {
+            "path": "src/fpdc-julia/fpdc-julia-JACC/main.jl",
+            "sha256": "bdfa61e83ba87dbf26b48c5d0f4b94dc173dcf91986f649705ab6f133bbb5669"
+          },
+          {
+            "path": "src/fpdc-julia/study_device.jl",
+            "sha256": "c9d33e4063bdc1e53db6d23bd076e69bf71c7d7feeb5225287c0a2526618bee5"
+          },
+          {
+            "path": "src/fpdc-julia/study_common.jl",
+            "sha256": "6bcebf0965ba1eaa85bc660b576cc7ecb1c9d9c0ee27647dace5bba14af41ec7"
+          }
+        ],
+        "configuration_role": "corrected_reference_secondary",
+        "native_reference_repaired": true,
+        "original_primary_status": "reference_blocked",
+        "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+        "verification_contract": "raw_numeric_outputs_exact_integer_wire_bytes_offsets_and_guards_plus_independent_lossless_bit_roundtrip",
+        "keyconfounds": [
+          "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+          "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+          "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+          "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+          "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+          "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+          "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+          "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+          "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+          "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+          "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+          "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+          "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+          "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+          "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+        ],
+        "status": "verified",
+        "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2"
+      }
+    },
+    "timing_scope": "sum8_fpdc_compression_kernel_launch_loop_means_with_per_repeat_whole_device_completion",
+    "verification_contract": "raw_numeric_outputs_exact_integer_wire_bytes_offsets_and_guards_plus_independent_lossless_bit_roundtrip",
+    "keyconfounds": [
+      "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+      "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+      "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+      "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+      "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+      "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+      "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+      "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+      "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+      "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+      "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+      "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+      "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+      "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+      "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2",
+        "result": ".porting-state/portable_julia/runs/20261018T072321879425Z_fpdc/result.json",
+        "configuration_role": "corrected_reference_secondary",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "original": {
+            "path": "src/fpdc-cuda/kernels.h",
+            "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+          },
+          "corrected": {
+            "path": "src/fpdc-julia/native_corrected/kernels.h",
+            "sha256": "18f7c490125dc2c6aec171fe603929da5654acd096b512aead3ca762255cf2cb"
+          },
+          "patch": {
+            "path": "src/fpdc-julia/native_codec_correction.patch",
+            "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+          },
+          "actual_witness": {
+            "path": "src/fpdc-julia/native_quality_witness.json",
+            "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+          },
+          "intervention": "Initialize each subchunk sign/countcode (negative bit8,positive0) and make warp-shared scan/code phases race-free by read/sync/write/sync plus phase-boundary warp barriers; same lane/warp mapping,predictor,byte-countremapping,nibblewireformat,bufferallocation and outputoffsets. No approximation or format change. Both missingcode and memoryprotocol addressed; witness alone does not isolate race effects."
+        },
+        "original_primary_status": "reference_blocked",
+        "matched_performance_valid": true,
+        "variant_verified": {
+          "ka": true,
+          "jacc": true
+        },
+        "mean_seconds": {
+          "cuda": 8.3195833333325e-05,
+          "cuda_jl": 0.00010018758333325,
+          "ka": 0.0001250985833335,
+          "jacc": 0.0001720091666665
+        }
+      }
+    ],
+    "original_primary_status": "reference_blocked",
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "original": {
+        "path": "src/fpdc-cuda/kernels.h",
+        "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+      },
+      "corrected": {
+        "path": "src/fpdc-julia/native_corrected/kernels.h",
+        "sha256": "18f7c490125dc2c6aec171fe603929da5654acd096b512aead3ca762255cf2cb"
+      },
+      "patch": {
+        "path": "src/fpdc-julia/native_codec_correction.patch",
+        "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+      },
+      "actual_witness": {
+        "path": "src/fpdc-julia/native_quality_witness.json",
+        "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+      },
+      "intervention": "Initialize each subchunk sign/countcode (negative bit8,positive0) and make warp-shared scan/code phases race-free by read/sync/write/sync plus phase-boundary warp barriers; same lane/warp mapping,predictor,byte-countremapping,nibblewireformat,bufferallocation and outputoffsets. No approximation or format change. Both missingcode and memoryprotocol addressed; witness alone does not isolate race effects."
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/fpdc-julia/fpdc-julia-JACC/main.jl",
+    "sha256": "bdfa61e83ba87dbf26b48c5d0f4b94dc173dcf91986f649705ab6f133bbb5669",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        13
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        12
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2",
+      "run_id": "20261018T072321879425Z_fpdc",
+      "result": ".porting-state/portable_julia/runs/20261018T072321879425Z_fpdc/result.json",
+      "configuration_role": "corrected_reference_secondary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "original": {
+          "path": "src/fpdc-cuda/kernels.h",
+          "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+        },
+        "corrected": {
+          "path": "src/fpdc-julia/native_corrected/kernels.h",
+          "sha256": "18f7c490125dc2c6aec171fe603929da5654acd096b512aead3ca762255cf2cb"
+        },
+        "patch": {
+          "path": "src/fpdc-julia/native_codec_correction.patch",
+          "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+        },
+        "actual_witness": {
+          "path": "src/fpdc-julia/native_quality_witness.json",
+          "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+        },
+        "intervention": "Initialize each subchunk sign/countcode (negative bit8,positive0) and make warp-shared scan/code phases race-free by read/sync/write/sync plus phase-boundary warp barriers; same lane/warp mapping,predictor,byte-countremapping,nibblewireformat,bufferallocation and outputoffsets. No approximation or format change. Both missingcode and memoryprotocol addressed; witness alone does not isolate race effects."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "9cd9a6d9239b22782ab6b6d49452e4fda36a3204d0a6be472bdf6a970085c750",
+      "source_hash": "a7fce1d6975563ea8c602f4a39af4872cf4a862790d60b3f5260b364e2e88d25",
+      "declared_environment": {
+        "Julia": "1.12.6",
+        "CUDA_jl": "6.2.1",
+        "KA": "0.9.45",
+        "JACC": "1.4.0",
+        "runtime": "local12.0",
+        "native_flags": "-O3 -arch=sm70"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T072321879425Z_fpdc/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000190381666667,
+        0.000190159,
+        0.000163791333333,
+        0.000167845,
+        0.000166241333333
+      ],
+      "mean_last_four_seconds": 0.0001720091666665,
+      "contract": {
+        "n": 512,
+        "blocks": 4,
+        "warps_per_block": 2,
+        "dimensions": [
+          1,
+          2,
+          3,
+          32
+        ],
+        "cases": [
+          "source_sequential",
+          "opaque_IEEE64_bit_patterns"
+        ],
+        "input_prefix_count": 4224,
+        "outputs": 34880,
+        "guards": 1280,
+        "artifact_count": 40384,
+        "R": 3,
+        "exact_wire_format_oracle": true,
+        "limits": [
+          "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+          "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+          "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+          "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+          "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+          "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+          "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+          "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim."
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 3556,
+      "output_tokens": 136,
+      "cached_tokens": null,
+      "total_tokens": 3692,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/fpdc-cuda/main.cu",
+        "src/fpdc-cuda/kernels.h",
+        "src/fpdc-julia/fpdc-julia-cuda.jl/main.jl",
+        "src/fpdc-julia/fpdc-julia-KA/main.jl",
+        "src/fpdc-julia/fpdc-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/fpdc/jacc_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "62dad3a8a7b6b5c913fcc873",
+        "begin_event_id": "70b6b62059d1044bbd4c0c94",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T07:24:35.841928+00:00",
+        "usage_event_timestamp": "2026-10-18T07:24:28.131Z",
+        "elapsed_usage_event_start": "2026-10-18T07:22:51.978Z",
+        "delta_usage": {
+          "input_tokens": 1449351,
+          "cached_input_tokens": 1444224,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3054,
+          "reasoning_output_tokens": 1984,
+          "total_tokens": 1452405
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 7.710928,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "768a825ed1995d0623b405e03fc85c19c635360bca05012fdeacd6e6e3de5452",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "JACCfirstcandidate/onekernel/JITprocessevalpassed5exactfullcodec payload/offset/input/guardcaptures againstcorrectednativeandCUDAjl. ChosenCUDAstaticshared/warpbarrierhybrid, same8warp/chunkmapping, explicitdynamicshmem0. No repairs; originalnativeprimaryblocked, secondaryonly.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 9.395346,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/fpdc/jacc_translation.jsonl",
+        "evidence_sha256": "449bd1b38c1768aa35f70b498f9fb4417fd0fc0a89991cad7535794728165fd3",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/fpdc-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "dcae789260b19ece5be00f7d1fe73645d7be234309387a12ee3b14eb0f0780ba",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/fpdc-julia-jacc/manifest.json",
+        "sha256": "dcae789260b19ece5be00f7d1fe73645d7be234309387a12ee3b14eb0f0780ba"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "39bb5985fd6e6a38e4f342519d27e5c7ce67b622",
+  "explicit_outcome_evidence": {
+    "benchmark": "fpdc",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261018T072321879425Z_fpdc/result.json"
+    ],
+    "contract": {
+      "n": 512,
+      "blocks": 4,
+      "warps_per_block": 2,
+      "dimensions": [
+        1,
+        2,
+        3,
+        32
+      ],
+      "cases": [
+        "source_sequential",
+        "opaque_IEEE64_bit_patterns"
+      ],
+      "input_prefix_count": 4224,
+      "outputs": 34880,
+      "guards": 1280,
+      "artifact_count": 40384,
+      "R": 3,
+      "exact_wire_format_oracle": true,
+      "limits": [
+        "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+        "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+        "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+        "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+        "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+        "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+        "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+        "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim."
+      ],
+      "configuration_role": "corrected_reference_secondary",
+      "native_reference_repaired": true,
+      "original_primary_status": "reference_blocked"
+    },
+    "limitations": [
+      "Corrected-reference secondary only: actual unchangednative fullpayload failed all8losslessroundtrips while offsets allcorrect. Originalprimaryblocked retained.",
+      "Nativecorrection initializes per-subchunk sign/countcode and adds safe warp sharedscan/codephase barriers; both static defects addressed, individual causalcontributionnotisolated.",
+      "Named512rawIEEE64values/8chunks/4blocks2warps/dims1,2,3,32/R3; original64millionvalues/255blocks8warps/R100 unmeasured.",
+      "Inputbits includeNaNpayloads/infinities/signedzeros asopaqueUInt64; nofloatingarithmetic/NaNnumericinterpretation. Exactlosslessbitcontract, notfloatingtolerance.",
+      "Fullfixed-capacitycompressedbuffer includes untouchedA5holes, offsets exact; actual sourcefilepacket reassembled/decodedindependently aftersavedcaptures, noGPUdecompressionclaimed.",
+      "Per-repeatwholedevicecompletion matches originalCheckTest semantics; allocations/transfers/bufferreset/checks outsidecompressiontimer.",
+      "CUDA.jlownshared/warpbarrier framework; KA/JACCchosenCUDAwarpbarrierhybrids. Notfeatureunsupported.",
+      "Scratchsourceallocation1536Int32=6144B retained for32warp capacity although namedblocks2warps; actualregister/occupancy/countersunmeasured, no bandwidth/rooflineclaim.",
+      "Observed corruption proves this HeCBench source copy fails the bitstream contract. Per-subchunk code initialization and warp-shared memory protocol corrected together; their causal contributions were not isolated.",
+      "Historical CUDA.jl computed sizes with a different predictor and emitted zero payload; old PASS did not establish lossless coding. Original body preserved; historical generation/check/token counts unknown.",
+      "Source-format files are independently reconstructed from captured payload/offsets and decoded on CPU; original CLI file emission and GPU decompression were not executed/certified.",
+      "Total timing sums eight compression-loop means, each with per-repeat whole-device completion matching CheckTest. No component times serialized; no invented component timing or throughput/roofline attribution.",
+      "Integer codec preserves raw IEEE64 encodings including infinities/NaN payloads; this is not floating-point arithmetic or a finite-real validation contract.",
+      "Native Int32 versus Julia Int64 index arithmetic, codegen/register allocation, wrapper launch overhead and explicit warp intrinsic interop are covariates; no pure abstraction causal claim.",
+      "Prospective context/cache/coordination-inclusive usage windows overlap broad workflow; saved source proxy includes shared/mechanically reused body. Historical/exclusive billed translation tokens unknown."
+    ],
+    "configuration_results": [
+      {
+        "configuration_id": "fpdc_corrected_secondary_lossless512_4blocks2warps_d1_2_3_32_R3_v2",
+        "result": ".porting-state/portable_julia/runs/20261018T072321879425Z_fpdc/result.json",
+        "configuration_role": "corrected_reference_secondary",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "original": {
+            "path": "src/fpdc-cuda/kernels.h",
+            "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+          },
+          "corrected": {
+            "path": "src/fpdc-julia/native_corrected/kernels.h",
+            "sha256": "18f7c490125dc2c6aec171fe603929da5654acd096b512aead3ca762255cf2cb"
+          },
+          "patch": {
+            "path": "src/fpdc-julia/native_codec_correction.patch",
+            "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+          },
+          "actual_witness": {
+            "path": "src/fpdc-julia/native_quality_witness.json",
+            "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+          },
+          "intervention": "Initialize each subchunk sign/countcode (negative bit8,positive0) and make warp-shared scan/code phases race-free by read/sync/write/sync plus phase-boundary warp barriers; same lane/warp mapping,predictor,byte-countremapping,nibblewireformat,bufferallocation and outputoffsets. No approximation or format change. Both missingcode and memoryprotocol addressed; witness alone does not isolate race effects."
+        },
+        "original_primary_status": "reference_blocked",
+        "matched_performance_valid": true,
+        "variant_verified": {
+          "ka": true,
+          "jacc": true
+        },
+        "mean_seconds": {
+          "cuda": 8.3195833333325e-05,
+          "cuda_jl": 0.00010018758333325,
+          "ka": 0.0001250985833335,
+          "jacc": 0.0001720091666665
+        }
+      }
+    ],
+    "configuration_role": "corrected_reference_secondary",
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "original": {
+        "path": "src/fpdc-cuda/kernels.h",
+        "sha256": "f9750bb72cee99a74c18fd719f34bda3aab819036cd0347e0ceab3671617a538"
+      },
+      "corrected": {
+        "path": "src/fpdc-julia/native_corrected/kernels.h",
+        "sha256": "18f7c490125dc2c6aec171fe603929da5654acd096b512aead3ca762255cf2cb"
+      },
+      "patch": {
+        "path": "src/fpdc-julia/native_codec_correction.patch",
+        "sha256": "e62082593678d2f60bf68d949ad7aa7912be56df7c4008955d62b1e47730a0e6"
+      },
+      "actual_witness": {
+        "path": "src/fpdc-julia/native_quality_witness.json",
+        "sha256": "eb7581ddae1e5c362af4bae9b44db4d7b672dcf31f8a5f5ca10694a1bfc2c3da"
+      },
+      "intervention": "Initialize each subchunk sign/countcode (negative bit8,positive0) and make warp-shared scan/code phases race-free by read/sync/write/sync plus phase-boundary warp barriers; same lane/warp mapping,predictor,byte-countremapping,nibblewireformat,bufferallocation and outputoffsets. No approximation or format change. Both missingcode and memoryprotocol addressed; witness alone does not isolate race effects."
+    },
+    "original_primary_status": "reference_blocked",
+    "original_primary_reason": "Actual unchanged native artifact:1218 payload mismatches, all8 decode failures, all8 offsets exact.",
+    "original_primary_evidence": "src/fpdc-julia/native_quality_witness.json"
+  },
+  "declared_model_implementation_class": {
+    "value": "hybrid_device_intrinsics",
+    "annotation_path": ".porting-state/portable_julia/traits/fpdc.json",
+    "annotation_sha256": "5d7b51fa841cb0ac7438eea3dbf03bd27aadec84b9319590f25ac741fcc30a28",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }
