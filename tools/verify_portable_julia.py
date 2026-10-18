@@ -81,18 +81,29 @@ def exact_input_prefix(ref, got, count):
 
 def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=None):
     if agreement_kind == 'no_numerical_outputs_execution_only':
-        # Explicit empty-kernel contract; never infer numerical agreement from
-        # absence of artifacts or from a target's own PASS.
-        valid = input_prefix_count == 0 and all(
-            row.get('source_empty_kernel') is True and row.get('execution_checked') is True
+        # Explicit source-reviewed no-output paths only; absence of an artifact
+        # alone is never evidence of numerical agreement.
+        def no_output_source(row):
+            if row.get('source_empty_kernel') is True:
+                return 'empty_kernel'
+            if (row.get('source_empty_kernel') is False
+                    and row.get('source_no_observable_numerical_outputs') is True
+                    and row.get('no_output_reason') == 'original_null_destination'):
+                return 'original_null_destination'
+            return None
+        reasons = [no_output_source(row) for row in (ref, got)]
+        valid = input_prefix_count == 0 and reasons[0] is not None and reasons[0] == reasons[1] and all(
+            row.get('execution_checked') is True
             and row.get('correct') is True and row.get('checked_values') == 0
             and not row.get('output_artifact') and row.get('values') in (None, [])
             and row.get('numerical_outputs') in (None, [])
+            and row.get('numeric_outputs') in (None, [])
             for row in (ref, got))
         return {'status': 'execution_only_pass' if valid else 'unverified',
                 'checked_values': 0, 'max_abs_error': None, 'max_rel_error': None,
                 'numerical_agreement_claim': False,
-                'meaning': 'Reviewed empty source kernel and checked launch/completion only; no numerical outputs.'}
+                'source_no_output_reason': reasons[0] if valid else None,
+                'meaning': 'Reviewed source path has no observable numerical outputs; checked launch/completion only.'}
 
     prefix_check=exact_input_prefix(ref,got,input_prefix_count)
     if prefix_check['status'] not in ('pass','not_requested'):return {'status':prefix_check['status'],'reason':prefix_check['reason'],'input_prefix_check':prefix_check}
