@@ -90,6 +90,14 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
                     and row.get('source_no_observable_numerical_outputs') is True
                     and row.get('no_output_reason') == 'original_null_destination'):
                 return 'original_null_destination'
+            if (row.get('source_empty_kernel') is False
+                    and row.get('source_no_device_kernels') is True
+                    and row.get('no_numerical_outputs') is True
+                    and row.get('no_output_reason') == 'runtime_allocation_lifecycle'
+                    and row.get('runtime_api_status_checked') is True
+                    and row.get('nonnull_allocations_checked') is True
+                    and row.get('allocation_lifecycle_checked') is True):
+                return 'runtime_allocation_lifecycle'
             return None
         reasons = [no_output_source(row) for row in (ref, got)]
         valid = input_prefix_count == 0 and reasons[0] is not None and reasons[0] == reasons[1] and all(
