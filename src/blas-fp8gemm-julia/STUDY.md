@@ -11,3 +11,7 @@ Reproduce the probe with `nvcc -O3 -std=c++17 -arch=sm_70 native_capability_prob
 ## Final available-environment review
 
 limitation_review.json verifies all archived source/log hashes and both seven-shape capability outcomes. This is a reviewed unavailable native prerequisite on the availableV100/library configurations, not a KA/JACC feature failure. No output/time exists; historical CUDAjlmarker remains unauthenticated scientific computation. Resume requires a native-supported GPU/library contract.
+
+## Remaining-150 revalidation
+
+`expansion150_capability_review.json` rechecks every archived source/diagnostic hash and both seven-shape status15/zero-algorithm outcomes on the unchanged V100/cuBLASLt12.0+12.9 configurations. No new GPU run, translation candidate or numerical/timing result was fabricated. The native-library prerequisite remains unavailable; this is not a blanket FP8 arithmetic restriction or a KA/JACC feature failure. Existing evidence is retained without repeating identical probes. Resume on a native-supported device/library combination. Prospective reference-review usage is separate from unknown historical translation cost.
