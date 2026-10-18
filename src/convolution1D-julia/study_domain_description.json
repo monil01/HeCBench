@@ -1,0 +1,124 @@
+{
+  "scientific_intent": {
+    "primary_family": "signal_image",
+    "primary_domain": "one_dimensional_FIR_filter",
+    "review_status": "source_reviewed",
+    "scientific_task": "Apply source-orderedcenteredzero-paddedFIRfilter totyped1Ddata",
+    "mathematical_operation": "y[i]=sum_j x[i-floor(MW/2)+j]*m[j] forvalidinputindices; masknotreversed",
+    "discretization": "2048alignedcells; maskwidth3,5,7,9; Float64/Float32/Int16;basic/fullhalo/cache3algorithms\u00d75blocksizes64..1024;2fixtures\u2192360paths",
+    "accuracy_requirements": "Exacttypedinputbits,fulloutputsandguards; Int64directgatherandindependentinput-scatteroracles agree; exactintegerboundsensureall3datatypeopswithoutoverflow/roundoff.",
+    "input_size_regime": "2048cells,2..32blocksperpath; allsourcegeometriescrossblockhalos; notproductionlargeCLIthroughput",
+    "precision_sensitivity": "ActualFloat64/Float32/Int16storage andarithmeticsemantics testedonboundedintegerdata. Noarbitraryfractionalroundoff/overflowclaim; Int16nativeproductpromotion/sourcecastsvsJuliaInt16ops harmlessunderprovenbound.",
+    "community_use_case": "FIRfiltering andlocalstenciloperators illustrate1Dsignal/simulationcomponents; no originalscientificdataset/applicationqualityclaim.",
+    "description": "SourceKirk/HwuChapter7tutorialuses3genuinestrategies/constantcoeffmemory. HistoricalCUDAjl genuinelycomputesbasicoperator buttiling/cachelabelsreuseit; preservebasicbodyandcompleterealtiledvariants. Namedasymmetricmaskfixtureexposesorientation/boundary errors hiddenbyoriginalonesmask.",
+    "provenance": "NativecommentattributesProgrammingMassivelyParallelProcessorsChapter7. Canonicalinputreproducesactualhostlibcsrand123/rand%256 andonesmask; variedoperatorfixturedeclaredseparately. Sourceoperatornotnecessarilyreversed-filtermathematicalconvolution."
+  },
+  "primary_motif": "one_dimensional_stencil_FIR",
+  "storage_precision": [
+    "Float64",
+    "Float32",
+    "Int16"
+  ],
+  "compute_precision": [
+    "Float64multiply_add",
+    "Float32multiply_add",
+    "Int16typedsemantics_physicalinstructions_unprofiled"
+  ],
+  "synchronization": [
+    "hostsyncateach24groupROIbounds"
+  ],
+  "synchronizations": {
+    "cuda_jl": [
+      "basicnointerthreadsync",
+      "tiled/cache1blockbarrier",
+      "hostsync24groupROIbounds"
+    ],
+    "ka": [
+      "basicnointerthreadsync",
+      "tiled/cache1workgroupbarrier",
+      "hostsync24groupROIbounds"
+    ],
+    "jacc": [
+      "basicnointerthreadsync",
+      "tiled/cacheJACC.sharedcopybarrier+1explicitworkgroupbarrier",
+      "hostsync24groupROIbounds"
+    ]
+  },
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "All3algorithm/halo/geometries matched; native__constant__coefficients becomeJuliaread-onlyglobaldevicearray. JACC addsfulltemplatecopyinitialization. Theseareexplicitphysicalmemory/dispatchcovariates, not unsupportedoperatorclaims."
+  },
+  "reference_class": "genuine_CUDAjl_basic_plus_completed_tiled_and_cached_kernels",
+  "ka_class": "three_variant_KA_zero_padded_FIR",
+  "jacc_class": "three_variant_JACC_zero_padded_FIR",
+  "verification_contract": "755472UInt64artifact:12432typedIEEE/two-complementinputwords +360\u00d7(2048typedoutputs+16guards)losslesslyFloat64encoded. All20selfchecks/each5targettrialsvsBOTHrefs exact; independentInt64gather/scatter/bounds/maskorientation/zero-boundarycontrols.",
+  "keyconfounds": [
+    "Nativeconstantcoeffaddressspace vsallJuliaglobalcoeffarray",
+    "JACCsharedtemplatecopy andextrabarrier",
+    "JACCcachedspec/templateDictlookup andheterogeneousJuliahostdispatch insidetimedkernelbatch",
+    "Aggregate24groupbatchtimes mixes3types/3algorithms; no singlerooflinecoordinate/intrinsicabstractioncause",
+    "Masks/inputsboundedexactintegers; no generalfloatingerror/Int16overflowclaim",
+    "OriginalCUDAjltiled/cachelabelsbaselinealiases repairedbyreferencecompletion, notobservedwrongbasicnumericaloperator",
+    "SourceCLIonlyonesmask; variedasymmetriccase isdeclaredoperatorfixture",
+    "Orderedhelper/compilationknowledge reuse andphaseoverlap"
+  ],
+  "boundary_rounding_policy": "Zerooutside[0,2048),oddmasks3..9,sourcecoefficientorder. NativeCLIroundingto1024-alignedNrespected. Allintegerpartialsum/productbounds<32767 guaranteesInt16andFloat32/64exactness. Guards-12345exacttypedvaluesuniquelybitrepresented, outputwideninglossless.",
+  "algorithm": "Basicglobalgather,fullhalo_sharedtile,sharedcenter_withglobalhalocaching",
+  "algorithms": {
+    "cuda_jl": "Threesource-orderedFIRstrategies: directglobalgather/fullleft+centre+rightsharedtile/sharedcentretilewithglobalhaloloads",
+    "ka": "Threesource-orderedFIRstrategies: directglobalgather/fullleft+centre+rightsharedtile/sharedcentretilewithglobalhaloloads",
+    "jacc": "Threesource-orderedFIRstrategies: directglobalgather/fullleft+centre+rightsharedtile/sharedcentretilewithglobalhaloloads"
+  },
+  "work_item_mapping": "Onecellperlane,blocks64/128/256/512/1024,full2048cells;15algorithm/geometriespergroup\u00d724typedfixture/maskgroups",
+  "layout": "6typedinputarrays2048elements,per-type10coefficientbuffer,24typedoutputmatrices2064\u00d715witheightguardsperend",
+  "memory_access": {
+    "cuda_jl": "Inputglobal,maskglobalread-onlyusage; sharedtilesfullhalo/cachedcentreviaCUDA.dynamicshared",
+    "ka": "Inputglobal,maskglobalread-onlyusage; staticallysizedlocaltilesT(BT+9)orT(BT)",
+    "jacc": "Inputglobal,maskglobalread-onlyusage; JACC.sharedfulltemplateT(BT+9)orT(BT) initialization beforeinputloads"
+  },
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes_requested": "0basic;(BT+9)*sizeof(T)fullhalo;BT*sizeof(T)cache",
+      "barriers_shared_modes": 1,
+      "physical_constant_coefficient_storage": false,
+      "resources_unprofiled": true
+    },
+    "ka": {
+      "shared_bytes_requested": "0basic;(BT+9)*sizeof(T)fullhalo;BT*sizeof(T)cache",
+      "barriers_shared_modes": 1,
+      "physical_constant_coefficient_storage": false,
+      "resources_unprofiled": true
+    },
+    "jacc": {
+      "shared_bytes_requested": "explicit0basic;(BT+9)*sizeof(T)fullhalo;BT*sizeof(T)cache",
+      "barriers_shared_modes": 2,
+      "template_copy_source": "fulltypedelementvector",
+      "physical_constant_coefficient_storage": false,
+      "resources_unprofiled": true
+    }
+  },
+  "launch_geometry": {
+    "width": 2048,
+    "blocks": "2048/BT",
+    "block_threads": [
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "paths": 360,
+    "group_timing_segments_per_trial": 24,
+    "repeats_each_segment": 3
+  },
+  "support_boundary": "All3algorithms/5geometries/4masks/Float64+Float32+Int16,2048alignedcells/2exactboundedfixtures;noarbitraryfloatroundoff/overflow,nonalignedtails/largeCLIperformance/crossvendorvalidation. Constantspacecoefficientstorageadaptedglobalnotclaimeduniversalunsupported.",
+  "supported_features": [
+    "zero-padding",
+    "asymmetricmaskorientation",
+    "typedsharedhalo/cachedcenter",
+    "1024threadworkgroups",
+    "Float64/Float32/Int16typedoperators",
+    "workgroupbarrier"
+  ],
+  "interpretation": "Scientificfiltersemantics requirezeroboundaries/maskorientation andtypedprecisionconditions, whilephysicalmemorypolicy mattersforperformance. Exactalloutputs cancoexistwithdifferentcoefficientaddressspaces andJACCinitialization. Pairedaggregatebatchcostsdonotisolatetheircauses; perkernelprofilingwouldbeneededbeforeassigningroofline/occupancymotifs."
+}
