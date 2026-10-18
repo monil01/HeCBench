@@ -1,0 +1,121 @@
+--- original/main.cu
++++ native_corrected/main.cu
+@@ -120,65 +120,15 @@
+   }
+ }
+ 
+-__global__ void img_integration_kernel(
+-    double* d_img,
+-    const int nPixX,
+-    const int nPixY,
+-    const bool direction,
+-    const int offsetX,
+-    const int offsetY,
+-    const int nSlices)
+-{
+-  /*
+-     Integration of 2D slices over the whole volume
+-
+-     (S.1.Integration. - Liu et al(2017))
+-
+-     Perform an inclusive scan
+-   */
+-
+-  const int tx = blockIdx.x * blockDim.x + threadIdx.x;
+-  const int ty = blockIdx.y * blockDim.y + threadIdx.y;
+-  const int px = tx + offsetX;
+-  const int py = ty + offsetY;
+-  const int pz = blockIdx.z * blockDim.z + threadIdx.z;
+-
+-  if (px >= nPixY || py >= nPixX || pz >= nSlices) return;
+-
+-  if (direction == integrateXcoord) {
+-
+-    for (int s = 1; s <= blockDim.y; s *= 2) {
+-
+-      int spot = ty - s;
+-
+-      double val = 0;
+-
+-      if (spot >= 0) {
+-        val = d_img[(pz*nPixY*nPixX) + (offsetY + spot) * nPixY + px];
+-      }
+-
+-      if (spot >= 0) {
+-        d_img[(pz*nPixY*nPixX) + (py * nPixY) + px] += val;
+-      }
+-    }
+-  }
+-  else
+-  {
+-    for (int s = 1; s <= blockDim.x; s *= 2) {
+-
+-      int spot = tx - s;
+-
+-      double val = 0;
+-
+-      if (spot >= 0) {
+-        val = d_img[(pz*nPixY*nPixX) + py * nPixY + spot + offsetX];
+-      }
+-
+-      if (spot >= 0) {
+-        d_img[(pz*nPixY*nPixX) + (py * nPixY) + px] += val;
+-      }
+-    }
+-  }
++// Corrected study scan: each independent worker owns one entire scan line.
++// Serial ordered prefixes remove the original in-place inter-thread race.
++__global__ void img_integration_kernel(double* d_img,const int nPixX,const int nPixY,const bool direction,const int offsetX,const int offsetY,const int nSlices){
++ const int lane=blockIdx.x*blockDim.x+threadIdx.x;
++ const int lines=direction==integrateXcoord?nPixY:nPixX;
++ if(lane>=lines*nSlices)return;
++ const int slice=lane/lines;const int line=lane%lines;double acc=0;
++ if(direction==integrateXcoord){for(int x=0;x<nPixX;x++){int pos=slice*nPixX*nPixY+x*nPixY+line;acc+=d_img[pos];d_img[pos]=acc;}}
++ else{for(int y=0;y<nPixY;y++){int pos=slice*nPixX*nPixY+line*nPixY+y;acc+=d_img[pos];d_img[pos]=acc;}}
+ }
+ 
+ __global__ void bilinear_interpolation_kernel(
+@@ -478,37 +428,12 @@
+   // Integration of 2D projection over the whole projections
+   // (S.1.Integration. - Liu et al(2017))
+ 
+-  // Naive integration o the X coord
+-  threadsPerBlock.x = 8;
+-  threadsPerBlock.y = 4;
+-  threadsPerBlock.z = 8;
+-
+-  blockSize.x = (int)ceilf((float)nDetYMap / (threadsPerBlock.x - 1));
+-  blockSize.y = 1;
+-  blockSize.z = (int)ceilf((float)nProj / threadsPerBlock.z);
+-
+-  int Xk = (int)ceilf((float)nDetXMap / (threadsPerBlock.x - 1));
+-  for (int k = 0; k < Xk; k++) {
+-
+-    img_integration_kernel <<<blockSize, threadsPerBlock>>> (
+-        d_pProj, nDetXMap, nDetYMap, integrateXcoord, 0, k * 9, nProj);
+-  }
+-
+-  // Naive integration o the Y coord
+-  threadsPerBlock.x = 4;
+-  threadsPerBlock.y = 8;
+-  threadsPerBlock.z = 8;
+-
+-  blockSize.x = 1;
+-  blockSize.y = (int)ceilf((float)nDetXMap / (threadsPerBlock.y - 1));
+-  blockSize.z = (int)ceilf((float)nProj / threadsPerBlock.z);
+-
+-  int Yk = (int)ceilf((float)nDetYMap / (threadsPerBlock.y - 1));
+-  for (int k = 0; k < Yk; k++) {
+-
+-    img_integration_kernel <<<blockSize, threadsPerBlock>>> (
+-        d_pProj, nDetXMap, nDetYMap, integrateYcoord, k * 9, 0, nProj);
+-  }
++  // Corrected full-coverage two-axis prefix integration.
++  threadsPerBlock=dim3(256,1,1);
++  blockSize=dim3((nDetYMap*nProj+255)/256,1,1);
++  img_integration_kernel<<<blockSize,threadsPerBlock>>>(d_pProj,nDetXMap,nDetYMap,integrateXcoord,0,0,nProj);
++  blockSize=dim3((nDetXMap*nProj+255)/256,1,1);
++  img_integration_kernel<<<blockSize,threadsPerBlock>>>(d_pProj,nDetXMap,nDetYMap,integrateYcoord,0,0,nProj);
+ 
+   double* d_pDetmX_tmp = d_pDetmX + (nDetYMap * (nDetXMap-2));
+ 
