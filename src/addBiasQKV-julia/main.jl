@@ -1,1 +1,2 @@
-include("../mcpr-julia/main.jl")
+include("addBiasQKV-julia-cuda.jl/main.jl")
+main()
