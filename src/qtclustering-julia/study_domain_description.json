@@ -1,0 +1,125 @@
+{
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "quality_threshold_clustering",
+    "review_status": "source_reviewed",
+    "scientific_task": "Cluster Euclidean points with a diameter threshold using greedy complete-link candidates from every remaining seed.",
+    "mathematical_operation": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+    "discretization": "Three exact dyadic 1D point clouds embedded in the source 2D domain:192 points in cliques67/65/60,128 points spaced by0.25, and65 points containing a duplicate pair and63 isolated points. Sorted compact nonself neighbor graph uses strict Euclidean distance<1.",
+    "accuracy_requirements": "Exact complete per-iteration seed/cardinality/ordered members/remaining active list/clustered masks/degrees versus an independent full-coordinate complete-link oracle. Full raw GPU workspaces compare exactly with both references; actual input bits and all guards exact. No NaN accepted.",
+    "input_size_regime": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI.",
+    "precision_sensitivity": "All distances and threshold margins are exact dyadic Float32 values; Float32 caches/threshold, Int32 indices/cards, Int8 masks. No threshold ambiguity or arbitrary tolerance. Julia host/device address indexing uses Int64 while stored graph indices remain Int32.",
+    "community_use_case": "Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+    "description": "Historical Julia marked an array and fabricated convergence/timing statistics. The current study restores all five source device kernels and complete source convergence for named geometric fixtures; source singleton residual behavior is retained explicitly.",
+    "provenance": "Native QTC.cu and compact/common kernel headers; source benchmark comments identify Anthony Danalis and2011 creation. No additional paper or application provenance inferred.",
+    "source_evidence": [
+      {
+        "path": "src/qtclustering-cuda/QTC.cu",
+        "sha256": "3bf34596e9b009516d4b3ce0f3c664c5c8f67176ce3a97ba5f634d65b9734ec2"
+      },
+      {
+        "path": "src/qtclustering-cuda/libdata.cpp",
+        "sha256": "5fadae169c6c528f6004e27566b77a27ba626f49f741678cce33ecfc9704c68a"
+      },
+      {
+        "path": "src/qtclustering-cuda/kernels_common.h",
+        "sha256": "c63e50ad555cb507b3a842bce2c2c1e8b3abbe9f966959597c195ee3d29b3fd0"
+      },
+      {
+        "path": "src/qtclustering-cuda/kernels_compact_storage.h",
+        "sha256": "ec3ffb8017856a3d3d573370767bc2511bed33f84137ac3f3966dacf9fdeeae6"
+      },
+      {
+        "path": "src/qtclustering-julia/original_main.jl",
+        "sha256": "04d0b8cb2187c14b9fdb04902899fa955d819c62b46a0ff194a2cbbeb6dffe6e"
+      }
+    ],
+    "secondary_domains": [
+      "unsupervised_clustering",
+      "Euclidean_point_geometry"
+    ]
+  },
+  "primary_motif": "iterative_compact_graph_complete_link_clustering_with_workgroup_reduction_and_compaction",
+  "storage_precision": [
+    "Float32_compact_distances_and_cache",
+    "Int32_graph_degrees_active_indices_cardinalities_result",
+    "Int8_candidate_and_clustered_masks",
+    "Float64_lossless_artifact_encoding_only"
+  ],
+  "compute_precision": [
+    "Float32_max_distance_and_threshold",
+    "Int32_stored_indices",
+    "Julia_Int64_loop_and_address_indexing"
+  ],
+  "synchronization": [
+    "CUDAbackendstaticsharedmemory andblockbarriers insideallJuliaframeworkdispatch",
+    "Hostcompletion aftereverydegree/candidate/reduction/trim/updatekernel",
+    "Juliaextra shared-read lifetimebarrier/uniformmaskedtail beforein-placecompaction; nativeunchanged"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Full same compact-neighbor candidate/reduction/trim/update pipeline, source64threadworkgroups andper-blockworkspace. Julia12-tupleprefetch versusnamednative12registercandidates; staticshared/barriersviaCUDAextensions. Juliaextrauniformtail/read-lifetimebarrierprotectsin-placecompaction; staticnativehazardnotanobservedfailure."
+  },
+  "algorithm": "For each remaining seed, repeatedly add the point minimizing maximum distance to the candidate, breaking ties by point ID. Choose the candidate with greatest cardinality, retaining earliest active seed on ties; remove its members and repeat. Stop after a cardinality-one cluster as the source does, retaining the actual residual list.",
+  "work_item_mapping": "One cooperative64-thread block per active seed in named cases; all source points retained. One-thread global cardinality reduction. One64-thread block recomputes winning candidate and stably compacts remaining points, then updates masks.",
+  "layout": "Source row-major compact neighbors/distances and per-block Ai/cache rows. Mutable arrays preserve source Int32/Int8/Float32 representation,8 leading+8 trailing guard elements each. Full stale tails/cache captured separately from independent scientific outputs.",
+  "launch_geometry": "Initial192/128/65 blocks, then active point_count blocks,64threads each; globalcardreduce1block/1thread; trim/update1block/64threads. Named pointcounts belowsource576 cap. JACCexplicit dynamic shared0; CUDA static shared declarations separate.",
+  "verification_contract": "All20 complete798063Float64 lossless fields:27790exactprefix, exactindependentlogicalstates eachof37iterations, fullmutableworkspace snapshots,actualindex/distanceecho and432guards across3cases. Exactgreedygeometry oracle/diameter/tie/card/membership/degrees/masks/remaininglist; cache/staletails crossrefonly.",
+  "keyconfounds": [
+    "Sourcegreedycandidateheuristic notglobalmaximumclique/optimalpartition",
+    "Sourcecard<=1stop leaves62 actualunassignedisolatedpoints; do notinventexplicitfullpartition",
+    "Degree66exercisesfirsttwoof12prefetchslots; degree>768fallback/default4096randomCLI/distributedMPIunverified",
+    "AllJuliaframeworksuseCUDAstaticshared/barrierbackendextensions, notpureportableAPI",
+    "Juliauniformmaskedtrimtailandextra shared-readlifetimebarrier are synchronizationcovariates; nativebodyunchangedandallcapturedscientificchecks pass",
+    "Native12namedprefetchedcandidates versusJulia12tuple; actualregister/localmemoryplacement/compiledresourcecountunprofiled",
+    "NamedROI includesdegreeandglobalreduction omittedfromoriginalprintedqtc+trim+updatetotal; all4timedsamecompletepipeline",
+    "CPUreadbacks/control/oracle/reset/serializationoutsidekernel launch+completion regions; notfullCLIend-to-endtime",
+    "Observerinitializes otherwiseunreadoutput/staleworkspacestoexactcanaries; no nativeGPUalgorithm/inputrepair",
+    "Historicalmarker/fabricatedstatistics referenceS1, no inventedportablecompilerfailure",
+    "Exactdyadicfixture avoidsrealdata near-threshold error; notgeneralFloat32numericalrobustnesscertificate",
+    "Sharedalgorithm/oracle referencephase reusedKAthenJACC; marginalorderedworkflowcost notintrinsiccoldframeworkranking"
+  ],
+  "boundary_rounding_policy": "Compactneighborsstrictdistance<1/nonself/sortedID, \u22121/FLT_MAXpadding; sourcecandidate paircondition respectscompactmissingedges, minimumdiametertieslowestID andwinnercardtiesearliestactiveindex. Sourceaftercard1stopswithresidualunassignedlist. ExactF32dyadicgeometry, noNaNoutputs.",
+  "support_boundary": "Named small single-GPU clouds with37 total convergence iterations and explicit singleton-stop control; not original random4096-point CLI or distributed MPI. Diameter-bounded grouping supports data exploration and clustering. This benchmark demonstrates the source greedy candidate heuristic, not globally optimal clique selection, an optimal partition, biological validation or a particular application dataset.",
+  "interpretation": "For clustering users, chosen members, diameter, tie policy and residual handling matter more than printedPASS. Independent geometry and full iteration-state checks restore scientific meaning. Performance differences include source prefetch representation, CUDA backend shared/barrier mapping, extra Julia lifetime synchronization and host dispatch; no profiler-based cause or universal abstraction recommendation.",
+  "reference_class": "CUDAjl_full_QT_compact_pipeline_CUDA_staticshared_barrier_backend_extension",
+  "ka_class": "KA_dispatch_full_QT_CUDA_staticshared_barrier_hybrid",
+  "jacc_class": "JACC_dispatch_full_QT_CUDA_staticshared_barrier_hybrid",
+  "resource_policy": {
+    "cuda_jl": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+      "source_reviewed": true
+    },
+    "ka": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+      "source_reviewed": true
+    },
+    "jacc": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_declarations": "closest Float32[64]+Int32[64], trim Int32[64]+Int32[1]+Bool[1]; compiledallocation/register/localbytesunprofiled",
+      "source_reviewed": true
+    }
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDA.CuStaticSharedArray",
+      "CUDA.sync_threads",
+      "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+      "CUDAhostallocation/copy/completion"
+    ],
+    "ka": [
+      "CUDA.CuStaticSharedArray",
+      "CUDA.sync_threads",
+      "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+      "CUDAhostallocation/copy/completion"
+    ],
+    "jacc": [
+      "CUDA.CuStaticSharedArray",
+      "CUDA.sync_threads",
+      "CUDA.threadIdx/blockIdx forsourcecooperativeblockmapping",
+      "CUDAhostallocation/copy/completion"
+    ]
+  }
+}
