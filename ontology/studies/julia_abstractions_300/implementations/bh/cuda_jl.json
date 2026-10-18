@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "bh",
   "implementation_model": "cuda_jl",
-  "status": "reference_blocked",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/bh.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -15,166 +15,742 @@
     "release_comparison_performed": false
   },
   "implementation_ontology": {
-    "status": "reference_algorithm_disagreement",
-    "algorithm": "Direct O(N\u00b2)force plus fusedintegration; no octree orcellopeningcriterion",
-    "mapping": "Onebody/thread gridstride, innerloop overallbodies; samekernel mutatespositionsreadbyotherthreads",
-    "layout": "SeparateFloat32position,mass,velocity,acceleration arrays",
-    "precision": {
-      "storage": "float32",
-      "compute": "float32force/integration,Float64hostinitialization"
-    },
-    "memory": "GlobalSoA source/targetpositions samebuffers",
-    "synchronization": [
-      "kernel_boundary only; no globalbarrier between force andpositionwrites"
+    "status": "verified",
+    "actual_algorithm": "Restored native ECL-BH4.5 pipeline: initializationonce then8stagesperstep (boundingbox,clear1,atomicCASoctreeinsertion,clear2,volatileCOMsummarization,octantDFSsort,warpcollectiveBHforce,integration). Full10publicFloat32statecomponents; no denseforce substitution.",
+    "work_item_mapping": "Original24baseblocks and256threads, stageblockfactors2,1,2,1,1,1,2,2 (clearstages24blocks); nodecapacity24576; sortedwarp32opening andMAXDEPTH32; staticshared6144Bboundingbox/16384Bsummarization/3072Bforce. Allmodelsretain backendCUDAintrinsicdevicebodies; KA/JACC own9frameworkentrypoints+frameworkallocation, nohiddenCUDA.@cuda launch.",
+    "storage_precision": [
+      "Float32_particle_and_cell_state",
+      "Int32_treeindices_counts_starts_and_counter"
     ],
-    "atomic_operations": [],
-    "resource_geometry": {
-      "threads": 256,
-      "blocks": "ceil(nbodies/256)",
-      "dynamic_shared_bytes": 0
-    },
-    "library_boundary": "CUDA.jl customkernel/runtime",
-    "host_control_boundary": "Onefusedkernel/step, differsnative8kernel treepipeline",
-    "fidelity_status": "S1wrongalgorithm; sourceproveninplace-read/write hazard",
-    "provenance": [
-      {
-        "path": "src/bh-julia/main.jl",
-        "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
-        "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
-      }
-    ]
-  },
-  "implementation_ontology_normalized": {
-    "algorithm": "Direct O(N\u00b2)force plus fusedintegration; no octree orcellopeningcriterion",
-    "work_item_mapping": "Onebody/thread gridstride, innerloop overallbodies; samekernel mutatespositionsreadbyotherthreads",
-    "layout": "SeparateFloat32position,mass,velocity,acceleration arrays",
-    "storage_precision": "float32",
-    "compute_precision": "float32force/integration,Float64hostinitialization",
-    "timed_compute_precision": null,
-    "untimed_device_compute_precision": null,
-    "host_oracle_precision": null,
-    "artifact_encoding": null,
-    "memory_hierarchy_and_access": "GlobalSoA source/targetpositions samebuffers",
-    "synchronization": [
-      "kernel_boundary only; no globalbarrier between force andpositionwrites"
+    "compute_precision": [
+      "Float32_force_COM_integration",
+      "Int32_indices"
     ],
-    "atomics_and_reductions": [],
-    "resource_policy": {
-      "threads": 256,
-      "blocks": "ceil(nbodies/256)",
-      "dynamic_shared_bytes": 0
-    },
+    "synchronization": [
+      "interkernelstreamordering",
+      "blockbarriers",
+      "warpbarriers_and_allvote",
+      "atomicCAS/Sub/Inc",
+      "globalvolatilepublication",
+      "global_threadfence",
+      "devicewidecompletion_at_ROIend"
+    ],
     "launch_geometry": {
       "threads": 256,
-      "blocks": "ceil(nbodies/256)",
+      "initialization_threads": 1,
+      "stage_blocks": [
+        48,
+        24,
+        48,
+        24,
+        24,
+        24,
+        48,
+        48
+      ],
+      "static_shared_bytes": {
+        "boundingbox": 6144,
+        "summarization": 16384,
+        "force": 3072
+      },
       "dynamic_shared_bytes": 0
     },
-    "library_backend_boundary": "CUDA.jl customkernel/runtime",
-    "host_control_boundary": "Onefusedkernel/step, differsnative8kernel treepipeline",
-    "fidelity_status_and_scope": "S1wrongalgorithm; sourceproveninplace-read/write hazard",
-    "source_review_evidence": null,
+    "resource_policy": "Original256threads(1forinit),24/48blocks; staticshared6144/16384/3072bytes, dynamicshared0",
+    "backend_extensions": [
+      "custom Base.llvmcall LLVM volatile global load/store"
+    ],
+    "implementation_class": "hybrid_device_intrinsics",
+    "source_sha256": "9a6ccc42e7fc1377874371c00b46826b441bb22aa201c0f23d7042d9cecabb83",
+    "reference_repair": {
+      "taxonomy_code": "S1",
+      "phase": "genuine_reference_restoration",
+      "finding": "HistoricalCUDAjl direct_step_kernel! replaces nativeoctree/warpcollectiveBHapproximation withdenseallpairs andfusedpositionupdate, potentialcross-threadread/writehazard; no originalnumericalverifier. Preservedreference_history/main.jl. Coordinatorrestored8stagealgorithm+init andindependentCPUoctreeoracle beforetransfer; workercompletedguard/topology/APIhostreview andactualverification. No nativekernelchanges.",
+      "original_source_sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+      "historical_source": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/main.jl",
+      "native_source": {
+        "path": "src/bh-cuda/main.cu",
+        "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+      },
+      "inherited_root_draft_archive": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/inherited_root_pre_gpu/handoff.json",
+      "coordinator_cost_separate": true
+    },
+    "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "implementation_class_reason": "CustomLLVMvolatiledeviceprimitive outsideownexportedCUDA.jlAPI",
+    "authored_device_kernel_definitions": 9,
+    "per_step_kernel_calls": 8,
+    "one_time_init_kernel_calls": 1,
+    "shared_device_body_definitions": 9,
+    "framework_features_used": [
+      "CUDA.atomic_cas!/atomic_sub!/atomic_inc!",
+      "CUDA.threadfence",
+      "CUDA.sync_threads/sync_warp/vote_all_sync",
+      "CUDA.rsqrt",
+      "CUDA.CuStaticSharedArray"
+    ],
+    "host_oracle_precision": [
+      "Float64_CPUindependentoctreeforceCOMintegration",
+      "Float32_publicposition_rounding"
+    ],
+    "artifact_encoding": "Float32publicstate_andexactinputprefix",
+    "device_code_reuse": "Coordinatorrootauthorednative-equivalent9devicebodiesvalidatedunderCUDAjl; mapsframeworkdispatchreuse, notcoldindependentalgorithmtranslation",
+    "scientific_intent": {
+      "primary_family": "particle_molecular",
+      "application_domain": "Astrophysical gravitational N-body/star-cluster approximation",
+      "governing_method": "Barnes-Hut octree approximation, center-of-mass aggregation, warp32 collective geometric opening and softenedNewtonianforce with separate leapfrog-style integration",
+      "scientific_task": "Advance allpositions,velocities andaccelerations underapproximate softenedselfgravity",
+      "community_use_case": "SourceECL-BH4.5 starclustersimulation; no long-timeclusterstructure, energy-stability orastrophysicalpredictionquality certification.",
+      "discretization": "Particles plusdynamicallyallocatedspatialoctree, octantorderedDFS andwarpgroupdependentopening",
+      "accuracy_needs": [
+        "Genuineoctreeapproximation notall-pairssurrogate",
+        "Correctsoftening/opening/mass/COM/order",
+        "Fullparticlepositionvelocityaccelerationstate",
+        "Publishedtreepointers/volatilemassordering/collectivewarpsemantics",
+        "Finite timeintegration andexactmass preservation"
+      ],
+      "precision_sensitivity": "FP32deviceCOM/force/integration withapproxrsqrt; independentCPUFP64force/COM/integration andFP32 publicpositionrounding; fixedjointabsoluterelativetolerance",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/bh-cuda/main.cu",
+          "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+        }
+      ],
+      "scientific_scope": "N256/1024 with1/3steps andN2048/1 only; originalN100000/100stepsunmeasured. Fullfinaltreechecked eachcase; notintermediate-per-steprawtrees. Momentumdriftauxiliaryonly; noglobalconservationaccuracy claim."
+    },
+    "pure_portable_device_code": false,
+    "framework_unsupported": false,
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Restored native ECL-BH4.5 pipeline: initializationonce then8stagesperstep (boundingbox,clear1,atomicCASoctreeinsertion,clear2,volatileCOMsummarization,octantDFSsort,warpcollectiveBHforce,integration). Full10publicFloat32statecomponents; no denseforce substitution.",
+    "implementation_class": "hybrid_device_intrinsics",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Original24baseblocks and256threads, stageblockfactors2,1,2,1,1,1,2,2 (clearstages24blocks); nodecapacity24576; sortedwarp32opening andMAXDEPTH32; staticshared6144Bboundingbox/16384Bsummarization/3072Bforce. Allmodelsretain backendCUDAintrinsicdevicebodies; KA/JACC own9frameworkentrypoints+frameworkallocation, nohiddenCUDA.@cuda launch.",
+    "layout": null,
+    "storage_precision": [
+      "Float32_particle_and_cell_state",
+      "Int32_treeindices_counts_starts_and_counter"
+    ],
+    "compute_precision": [
+      "Float32_force_COM_integration",
+      "Int32_indices"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Float64_CPUindependentoctreeforceCOMintegration",
+      "Float32_publicposition_rounding"
+    ],
+    "artifact_encoding": "Float32publicstate_andexactinputprefix",
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "interkernelstreamordering",
+      "blockbarriers",
+      "warpbarriers_and_allvote",
+      "atomicCAS/Sub/Inc",
+      "globalvolatilepublication",
+      "global_threadfence",
+      "devicewidecompletion_at_ROIend"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Original256threads(1forinit),24/48blocks; staticshared6144/16384/3072bytes, dynamicshared0",
+    "launch_geometry": {
+      "threads": 256,
+      "initialization_threads": 1,
+      "stage_blocks": [
+        48,
+        24,
+        48,
+        24,
+        24,
+        24,
+        48,
+        48
+      ],
+      "static_shared_bytes": {
+        "boundingbox": 6144,
+        "summarization": 16384,
+        "force": 3072
+      },
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": [
+      "custom Base.llvmcall LLVM volatile global load/store"
+    ],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "9a6ccc42e7fc1377874371c00b46826b441bb22aa201c0f23d7042d9cecabb83",
     "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
   },
   "implementation_review_status": "per_model_source_review_recorded",
   "shared_benchmark_traits": {
-    "benchmark": "bh",
-    "primary_motif": "hierarchical_nbody_tree_traversal",
+    "primary_motif": "irregular_octree_build_traverse_particle_force_integration",
+    "storage_precision": [
+      "Float32_particle_and_cell_state",
+      "Int32_treeindices_counts_starts_and_counter"
+    ],
+    "compute_precision": [
+      "Float32_force_COM_integration",
+      "Int32_indices"
+    ],
+    "synchronization": [
+      "interkernelstreamordering",
+      "blockbarriers",
+      "warpbarriers_and_allvote",
+      "atomicCAS/Sub/Inc",
+      "globalvolatilepublication",
+      "global_threadfence",
+      "devicewidecompletion_at_ROIend"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Genuine8stagealgorithm+init andgeometry preserved. float4/float2 scalarizedtoflatFloat32arrays; nativeunsignedatomiccounter representedInt32 safe0..47;9frameworkdispatchentrypoints reuseexplicitCUDAbodies. Backend-specificfeatureboundary documented."
+    },
+    "implementation_class": {
+      "cuda_jl": "hybrid_device_intrinsics",
+      "ka": "hybrid_device_intrinsics",
+      "jacc": "hybrid_device_intrinsics"
+    },
+    "timing_scope": "Sumfivecase initonce+8kernelsperstep+devicewidecompletion; resets/captures/oracles/topology/guards outsideROI; originalrawtiming_regionNone preserved understrictmetadata-onlyhash-bound adjudication",
+    "verification_contract": "raw_numeric_outputs",
     "scientific_intent": {
-      "review_status": "source_audited",
       "primary_family": "particle_molecular",
-      "primary_domain": "astrophysical_gravitational_nbody",
-      "scientific_task": "Evolve a selfgravitating starcluster using Barnes-Hut octree forceapproximation",
-      "mathematical_operation": "Treecell monopolegravitationalforces with openingtheta0.5, softenedr^-3 interactions eps0.05, velocity/position timeintegration dt0.025",
-      "discretization_or_topology": "Moving3Dparticles with adaptiveoctree and warpcooperative treewalk; no regularspatialmesh",
-      "invariants": [
-        "Particle masses unchanged byintegration",
-        "Finite positions/velocities required; energy/momentumaccuracy needs a documented tolerance, not exactconservationassumption"
+      "application_domain": "Astrophysical gravitational N-body/star-cluster approximation",
+      "governing_method": "Barnes-Hut octree approximation, center-of-mass aggregation, warp32 collective geometric opening and softenedNewtonianforce with separate leapfrog-style integration",
+      "scientific_task": "Advance allpositions,velocities andaccelerations underapproximate softenedselfgravity",
+      "community_use_case": "SourceECL-BH4.5 starclustersimulation; no long-timeclusterstructure, energy-stability orastrophysicalpredictionquality certification.",
+      "discretization": "Particles plusdynamicallyallocatedspatialoctree, octantorderedDFS andwarpgroupdependentopening",
+      "accuracy_needs": [
+        "Genuineoctreeapproximation notall-pairssurrogate",
+        "Correctsoftening/opening/mass/COM/order",
+        "Fullparticlepositionvelocityaccelerationstate",
+        "Publishedtreepointers/volatilemassordering/collectivewarpsemantics",
+        "Finite timeintegration andexactmass preservation"
       ],
-      "accuracy_requirements": [
-        "NativeCLI does not supply independentaccuracycheck or physicalerrorthreshold",
-        "Matching fulltreepipeline and a fixedsnapshot/fullstate contract required before acceptingcrossmodelperformance"
-      ],
-      "precision_sensitivity": "Float32 force and centersofmass; approximatecellaggregation/openingcriterion and reduction/insertionorder can affect forces beyond floatingroundoff",
-      "input_size_regimes": "NativeCLI bodies x timesteps with minimumtreecapacity; no newmatchedconfiguration or scalingmeasurement completed",
-      "community_use_case": "Source ECL-BHv4.5 explicitly describes gravitationalforces in a starcluster and credits Barnes-Hut GPUpublication",
-      "uncertainty": "No application-specific astrophysicalerrortolerance or energybudget isgiven; genericphysicalinvariants do notverify this translation",
-      "provenance": [
+      "precision_sensitivity": "FP32deviceCOM/force/integration withapproxrsqrt; independentCPUFP64force/COM/integration andFP32 publicpositionrounding; fixedjointabsoluterelativetolerance",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
         {
           "path": "src/bh-cuda/main.cu",
-          "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c",
-          "source_locations": "headerstarclusterphysics; treepipeline hostlines898-927 and ForceCalculationKernel540-663"
-        },
-        {
-          "path": "src/bh-julia/main.jl",
-          "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
-          "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
+          "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
         }
-      ]
+      ],
+      "scientific_scope": "N256/1024 with1/3steps andN2048/1 only; originalN100000/100stepsunmeasured. Fullfinaltreechecked eachcase; notintermediate-per-steprawtrees. Momentumdriftauxiliaryonly; noglobalconservationaccuracy claim."
+    },
+    "keyconfounds": [
+      "Backend-dependent hybriddeviceimplementation inall3, notportabilitytootherGPUvendors",
+      "SmallnamedN/timestepregimes, no original100000body/100stepclaim",
+      "InitialxyzaccelerationszeroedoutsideROI thoughoverwrittenbeforefirstscientificuse",
+      "Publicparticlemasses exact; momentumdriftdescriptive only",
+      "Finaltreefullselfchecks logged; rawallocatorIDtreebuffers notretained/crosscompared",
+      "Inheritedsource/helper/oraclework rootedparentphase; targetcostmarginal conditionalreuse",
+      "Rawmachine-readabletimingregionomitted; source-backedmetadata-onlyadjudication preservesall20rows/times; notnewmeasurement"
+    ],
+    "benchmark": "bh",
+    "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T022534398516Z_bh/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/bh-cuda/main.cu",
+      "native_source_sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c",
+      "reviewed_at": "2026-10-18T02:27:27.476914+00:00"
     },
     "implementation_traits": {
       "cuda_jl": {
-        "status": "reference_algorithm_disagreement",
-        "algorithm": "Direct O(N\u00b2)force plus fusedintegration; no octree orcellopeningcriterion",
-        "mapping": "Onebody/thread gridstride, innerloop overallbodies; samekernel mutatespositionsreadbyotherthreads",
-        "layout": "SeparateFloat32position,mass,velocity,acceleration arrays",
-        "precision": {
-          "storage": "float32",
-          "compute": "float32force/integration,Float64hostinitialization"
-        },
-        "memory": "GlobalSoA source/targetpositions samebuffers",
-        "synchronization": [
-          "kernel_boundary only; no globalbarrier between force andpositionwrites"
+        "status": "verified",
+        "actual_algorithm": "Restored native ECL-BH4.5 pipeline: initializationonce then8stagesperstep (boundingbox,clear1,atomicCASoctreeinsertion,clear2,volatileCOMsummarization,octantDFSsort,warpcollectiveBHforce,integration). Full10publicFloat32statecomponents; no denseforce substitution.",
+        "work_item_mapping": "Original24baseblocks and256threads, stageblockfactors2,1,2,1,1,1,2,2 (clearstages24blocks); nodecapacity24576; sortedwarp32opening andMAXDEPTH32; staticshared6144Bboundingbox/16384Bsummarization/3072Bforce. Allmodelsretain backendCUDAintrinsicdevicebodies; KA/JACC own9frameworkentrypoints+frameworkallocation, nohiddenCUDA.@cuda launch.",
+        "storage_precision": [
+          "Float32_particle_and_cell_state",
+          "Int32_treeindices_counts_starts_and_counter"
         ],
-        "atomic_operations": [],
-        "resource_geometry": {
+        "compute_precision": [
+          "Float32_force_COM_integration",
+          "Int32_indices"
+        ],
+        "synchronization": [
+          "interkernelstreamordering",
+          "blockbarriers",
+          "warpbarriers_and_allvote",
+          "atomicCAS/Sub/Inc",
+          "globalvolatilepublication",
+          "global_threadfence",
+          "devicewidecompletion_at_ROIend"
+        ],
+        "launch_geometry": {
           "threads": 256,
-          "blocks": "ceil(nbodies/256)",
+          "initialization_threads": 1,
+          "stage_blocks": [
+            48,
+            24,
+            48,
+            24,
+            24,
+            24,
+            48,
+            48
+          ],
+          "static_shared_bytes": {
+            "boundingbox": 6144,
+            "summarization": 16384,
+            "force": 3072
+          },
           "dynamic_shared_bytes": 0
         },
-        "library_boundary": "CUDA.jl customkernel/runtime",
-        "host_control_boundary": "Onefusedkernel/step, differsnative8kernel treepipeline",
-        "fidelity_status": "S1wrongalgorithm; sourceproveninplace-read/write hazard",
-        "provenance": [
-          {
-            "path": "src/bh-julia/main.jl",
-            "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
-            "source_locations": "direct_step_kernel!68-123 andmain timestep loop149-155"
-          }
-        ]
+        "resource_policy": "Original256threads(1forinit),24/48blocks; staticshared6144/16384/3072bytes, dynamicshared0",
+        "backend_extensions": [
+          "custom Base.llvmcall LLVM volatile global load/store"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "9a6ccc42e7fc1377874371c00b46826b441bb22aa201c0f23d7042d9cecabb83",
+        "reference_repair": {
+          "taxonomy_code": "S1",
+          "phase": "genuine_reference_restoration",
+          "finding": "HistoricalCUDAjl direct_step_kernel! replaces nativeoctree/warpcollectiveBHapproximation withdenseallpairs andfusedpositionupdate, potentialcross-threadread/writehazard; no originalnumericalverifier. Preservedreference_history/main.jl. Coordinatorrestored8stagealgorithm+init andindependentCPUoctreeoracle beforetransfer; workercompletedguard/topology/APIhostreview andactualverification. No nativekernelchanges.",
+          "original_source_sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+          "historical_source": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/main.jl",
+          "native_source": {
+            "path": "src/bh-cuda/main.cu",
+            "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+          },
+          "inherited_root_draft_archive": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/inherited_root_pre_gpu/handoff.json",
+          "coordinator_cost_separate": true
+        },
+        "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "implementation_class_reason": "CustomLLVMvolatiledeviceprimitive outsideownexportedCUDA.jlAPI",
+        "authored_device_kernel_definitions": 9,
+        "per_step_kernel_calls": 8,
+        "one_time_init_kernel_calls": 1,
+        "shared_device_body_definitions": 9,
+        "framework_features_used": [
+          "CUDA.atomic_cas!/atomic_sub!/atomic_inc!",
+          "CUDA.threadfence",
+          "CUDA.sync_threads/sync_warp/vote_all_sync",
+          "CUDA.rsqrt",
+          "CUDA.CuStaticSharedArray"
+        ],
+        "host_oracle_precision": [
+          "Float64_CPUindependentoctreeforceCOMintegration",
+          "Float32_publicposition_rounding"
+        ],
+        "artifact_encoding": "Float32publicstate_andexactinputprefix",
+        "device_code_reuse": "Coordinatorrootauthorednative-equivalent9devicebodiesvalidatedunderCUDAjl; mapsframeworkdispatchreuse, notcoldindependentalgorithmtranslation",
+        "scientific_intent": {
+          "primary_family": "particle_molecular",
+          "application_domain": "Astrophysical gravitational N-body/star-cluster approximation",
+          "governing_method": "Barnes-Hut octree approximation, center-of-mass aggregation, warp32 collective geometric opening and softenedNewtonianforce with separate leapfrog-style integration",
+          "scientific_task": "Advance allpositions,velocities andaccelerations underapproximate softenedselfgravity",
+          "community_use_case": "SourceECL-BH4.5 starclustersimulation; no long-timeclusterstructure, energy-stability orastrophysicalpredictionquality certification.",
+          "discretization": "Particles plusdynamicallyallocatedspatialoctree, octantorderedDFS andwarpgroupdependentopening",
+          "accuracy_needs": [
+            "Genuineoctreeapproximation notall-pairssurrogate",
+            "Correctsoftening/opening/mass/COM/order",
+            "Fullparticlepositionvelocityaccelerationstate",
+            "Publishedtreepointers/volatilemassordering/collectivewarpsemantics",
+            "Finite timeintegration andexactmass preservation"
+          ],
+          "precision_sensitivity": "FP32deviceCOM/force/integration withapproxrsqrt; independentCPUFP64force/COM/integration andFP32 publicpositionrounding; fixedjointabsoluterelativetolerance",
+          "review_status": "source_reviewed",
+          "source_hash_evidence": [
+            {
+              "path": "src/bh-cuda/main.cu",
+              "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+            }
+          ],
+          "scientific_scope": "N256/1024 with1/3steps andN2048/1 only; originalN100000/100stepsunmeasured. Fullfinaltreechecked eachcase; notintermediate-per-steprawtrees. Momentumdriftauxiliaryonly; noglobalconservationaccuracy claim."
+        },
+        "pure_portable_device_code": false,
+        "framework_unsupported": false,
+        "source_review_status": "source_reviewed"
       },
       "ka": {
-        "status": "reference_blocked",
-        "algorithm": null,
-        "mapping": null,
-        "layout": null,
-        "precision": null,
-        "resource_geometry": null,
-        "fidelity_status": "unimplemented"
+        "status": "verified",
+        "actual_algorithm": "Restored native ECL-BH4.5 pipeline: initializationonce then8stagesperstep (boundingbox,clear1,atomicCASoctreeinsertion,clear2,volatileCOMsummarization,octantDFSsort,warpcollectiveBHforce,integration). Full10publicFloat32statecomponents; no denseforce substitution.",
+        "work_item_mapping": "Original24baseblocks and256threads, stageblockfactors2,1,2,1,1,1,2,2 (clearstages24blocks); nodecapacity24576; sortedwarp32opening andMAXDEPTH32; staticshared6144Bboundingbox/16384Bsummarization/3072Bforce. Allmodelsretain backendCUDAintrinsicdevicebodies; KA/JACC own9frameworkentrypoints+frameworkallocation, nohiddenCUDA.@cuda launch.",
+        "storage_precision": [
+          "Float32_particle_and_cell_state",
+          "Int32_treeindices_counts_starts_and_counter"
+        ],
+        "compute_precision": [
+          "Float32_force_COM_integration",
+          "Int32_indices"
+        ],
+        "synchronization": [
+          "interkernelstreamordering",
+          "blockbarriers",
+          "warpbarriers_and_allvote",
+          "atomicCAS/Sub/Inc",
+          "globalvolatilepublication",
+          "global_threadfence",
+          "devicewidecompletion_at_ROIend"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "initialization_threads": 1,
+          "stage_blocks": [
+            48,
+            24,
+            48,
+            24,
+            24,
+            24,
+            48,
+            48
+          ],
+          "static_shared_bytes": {
+            "boundingbox": 6144,
+            "summarization": 16384,
+            "force": 3072
+          },
+          "dynamic_shared_bytes": 0
+        },
+        "resource_policy": "Original256threads(1forinit),24/48blocks; staticshared6144/16384/3072bytes, dynamicshared0",
+        "backend_extensions": [
+          "CUDA.atomic_cas!/atomic_sub!/atomic_inc!",
+          "CUDA.threadfence",
+          "CUDA.sync_threads/sync_warp/vote_all_sync",
+          "CUDA.rsqrt",
+          "CUDA.CuStaticSharedArray",
+          "custom Base.llvmcall LLVM volatile global load/store"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "e4d20457dca0af31cf59a4e564186707c6e83a895db66c005ac6687f7e541e03",
+        "reference_repair": null,
+        "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "implementation_class_reason": "Frameworkallocation+9frameworkdispatchentrypoints reuseexplicitCUDAshared/barrier/warp/atomic/fence/rsqrt/LLVMvolatiledevicebodies",
+        "authored_device_kernel_definitions": 9,
+        "per_step_kernel_calls": 8,
+        "one_time_init_kernel_calls": 1,
+        "shared_device_body_definitions": 9,
+        "framework_features_used": [
+          "frameworkallocation",
+          "frameworkkernel_dispatch"
+        ],
+        "host_oracle_precision": [
+          "Float64_CPUindependentoctreeforceCOMintegration",
+          "Float32_publicposition_rounding"
+        ],
+        "artifact_encoding": "Float32publicstate_andexactinputprefix",
+        "device_code_reuse": "Coordinatorrootauthorednative-equivalent9devicebodiesvalidatedunderCUDAjl; mapsframeworkdispatchreuse, notcoldindependentalgorithmtranslation",
+        "scientific_intent": {
+          "primary_family": "particle_molecular",
+          "application_domain": "Astrophysical gravitational N-body/star-cluster approximation",
+          "governing_method": "Barnes-Hut octree approximation, center-of-mass aggregation, warp32 collective geometric opening and softenedNewtonianforce with separate leapfrog-style integration",
+          "scientific_task": "Advance allpositions,velocities andaccelerations underapproximate softenedselfgravity",
+          "community_use_case": "SourceECL-BH4.5 starclustersimulation; no long-timeclusterstructure, energy-stability orastrophysicalpredictionquality certification.",
+          "discretization": "Particles plusdynamicallyallocatedspatialoctree, octantorderedDFS andwarpgroupdependentopening",
+          "accuracy_needs": [
+            "Genuineoctreeapproximation notall-pairssurrogate",
+            "Correctsoftening/opening/mass/COM/order",
+            "Fullparticlepositionvelocityaccelerationstate",
+            "Publishedtreepointers/volatilemassordering/collectivewarpsemantics",
+            "Finite timeintegration andexactmass preservation"
+          ],
+          "precision_sensitivity": "FP32deviceCOM/force/integration withapproxrsqrt; independentCPUFP64force/COM/integration andFP32 publicpositionrounding; fixedjointabsoluterelativetolerance",
+          "review_status": "source_reviewed",
+          "source_hash_evidence": [
+            {
+              "path": "src/bh-cuda/main.cu",
+              "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+            }
+          ],
+          "scientific_scope": "N256/1024 with1/3steps andN2048/1 only; originalN100000/100stepsunmeasured. Fullfinaltreechecked eachcase; notintermediate-per-steprawtrees. Momentumdriftauxiliaryonly; noglobalconservationaccuracy claim."
+        },
+        "pure_portable_device_code": false,
+        "framework_unsupported": false,
+        "source_review_status": "source_reviewed"
       },
       "jacc": {
-        "status": "reference_blocked",
-        "algorithm": null,
-        "mapping": null,
-        "layout": null,
-        "precision": null,
-        "resource_geometry": null,
-        "fidelity_status": "unimplemented"
+        "status": "verified",
+        "actual_algorithm": "Restored native ECL-BH4.5 pipeline: initializationonce then8stagesperstep (boundingbox,clear1,atomicCASoctreeinsertion,clear2,volatileCOMsummarization,octantDFSsort,warpcollectiveBHforce,integration). Full10publicFloat32statecomponents; no denseforce substitution.",
+        "work_item_mapping": "Original24baseblocks and256threads, stageblockfactors2,1,2,1,1,1,2,2 (clearstages24blocks); nodecapacity24576; sortedwarp32opening andMAXDEPTH32; staticshared6144Bboundingbox/16384Bsummarization/3072Bforce. Allmodelsretain backendCUDAintrinsicdevicebodies; KA/JACC own9frameworkentrypoints+frameworkallocation, nohiddenCUDA.@cuda launch.",
+        "storage_precision": [
+          "Float32_particle_and_cell_state",
+          "Int32_treeindices_counts_starts_and_counter"
+        ],
+        "compute_precision": [
+          "Float32_force_COM_integration",
+          "Int32_indices"
+        ],
+        "synchronization": [
+          "interkernelstreamordering",
+          "blockbarriers",
+          "warpbarriers_and_allvote",
+          "atomicCAS/Sub/Inc",
+          "globalvolatilepublication",
+          "global_threadfence",
+          "devicewidecompletion_at_ROIend"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "initialization_threads": 1,
+          "stage_blocks": [
+            48,
+            24,
+            48,
+            24,
+            24,
+            24,
+            48,
+            48
+          ],
+          "static_shared_bytes": {
+            "boundingbox": 6144,
+            "summarization": 16384,
+            "force": 3072
+          },
+          "dynamic_shared_bytes": 0
+        },
+        "resource_policy": "Original256threads(1forinit),24/48blocks; staticshared6144/16384/3072bytes, dynamicshared0; allJACCLaunchSpec explicitshmem_size0",
+        "backend_extensions": [
+          "CUDA.atomic_cas!/atomic_sub!/atomic_inc!",
+          "CUDA.threadfence",
+          "CUDA.sync_threads/sync_warp/vote_all_sync",
+          "CUDA.rsqrt",
+          "CUDA.CuStaticSharedArray",
+          "custom Base.llvmcall LLVM volatile global load/store"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "source_sha256": "fbd16c0da8d8b7dcc6fc34a01fd524868db2550cbb71331fad50af5e157c65c0",
+        "reference_repair": null,
+        "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "implementation_class_reason": "Frameworkallocation+9frameworkdispatchentrypoints reuseexplicitCUDAshared/barrier/warp/atomic/fence/rsqrt/LLVMvolatiledevicebodies",
+        "authored_device_kernel_definitions": 9,
+        "per_step_kernel_calls": 8,
+        "one_time_init_kernel_calls": 1,
+        "shared_device_body_definitions": 9,
+        "framework_features_used": [
+          "frameworkallocation",
+          "frameworkkernel_dispatch"
+        ],
+        "host_oracle_precision": [
+          "Float64_CPUindependentoctreeforceCOMintegration",
+          "Float32_publicposition_rounding"
+        ],
+        "artifact_encoding": "Float32publicstate_andexactinputprefix",
+        "device_code_reuse": "Coordinatorrootauthorednative-equivalent9devicebodiesvalidatedunderCUDAjl; mapsframeworkdispatchreuse, notcoldindependentalgorithmtranslation",
+        "scientific_intent": {
+          "primary_family": "particle_molecular",
+          "application_domain": "Astrophysical gravitational N-body/star-cluster approximation",
+          "governing_method": "Barnes-Hut octree approximation, center-of-mass aggregation, warp32 collective geometric opening and softenedNewtonianforce with separate leapfrog-style integration",
+          "scientific_task": "Advance allpositions,velocities andaccelerations underapproximate softenedselfgravity",
+          "community_use_case": "SourceECL-BH4.5 starclustersimulation; no long-timeclusterstructure, energy-stability orastrophysicalpredictionquality certification.",
+          "discretization": "Particles plusdynamicallyallocatedspatialoctree, octantorderedDFS andwarpgroupdependentopening",
+          "accuracy_needs": [
+            "Genuineoctreeapproximation notall-pairssurrogate",
+            "Correctsoftening/opening/mass/COM/order",
+            "Fullparticlepositionvelocityaccelerationstate",
+            "Publishedtreepointers/volatilemassordering/collectivewarpsemantics",
+            "Finite timeintegration andexactmass preservation"
+          ],
+          "precision_sensitivity": "FP32deviceCOM/force/integration withapproxrsqrt; independentCPUFP64force/COM/integration andFP32 publicpositionrounding; fixedjointabsoluterelativetolerance",
+          "review_status": "source_reviewed",
+          "source_hash_evidence": [
+            {
+              "path": "src/bh-cuda/main.cu",
+              "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+            }
+          ],
+          "scientific_scope": "N256/1024 with1/3steps andN2048/1 only; originalN100000/100stepsunmeasured. Fullfinaltreechecked eachcase; notintermediate-per-steprawtrees. Momentumdriftauxiliaryonly; noglobalconservationaccuracy claim."
+        },
+        "pure_portable_device_code": false,
+        "framework_unsupported": false,
+        "source_review_status": "source_reviewed"
       }
     },
-    "keyconfounds": [
-      "Historical CUDA.jl replaces native Barnes-Hut octree approximation pipeline with directallpairs force summation fused with positionintegration; no originalnumericalverifier. Not a faithful algorithmicreference.",
-      "Native treeopeningapproximation and historicaldenseforce have different complexity/accuracy contracts",
-      "Juliafused read/writehazard sourceinspection only; no fabricatedobserved runtimefailure"
+    "scientific_witness": {
+      "benchmark": "bh",
+      "raw_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T022534398516Z_bh/result.json",
+      "capture_count": 20,
+      "full_output_count": 46080,
+      "input_prefix_count": 46080,
+      "max_abs_error_vs_independent_CPU_octree": 2.215981020903257e-06,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "oracle": {
+        "source": "/home/imo/HeCBench_julia/src/bh-julia/generate_oracle.py",
+        "source_sha256": "4f6b7bb1d23aa54c76bf741b00928697fa2c5252985603551fde927510163adc",
+        "expected_values": "/home/imo/HeCBench_julia/src/bh-julia/expected_f64.bin",
+        "expected_sha256": "37f54f54b2af9d70453107770e104fc5ecabd8bc6b5545afe570b650d02f26a6",
+        "method": "Independently constructed CPU spatial octree with child-order DFS and warp32 collective opening, higher precision COM/forces/integration and FP32-rounded public positions. Genuine tree approximation, not dense all-pairs surrogate.",
+        "scope_limit": "Same predeclared 5case finite-time operator/pipeline tolerance; not fullapplication, allCLI regimes or long-time accuracy/stability proof."
+      },
+      "pass": true
+    },
+    "timing_region_metadata_adjudication": {
+      "path": "src/bh-julia/timing_region_metadata_review.json",
+      "sha256": "dea219190fc1a0e10652e4a7ad3582704fb5fcd50ce40f671a539ea86a70915b",
+      "source_run_id": "20261018T022149249567Z_bh",
+      "source_result_sha256": "4a224c4c16a453020d61b729ddc52f21d1c37dd7438d7dfc7b5e75368c62dc97",
+      "source_config_sha256": "77ce8b8b213bc46827ade88ece69b1bfb1f52ac8729f2d9ac185e4d39d94d6ed",
+      "effective_timing_region": "sum5_init_plus_eightstages_perstep_with_device_completion",
+      "reason": "Missing machine-readable descriptor only: all20rawtrialrows have timing_regionNone, while pre-GPU SCOPE and existingconfigtiming plus exactunchangedsource establish the same init+8stages/step+devicecompletion ROI. Preserve allrawrecords andtimes, addhashbound separateeffectiveannotation.",
+      "trial_rows_and_samples_unchanged": true,
+      "scope": "Postmeasurement descriptive annotation from predeclared contract and reviewed unchanged sources; no new execution, numerical acceptance, time unit or measured region."
+    },
+    "prospective_usage_intervals": [
+      {
+        "agent": "/root/maps_ports",
+        "model": "shared",
+        "phase": "inherited_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/shared_inherited_workflow.jsonl",
+        "end_event": "ffe002c9db8e3266fe1f82df",
+        "delta_usage": {
+          "input_tokens": 11047487,
+          "cached_input_tokens": 10995200,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 33488,
+          "reasoning_output_tokens": 15265,
+          "total_tokens": 11080975
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Workerinheritedworkflow activity"
+      },
+      {
+        "agent": "/root",
+        "model": "shared",
+        "phase": "reference_resolution_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/shared_reference_resolution_workflow.jsonl",
+        "end_event": "08ff2e7e76689118635df7a6",
+        "delta_usage": {
+          "input_tokens": 3356384,
+          "cached_input_tokens": 3280000,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 21130,
+          "reasoning_output_tokens": 5112,
+          "total_tokens": 3377514
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Coordinatorpreparation/metadataactivity,separatefromworker;consultownscope"
+      },
+      {
+        "agent": "/root",
+        "model": "cuda_jl",
+        "phase": "reference_resolution",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/cuda_jl_reference_resolution.jsonl",
+        "end_event": "d99074cf942ea0208559647f",
+        "delta_usage": {
+          "input_tokens": 3356384,
+          "cached_input_tokens": 3280000,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 21130,
+          "reasoning_output_tokens": 5112,
+          "total_tokens": 3377514
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Coordinatorpreparation/metadataactivity,separatefromworker;consultownscope"
+      },
+      {
+        "agent": "/root/maps_ports",
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/ka_translation.jsonl",
+        "end_event": "bc3fcad17fb89f693739f288",
+        "delta_usage": {
+          "input_tokens": 874498,
+          "cached_input_tokens": 873216,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2501,
+          "reasoning_output_tokens": 1468,
+          "total_tokens": 876999
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Workerinheritedworkflow activity"
+      },
+      {
+        "agent": "/root/maps_ports",
+        "model": "shared",
+        "phase": "inherited_timing_metadata_review",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/shared_inherited_timing_metadata_review.jsonl",
+        "end_event": "0fccb7352b3a350ef9375463",
+        "delta_usage": {
+          "input_tokens": 1177533,
+          "cached_input_tokens": 1175040,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3020,
+          "reasoning_output_tokens": 1118,
+          "total_tokens": 1180553
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Workerinheritedworkflow activity"
+      },
+      {
+        "agent": "/root",
+        "model": "shared",
+        "phase": "timing_metadata_review",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/shared_timing_metadata_review.jsonl",
+        "end_event": "ec9e231087d30559e77b2f3c",
+        "delta_usage": {
+          "input_tokens": 1185423,
+          "cached_input_tokens": 1177600,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4679,
+          "reasoning_output_tokens": 1678,
+          "total_tokens": 1190102
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Coordinatorpreparation/metadataactivity,separatefromworker;consultownscope"
+      },
+      {
+        "agent": "/root/maps_ports",
+        "model": "shared",
+        "phase": "inherited_reference_resolution",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/shared_inherited_reference_resolution.jsonl",
+        "end_event": "29e05e0e06e5aafcb0029d41",
+        "delta_usage": {
+          "input_tokens": 3355069,
+          "cached_input_tokens": 3345152,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10352,
+          "reasoning_output_tokens": 4891,
+          "total_tokens": 3365421
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Workerinheritedworkflow activity"
+      },
+      {
+        "agent": "/root/maps_ports",
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/bh/jacc_translation.jsonl",
+        "end_event": "db4c454f628f4df55e6c67a1",
+        "delta_usage": {
+          "input_tokens": 2031245,
+          "cached_input_tokens": 2023552,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5671,
+          "reasoning_output_tokens": 2832,
+          "total_tokens": 2036916
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "attribution": "Workerinheritedworkflow activity"
+      }
     ]
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/bh-julia/main.jl",
-    "sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+    "path": "src/bh-julia/bh-julia-cuda.jl/main.jl",
+    "sha256": "9a6ccc42e7fc1377874371c00b46826b441bb22aa201c0f23d7042d9cecabb83",
     "syntax_features": {
       "cuda_kernel_launch": [
-        154
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
       ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
@@ -185,13 +761,139 @@
       "explicit_zero_dynamic_shared": []
     },
     "placeholder_signals": {
-      "include_alias": false,
+      "include_alias": true,
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+      "run_id": "20261018T022534398516Z_bh",
+      "result": ".porting-state/portable_julia/runs/20261018T022534398516Z_bh/result.json",
+      "timing_region_metadata_adjudication": {
+        "path": "src/bh-julia/timing_region_metadata_review.json",
+        "sha256": "dea219190fc1a0e10652e4a7ad3582704fb5fcd50ce40f671a539ea86a70915b",
+        "source_run_id": "20261018T022149249567Z_bh",
+        "source_result_sha256": "4a224c4c16a453020d61b729ddc52f21d1c37dd7438d7dfc7b5e75368c62dc97",
+        "source_config_sha256": "77ce8b8b213bc46827ade88ece69b1bfb1f52ac8729f2d9ac185e4d39d94d6ed",
+        "effective_timing_region": "sum5_init_plus_eightstages_perstep_with_device_completion",
+        "reason": "Missing machine-readable descriptor only: all20rawtrialrows have timing_regionNone, while pre-GPU SCOPE and existingconfigtiming plus exactunchangedsource establish the same init+8stages/step+devicecompletion ROI. Preserve allrawrecords andtimes, addhashbound separateeffectiveannotation.",
+        "trial_rows_and_samples_unchanged": true,
+        "scope": "Postmeasurement descriptive annotation from predeclared contract and reviewed unchanged sources; no new execution, numerical acceptance, time unit or measured region."
+      },
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "e8ec0b45fc5d0e0a38be23ca5ffdc5609da0b47237be490495abe9121ed264b6",
+      "source_hash": "90ce19bb8f7c30f86dfa8061a837b33a5312e3bcee8c2cb173f11c91c5587353",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T022534398516Z_bh/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.007895304,
+        0.007858912,
+        0.007723642,
+        0.007911712,
+        0.007798712
+      ],
+      "mean_last_four_seconds": 0.0078232445,
+      "contract": {
+        "cases": [
+          [
+            256,
+            1
+          ],
+          [
+            256,
+            3
+          ],
+          [
+            1024,
+            1
+          ],
+          [
+            1024,
+            3
+          ],
+          [
+            2048,
+            1
+          ]
+        ],
+        "fixture": "OriginalC++initializer extracted bycoordinator; initialaccelerationszero outsideROI; all46080inputFloat32valuesexact",
+        "pipeline": "Initializationonce +all8originalkernelsperstep; source24baseblocks,256threads,factors2,2,1,1,2,2",
+        "parameters": {
+          "dt": 0.025,
+          "halfdt": 0.0125,
+          "theta": 0.5,
+          "eps": 0.05
+        },
+        "output": "All10publicFloat32statecomponentsperparticle; allocator-dependentcellIDs excluded; completefinaltreeinvariants+exactallallocationguards separatelyselfcheckedoutsideROI",
+        "timing": "Fixture/resetoutsideROI; init+all8stagesperstep+devicewidecompletion; JITwarmupoutsideall5trials",
+        "oracle": "IndependentCPUoctreechildorder/warp32collectiveopening; FP64COMforceintegration; publicpositionsFP32rounded; samefullstatetolerancepredeclaredbeforeGPUrun"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
     "events": [
+      {
+        "event_id": "4b488ad129e945c3f842",
+        "benchmark_id": "bh",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "R1",
+        "phase": "reference_host_adapter",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/porting_logs/bh-julia-cuda_jl/compiler_attempts.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "phase": "reference_host_adapter",
+          "candidate_id": 1,
+          "check_id": 1,
+          "outcome": "host_scalar_copy_dispatch_error_before_authored_device_jit",
+          "taxonomy_code": "R1",
+          "run_id": "20261018T021718802344Z_bh"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "e3db2e482d415dbfd235",
+        "benchmark_id": "bh",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "R1",
+        "phase": "shared_host_validation",
+        "origin_model": "shared_infrastructure",
+        "is_failure": true,
+        "evidence_path": ".porting-state/porting_logs/bh-julia-cuda_jl/compiler_attempts.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "phase": "shared_host_validation",
+          "candidate_id": 1,
+          "check_id": 2,
+          "outcome": "fullpublicstate_oracle_pass_but_recursive_checker_false",
+          "taxonomy_code": "R1",
+          "run_id": "20261018T021828161023Z_bh"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
       {
         "event_id": "bh-cuda_jl-S1-reference-directsum",
         "benchmark_id": "bh",
@@ -234,25 +936,151 @@
           "shared_phase_id": "bh_historical_reference_semantic_audit"
         },
         "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "bh_cuda_jl_reference_semantics_01",
+        "benchmark_id": "bh",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "genuine_reference_restoration",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/bh.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "bh_cuda_jl_reference_semantics_01",
+          "benchmark_id": "bh",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "bh_restored_eightstage_fivecases_fullstate_guards_topology_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "genuine_reference_restoration",
+          "taxonomy_code": "S1",
+          "symptom": "HistoricalCUDAjl direct_step_kernel! replaces nativeoctree/warpcollectiveBHapproximation withdenseallpairs andfusedpositionupdate, potentialcross-threadread/writehazard; no originalnumericalverifier. Preservedreference_history/main.jl. Coordinatorrestored8stagealgorithm+init andindependentCPUoctreeoracle beforetransfer; workercompletedguard/topology/APIhostreview andactualverification. No nativekernelchanges.",
+          "cause": "HistoricalCUDAjl direct_step_kernel! replaces nativeoctree/warpcollectiveBHapproximation withdenseallpairs andfusedpositionupdate, potentialcross-threadread/writehazard; no originalnumericalverifier. Preservedreference_history/main.jl. Coordinatorrestored8stagealgorithm+init andindependentCPUoctreeoracle beforetransfer; workercompletedguard/topology/APIhostreview andactualverification. No nativekernelchanges.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "taxonomy_code": "S1",
+            "phase": "genuine_reference_restoration",
+            "finding": "HistoricalCUDAjl direct_step_kernel! replaces nativeoctree/warpcollectiveBHapproximation withdenseallpairs andfusedpositionupdate, potentialcross-threadread/writehazard; no originalnumericalverifier. Preservedreference_history/main.jl. Coordinatorrestored8stagealgorithm+init andindependentCPUoctreeoracle beforetransfer; workercompletedguard/topology/APIhostreview andactualverification. No nativekernelchanges.",
+            "original_source_sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+            "historical_source": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/main.jl",
+            "native_source": {
+              "path": "src/bh-cuda/main.cu",
+              "sha256": "d100f83e2e12248c1a67a400fa9354f7636cda24eb75450663291163eb3a0a4c"
+            },
+            "inherited_root_draft_archive": "/home/imo/HeCBench_julia/src/bh-julia/reference_history/inherited_root_pre_gpu/handoff.json",
+            "coordinator_cost_separate": true
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "090220d5cb7dad80e3fb951a6d771a63db61516e5d8e0d4636d3c030ee05bb3c",
+          "log_reference": "/home/imo/HeCBench_julia/src/bh-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
       }
     ],
-    "observed_failure_event_count": 1,
+    "observed_failure_event_count": 4,
     "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 3,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 214,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/bh-julia/bh-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "d99074cf942ea0208559647f",
+        "begin_event_id": "5af1c766d9d64d13491e485a",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_resolution",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T02:12:58.513376+00:00",
+        "usage_event_timestamp": "2026-10-18T02:12:41.996Z",
+        "elapsed_usage_event_start": "2026-10-18T01:58:15.571Z",
+        "delta_usage": {
+          "input_tokens": 3356384,
+          "cached_input_tokens": 3280000,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 21130,
+          "reasoning_output_tokens": 5112,
+          "total_tokens": 3377514
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 16.517376,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "ef0af1287f213f99205ae649c70a922f2cce07e5a8cca25b2f0ec1a047ebe8e6",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Rootsourceaudit+genuine8stage firstdraft, independentCPUoracle andunchangednativeharness written; noGPUcompile/evaluationyet. Handedoff maps_portsforreview+completion. Inclusivewindowinterleavespaperlayout/researchplots/sourcecommits/queuecoordination, noexclusivecostclaim. Rootdraftnotverified, guards/topology stillTODO andBase.countshadowknown.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 31.583883,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/bh/cuda_jl_reference_resolution.jsonl",
+        "evidence_sha256": "93f41d9f7937f06debe4452206dd8878cf382bb0aec2671e5eddd77b0522f8fb",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 3
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
   },
   "effort_manifest_provenance": {
-    "selected_path": ".porting-state/porting_logs/bh-julia-cuda/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_path": ".porting-state/porting_logs/bh-julia-cuda_jl/manifest.json",
+    "selected_sha256": "69518f5bd951dfc0b4432e7bfb63696467891c9c8430442ce469ab98f26476e3",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/bh-julia-cuda_jl/manifest.json",
+        "sha256": "69518f5bd951dfc0b4432e7bfb63696467891c9c8430442ce469ab98f26476e3"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
@@ -276,5 +1104,12 @@
     ],
     "contract": "NativeBarnes-Hut treepipeline; directallpairs substitute notaccepted",
     "condition_for_resumption": "Repair CUDA.jl with actual native treebuild/summarization/sorting/warpopening force and separateintegration, preserve oldsource, define matchedfixture plus fullstate/CPUphysics validationcontract, then KA andJACC. No frameworkunsupported claim."
+  },
+  "declared_model_implementation_class": {
+    "value": "hybrid_device_intrinsics",
+    "annotation_path": ".porting-state/portable_julia/traits/bh.json",
+    "annotation_sha256": "b3a76af82595b254725c7aa078d2fe881facb596687ff4ffa224a66598599605",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
   }
 }

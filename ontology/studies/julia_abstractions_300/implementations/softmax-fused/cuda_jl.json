@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "softmax-fused",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "conditionally_verified_native_reference_repaired",
   "scientific_intent_record": "../../domains/softmax-fused.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,30 +14,607 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "softmax-fused",
+    "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3",
+    "status": "verified",
+    "algorithm": "TypedFP16/BF16 buffers, Float32castbeforemultiply, max/sum/write shared256tree, correctBERT/GPTmaskbroadcast, addedmaxreadreusebarrier.",
+    "work_item_mapping": "CUDAthreads256blocksB*H*Q, oneworkgroup/row, lanestride256columns.",
+    "layout": "Flatrow-major[batch,head,query,key] typedinput/output, UInt8fullmaskallocation; BERTusesfirstB*Qmaskrows,GPTfirstQ. Nativepackedfloat2/uchar4 wide loads; Julia scalarstorage loads. Float32prefixactual16bitvaluesexactlyrepresentable; guard\u22128 exactbothformats.",
+    "precision": {
+      "storage": [
+        "Float16input/output",
+        "BFloat16input/output",
+        "UInt8mask"
+      ],
+      "compute": [
+        "Float32scale/multiply/max/exp/sum/divide",
+        "Float64CPUoraclethennearest-evenoutputquantization",
+        "Float32serializationlosslesslywidens16bitoutputs only"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+      "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+      "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+      "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+    ],
+    "resource_policy": {
+      "shared_bytes": 1024,
+      "explicit": true,
+      "register_count": "unprofiled",
+      "barriers": 19,
+      "template_copy": false,
+      "native_caveat": "Native0shared/0blockbarriers/128threads packs multiple rows; allJulia mappings adapted."
+    },
+    "launch_geometry": "Native128threads/block with source2Dthreadwarp/subwarp layout and3Dgrid. Julia256threads/block, rows1536/192/192/96 respectively.",
+    "backend_extensions": [
+      "CUDAhostallocation/sync/transfers; CUDA.CUDACore.BFloat16installedtype, portabledeviceBaseFloat32math/conversion, noinlinePTX/shuffle/vendorcalls."
+    ],
+    "host_device_boundary": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+    "supported_features": [
+      "ActualFloat16/BFloat16GPUstorage/conversiononV100",
+      "FP32exp/max/sum reductions",
+      "Broadcastmasksemantics",
+      "Allmaskedzerooutputs",
+      "KA/JACCsharedmemory/barriers"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "All16namedtypedmaskpaths/fullrawprobabilitieschecked. OriginalhostCLI/defaultshapes, vector4partialtails, alternateunboundedsentinelinputdomain, backwardpass/fullattention/modelaccuracy unverified. Exactzero nativecompilepatchconditionalnotunsupported.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused",
+    "numerical_contract": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.00305465375,
+      0.00019548075000000003,
+      0.00019503110000000006,
+      0.00019446480000000002,
+      0.00019455185
+    ],
+    "mean_last_four_seconds": 0.00019488212500000002,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl",
+        "sha256": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3"
+      },
+      {
+        "path": "src/softmax-fused-julia/study_common.jl",
+        "sha256": "d7a92bcf814fc15a17ac530d84dc69005e7e2105865af0a8b7f35dc986c0cad7"
+      }
+    ],
+    "implementation_source_digest": "d6bf0a4309023bf866d6be07db04b5d7c7f5e6fcd4d4bc467a34a03354f4b372",
+    "native_reference_stratum": "conditional_reference_repaired_compile_only_exactzero",
+    "native_algorithm_changed": false
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "TypedFP16/BF16 buffers, Float32castbeforemultiply, max/sum/write shared256tree, correctBERT/GPTmaskbroadcast, addedmaxreadreusebarrier.",
+    "implementation_class": "cuda_jl_device_kernel",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "CUDAthreads256blocksB*H*Q, oneworkgroup/row, lanestride256columns.",
+    "layout": "Flatrow-major[batch,head,query,key] typedinput/output, UInt8fullmaskallocation; BERTusesfirstB*Qmaskrows,GPTfirstQ. Nativepackedfloat2/uchar4 wide loads; Julia scalarstorage loads. Float32prefixactual16bitvaluesexactlyrepresentable; guard\u22128 exactbothformats.",
+    "storage_precision": [
+      "Float16input/output",
+      "BFloat16input/output",
+      "UInt8mask"
+    ],
+    "compute_precision": [
+      "Float32scale/multiply/max/exp/sum/divide",
+      "Float64CPUoraclethennearest-evenoutputquantization",
+      "Float32serializationlosslesslywidens16bitoutputs only"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+      "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+      "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+      "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": 1024,
+      "explicit": true,
+      "register_count": "unprofiled",
+      "barriers": 19,
+      "template_copy": false,
+      "native_caveat": "Native0shared/0blockbarriers/128threads packs multiple rows; allJulia mappings adapted."
+    },
+    "launch_geometry": "Native128threads/block with source2Dthreadwarp/subwarp layout and3Dgrid. Julia256threads/block, rows1536/192/192/96 respectively.",
+    "library_backend_boundary": [
+      "CUDAhostallocation/sync/transfers; CUDA.CUDACore.BFloat16installedtype, portabledeviceBaseFloat32math/conversion, noinlinePTX/shuffle/vendorcalls."
+    ],
+    "host_control_boundary": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+    "support_boundary": "All16namedtypedmaskpaths/fullrawprobabilitieschecked. OriginalhostCLI/defaultshapes, vector4partialtails, alternateunboundedsentinelinputdomain, backwardpass/fullattention/modelaccuracy unverified. Exactzero nativecompilepatchconditionalnotunsupported.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl",
+        "sha256": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3"
+      },
+      {
+        "path": "src/softmax-fused-julia/study_common.jl",
+        "sha256": "d7a92bcf814fc15a17ac530d84dc69005e7e2105865af0a8b7f35dc986c0cad7"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "softmax-fused",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "scaled_masked_attention_probability_normalization",
+      "secondary_domains": [
+        "mixed_storage_precision_normalization",
+        "broadcast_masks"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Scaled softmax over attention-score rows with explicit mask broadcasts and all-masked-row zero policy, actual FP16/BF16 storage and FP32 accumulation.",
+      "mathematical_operation": "v_j=Float32(input_j)*scale for unmasked keys, otherwise finite sentinel\u221210000; p_j=exp(v_j-maxv)/sumexp, except maxv==\u221210000 outputsallzero. Scale1/sqrt(C). BERTmask(batch,query,key) broadcastsheads; GPTmask(query,key) broadcastsheadsandbatches.",
+      "discretization": "Batch2,heads3, (Q,C)=(256,1),(32,31),(32,128),(16,1024); actualFloat16/BFloat16storage\u00d7bothmaskmodes=16paths. C31scalar native loads, C128/1024vector4 lengthsaligned; sourcequerydivisibilityconditions retained.",
+      "accuracy_requirements": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+      "community_use_case": "Mixedprecision attention normalization with shared padding masks or query masks. Operator-level probabilities only, not fullattention/contextvectors/training/modeltaskaccuracy.",
+      "description": "HistoricalJulia genuineFloat32blocksoftmax ignoredbothrequestedstorageformats andusedwrongBERTmaskrowacrossheads; archivedoriginal. CurrentCUDAjlfixesactualtypedbuffers/broadcast andsource-auditedsharedscratchreusebarrier, portablemodelsinheritthatverifiedblocktree. Nativewarpalgorithmkeptwithexplicitfloat-zerooverloaddisambiguation underCUDA12.0, conservativelyconditionalnative-repaired stratum.",
+      "provenance": "OriginalsourcecommentextendednativeatenPyTorchsoftmax; LICENSEpreserved. Controlledseededfiniteinputs/full/partial/nomaskrows, noattentiondatasetprovenance. OriginalGPUzero literalint ambiguousBF16constructors; floatzeroexact, no mathematicaloperatorcorrection. Originalallmaskedrowpolicyandfinite\u221210000sentinelretained.",
+      "source_evidence": [
+        {
+          "path": "src/softmax-fused-cuda/main.cu",
+          "sha256": "ea90d1816b4c931ec74cff54f052b487e8b4017fb1281d2458a3437abe1199b3"
+        },
+        {
+          "path": "src/softmax-fused-cuda/reference.h",
+          "sha256": "988c1ed11a86c5e451d444621d5ec9d2de79b8588cf911dc2605d84400027bff"
+        },
+        {
+          "path": "src/softmax-fused-julia/reference_history/original_main.jl",
+          "sha256": "a99aa7acb5ed78e13db9f439f2fa27787c83dabf19462616a4fd870ab3f8e387"
+        },
+        {
+          "path": "src/softmax-fused-julia/native_kernel_compat.cuh",
+          "sha256": "13da47aad1db1203da975eee0349d42c3a40abbe1969f44043c4eeeabc7ad10b"
+        },
+        {
+          "path": "src/softmax-fused-julia/native_reference_provenance.json",
+          "sha256": "9041573e3cab3b0fad503d29d30687070c5220fa817221a9609dd12b0f92fc2f"
+        },
+        {
+          "path": "src/softmax-fused-julia/generate_study_fixture.py",
+          "sha256": "5b7d07dfe200849d03e2def4706ed87b210c68266bcc8de75df1fd325ccbadaa"
+        },
+        {
+          "path": "src/softmax-fused-julia/independent_artifact_audit.json",
+          "sha256": "c83dc0db15b352e77dfc57aafbdd3a0aed04460a7530396337d3125ddfe46a96"
+        }
+      ]
+    },
+    "primary_motif": "scaled_masked_softmax_warp_vs_block_reduction_adaptation",
+    "storage_precision": [
+      "Float16input/output",
+      "BFloat16input/output",
+      "UInt8mask"
+    ],
+    "compute_precision": [
+      "Float32scale/multiply/max/exp/sum/divide",
+      "Float64CPUoraclethennearest-evenoutputquantization",
+      "Float32serializationlosslesslywidens16bitoutputs only"
+    ],
+    "synchronization": [
+      "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+      "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+      "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+      "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native128threads/block packs256rows/block atC1,8atC31/128,4atC1024, useswarp/subwarp registerreductions/vector4loadsforwidecases. HistoricalCUDAjl/KA/JACCuse256threadsand1024Bsharedperrow instead, scalarloads,repeatedexp inpasses. Numericaloperator/typedstorage/broadcastmatched; implementationgeometry/traffic/transcendentalcounts differ substantially, cannotattribute nativegap purelytoframework."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_device_kernel",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+    "verification_contract": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+    "keyconfounds": [
+      "Conditionalnativecompiledsourceexactzerooverloaddisambiguation, excludeduntouched-nativeaggregates despite nooperatorchange.",
+      "Nativewarp/subwarppacking/vector4registeralgorithm vsJulia256threadblockrow/tree/repeatedexp; geometry/resources/transcendentalworkconfound.",
+      "OriginalFloat32-only/incorrectBERTmaskreference cannotcertifytypednativecontract.",
+      "Sharedscratchreusehazardfixedstaticallyafterfirstpassingreferenceseries; noobservedN1/N2failure invented, alloldtimingspreserved.",
+      "PrimaryacceptancequantizesFloat64oracletooutputstorage; unroundedprobabilityerrorandrowmassreportedseparately.",
+      "Finite\u221210000sentinelworksprimaryunmaskedscaledvaluesabove\u221210000; otherdomain/all-tailvectorlengths unverified.",
+      "KAusagewindowincludesreferencebarriercompletion; newreference_completionmeterleft-censoredafteredit/launch; allrawboundariespreserved, nointrinsicframeworktokenranking.",
+      "All16paths arepairedconfigurationswithinonebenchmark, not16independentbenchmarks."
+    ],
+    "boundary_rounding_policy": "Nearest-evenFP16/BF16storage, FP32accumulation, exactallmaskedandmaskedzeros. Original1e-3againstquantizedreference; rowmassnonzero rows<=eps(storage)+C*minsubnormal(storage). Finiteinputs/unmaskedscaledvalues>-10000; vector4nativeCdivisible4whenloads4, C1/31scalar. NoNaN/Inf/unboundedlogitdomainclaim.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "softmax-fused",
+        "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3",
+        "status": "verified",
+        "algorithm": "TypedFP16/BF16 buffers, Float32castbeforemultiply, max/sum/write shared256tree, correctBERT/GPTmaskbroadcast, addedmaxreadreusebarrier.",
+        "work_item_mapping": "CUDAthreads256blocksB*H*Q, oneworkgroup/row, lanestride256columns.",
+        "layout": "Flatrow-major[batch,head,query,key] typedinput/output, UInt8fullmaskallocation; BERTusesfirstB*Qmaskrows,GPTfirstQ. Nativepackedfloat2/uchar4 wide loads; Julia scalarstorage loads. Float32prefixactual16bitvaluesexactlyrepresentable; guard\u22128 exactbothformats.",
+        "precision": {
+          "storage": [
+            "Float16input/output",
+            "BFloat16input/output",
+            "UInt8mask"
+          ],
+          "compute": [
+            "Float32scale/multiply/max/exp/sum/divide",
+            "Float64CPUoraclethennearest-evenoutputquantization",
+            "Float32serializationlosslesslywidens16bitoutputs only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+          "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+          "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+          "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+        ],
+        "resource_policy": {
+          "shared_bytes": 1024,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "barriers": 19,
+          "template_copy": false,
+          "native_caveat": "Native0shared/0blockbarriers/128threads packs multiple rows; allJulia mappings adapted."
+        },
+        "launch_geometry": "Native128threads/block with source2Dthreadwarp/subwarp layout and3Dgrid. Julia256threads/block, rows1536/192/192/96 respectively.",
+        "backend_extensions": [
+          "CUDAhostallocation/sync/transfers; CUDA.CUDACore.BFloat16installedtype, portabledeviceBaseFloat32math/conversion, noinlinePTX/shuffle/vendorcalls."
+        ],
+        "host_device_boundary": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+        "supported_features": [
+          "ActualFloat16/BFloat16GPUstorage/conversiononV100",
+          "FP32exp/max/sum reductions",
+          "Broadcastmasksemantics",
+          "Allmaskedzerooutputs",
+          "KA/JACCsharedmemory/barriers"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All16namedtypedmaskpaths/fullrawprobabilitieschecked. OriginalhostCLI/defaultshapes, vector4partialtails, alternateunboundedsentinelinputdomain, backwardpass/fullattention/modelaccuracy unverified. Exactzero nativecompilepatchconditionalnotunsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused",
+        "numerical_contract": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00305465375,
+          0.00019548075000000003,
+          0.00019503110000000006,
+          0.00019446480000000002,
+          0.00019455185
+        ],
+        "mean_last_four_seconds": 0.00019488212500000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl",
+            "sha256": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3"
+          },
+          {
+            "path": "src/softmax-fused-julia/study_common.jl",
+            "sha256": "d7a92bcf814fc15a17ac530d84dc69005e7e2105865af0a8b7f35dc986c0cad7"
+          }
+        ],
+        "implementation_source_digest": "d6bf0a4309023bf866d6be07db04b5d7c7f5e6fcd4d4bc467a34a03354f4b372",
+        "native_reference_stratum": "conditional_reference_repaired_compile_only_exactzero",
+        "native_algorithm_changed": false
+      },
+      "ka": {
+        "benchmark_id": "softmax-fused",
+        "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "3aa2d10fd38d536344762068a1f6885d107cb44674e312329d035dfa0a7f71da",
+        "status": "verified",
+        "algorithm": "Sameblocktree/operator, pureKAgroup/localindices/localmem1024B and19barriers; noCUDAshuffleextension.",
+        "work_item_mapping": "ExactndrangeB*H*Q*256/workgroupsize256, GroupLinear row/LocalLinear lane.",
+        "layout": "Flatrow-major[batch,head,query,key] typedinput/output, UInt8fullmaskallocation; BERTusesfirstB*Qmaskrows,GPTfirstQ. Nativepackedfloat2/uchar4 wide loads; Julia scalarstorage loads. Float32prefixactual16bitvaluesexactlyrepresentable; guard\u22128 exactbothformats.",
+        "precision": {
+          "storage": [
+            "Float16input/output",
+            "BFloat16input/output",
+            "UInt8mask"
+          ],
+          "compute": [
+            "Float32scale/multiply/max/exp/sum/divide",
+            "Float64CPUoraclethennearest-evenoutputquantization",
+            "Float32serializationlosslesslywidens16bitoutputs only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+          "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+          "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+          "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+        ],
+        "resource_policy": {
+          "shared_bytes": 1024,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "barriers": 19,
+          "template_copy": false,
+          "native_caveat": "Native0shared/0blockbarriers/128threads packs multiple rows; allJulia mappings adapted."
+        },
+        "launch_geometry": "Native128threads/block with source2Dthreadwarp/subwarp layout and3Dgrid. Julia256threads/block, rows1536/192/192/96 respectively.",
+        "backend_extensions": [
+          "CUDAhostallocation/sync/transfers; CUDA.CUDACore.BFloat16installedtype, portabledeviceBaseFloat32math/conversion, noinlinePTX/shuffle/vendorcalls."
+        ],
+        "host_device_boundary": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+        "supported_features": [
+          "ActualFloat16/BFloat16GPUstorage/conversiononV100",
+          "FP32exp/max/sum reductions",
+          "Broadcastmasksemantics",
+          "Allmaskedzerooutputs",
+          "KA/JACCsharedmemory/barriers"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All16namedtypedmaskpaths/fullrawprobabilitieschecked. OriginalhostCLI/defaultshapes, vector4partialtails, alternateunboundedsentinelinputdomain, backwardpass/fullattention/modelaccuracy unverified. Exactzero nativecompilepatchconditionalnotunsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused",
+        "numerical_contract": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00017214860000000002,
+          0.003210566,
+          0.00016680445,
+          0.00016749755,
+          0.0005499189000000001
+        ],
+        "mean_last_four_seconds": 0.001023696725,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/softmax-fused-julia/softmax-fused-julia-KA/main.jl",
+            "sha256": "3aa2d10fd38d536344762068a1f6885d107cb44674e312329d035dfa0a7f71da"
+          },
+          {
+            "path": "src/softmax-fused-julia/study_common.jl",
+            "sha256": "d7a92bcf814fc15a17ac530d84dc69005e7e2105865af0a8b7f35dc986c0cad7"
+          }
+        ],
+        "implementation_source_digest": "c5667d8bb39618ec96ff68497e1c942f11777a828cd3fba7974fbe5fa91838ef",
+        "native_reference_stratum": "conditional_reference_repaired_compile_only_exactzero",
+        "native_algorithm_changed": false
+      },
+      "jacc": {
+        "benchmark_id": "softmax-fused",
+        "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "063faae88eae91f52e5a234f329cedea33559e2c853d3c55cd795103b04084f7",
+        "status": "verified",
+        "algorithm": "Sameblocktree/operator, globalcallbacki divided/maskedby256 row/lane, sharedtemplate1024B and20barriers; noCUDAshuffleextension.",
+        "work_item_mapping": "N=B*H*Q*256, explicitspec256threads/blocksrows/shared1024, globalid\u00f7256 row/%256lane.",
+        "layout": "Flatrow-major[batch,head,query,key] typedinput/output, UInt8fullmaskallocation; BERTusesfirstB*Qmaskrows,GPTfirstQ. Nativepackedfloat2/uchar4 wide loads; Julia scalarstorage loads. Float32prefixactual16bitvaluesexactlyrepresentable; guard\u22128 exactbothformats.",
+        "precision": {
+          "storage": [
+            "Float16input/output",
+            "BFloat16input/output",
+            "UInt8mask"
+          ],
+          "compute": [
+            "Float32scale/multiply/max/exp/sum/divide",
+            "Float64CPUoraclethennearest-evenoutputquantization",
+            "Float32serializationlosslesslywidens16bitoutputs only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "NativewarpSHFLxor max/sum, noexplicitblockbarrier/sharedmemory.",
+          "CUDAjl/KA256threadblockrow sharedmax/sumtrees:19workgroupbarriers inclstaticmaxread-before-reusefix.",
+          "JACCshared256Float32templatecopy adds1barrier, explicit1024bytes; fullcallbackblocksavoidsdivergentbarriers.",
+          "All16paths warmed, resets/allocation/transfers/oracles/artifact outsideclock;20launchesperpath,5outertrialsmeanlast4."
+        ],
+        "resource_policy": {
+          "shared_bytes": 1024,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "barriers": 20,
+          "template_copy": true,
+          "native_caveat": "Native0shared/0blockbarriers/128threads packs multiple rows; allJulia mappings adapted."
+        },
+        "launch_geometry": "Native128threads/block with source2Dthreadwarp/subwarp layout and3Dgrid. Julia256threads/block, rows1536/192/192/96 respectively.",
+        "backend_extensions": [
+          "CUDAhostallocation/sync/transfers; CUDA.CUDACore.BFloat16installedtype, portabledeviceBaseFloat32math/conversion, noinlinePTX/shuffle/vendorcalls."
+        ],
+        "host_device_boundary": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+        "supported_features": [
+          "ActualFloat16/BFloat16GPUstorage/conversiononV100",
+          "FP32exp/max/sum reductions",
+          "Broadcastmasksemantics",
+          "Allmaskedzerooutputs",
+          "KA/JACCsharedmemory/barriers"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All16namedtypedmaskpaths/fullrawprobabilitieschecked. OriginalhostCLI/defaultshapes, vector4partialtails, alternateunboundedsentinelinputdomain, backwardpass/fullattention/modelaccuracy unverified. Exactzero nativecompilepatchconditionalnotunsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused",
+        "numerical_contract": "Full521472 typedprobabilities+272guards, exact521529Float32prefix containingactuallyroundedstoragevalues/fullmask/scales/shapes. Originalabs1e-3againstFloat64normalizedthenoutputquantizedreference, notunroundedrealprobabilities; everymasked/allmasked outputexactzero, storage-resolution rowmasscheck. All20 artifacts againstbothreferences.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0020190218500000003,
+          0.0006356401500000001,
+          0.0006248810499999999,
+          0.0006240194499999999,
+          0.00062355405
+        ],
+        "mean_last_four_seconds": 0.000627023675,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/softmax-fused-julia/softmax-fused-julia-JACC/main.jl",
+            "sha256": "063faae88eae91f52e5a234f329cedea33559e2c853d3c55cd795103b04084f7"
+          },
+          {
+            "path": "src/softmax-fused-julia/study_common.jl",
+            "sha256": "d7a92bcf814fc15a17ac530d84dc69005e7e2105865af0a8b7f35dc986c0cad7"
+          }
+        ],
+        "implementation_source_digest": "1f016a7abe566a3456a6951c0b2d6dc5895f30f7a5ba9e929f9490372cfc0cbd",
+        "native_reference_stratum": "conditional_reference_repaired_compile_only_exactzero",
+        "native_algorithm_changed": false
+      }
+    },
+    "source_sha256": {
+      "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3",
+      "src/softmax-fused-julia/softmax-fused-julia-KA/main.jl": "3aa2d10fd38d536344762068a1f6885d107cb44674e312329d035dfa0a7f71da",
+      "src/softmax-fused-julia/softmax-fused-julia-JACC/main.jl": "063faae88eae91f52e5a234f329cedea33559e2c853d3c55cd795103b04084f7"
+    },
+    "ontology_sha256": "58d697e48ad3e813f1a9ef490a6e2116c068d7026eb240e1a364644b3ceed61b",
+    "native_reference_repaired": true,
+    "exclude_untouched_native_aggregates": true,
+    "reference_provenance": {
+      "benchmark": "softmax-fused",
+      "correction_kind": "compilation-only overload disambiguation; exactzero, no operator/math correction",
+      "original_native_source": {
+        "path": "src/softmax-fused-cuda/main.cu",
+        "sha256": "ea90d1816b4c931ec74cff54f052b487e8b4017fb1281d2458a3437abe1199b3"
+      },
+      "original_CPU_reference": {
+        "path": "src/softmax-fused-cuda/reference.h",
+        "sha256": "988c1ed11a86c5e451d444621d5ec9d2de79b8588cf911dc2605d84400027bff"
+      },
+      "compiled_GPU_prefix": {
+        "path": "src/softmax-fused-julia/native_kernel_compat.cuh",
+        "sha256": "13da47aad1db1203da975eee0349d42c3a40abbe1969f44043c4eeeabc7ad10b",
+        "selected_GPU_diff": "(output_t)0 -> (output_t)0.0f",
+        "justification": "CUDA12BF16hasfloat/doubleconstructors; integerzeroambiguous. Bothexplicitfloatzeroandmathematicallyintendedintegerzeroareexactpositivezero forallselectedstorageformats."
+      },
+      "compiled_CPU_reference": {
+        "path": "src/softmax-fused-julia/native_cpu_reference_compat.h",
+        "sha256": "94379d6dffe54674cf826b95f4d9f47c5fdf02aa8dd59771da8c7fb6fbe4b532",
+        "diff": "sameexactzerooverloaddisambiguation"
+      },
+      "B2build_log": ".porting-state/portable_julia/runs/20261018T014546635971Z_softmax-fused/cuda_build.log",
+      "intervention_declared_before_first_GPU_measurement": "Successfulnativeconfig20261018T014724820691Z alreadycontainsnative_source_compatibility_patchbeforefirsttrial; conditionalflagaddedlaterpercoordinatorconservativeclassification, neverclaimuntouchednative.",
+      "native_algorithm_change": false,
+      "exclude_untouched_native_aggregates": true,
+      "independent_numerical_failure_claimed": false
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/softmax-fused-julia/main.jl",
-    "sha256": "a99aa7acb5ed78e13db9f439f2fa27787c83dabf19462616a4fd870ab3f8e387",
+    "path": "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl",
+    "sha256": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3",
     "syntax_features": {
-      "cuda_kernel_launch": [
-        131,
-        145
-      ],
+      "cuda_kernel_launch": [],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
       "local_storage": [
-        24
+        25
       ],
       "barrier": [
-        26,
-        32,
-        48,
-        54
+        27,
+        33,
+        37,
+        50,
+        56
       ],
       "atomic": [],
       "vendor_library": [],
@@ -48,11 +625,667 @@
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+      "run_id": "20261018T015129856599Z_softmax-fused",
+      "result": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused/result.json",
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": {
+        "precision": "Float32artifactlosslesslywidensactual16bitinput/output; actualFP16/BF16storage,FP32accum. Original1e-3toleranceappliestoquantizedreference; unroundedprobabilityerrorsreportedseparately.",
+        "effort": "KAwindowincludesstaticreferencebarrierrepair/completion. reference_completionBEGINfollowededit/launchandisleft-censored; originalreferencephaseENDprecededstaticrepair. Rawwindowsretained, wholeworkflowcoversallwork; no intrinsicmodelcostranking."
+      },
+      "source_scope_adjudication": {
+        "scope": "ActualFP16/BF16,FP32accum,bothmaskbroadcasts,16namedpaths. Vector4nativealignedlengths128/1024; scalar1/31. DefaultCLI/partialvector4tails/unboundedlogits/NaNInf/modelaccuracyunverified.",
+        "native_zero_cast_only": true,
+        "portable_mapping_adaptation": "Nativewarp/subwarppackedregisteralgorithm vs256threadblockrowsharedtree, not intrinsicframework-onlydifference.",
+        "static_reference_barrier_repair_no_observed_GPU_mismatch": true
+      },
+      "reference_provenance": {
+        "benchmark": "softmax-fused",
+        "correction_kind": "compilation-only overload disambiguation; exactzero, no operator/math correction",
+        "original_native_source": {
+          "path": "src/softmax-fused-cuda/main.cu",
+          "sha256": "ea90d1816b4c931ec74cff54f052b487e8b4017fb1281d2458a3437abe1199b3"
+        },
+        "original_CPU_reference": {
+          "path": "src/softmax-fused-cuda/reference.h",
+          "sha256": "988c1ed11a86c5e451d444621d5ec9d2de79b8588cf911dc2605d84400027bff"
+        },
+        "compiled_GPU_prefix": {
+          "path": "src/softmax-fused-julia/native_kernel_compat.cuh",
+          "sha256": "13da47aad1db1203da975eee0349d42c3a40abbe1969f44043c4eeeabc7ad10b",
+          "selected_GPU_diff": "(output_t)0 -> (output_t)0.0f",
+          "justification": "CUDA12BF16hasfloat/doubleconstructors; integerzeroambiguous. Bothexplicitfloatzeroandmathematicallyintendedintegerzeroareexactpositivezero forallselectedstorageformats."
+        },
+        "compiled_CPU_reference": {
+          "path": "src/softmax-fused-julia/native_cpu_reference_compat.h",
+          "sha256": "94379d6dffe54674cf826b95f4d9f47c5fdf02aa8dd59771da8c7fb6fbe4b532",
+          "diff": "sameexactzerooverloaddisambiguation"
+        },
+        "B2build_log": ".porting-state/portable_julia/runs/20261018T014546635971Z_softmax-fused/cuda_build.log",
+        "intervention_declared_before_first_GPU_measurement": "Successfulnativeconfig20261018T014724820691Z alreadycontainsnative_source_compatibility_patchbeforefirsttrial; conditionalflagaddedlaterpercoordinatorconservativeclassification, neverclaimuntouchednative.",
+        "native_algorithm_change": false,
+        "exclude_untouched_native_aggregates": true,
+        "independent_numerical_failure_claimed": false
+      },
+      "configuration_classification_adjudication": {
+        "path": "src/softmax-fused-julia/study_adjudications.json",
+        "sha256": "bfdacf38783c8d16543d8a8978c99edfb0b107bceb18766ef5ec635bc3c9e314",
+        "run_id": "20261018T015129856599Z_softmax-fused",
+        "reason": "Hash-boundscope/conditionalnativecompile-onlyclassification, staticreferencehazard andprecision/effortinterpretation; no rawexecution/results/config/tolerances/timingmodified.",
+        "recorded_at": null,
+        "updated_fields": [
+          "exclude_untouched_native_aggregates",
+          "native_reference_repaired",
+          "numerical_evidence_strength",
+          "reference_provenance",
+          "reported_metric_definition_erratum",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "a7f74c17acae63536a3b3aa68824c4a48bfaca6dfe9b795f26597e3826d3a200",
+      "source_hash": "01a9d3429d7f9d0af24fcc4a38964d4653441ecb0a0e52af5a4aa1ac3c1bf0b0",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00305465375,
+        0.00019548075000000003,
+        0.00019503110000000006,
+        0.00019446480000000002,
+        0.00019455185
+      ],
+      "mean_last_four_seconds": 0.00019488212500000002,
+      "contract": {
+        "metric": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+        "fixtures": [
+          {
+            "kind": "Float16",
+            "batch": 2,
+            "heads": 3,
+            "query": 256,
+            "key": 1,
+            "scale": 1.0,
+            "elements": 1536,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 441,
+                "quantized_mass_max_abs_error": 0.0,
+                "storage_quantization_max_abs_error": 0.0
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 444,
+                "quantized_mass_max_abs_error": 0.0,
+                "storage_quantization_max_abs_error": 0.0
+              }
+            ]
+          },
+          {
+            "kind": "BFloat16",
+            "batch": 2,
+            "heads": 3,
+            "query": 256,
+            "key": 1,
+            "scale": 1.0,
+            "elements": 1536,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 441,
+                "quantized_mass_max_abs_error": 0.0,
+                "storage_quantization_max_abs_error": 0.0
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 444,
+                "quantized_mass_max_abs_error": 0.0,
+                "storage_quantization_max_abs_error": 0.0
+              }
+            ]
+          },
+          {
+            "kind": "Float16",
+            "batch": 2,
+            "heads": 3,
+            "query": 32,
+            "key": 31,
+            "scale": 0.17960530519485474,
+            "elements": 5952,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.0002713203430175781,
+                "storage_quantization_max_abs_error": 0.00024411924318679112
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.000263214111328125,
+                "storage_quantization_max_abs_error": 0.00024411924318679112
+              }
+            ]
+          },
+          {
+            "kind": "BFloat16",
+            "batch": 2,
+            "heads": 3,
+            "query": 32,
+            "key": 31,
+            "scale": 0.17960530519485474,
+            "elements": 5952,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.001953125,
+                "storage_quantization_max_abs_error": 0.0018564011295674199
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.001953125,
+                "storage_quantization_max_abs_error": 0.0018564011295674199
+              }
+            ]
+          },
+          {
+            "kind": "Float16",
+            "batch": 2,
+            "heads": 3,
+            "query": 32,
+            "key": 128,
+            "scale": 0.0883883461356163,
+            "elements": 24576,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 8.7738037109375e-05,
+                "storage_quantization_max_abs_error": 1.8700519470490895e-05
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 8.0108642578125e-05,
+                "storage_quantization_max_abs_error": 2.4108309643292025e-05
+              }
+            ]
+          },
+          {
+            "kind": "BFloat16",
+            "batch": 2,
+            "heads": 3,
+            "query": 32,
+            "key": 128,
+            "scale": 0.0883883461356163,
+            "elements": 24576,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.00072479248046875,
+                "storage_quantization_max_abs_error": 0.00023137912643175773
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 30,
+                "quantized_mass_max_abs_error": 0.00077056884765625,
+                "storage_quantization_max_abs_error": 0.00023137912643175773
+              }
+            ]
+          },
+          {
+            "kind": "Float16",
+            "batch": 2,
+            "heads": 3,
+            "query": 16,
+            "key": 1024,
+            "scale": 0.03125,
+            "elements": 98304,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 15,
+                "quantized_mass_max_abs_error": 1.8596649169921875e-05,
+                "storage_quantization_max_abs_error": 9.532471212155696e-07
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 18,
+                "quantized_mass_max_abs_error": 1.7881393432617188e-05,
+                "storage_quantization_max_abs_error": 9.525359888581421e-07
+              }
+            ]
+          },
+          {
+            "kind": "BFloat16",
+            "batch": 2,
+            "heads": 3,
+            "query": 16,
+            "key": 1024,
+            "scale": 0.03125,
+            "elements": 98304,
+            "paths": [
+              {
+                "pad": 0,
+                "allmasked_rows": 15,
+                "quantized_mass_max_abs_error": 0.00018310546875,
+                "storage_quantization_max_abs_error": 7.6262322855143345e-06
+              },
+              {
+                "pad": 1,
+                "allmasked_rows": 18,
+                "quantized_mass_max_abs_error": 0.0001678466796875,
+                "storage_quantization_max_abs_error": 7.6266944801510646e-06
+              }
+            ]
+          }
+        ],
+        "domain": "FiniteactualFP16/BF16inputs, unmaskedscaledvalues>-10000; key1/31scalar and128/1024divisible4vectornativepath; allnativequerydivisibilityconditionsretained. Otherlengths/vectorpartialtail/NaNInf/unboundedsentineldomain unverified.",
+        "precision": "ActualFP16/BF16input/output, FP32accumulation; outputFloat32serializationlossless. Original1e-3tol comparedagainstoutputquantizedindependentFloat64probabilities, notunroundedrealvalues.",
+        "mapping": "NativewarpSHFL128threads/vector4vsCUDAjl/KA/JACC256threadblockrowsharedtree adaptation. Maskbroadcastfixedcurrentreference; no genericperformancecausalityclaim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "Fulltypedprobabilities/guardswithactualinputprefix, independentlyquantizedFloat64oracle/typedsourceCPUref/exactmaskedzeros/storage-resolutionrowmass; all20artifactsinfinalbundle."
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "softmax-fused:cuda_jl:20261018T015129856599Z_softmax-fused:N3:accepted",
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/softmax-fused.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "softmax-fused:cuda_jl:20261018T015129856599Z_softmax-fused:N3:accepted",
+          "benchmark_id": "softmax-fused",
+          "configuration_id": "scaledmasked_FP16_BF16_4shapes_2broadcasts_v1",
+          "implementation_model": "cuda_jl",
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "source_revision": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 0.00048828125; unchangedtolerance 0.001+0*abs(ref).",
+          "minimal_trigger": {
+            "metric": "Sum16paths means20purelaunches/path, 4shapes xactualFP16/BF16 xBERT/GPTmaskbroadcast. Warmallpaths then5outertrials meanlast4; reset/allocation/H2D/D2H/oracles/artifactsoutside synchronizedlaunch+completionclock.",
+            "fixtures": [
+              {
+                "kind": "Float16",
+                "batch": 2,
+                "heads": 3,
+                "query": 256,
+                "key": 1,
+                "scale": 1.0,
+                "elements": 1536,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 441,
+                    "quantized_mass_max_abs_error": 0.0,
+                    "storage_quantization_max_abs_error": 0.0
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 444,
+                    "quantized_mass_max_abs_error": 0.0,
+                    "storage_quantization_max_abs_error": 0.0
+                  }
+                ]
+              },
+              {
+                "kind": "BFloat16",
+                "batch": 2,
+                "heads": 3,
+                "query": 256,
+                "key": 1,
+                "scale": 1.0,
+                "elements": 1536,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 441,
+                    "quantized_mass_max_abs_error": 0.0,
+                    "storage_quantization_max_abs_error": 0.0
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 444,
+                    "quantized_mass_max_abs_error": 0.0,
+                    "storage_quantization_max_abs_error": 0.0
+                  }
+                ]
+              },
+              {
+                "kind": "Float16",
+                "batch": 2,
+                "heads": 3,
+                "query": 32,
+                "key": 31,
+                "scale": 0.17960530519485474,
+                "elements": 5952,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.0002713203430175781,
+                    "storage_quantization_max_abs_error": 0.00024411924318679112
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.000263214111328125,
+                    "storage_quantization_max_abs_error": 0.00024411924318679112
+                  }
+                ]
+              },
+              {
+                "kind": "BFloat16",
+                "batch": 2,
+                "heads": 3,
+                "query": 32,
+                "key": 31,
+                "scale": 0.17960530519485474,
+                "elements": 5952,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.001953125,
+                    "storage_quantization_max_abs_error": 0.0018564011295674199
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.001953125,
+                    "storage_quantization_max_abs_error": 0.0018564011295674199
+                  }
+                ]
+              },
+              {
+                "kind": "Float16",
+                "batch": 2,
+                "heads": 3,
+                "query": 32,
+                "key": 128,
+                "scale": 0.0883883461356163,
+                "elements": 24576,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 8.7738037109375e-05,
+                    "storage_quantization_max_abs_error": 1.8700519470490895e-05
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 8.0108642578125e-05,
+                    "storage_quantization_max_abs_error": 2.4108309643292025e-05
+                  }
+                ]
+              },
+              {
+                "kind": "BFloat16",
+                "batch": 2,
+                "heads": 3,
+                "query": 32,
+                "key": 128,
+                "scale": 0.0883883461356163,
+                "elements": 24576,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.00072479248046875,
+                    "storage_quantization_max_abs_error": 0.00023137912643175773
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 30,
+                    "quantized_mass_max_abs_error": 0.00077056884765625,
+                    "storage_quantization_max_abs_error": 0.00023137912643175773
+                  }
+                ]
+              },
+              {
+                "kind": "Float16",
+                "batch": 2,
+                "heads": 3,
+                "query": 16,
+                "key": 1024,
+                "scale": 0.03125,
+                "elements": 98304,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 15,
+                    "quantized_mass_max_abs_error": 1.8596649169921875e-05,
+                    "storage_quantization_max_abs_error": 9.532471212155696e-07
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 18,
+                    "quantized_mass_max_abs_error": 1.7881393432617188e-05,
+                    "storage_quantization_max_abs_error": 9.525359888581421e-07
+                  }
+                ]
+              },
+              {
+                "kind": "BFloat16",
+                "batch": 2,
+                "heads": 3,
+                "query": 16,
+                "key": 1024,
+                "scale": 0.03125,
+                "elements": 98304,
+                "paths": [
+                  {
+                    "pad": 0,
+                    "allmasked_rows": 15,
+                    "quantized_mass_max_abs_error": 0.00018310546875,
+                    "storage_quantization_max_abs_error": 7.6262322855143345e-06
+                  },
+                  {
+                    "pad": 1,
+                    "allmasked_rows": 18,
+                    "quantized_mass_max_abs_error": 0.0001678466796875,
+                    "storage_quantization_max_abs_error": 7.6266944801510646e-06
+                  }
+                ]
+              }
+            ],
+            "domain": "FiniteactualFP16/BF16inputs, unmaskedscaledvalues>-10000; key1/31scalar and128/1024divisible4vectornativepath; allnativequerydivisibilityconditionsretained. Otherlengths/vectorpartialtail/NaNInf/unboundedsentineldomain unverified.",
+            "precision": "ActualFP16/BF16input/output, FP32accumulation; outputFloat32serializationlossless. Original1e-3tol comparedagainstoutputquantizedindependentFloat64probabilities, notunroundedrealvalues.",
+            "mapping": "NativewarpSHFL128threads/vector4vsCUDAjl/KA/JACC256threadblockrowsharedtree adaptation. Maskbroadcastfixedcurrentreference; no genericperformancecausalityclaim."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T015129856599Z_softmax-fused/result.json",
+              "sha256": "a7f74c17acae63536a3b3aa68824c4a48bfaca6dfe9b795f26597e3826d3a200"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "softmax-fused:cuda_jl:historical_mask:S1",
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_source_semantic_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/softmax-fused.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "softmax-fused:cuda_jl:historical_mask:S1",
+          "benchmark_id": "softmax-fused",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_source_semantic_audit",
+          "code": "S1",
+          "is_failure": true,
+          "root_cause": "BERTmaskincorrectlyfullrowratherthanbatch/querybroadcastacrossheads; explicitCPUrow256witnessoutput1instead0, nohistoricalGPUruninvented.",
+          "root_cause_evidence": [
+            {
+              "path": "src/softmax-fused-julia/reference_history/original_main.jl",
+              "sha256": "a99aa7acb5ed78e13db9f439f2fa27787c83dabf19462616a4fd870ab3f8e387"
+            },
+            {
+              "path": "src/softmax-fused-julia/generate_study_fixture.py",
+              "sha256": "5b7d07dfe200849d03e2def4706ed87b210c68266bcc8de75df1fd325ccbadaa"
+            },
+            {
+              "path": "src/softmax-fused-julia/source_and_numerical_witnesses.json",
+              "sha256": "89631b5df5e65fd15165696f632779afe6a330db9ba0bdf29fab7ef2d4ef6b87"
+            }
+          ],
+          "final_outcome": "conditional_named_study_verified",
+          "historical_attempts_unknown": true,
+          "translation_attempt_counted": false,
+          "observation_kind": "source_and_independent_CPU_semantic_witness"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "softmax-fused:cuda_jl:historical_precision:S1",
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_precision_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/softmax-fused.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "softmax-fused:cuda_jl:historical_precision:S1",
+          "benchmark_id": "softmax-fused",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_precision_audit",
+          "code": "S1",
+          "is_failure": true,
+          "root_cause": "HistoricalFloat32buffersrepeatedfourtimesdonotverifyactualnativeFP16/BF16input/outputcontract.",
+          "root_cause_evidence": [
+            {
+              "path": "src/softmax-fused-julia/reference_history/original_main.jl",
+              "sha256": "a99aa7acb5ed78e13db9f439f2fa27787c83dabf19462616a4fd870ab3f8e387"
+            }
+          ],
+          "final_outcome": "conditional_named_study_verified",
+          "historical_attempts_unknown": true,
+          "translation_attempt_counted": false,
+          "observation_kind": "source_contract_mismatch_not_observed_GPU_failure"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "softmax-fused:cuda_jl:static_scratch_reuse:S1",
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_static_synchronization_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/softmax-fused.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "softmax-fused:cuda_jl:static_scratch_reuse:S1",
+          "benchmark_id": "softmax-fused",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_static_synchronization_audit",
+          "code": "S1",
+          "is_failure": true,
+          "root_cause": "Sharedmaxtosumreuse lacksread-before-writeorderingacrosswarps; addonebarrieraftermaxread. Firstpassingreferencekept; noobservedN1/N2failure.",
+          "root_cause_evidence": [
+            {
+              "path": "src/softmax-fused-julia/reference_history/reference_kernel_candidate01.jl",
+              "sha256": "2cc97d4929d8269b0f5b54eded2b76bd3145d7b403501146e33e1cc9b586fb21"
+            },
+            {
+              "path": "src/softmax-fused-julia/softmax-fused-julia-cuda.jl/main.jl",
+              "sha256": "b6286862dba4b0dde9e7bf75c7c68fa607d6865578111865ba30d0c38656f5e3"
+            }
+          ],
+          "final_outcome": "conditional_named_study_verified",
+          "candidate_id": 2,
+          "check_id": 3,
+          "observation_kind": "static_schedule_counterexample_not_observed_numeric_failure"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "softmax-fused:cuda_jl:module_load:B3",
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B3",
+        "phase": "reference_host_module_loading",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/softmax-fused.jsonl",
+        "evidence_line": 8,
+        "raw_event": {
+          "event_id": "softmax-fused:cuda_jl:module_load:B3",
+          "benchmark_id": "softmax-fused",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_host_module_loading",
+          "code": "B3",
+          "is_failure": true,
+          "root_cause": "BFloat16snotdirectprojectdependency; usealreadyinstalledCUDA.CUDACore.BFloat16withoutenvironmentchange.",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T014546635971Z_softmax-fused/cuda_jl_run1.log",
+              "sha256": "452a2a0058ff8ce1c4e3ddf7e7305c172a21e6654f309277d13256a686cf0ce2"
+            },
+            {
+              "path": "src/softmax-fused-julia/reference_history/study_common_candidate01.jl",
+              "sha256": "baab319894f17f0fa02f0298d39adfbf6a2d4c790affffffeeecf384006fb0f8"
+            }
+          ],
+          "final_outcome": "conditional_named_study_verified",
+          "candidate_id": 1,
+          "check_id": 1,
+          "device_compiler_rejection": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 4,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -62,7 +1295,111 @@
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "f4927caa5c3132c1bb3c9d65",
+        "begin_event_id": "af26dd57de9b8c5b768b3272",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_completion",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T01:50:16.306460+00:00",
+        "usage_event_timestamp": "2026-10-18T01:50:08.664Z",
+        "elapsed_usage_event_start": "2026-10-18T01:49:23.478Z",
+        "delta_usage": {
+          "input_tokens": 561981,
+          "cached_input_tokens": 560768,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 954,
+          "reasoning_output_tokens": 516,
+          "total_tokens": 562935
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 7.64246,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "01766e432f5555849f29483751e3b09b36df99ffc7ae4614a6470398be1cadbe",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 14.764207,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/softmax-fused/cuda_jl_reference_completion.jsonl",
+        "evidence_sha256": "f661cfb79a43a188c9cf6648b3a300bb97d89b38fe1365dcf951aa5f8bf151ff",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      },
+      {
+        "event_id": "6f526b0dbc0b853b51007ffb",
+        "begin_event_id": "4a8741c217876d9eb34263d3",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T01:48:15.009714+00:00",
+        "usage_event_timestamp": "2026-10-18T01:48:09.094Z",
+        "elapsed_usage_event_start": "2026-10-18T01:43:07.202Z",
+        "delta_usage": {
+          "input_tokens": 1816894,
+          "cached_input_tokens": 1798528,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10927,
+          "reasoning_output_tokens": 3611,
+          "total_tokens": 1827821
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 5.915714,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "38221dc393019f70a0d542d30f558edeba155fc069d76395be63035c683464e8",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 39.748573,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/softmax-fused/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "5cf2671a4d786bff657feadba6b99b1933a9b1d4363f57768cd529d92d04e311",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/softmax-fused/measurement_scope_review.json",
+      "sha256": "caf56265a6fd70f01b5f5bd09d4d7e0392b2157e57f5f50f491588ab88c8c7e7",
+      "record": {
+        "benchmark_id": "softmax-fused",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/softmax-fused-julia-cuda/manifest.json",
@@ -71,5 +1408,88 @@
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "cuda_jl_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/softmax-fused.json",
+    "annotation_sha256": "479166de6df3627de834bbc61ed2c9c3cfb488d4d645b2dcaf0130e1ee0182aa",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/softmax-fused-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "2d4f172607323c01892e79630ad7ba3135483c57da0e8178d2ab47d74c4bc742",
+      "record": {
+        "benchmark_id": "softmax-fused",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_repair_sharedalgorithm_separate",
+        "candidate_attempts": 2,
+        "compiler_check_invocations": 3,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 246,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "TwoCUDAjlGPUbodystates (typedcorrectbroadcast, thenstaticmax-readshared-reusebarrier), threereferenceverifierprocesses: firsthostmoduleloadfailurebeforeGPU, secondall5pass, thirdstaticbarrierrepairall5pass. NoobservedN1/N2; staticracecounterexampleseparate. Referenceadapter2states; nativeadapter2states (BF16int-zeroambiguity->exactfloatzero), conditionalnativecompile-onlynotmathcorrection. KA/JACC1candidate/checkeach. KAusagewindowincludesreferencebarrierrepair, reference_completionBEGINleftcensoredafteredit/launch; notexclusiveframeworkcost. FirsthistoricalGPUbodygenuinebutFloat32-onlyandBERTbroadcastwrong; oldcostunknown.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 1816894,
+          "cached_input_tokens": 1798528,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10927,
+          "reasoning_output_tokens": 3611,
+          "total_tokens": 1827821
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/softmax-fused/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+        "proxy_scope": "New/replacement retainedlines vsarchivedhistoricalreference plusstudyentry; unchangedoldkerneltext excluded. Notfullwork/billedcost; observedharnessphaseusageprimary.",
+        "phase_scope_review": {
+          "reference_repair": "Endsafterfirstpassingtypedreference, beforestaticbarriercompletion.",
+          "reference_completion": "Left-censoredBEGINafterstaticedit/launch; includesonlytail, nottotalrepair.",
+          "ka_translation": "Includesstaticreferencebarrierfix/completionbeforeKAdraft, rawwindowpreserved.",
+          "workflow": "Enclosesallwork; phasesoverlap, donotsum.",
+          "annotation_END_censored": "ENDsharesfinalmetadata-writeexec; conservativelyright-censoredperphaseboundaryrule; enclosingworkflowseparateENDcoverswork."
+        }
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/softmax-fused-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "2d4f172607323c01892e79630ad7ba3135483c57da0e8178d2ab47d74c4bc742",
+    "record": {
+      "benchmark_id": "softmax-fused",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_repair_sharedalgorithm_separate",
+      "candidate_attempts": 2,
+      "compiler_check_invocations": 3,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 246,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "TwoCUDAjlGPUbodystates (typedcorrectbroadcast, thenstaticmax-readshared-reusebarrier), threereferenceverifierprocesses: firsthostmoduleloadfailurebeforeGPU, secondall5pass, thirdstaticbarrierrepairall5pass. NoobservedN1/N2; staticracecounterexampleseparate. Referenceadapter2states; nativeadapter2states (BF16int-zeroambiguity->exactfloatzero), conditionalnativecompile-onlynotmathcorrection. KA/JACC1candidate/checkeach. KAusagewindowincludesreferencebarrierrepair, reference_completionBEGINleftcensoredafteredit/launch; notexclusiveframeworkcost. FirsthistoricalGPUbodygenuinebutFloat32-onlyandBERTbroadcastwrong; oldcostunknown.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 1816894,
+        "cached_input_tokens": 1798528,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 10927,
+        "reasoning_output_tokens": 3611,
+        "total_tokens": 1827821
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/softmax-fused/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+      "proxy_scope": "New/replacement retainedlines vsarchivedhistoricalreference plusstudyentry; unchangedoldkerneltext excluded. Notfullwork/billedcost; observedharnessphaseusageprimary.",
+      "phase_scope_review": {
+        "reference_repair": "Endsafterfirstpassingtypedreference, beforestaticbarriercompletion.",
+        "reference_completion": "Left-censoredBEGINafterstaticedit/launch; includesonlytail, nottotalrepair.",
+        "ka_translation": "Includesstaticreferencebarrierfix/completionbeforeKAdraft, rawwindowpreserved.",
+        "workflow": "Enclosesallwork; phasesoverlap, donotsum.",
+        "annotation_END_censored": "ENDsharesfinalmetadata-writeexec; conservativelyright-censoredperphaseboundaryrule; enclosingworkflowseparateENDcoverswork."
+      }
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
 }

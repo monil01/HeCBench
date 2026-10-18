@@ -15,7 +15,7 @@
     "release_comparison_performed": false
   },
   "implementation_ontology": {
-    "review_status": "source_reviewed_all8_FP32_configurations_verified",
+    "review_status": "source_audited_and_all8_FP32_configurations_verified",
     "implementation_class": "framework_device_kernel",
     "algorithm": "One512threadtokenworkgroup; laneheadblockstridedloop, keyxblockpacked scalarorNTuple4 and valueBstridedwrites; pureJulia saturating RN-even E4M3 bitencoder afterFP32division",
     "mapping": {
@@ -58,10 +58,35 @@
     "source_evidence": [
       "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl",
       "src/reshapeKVCache-julia/study_device.jl"
-    ]
+    ],
+    "provenance": [
+      {
+        "path": "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl",
+        "sha256": "64100667709fb7b15286dd2876d09eeeb5afe9afb34ea278d29b0276c1daf902"
+      },
+      {
+        "path": "src/reshapeKVCache-julia/study_device.jl",
+        "sha256": "7fa79233138b93a09dc6a44d5606a9c3f29ad21347bad635fe23a5e2cff8b6ca"
+      },
+      {
+        "path": "src/reshapeKVCache-julia/study_common.jl",
+        "sha256": "9df8b5b5a9a1444ee3d732a6b5de13d5b14e3e87908e59d9108c291c6276626d"
+      }
+    ],
+    "fidelity_status": "OriginalFP32kernelmath/layoutmatchedexactlyon8sourcecases; nativeBF16sourceguardblockednotemulated;finiteinputs/noshape-generalization/modelqualityclaim.",
+    "library_boundary": "NooperatorlibraryorforeignCUDAdeviceintrinsics; pureJuliaE4M3encoder, frameworkownindices. CUDAhostallocation/devicecompletion testedNVIDIAonly.",
+    "host_control_boundary": "1000hostkernel dispatches plusdeviceglobalcompletion timed;30warmups,allocation,input/outputtransfer,checksoutsideROI.",
+    "atomic_operations": [],
+    "compiler_attempt_policy": "Onecandidate/eightisolatedprocessGPUcompile-dispatchchecks foroneFP32dtype/eightlayoutvalues;1genericdefinition,internalcompilerpasses/cachehits/distinctspecializationsunknown.",
+    "status": "verified",
+    "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1"
   },
   "implementation_ontology_normalized": {
     "algorithm": "One512threadtokenworkgroup; laneheadblockstridedloop, keyxblockpacked scalarorNTuple4 and valueBstridedwrites; pureJulia saturating RN-even E4M3 bitencoder afterFP32division",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
     "work_item_mapping": {
       "logical_blocks": 1024,
       "threads_per_block": 512,
@@ -89,15 +114,18 @@
     "synchronization": [
       "device_global_completion_before_after_ROI"
     ],
-    "atomics_and_reductions": null,
+    "atomics_and_reductions": [],
     "resource_policy": {
       "shared_memory_bytes": 0,
       "host_fixture_and_cache_allocation_outside_ROI": true
     },
     "launch_geometry": null,
-    "library_backend_boundary": null,
-    "host_control_boundary": null,
-    "fidelity_status_and_scope": null,
+    "library_backend_boundary": "NooperatorlibraryorforeignCUDAdeviceintrinsics; pureJuliaE4M3encoder, frameworkownindices. CUDAhostallocation/devicecompletion testedNVIDIAonly.",
+    "host_control_boundary": "1000hostkernel dispatches plusdeviceglobalcompletion timed;30warmups,allocation,input/outputtransfer,checksoutsideROI.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "OriginalFP32kernelmath/layoutmatchedexactlyon8sourcecases; nativeBF16sourceguardblockednotemulated;finiteinputs/noshape-generalization/modelqualityclaim.",
     "source_review_evidence": [
       "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl",
       "src/reshapeKVCache-julia/study_device.jl"
@@ -131,7 +159,21 @@
           "sha256": "5d1d594bd7f558632ed80445bf00b65ef8c36edb8ab98cd9276fce7890a58c05"
         }
       ],
-      "precision_boundary": "8 original FP32 cases measured;8 BF16 cases original source assert for __CUDA_ARCH__<800 on V100; no replacement BF16 withFP32"
+      "precision_boundary": "8 original FP32 cases measured;8 BF16 cases original source assert for __CUDA_ARCH__<800 on V100; no replacement BF16 withFP32",
+      "scientific_task": "Reorganize/scaledquantize synthetic key/value feature tensors into paged attention caches; not attention inference or taskaccuracy.",
+      "mathematical_operation": "RN-even SATFINITE E4M3 ofFP32 key/scale,value/scale followedby bijective slot/perhead/perfeaturelayout transform.",
+      "invariants": [
+        "Slotsarepermutation0..1023; everykey/valuecachebyteassignedonceperlaunch.",
+        "All8,388,608encodedoutputs match independentenumeratedquantizer/inverseslotlayout exactly inall160captures.",
+        "Codeidentity includes actualsignedzeroandtierounding; allcodesfinite."
+      ],
+      "accuracy_requirements": [
+        "ExactrawFP32inputbitprefix/scales/slots/shape.",
+        "Tolerance0 fullE4M3code/layout comparison versus unchangednativeCUDA,genuineCUDAjl,independentCPUoracle.",
+        "Quantizationreconstructionloss measuredseparately, notzero; noattentionqualityassertion."
+      ],
+      "input_size_regimes": "OriginalN1024,H32,D128,B16/32,x1/2/4/8,R1000FP32.8originalBF16casesnativeguardblockedV100; arbitraryshapes/negativepaddingunmeasured.",
+      "precision_sensitivity": "FP32divisionroundingandE4M3ties/sign/subnormalencoding matter. GPUstorageactualUInt8E4M3; pureJuliaUInt32bitencoder, Int64slot/address. ReconstructionDoubledecodedcode\u00d7Float32scalequantifiesloss, notapplicationaccuracy."
     },
     "primary_motif": "quantized_layout_transform",
     "storage_precision": [
@@ -158,7 +200,7 @@
     },
     "implementation_traits": {
       "cuda_jl": {
-        "review_status": "source_reviewed",
+        "review_status": "source_audited_and_all8_FP32_configurations_verified",
         "implementation_class": "framework_device_kernel",
         "algorithm": "One512threadtokenworkgroup; laneheadblockstridedloop, keyxblockpacked scalarorNTuple4 and valueBstridedwrites; pureJulia saturating RN-even E4M3 bitencoder afterFP32division",
         "mapping": {
@@ -201,10 +243,31 @@
         "source_evidence": [
           "src/reshapeKVCache-julia/reshapeKVCache-julia-cuda.jl/main.jl",
           "src/reshapeKVCache-julia/study_device.jl"
-        ]
+        ],
+        "provenance": [
+          {
+            "path": "src/reshapeKVCache-julia/reshapeKVCache-julia-cuda.jl/main.jl",
+            "sha256": "00606e79a80a0a17586ac8190dff0bdaf7a58cb949e7c642a61afa4a6db8f64b"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_device.jl",
+            "sha256": "7fa79233138b93a09dc6a44d5606a9c3f29ad21347bad635fe23a5e2cff8b6ca"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_common.jl",
+            "sha256": "9df8b5b5a9a1444ee3d732a6b5de13d5b14e3e87908e59d9108c291c6276626d"
+          }
+        ],
+        "fidelity_status": "OriginalFP32kernelmath/layoutmatchedexactlyon8sourcecases; nativeBF16sourceguardblockednotemulated;finiteinputs/noshape-generalization/modelqualityclaim.",
+        "library_boundary": "NooperatorlibraryorforeignCUDAdeviceintrinsics; pureJuliaE4M3encoder, frameworkownindices. CUDAhostallocation/devicecompletion testedNVIDIAonly.",
+        "host_control_boundary": "1000hostkernel dispatches plusdeviceglobalcompletion timed;30warmups,allocation,input/outputtransfer,checksoutsideROI.",
+        "atomic_operations": [],
+        "compiler_attempt_policy": "Onecandidate/eightisolatedprocessGPUcompile-dispatchchecks foroneFP32dtype/eightlayoutvalues;1genericdefinition,internalcompilerpasses/cachehits/distinctspecializationsunknown.",
+        "status": "verified",
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1"
       },
       "ka": {
-        "review_status": "source_reviewed_all8_FP32_configurations_verified",
+        "review_status": "source_audited_and_all8_FP32_configurations_verified",
         "implementation_class": "framework_device_kernel",
         "algorithm": "One512threadtokenworkgroup; laneheadblockstridedloop, keyxblockpacked scalarorNTuple4 and valueBstridedwrites; pureJulia saturating RN-even E4M3 bitencoder afterFP32division",
         "mapping": {
@@ -247,10 +310,31 @@
         "source_evidence": [
           "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl",
           "src/reshapeKVCache-julia/study_device.jl"
-        ]
+        ],
+        "provenance": [
+          {
+            "path": "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl",
+            "sha256": "64100667709fb7b15286dd2876d09eeeb5afe9afb34ea278d29b0276c1daf902"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_device.jl",
+            "sha256": "7fa79233138b93a09dc6a44d5606a9c3f29ad21347bad635fe23a5e2cff8b6ca"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_common.jl",
+            "sha256": "9df8b5b5a9a1444ee3d732a6b5de13d5b14e3e87908e59d9108c291c6276626d"
+          }
+        ],
+        "fidelity_status": "OriginalFP32kernelmath/layoutmatchedexactlyon8sourcecases; nativeBF16sourceguardblockednotemulated;finiteinputs/noshape-generalization/modelqualityclaim.",
+        "library_boundary": "NooperatorlibraryorforeignCUDAdeviceintrinsics; pureJuliaE4M3encoder, frameworkownindices. CUDAhostallocation/devicecompletion testedNVIDIAonly.",
+        "host_control_boundary": "1000hostkernel dispatches plusdeviceglobalcompletion timed;30warmups,allocation,input/outputtransfer,checksoutsideROI.",
+        "atomic_operations": [],
+        "compiler_attempt_policy": "Onecandidate/eightisolatedprocessGPUcompile-dispatchchecks foroneFP32dtype/eightlayoutvalues;1genericdefinition,internalcompilerpasses/cachehits/distinctspecializationsunknown.",
+        "status": "verified",
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1"
       },
       "jacc": {
-        "review_status": "planned_mapping_not_yet_drafted_or_verified",
+        "review_status": "source_audited_and_all8_FP32_configurations_verified",
         "implementation_class": "framework_device_kernel",
         "algorithm": "One512threadtokenworkgroup; laneheadblockstridedloop, keyxblockpacked scalarorNTuple4 and valueBstridedwrites; pureJulia saturating RN-even E4M3 bitencoder afterFP32division",
         "mapping": {
@@ -289,7 +373,32 @@
           "No measuredroofline/counters; layoutcoalescing explanations hypothesesonly.",
           "Encoderdefined/verifiedfor finitefixtureinputs only; NaN sourceconversionsemantics notimplemented/claimed. Saturationbranch present butsourcefixturesdonotexercise it."
         ],
-        "framework_specific_features": []
+        "framework_specific_features": [],
+        "source_evidence": [
+          "src/reshapeKVCache-julia/reshapeKVCache-julia-JACC/main.jl",
+          "src/reshapeKVCache-julia/study_device.jl"
+        ],
+        "provenance": [
+          {
+            "path": "src/reshapeKVCache-julia/reshapeKVCache-julia-JACC/main.jl",
+            "sha256": "6a0a7af7e1966e2e493d6fd4af2c3d65b64629314e4e234ec646300034f5d852"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_device.jl",
+            "sha256": "7fa79233138b93a09dc6a44d5606a9c3f29ad21347bad635fe23a5e2cff8b6ca"
+          },
+          {
+            "path": "src/reshapeKVCache-julia/study_common.jl",
+            "sha256": "9df8b5b5a9a1444ee3d732a6b5de13d5b14e3e87908e59d9108c291c6276626d"
+          }
+        ],
+        "fidelity_status": "OriginalFP32kernelmath/layoutmatchedexactlyon8sourcecases; nativeBF16sourceguardblockednotemulated;finiteinputs/noshape-generalization/modelqualityclaim.",
+        "library_boundary": "NooperatorlibraryorforeignCUDAdeviceintrinsics; pureJuliaE4M3encoder, frameworkownindices. CUDAhostallocation/devicecompletion testedNVIDIAonly.",
+        "host_control_boundary": "1000hostkernel dispatches plusdeviceglobalcompletion timed;30warmups,allocation,input/outputtransfer,checksoutsideROI.",
+        "atomic_operations": [],
+        "compiler_attempt_policy": "Onecandidate/eightisolatedprocessGPUcompile-dispatchchecks foroneFP32dtype/eightlayoutvalues;1genericdefinition,internalcompilerpasses/cachehits/distinctspecializationsunknown.",
+        "status": "verified",
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1"
       }
     },
     "timing_scope": "30warmups then5outertimes of1000cacheoverwrite launches; deviceglobalcompletion averaged/launch, meanlast4",
@@ -303,7 +412,243 @@
       "SourceCPUreference returns early fornegative slots versusGPUsktoken; namedslotpermutationnonnegative, negativepaddingbehaviorunexercised.",
       "No measuredroofline/counters; layoutcoalescing explanations hypothesesonly.",
       "Encoderdefined/verifiedfor finitefixtureinputs only; NaN sourceconversionsemantics notimplemented/claimed. Saturationbranch present butsourcefixturesdonotexercise it."
-    ]
+    ],
+    "configuration_results": {
+      "B16_x1": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x1_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012521915756Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 1,
+        "mean_seconds": {
+          "cuda": 0.000239909999,
+          "cuda_jl": 0.000301751047,
+          "ka": 0.000229344772,
+          "jacc": 0.00030310959
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x2": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x2_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012611424406Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 2,
+        "mean_seconds": {
+          "cuda": 0.0002815569405,
+          "cuda_jl": 0.00028115498675,
+          "ka": 0.0002723390865,
+          "jacc": 0.000281693926
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x4": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x4_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012637310237Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 4,
+        "mean_seconds": {
+          "cuda": 0.000238082767,
+          "cuda_jl": 0.0002895827545,
+          "ka": 0.00028724412525,
+          "jacc": 0.000290451601
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x8": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x8_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012700343780Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 8,
+        "mean_seconds": {
+          "cuda": 0.00032295235175,
+          "cuda_jl": 0.0003935381375,
+          "ka": 0.00040006539475,
+          "jacc": 0.0003939457945
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x1": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x1_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012728732732Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 1,
+        "mean_seconds": {
+          "cuda": 0.00033587253525,
+          "cuda_jl": 0.00040598497624999997,
+          "ka": 0.00032947788825000003,
+          "jacc": 0.0004067419835
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x2": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x2_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012752597384Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 2,
+        "mean_seconds": {
+          "cuda": 0.00040382747825,
+          "cuda_jl": 0.00036582170575,
+          "ka": 0.000401633618,
+          "jacc": 0.00036674013075
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x4": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x4_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012819742150Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 4,
+        "mean_seconds": {
+          "cuda": 0.0003305622585,
+          "cuda_jl": 0.00039593144075,
+          "ka": 0.000415008291,
+          "jacc": 0.00039564575900000003
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x8": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012846120307Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 8,
+        "mean_seconds": {
+          "cuda": 0.0003637767435,
+          "cuda_jl": 0.0003896538145,
+          "ka": 0.00044690014975,
+          "jacc": 0.00038844198175
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      }
+    },
+    "configuration_overrides": {
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x1_r1000_v1": {
+        "block_size": 16,
+        "key_pack_width": 1,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 8,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x2_r1000_v1": {
+        "block_size": 16,
+        "key_pack_width": 2,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 4,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x4_r1000_v1": {
+        "block_size": 16,
+        "key_pack_width": 4,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 2,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x8_r1000_v1": {
+        "block_size": 16,
+        "key_pack_width": 8,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 1,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x1_r1000_v1": {
+        "block_size": 32,
+        "key_pack_width": 1,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 8,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x2_r1000_v1": {
+        "block_size": 32,
+        "key_pack_width": 2,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 4,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x4_r1000_v1": {
+        "block_size": 32,
+        "key_pack_width": 4,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 2,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
+      "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1": {
+        "block_size": 32,
+        "key_pack_width": 8,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 1,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      }
+    }
   },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
@@ -332,6 +677,7 @@
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x1_r1000_v1",
       "run_id": "20261018T012521915756Z_reshapeKVCache",
       "result": ".porting-state/portable_julia/runs/20261018T012521915756Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -364,14 +710,25 @@
       "contract": "Original FP32 N1024 H32 D128 B16 x1; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 16,
+        "key_pack_width": 1,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 8,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x2_r1000_v1",
-      "run_id": "20261018T012005520163Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012005520163Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012611424406Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012611424406Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -382,10 +739,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "d127bff3bc82adbfc935ed02862c8c7aee5f929917a9ec7823bff959f9a8d50e",
+      "result_sha256": "527586465e4bb65cbcf3aceebe16b408d30fe81d25629f69aaff5d035e63bada",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012005520163Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012611424406Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -404,14 +761,25 @@
       "contract": "Original FP32 N1024 H32 D128 B16 x2; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 16,
+        "key_pack_width": 2,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 4,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x4_r1000_v1",
-      "run_id": "20261018T012027140571Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012027140571Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012637310237Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012637310237Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -422,10 +790,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "c1e17356e836f65ff65e6a193388791ca1a24ea8be819738f96b783916fb6a90",
+      "result_sha256": "29fc749486b8c4ba4a7a5d822af6c09bc61d87ef98d5fe7c8c7e7911cbc1a6a6",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012027140571Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012637310237Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -444,14 +812,25 @@
       "contract": "Original FP32 N1024 H32 D128 B16 x4; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 16,
+        "key_pack_width": 4,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 2,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x8_r1000_v1",
-      "run_id": "20261018T012120092105Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012120092105Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012700343780Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012700343780Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -462,10 +841,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "06b882762ba4e1a97e94f7134548740590d57898d748f9417f787f2768676f1e",
+      "result_sha256": "a4c8033698fdbbc5f48a4766be9ce0b919bc2d706210f901ecb34e10afd8e1fc",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012120092105Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012700343780Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -484,14 +863,25 @@
       "contract": "Original FP32 N1024 H32 D128 B16 x8; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 16,
+        "key_pack_width": 8,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 1,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x1_r1000_v1",
-      "run_id": "20261018T012140750330Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012140750330Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012728732732Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012728732732Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -502,10 +892,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "59f18524809c905d3de3540d960f450e86901ee7fbfc943656a785105dfa0907",
+      "result_sha256": "923be57de896efa44988c0fc1890df93ff7830d879ef6861363c37dab711e848",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012140750330Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012728732732Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -524,14 +914,25 @@
       "contract": "Original FP32 N1024 H32 D128 B32 x1; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 32,
+        "key_pack_width": 1,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 8,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x2_r1000_v1",
-      "run_id": "20261018T012203543791Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012203543791Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012752597384Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012752597384Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -542,10 +943,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "ce8304c963bb08ffd78dc6f6b803535da0fe73c64553a82551fa4a172d20bef4",
+      "result_sha256": "fb840ecd41069ab0834add59973f6ca75853854ed252a342229d6ad872db9bd9",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012203543791Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012752597384Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -564,14 +965,25 @@
       "contract": "Original FP32 N1024 H32 D128 B32 x2; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 32,
+        "key_pack_width": 2,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 4,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "scalar",
+        "Julia_key_packing": "scalar"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x4_r1000_v1",
-      "run_id": "20261018T012237610915Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012237610915Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012819742150Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012819742150Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -582,10 +994,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "bfab4b43e3d0d9639118a15f1bad225f2b2258a1bce0fc8b207e78be56d35eaa",
+      "result_sha256": "a0dc0dac0e0ee56cd7d27b00e222f5e96512a8565637e2853cf0a89cf01fe9b4",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012237610915Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012819742150Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -604,14 +1016,25 @@
       "contract": "Original FP32 N1024 H32 D128 B32 x4; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 32,
+        "key_pack_width": 4,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 2,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     },
     {
       "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1",
-      "run_id": "20261018T012316822960Z_reshapeKVCache",
-      "result": ".porting-state/portable_julia/runs/20261018T012316822960Z_reshapeKVCache/result.json",
+      "run_id": "20261018T012846120307Z_reshapeKVCache",
+      "result": ".porting-state/portable_julia/runs/20261018T012846120307Z_reshapeKVCache/result.json",
+      "timing_region_metadata_adjudication": null,
       "native_reference_repaired": false,
       "native_behavior_known_scientific_defect": false,
       "gpu_visibility": "6",
@@ -622,10 +1045,10 @@
       "source_scope_adjudication": null,
       "reference_provenance": null,
       "configuration_classification_adjudication": null,
-      "result_sha256": "2ca4f018bd3b84542196fc57b5a13068b3b7e007e72115836cc9bd2dd56b32de",
+      "result_sha256": "7a753d67e46043ab89a5323ce7a07c16f46724aaf794e1391c8dd8ed5b45c81b",
       "source_hash": "c483150a860d774a93d6e0aca7fa556a142759ec2a92fdf4ea6d6e01e4b16d0c",
       "declared_environment": null,
-      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012316822960Z_reshapeKVCache/hardware.txt",
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012846120307Z_reshapeKVCache/hardware.txt",
       "trials_correct": [
         true,
         true,
@@ -644,7 +1067,17 @@
       "contract": "Original FP32 N1024 H32 D128 B32 x8; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
       "configuration_implementation_class": null,
       "implementation_ontology_override": null,
-      "shared_configuration_traits_override": null,
+      "shared_configuration_traits_override": {
+        "block_size": 32,
+        "key_pack_width": 8,
+        "FP32cases_certified": true,
+        "BF16certified": false,
+        "scalar_feature_work_per_lane": 8,
+        "head_feature_blocks_per_lane": 1,
+        "shared_memory_bytes": 0,
+        "native_key_vectorization": "float4load_packedbyte4store",
+        "Julia_key_packing": "NTuple4_semantic_load_store_codegenunprofiled"
+      },
       "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
       "numerical_evidence_strength": "full_output_artifacts"
     }
@@ -656,12 +1089,29 @@
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 8,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 5712,
+      "output_tokens": 102,
+      "cached_tokens": null,
+      "total_tokens": 5814,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/reshapeKVCache-cuda/main.cu",
+        "src/reshapeKVCache-cuda/utils.h",
+        "src/reshapeKVCache-cuda/kernels.h",
+        "src/reshapeKVCache-cuda/reference.h",
+        "src/reshapeKVCache-julia/reshapeKVCache-julia-cuda.jl/main.jl",
+        "src/reshapeKVCache-julia/reshapeKVCache-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/reshapeKVCache/ka_translation.jsonl"
+    },
     "observed_harness_activity_windows": [
       {
         "event_id": "92113b4dae0ab7c440a4515d",
@@ -697,12 +1147,231 @@
       }
     ]
   },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 8,
+        "compiler_check_invocations": 8
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/reshapeKVCache-julia-ka/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "babb0c88b2e610293f076688ceec3e3b9bd2e18e8de768f6455c365580693bc6",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/reshapeKVCache-julia-ka/manifest.json",
+        "sha256": "babb0c88b2e610293f076688ceec3e3b9bd2e18e8de768f6455c365580693bc6"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "547f3c19b07405813950ab934c35c63ce50faa93",
+  "explicit_outcome_evidence": {
+    "benchmark": "reshapeKVCache",
+    "model": "ka",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261018T012521915756Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012611424406Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012637310237Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012700343780Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012728732732Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012752597384Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012819742150Z_reshapeKVCache/result.json",
+      ".porting-state/portable_julia/runs/20261018T012846120307Z_reshapeKVCache/result.json"
+    ],
+    "contract": "Original FP32 N1024 H32 D128 B32 x8; stdmt19937seed42 normal alternating key/value draws and shuffled slots; positive maxima/64 scales. FP32divide then finite-saturating RN-even E4M3 cache. 30 warm launches then 5 outer trials of1000 overwriting kernelcalls; whole launch-loop plus deviceglobalcompletion averaged percall. Full exact encoded key/value layouts after each trial, rawFP32 inputbits/Int64nonnegative slots serializedUInt32 plus scales/shape prefix. BF16 source sm80 guard blocks8other source subcases onsm70; original16case CLI notcertified. Quantization FP32 loss independent/separate, no attention quality claim.",
+    "limitations": [
+      "Only originalFP32 source subcases; BF16 source runtime assertion onV100 retained diagnostic, whole16caseCLI uncertified.",
+      "GPU storageUInt8contains actual E4M3codes; FP32 division/integerencoder software, not FP8 tensorcore arithmetic.",
+      "Exactencodedcache correctness doesnotimply FP32 reconstruction exact or modelquality; quantizationloss separatelymeasured.",
+      "Native keyvectorload/store versus Julia NTuple4 semanticpacking; actual generatedvectorization unprofiled.",
+      "1000overwrite launches peroutertrial, lastoutputcaptured; intermediate999notindividuallysaved.",
+      "SourceCPUreference returns early fornegative slots versusGPUsktoken; namedslotpermutationnonnegative, negativepaddingbehaviorunexercised.",
+      "No measuredroofline/counters; layoutcoalescing explanations hypothesesonly.",
+      "Encoderdefined/verifiedfor finitefixtureinputs only; NaN sourceconversionsemantics notimplemented/claimed. Saturationbranch present butsourcefixturesdonotexercise it."
+    ],
+    "configuration_results": {
+      "B16_x1": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x1_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012521915756Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 1,
+        "mean_seconds": {
+          "cuda": 0.000239909999,
+          "cuda_jl": 0.000301751047,
+          "ka": 0.000229344772,
+          "jacc": 0.00030310959
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x2": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x2_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012611424406Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 2,
+        "mean_seconds": {
+          "cuda": 0.0002815569405,
+          "cuda_jl": 0.00028115498675,
+          "ka": 0.0002723390865,
+          "jacc": 0.000281693926
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x4": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x4_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012637310237Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 4,
+        "mean_seconds": {
+          "cuda": 0.000238082767,
+          "cuda_jl": 0.0002895827545,
+          "ka": 0.00028724412525,
+          "jacc": 0.000290451601
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B16_x8": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B16_x8_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012700343780Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 16,
+        "key_pack_width": 8,
+        "mean_seconds": {
+          "cuda": 0.00032295235175,
+          "cuda_jl": 0.0003935381375,
+          "ka": 0.00040006539475,
+          "jacc": 0.0003939457945
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x1": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x1_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012728732732Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 1,
+        "mean_seconds": {
+          "cuda": 0.00033587253525,
+          "cuda_jl": 0.00040598497624999997,
+          "ka": 0.00032947788825000003,
+          "jacc": 0.0004067419835
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x2": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x2_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012752597384Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 2,
+        "mean_seconds": {
+          "cuda": 0.00040382747825,
+          "cuda_jl": 0.00036582170575,
+          "ka": 0.000401633618,
+          "jacc": 0.00036674013075
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x4": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x4_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012819742150Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 4,
+        "mean_seconds": {
+          "cuda": 0.0003305622585,
+          "cuda_jl": 0.00039593144075,
+          "ka": 0.000415008291,
+          "jacc": 0.00039564575900000003
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "B32_x8": {
+        "configuration_id": "reshapeKVCache_f32_e4m3_tokens1024_heads32_dim128_B32_x8_r1000_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T012846120307Z_reshapeKVCache/result.json",
+        "input_dtype": "Float32",
+        "cache_format": "E4M3",
+        "block_size": 32,
+        "key_pack_width": 8,
+        "mean_seconds": {
+          "cuda": 0.0003637767435,
+          "cuda_jl": 0.0003896538145,
+          "ka": 0.00044690014975,
+          "jacc": 0.00038844198175
+        },
+        "input_prefix_values": 8389641,
+        "artifact_values": 16778249,
+        "checked_FP8_output_values_each_trial": 8388608,
+        "exact_all5_dual_reference_comparisons": true
+      }
+    },
+    "certified_precision": "Float32input_to_E4M3cache",
+    "unverified_requested_precision": "BF16sourcehelperassertsonSM70",
+    "whole_original_cli_certified": false
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/reshapeKVCache.json",
+    "annotation_sha256": "9d5b3edb460e8f9219091777a395968f4b1330dcfde0e30e8a50734783f78e59",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

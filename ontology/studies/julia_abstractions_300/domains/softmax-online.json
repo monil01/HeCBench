@@ -3,18 +3,34 @@
   "benchmark_id": "softmax-online",
   "scientific_intent": {
     "primary_family": "machine_learning",
-    "application_domain": "Stable normalization",
-    "scientific_task": "Rowwise online softmax",
-    "mathematical_method": "Cooperative warp processing of normalization state",
-    "community_use_case": "Learning/statistical normalization primitive; online recurrence differs from naive exponentiation",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-backed operator/probe intent; application-scale accuracy and performance assessed separately.",
-    "accuracy_requirements": "Configuration-specific mathematical/numerical contract still required; not certified by intent review.",
-    "evidence": [
+    "primary_domain": "rowwise_probability_normalization",
+    "secondary_domains": [
+      "stable_exponential_reductions"
+    ],
+    "review_status": "source_reviewed",
+    "scientific_task": "Normalize finite logit rows into probability vectors with a numerically stable two-pass online softmax.",
+    "mathematical_operation": "p_j=exp(x_j-max(x))/sum_k exp(x_k-max(x)); online per-lane maximum/sum state, shared maximum and sum trees, second global scan writes normalized probabilities.",
+    "discretization": "Five (rows,columns) shapes (17,1),(19,31),(33,33),(17,257),(3,50257), each across original32/64/128/256/512/1024thread block sizes; selected nativekernel4 only.",
+    "accuracy_requirements": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+    "community_use_case": "Stable normalization of model logits, including vocabulary-width rows. This is an isolated operator, not model training/inference accuracy or full decoder throughput.",
+    "description": "Genuine historical Julia uses a valid three-pass max/sum/write algorithm rather than requested source online kernel variants. Preserve it, adapt the current reference to original block-online kernel4, translate that same algorithm to KA then JACC. Native GPU body unchanged.",
+    "provenance": "Source reviewed; no application dataset provenance inferred. Seeded dyadic inputs with uniform rows, finite \u00b11000 shifts, outliers and pointmass controls; paired rows are controlled invariance cases, not independent samples.",
+    "source_evidence": [
       {
         "path": "src/softmax-online-cuda/main.cu",
-        "sha256": "9a93d5556a3537b7447b9428db8eb77bc81306d9ce638f6548e3e1759c8ecac2",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
+        "sha256": "9a93d5556a3537b7447b9428db8eb77bc81306d9ce638f6548e3e1759c8ecac2"
+      },
+      {
+        "path": "src/softmax-online-julia/reference_history/original_main.jl",
+        "sha256": "4fc0c5459cdaf39321d6d9888863aa3dac3e80465f4aad8b830b7e53b6979968"
+      },
+      {
+        "path": "src/softmax-online-julia/generate_study_fixture.py",
+        "sha256": "8386e6374ec252aeacb20292997fbc9f3c4f551a0d9eee7a49fbd086d3670b75"
+      },
+      {
+        "path": "src/softmax-online-julia/independent_artifact_audit.json",
+        "sha256": "236234e9ed85385ab3156f5eb146247b9d6a78616b4e5f697a9b056d17a6e5a9"
       }
     ]
   },
@@ -25,5 +41,70 @@
   },
   "historical_pass_method": "numeric_stdout",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "1e8c42a47a778512638d86ef",
+      "begin_event_id": "dc50a8de079ce37dad24e71c",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T01:30:30.113585+00:00",
+      "usage_event_timestamp": "2026-10-18T01:30:24.365Z",
+      "elapsed_usage_event_start": "2026-10-18T01:27:06.736Z",
+      "delta_usage": {
+        "input_tokens": 420876,
+        "cached_input_tokens": 377856,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6720,
+        "reasoning_output_tokens": 103,
+        "total_tokens": 427596
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 5.748585,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "9724089e1161777fcaf7551129d2ebeeea1a65058727f028748bb794b9de1596",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 6.973281,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/softmax-online/shared_annotation.jsonl",
+      "evidence_sha256": "8af40228d9afd6635086e8066c4d9da4a41a4fed9d85b46095201ceac205e206",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "d37b2de3aedde53cc78b6a1d",
+      "begin_event_id": "a26099a3fa9e57069555d78e",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T01:30:34.950775+00:00",
+      "usage_event_timestamp": "2026-10-18T01:30:30.158Z",
+      "elapsed_usage_event_start": "2026-10-18T01:14:35.163Z",
+      "delta_usage": {
+        "input_tokens": 6036095,
+        "cached_input_tokens": 5973760,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 30593,
+        "reasoning_output_tokens": 15579,
+        "total_tokens": 6066688
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 4.792775,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "76dbaacad077ecdc34bd4702e1fef3b3c5227de747bcd44fb372e0457f8001c9",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 8.249252,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/softmax-online/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "7563bc47c8b71551ca95e5c6229c0fb2d6b7be673749363bc3b839031f0be331",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }
