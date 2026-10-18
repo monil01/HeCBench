@@ -1,12 +1,6 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+.PHONY: main run
 main:
 	@true
-
-clean:
-	rm -f output.bmp
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl ../urng-sycl/URNG_Input.bmp 1000
+run:
+	$(JULIA) --project=../_julia_ka_env main.jl
