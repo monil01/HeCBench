@@ -1,0 +1,1 @@
+const CASES=[(m=17,nnz=33,length=2,io=0,oo=0,),(m=32,nnz=528,length=33,io=103,oo=17,),(m=65,nnz=594,length=35,io=1257,oo=49,),(m=257,nnz=5870,length=258,io=2611,oo=114,),(m=534388,nnz=1088904,length=16701,io=15124,oo=371,)]

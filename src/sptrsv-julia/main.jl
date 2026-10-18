@@ -1,1 +1,1 @@
-include("../mcpr-julia/main.jl")
+include(joinpath(@__DIR__,"sptrsv-julia-cuda.jl","main.jl"))
