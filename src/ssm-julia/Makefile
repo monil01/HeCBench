@@ -1,12 +1,10 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+.PHONY: main run clean
 main:
-	@true
-
+	@echo "Gated serialbase recurrence study; VLLM scan unverified."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1
 clean:
-	rm -rf __pycache__
-
-run: main
-	@$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1000
+	@echo "Retain study fixtures."
