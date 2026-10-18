@@ -7,8 +7,9 @@ from pathlib import Path
 from study_evidence import effective_config
 import verify_portable_julia as verifier
 root=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');p.add_argument('--evidence-refresh',action='store_true');p.add_argument('--measurement-repair',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');p.add_argument('--evidence-refresh',action='store_true');p.add_argument('--measurement-repair',action='store_true');p.add_argument('--variant-archive',type=Path,action='append',default=[]);a=p.parse_args()
 if bool(a.variant)==bool(a.shared):p.error('choose exactly one of --variant or --shared')
+if a.shared and a.variant_archive:p.error('variant archives belong in their variant commit')
 if a.measurement_repair and (a.evidence_refresh or a.performance_tuning):p.error('measurement repair is a separate phase from evidence-only refresh and tuning')
 if subprocess.check_output(['git','diff','--cached','--name-only'],cwd=root,text=True).strip():raise SystemExit('Index already contains staged work; inspect it before using coordinator helper.')
 data=[]
@@ -68,6 +69,17 @@ else:
           'execution_source_scope':'Canonical source hash and explicit executed source dependency bindings are separate. Secondary method entry points retain their scoped directories and configurations.'}
  for owned_child in scoped_children:owned_child.joinpath('verification.json').write_text(json.dumps(receipt,indent=2)+'\n')
  paths=list(dict.fromkeys(f for owned_child in scoped_children for f in owned_child.rglob('*') if allowed(f)));title=('Remeasure ' if a.measurement_repair else 'Link verified ' if a.evidence_refresh else 'Tune verified ' if a.performance_tuning else 'Add verified ')+a.benchmark+' '+a.variant+(' primary evidence' if a.evidence_refresh else ' implementation')
+# Retain a rejected candidate with its model commit without moving it into the
+# source-hashed execution directory or mixing it into shared reference work.
+archives=[]
+for name in a.variant_archive:
+ f=(name if name.is_absolute() else root/name).resolve()
+ if not f.is_relative_to((parent/'reference_history').resolve()) or not f.name.lower().startswith(a.variant.lower()) or not allowed(f):
+  raise SystemExit('Variant archive must be a model-prefixed source under this benchmark reference_history: '+str(f))
+ archives.append({'path':str(f.relative_to(root)),'sha256':verifier.hashlib.sha256(f.read_bytes()).hexdigest(),'scope':'Retained rejected variant source; not executed source or passing candidate.'});paths.append(f)
+if archives:
+ for owned_child in scoped_children:
+  receipt_path=owned_child/'verification.json';receipt=json.loads(receipt_path.read_text());receipt['retained_rejected_variant_archives']=archives;receipt_path.write_text(json.dumps(receipt,indent=2)+'\n')
 conditional=any(c.get('native_reference_repaired') for _,c,_ in data)
 if conditional:
  if any(c.get('native_reference_repaired') and not c.get('reference_provenance') for _,c,_ in data):raise SystemExit('Corrected native references require explicit provenance.')
