@@ -1,12 +1,6 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+.PHONY: main run
 main:
 	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl --i=1000
+run:
+	$(JULIA) --project=../_julia_ka_env main.jl
