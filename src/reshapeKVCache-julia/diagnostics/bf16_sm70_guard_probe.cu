@@ -1,0 +1,3 @@
+#include "../../reshapeKVCache-cuda/utils.h"
+__global__ void probe(const __nv_bfloat16*a,uint8_t*b){b[0]=scaled_vec_conversion<uint8_t,__nv_bfloat16>(a[0],1.f,__NV_E4M3);}
+int main(){__nv_bfloat16 a=1.f,*d;uint8_t*b;cudaMalloc(&d,sizeof(a));cudaMalloc(&b,1);cudaMemcpy(d,&a,sizeof(a),cudaMemcpyHostToDevice);probe<<<1,1>>>(d,b);auto status=cudaDeviceSynchronize();printf("{\"diagnostic_only\":true,\"source_guard_probe\":true,\"cuda_status\":%d,\"source_bf16_subcase_hardware_blocked\":%s,\"benchmark_verified\":false}\n",int(status),status==cudaErrorAssert?"true":"false");return status==cudaSuccess?0:1;}
