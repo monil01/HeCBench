@@ -289,7 +289,7 @@ def main():
                                         'configuration_role':disp.get(cid,{}).get('role',c.get('configuration_role','primary')),
                                         'numerical_agreement_kind':c.get('numerical_agreement_kind','declared_numeric_artifact_contract'),
                                         'verification_contract':c.get('verification_contract'),
-                                        'numerical_agreement_claim':c.get('numerical_agreement_kind')!='no_numerical_outputs_execution_only','raw_output_identity_claim':False if c.get('numerical_agreement_kind') in ('property_equivalence_not_identical_raw_values','no_numerical_outputs_execution_only') else None,
+                                        'numerical_agreement_claim':c.get('numerical_agreement_kind') not in ('no_numerical_outputs_execution_only','property_equivalence_not_identical_raw_values'),'raw_output_identity_claim':False if c.get('numerical_agreement_kind') in ('property_equivalence_not_identical_raw_values','no_numerical_outputs_execution_only') else None,
                                         'scoped_effort_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),'scope':'Named configuration phase only; historical top-level effort is separate.'} for q in scoped_effort_paths],
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
