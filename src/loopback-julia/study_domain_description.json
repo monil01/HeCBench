@@ -1,0 +1,99 @@
+{
+  "scientific_intent": {
+    "primary_family": "stochastic_statistics",
+    "primary_domain": "seeded_Monte_Carlo_GARCH_path_payoff_statistics",
+    "review_status": "source_reviewed",
+    "scientific_task": "Simulate seeded time-varying-volatility paths and compute the mean/sample variance of the source accumulated positive terminal-price-gap functional",
+    "mathematical_operation": "vol=sqrt(a0+a1*vol^2+a2*eps^2); eps=clip(NormalPair*vol,-1,1); Snext=S*exp(mu+eps). Payoff=sum_t max(S_t-S_terminal,0), then512-path Welford samplemean/unbiasedvariance. This is not the standard max-path lookback payoff or a discounted financial price.",
+    "discretization": "N256parameterlanes/one256threadblock,512paths each, T15/T2 stochastic stableGARCH, zero-vol+mu0T15 and T0 analyticalcontrols. Source15cycle/sharedpathcapacity retained, seedstridecompact256 undernamedcompileconfig vsdefault1m.",
+    "accuracy_requirements": "All2048mean/varianceoutputs finite/nonnegative vsindependentFloat64path/Welford oracle atpredeclared.002+.002|gold|; deterministiccontrols exact0. RNGprobe finalfourUInt32states andfirsttwoF32uniforms perlane exactindependentintegeroracle, allinputecho/guards exact. Probe is separateoutsideROI.",
+    "input_size_regime": "Four namedN256oneblockcases,512paths perlane, includingzero-cycle/zero-volcontrols. Nominal4*256*512pathcalls, notnative4096block/1mparameterCLI orstatisticalconvergencebenchmark.",
+    "precision_sensitivity": "ActualFloat32BoxMuller/GARCH/price/clamp/payoff/Welford versusCPUFloat64trajectoryoracle withsameUInt32state andactualFloat32uniforminputs. Juliaexplicitmuladd mapping ofsource defaultfusionintent; actualcompiledfusionsequence notisolated. Engineeringbudget notrigorousbound. u1 observed>=7.58e-7 andfiniteboundedprices/payoffs.",
+    "community_use_case": "SourceauthorsdescribeGARCHassetpath/lookback simulation, useful as a seeded Monte Carlo numerical workload. No market calibration, risk-neutral pricing, investment advice, standardoptionvaluation or distribution-quality inference is made.",
+    "description": "HistoricalJulia isgenuine stochasticpath implementation. Preserveoriginalsources andscope smallnativecompilelayout, matchfrozeninputs/RNG, complete512paths/mean/variance. Safe signed empty loophandlesnamedT0 whereoriginalJuliaunsignedrangewouldunderflow; originaldefaultCLIusesT15, noobservedhistoricalfailureclaim.",
+    "provenance": "NativeauthorsLeeHowes andDavidB.Thomas inmainheader; actualkernels.cu/loopback.h showTaus+LCG/BoxMuller/GARCH/pathsum/Welford. Codefunctionalusedverbatimratherthaninferredstandardlookbackfinanceformula. IndependentPythonunboundedintegerRNGmasking/Float64paths authoredreferencephase.",
+    "source_evidence": [
+      {
+        "path": "src/loopback-cuda/kernels.cu",
+        "sha256": "42718858d89071b0b48d860c9224200d1b805c1b7b9e860191b05f5c651c69e0"
+      },
+      {
+        "path": "src/loopback-cuda/loopback.h",
+        "sha256": "f8403c9bb3de49158d6f4ddeeb0cab69ba6ea2bc70ef8d57916058b8f4d413bb"
+      },
+      {
+        "path": "src/loopback-cuda/main.cu",
+        "sha256": "577e67da93621a4a6c21558dd07a08b1abf84a8b578c81f60e9fec286289b01c"
+      },
+      {
+        "path": "src/loopback-julia/original_main.jl",
+        "sha256": "f208a04a62c023a13d2e951ad4608108420160281c27ebede8584dbe99b6febb"
+      }
+    ]
+  },
+  "primary_motif": "independent_seeded_path_recursions_with_online_moments",
+  "storage_precision": [
+    "Float32_parameters_path_mean_samplevariance",
+    "UInt32_fourplane_rngseeds",
+    "Float64_RNGdiagnosticencoding_only"
+  ],
+  "compute_precision": [
+    "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+    "UInt32_Taus_LCG_mod2pow32"
+  ],
+  "synchronization": [
+    "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+    "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Same256lanes/512paths/15sharedcyclecapacity andTaus/LCG/BoxMuller/clampedGARCH/terminal-gapfunctional/Welford. Explicitnamedoneblockcompactseedstride vsoriginal4096blocks, Float32fusionintent mappedmuladd, JuliaT0guard, KAshared15360B/JACCsharedtemplateinitializationextra."
+  },
+  "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+  "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+  "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+  "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+  "verification_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+  "keyconfounds": [
+    "Explicitoneblockcompactseedstride256sourcecompileconfig vsoriginal4096blocks; GPUutilizationscale notgeneralized",
+    "CPUFloat64idealpathoracle vsFloat32GPUtranscendentals/fusion, engineeringbudgetnotprovenerrorbound",
+    "Actualpayoffsumpositivegaps isnotstandardlookback/discountedfinancialprice; nofinancialqualityclaim",
+    "Fixed512samplemeans/variances validatecomputation, nottrueexpectation/calibration/RNGdistributionquality orMonteCarloconvergence",
+    "RNGprobechecksfinalstates/first2uniform andCPUdomainbounds, notrawcaptureallgenerateddraws; outsideROIunguardeddiagnostic",
+    "KA15360Blocalpath vsJACCwholetemplate15360Bcopy/entrybarrier addsworkeven thoughsourceperlanepathneedsnoinitialization/barrier",
+    "Nativebodyunchanged underexplicitmacroconfiguration; originalJuliaunsignedT0range staticallyguarded, notobserveddefaultCLIbug",
+    "Sharedreferencehelper/RNGoracle reusedKAthenJACC; firstJuliahostadapterparseerror separatefromGPUkernelcandidate"
+  ],
+  "boundary_rounding_policy": "UInt32Taus+LCG modulo2^32, Float32u=2^-32*Float32(XORword), pairedBoxMuller phase. Sourceepsclamp[-1,1], exactFloat32PIliteral. Positiveu1 domain checkedallCPUdrawsselectedcases. Floatbudget.002+.002rel predeclared; RNGprobe/inputs/guards/zero-controls exact, no weakerinteger-toleranceacceptance.",
+  "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+  "interpretation": "For stochastic-simulation users, exactseedmapping andRNGconsistencyplusindependentmean/variance andanalyticalcontrols distinguishalgorithmagreementfromstatisticalmodelvalidation. Measuredfunctional andsmallgrid mustremainvisible. No expectedprice/uncertaintyestimateorunprofiledoccupancy/rooflineclaim. Frameworkdevicekernel uses ordinaryJulia math/UInt32 arithmetic andownedsharedmemory; onlyCUDAbackendtested.",
+  "reference_class": "CUDAjl_genuine_seeded_path_kernel_scoped_layout_and_zero_cycle_guard",
+  "ka_class": "KA_ordinary_Julia_math_rng_localpath_kernel_CUDA_hostharness",
+  "jacc_class": "JACC_ordinary_Julia_math_rng_sharedpath_kernel_CUDA_hostharness",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 15360,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled"
+    },
+    "ka": {
+      "shared_bytes": 15360,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled"
+    },
+    "jacc": {
+      "shared_bytes": 15360,
+      "source_reviewed": true,
+      "extra_work": "JACC.shared whole3840floattemplate initialization+barrier",
+      "actual_register_local_storage": "unprofiled"
+    }
+  },
+  "backend_extensions": {
+    "ka": [
+      "CUDAhostallocation/copy/completionharness only; ordinaryJuliaUInt32/log/sqrt/sin/cos/exp/muladd devicearithmetic, ownframeworkshared/index"
+    ],
+    "jacc": [
+      "CUDAhostallocation/copy/completionharness only; ordinaryJuliaUInt32/log/sqrt/sin/cos/exp/muladd devicearithmetic, ownframeworkshared/index"
+    ]
+  }
+}
