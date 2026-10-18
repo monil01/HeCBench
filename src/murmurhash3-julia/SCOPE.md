@@ -1,0 +1,7 @@
+# MurmurHash3 x64 128-bit operator
+
+The native hash and kernel and the genuine historical CUDA.jl hash/kernel bodies are unchanged. A new scoped harness excludes compilation and captures full inputs/results. A Python arbitrary-precision modular implementation with little-endian block/tail slicing supplies an independently structured full oracle; empty input with seed zero gives both zero words exactly. Every one of the 128 result bits is checked.
+
+Four cases use 257/4099 keys, source-pattern packed bytes or varied/gapped legal offsets, all 16 tail remainders, unaligned key bases, zero-length keys and a 9999-byte key. Seeds retain the original key-index rule, at most 4098; arbitrary high-bit seeds, original host RNG identity and the Makefile's 100000-key case remain untested. Gapped offsets are an explicitly named kernel-legal control, beyond original host cumulative packing. Full readonly arrays, gaps and guards and actual initial destination are captured and checked exactly; narrow input containers are widened losslessly to UInt64 only after timing.
+
+Each region contains ten original-kernel launches and context completion, then divides elapsed time by ten. Sum four separately timed regions; setup/reset/copy/JIT/readback/oracles outside. Five full trials retain all samples and average trials two through five. These are synchronized host windows, not measured memory bandwidth or a floating-point roofline. This is noncryptographic hashing: collision rates, avalanche quality and cryptographic security are not certified.
