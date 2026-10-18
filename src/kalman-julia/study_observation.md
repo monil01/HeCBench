@@ -1,0 +1,29 @@
+# kalman: Run batched eight-state scalar-observation Kalman updates and finite-horizon forecasts
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: kalman_RD8_SPD_full5outputs_26diff_forecast_controls_v1
+
+## Scientific intent and fidelity
+
+Restore genuinehistoricalJulia partial forecastvariancekernel to allnative residuals/innovationvariances/sumlogvariances/forecastmeans/forecastvariances andoptionalbranches. NewvariedT/SPDcases expose inheritedJulia transposedKZ outerproduct, repaired againstunchangednativeandindependentmatrixoracle. No nativeGPUbodychange.
+
+Scientific task: Innovationv=y-Zalpha, F=ZPZtranspose, propagatedgainK=TPZtranspose/F, nextalpha=Talpha+Kv+c, P=TP(T-KZ)transpose+RQR; forecastsZalpha andoptionalZPZtranspose withopenloopprediction.. Requirements and precision sensitivity: Allfivefullnativeoutputarrays vsindependentDecimal80conditionalposterior/predictmatrixoracle1e-9+1e-9|gold|; finiteandpositiveinnovation/forecastvariance; exactallinputecho/guards, disabledvarianceuntouched andskippedlogzero. No rawNaNcomparisonacceptance.. Community use case: Linearstate-space estimation/time-series forecasting is an illustrative scientificuse. NativeheaderdescribesbatchedKalmanstate/intercept/differencing/forecastvariance; no actualdatasetaccuracy, fittedARIMAparameters or applicationprovenance inferred.. Provenance/uncertainty: NVIDIA2019–2021Apache2 nativeKalmanheader/docs andCPUreference reviewed; originalJulia source preserved. Independentconditionalposteriorform mathematicallyequivalentforSPDandzeroadditionalmeasurementnoise, not copiednativeT*P*Ltranspose loops.. Domain-neutral examples are illustrative uses, not claimed original application provenance.
+
+## Numerical evidence and implementation ontology
+
+All20captures565435Float64words/trial:59311exactprefix+506124fullarrays.30574outputpositions(includes4112disabledvarianceuntouched),470558actualinputecho payloadvalues,4992guardchecks/trial. Allresidual/F/log/mean/variance; positivefiniteF andforecastvariance,5147unwritten/zero-logexactpositions. BothGPUrefs andindependentDecimal80posteriororacle, rawfulloutputsnotchecksum.
+
+Mapping: SameonecompleteRD8series/lane, sequentialobservations/forecasthorizon,256threadceilgrid, fullsource5outputs andallcontrolbranches restored. StaticArrayslocalworkspaces vsnativefixedlocalarrays compilerstorageunprofiled. Nativebodyunchanged; historicalJuliaouterproductindex correctedbeforeportabletargets.. Support boundary: RD8selectedfiniteSPDPQandstableTcases, allsource5outputs/diff/forecastcontrols; singularF/unphysicalcovariances/realdataforecastquality/parameterestimation/fullCLIunverified.. Per-model implementation records include actual algorithm, layout, mapping, synchronization, resources, pinned versions, allfive samples and hash-linked evidence. The scientific requirement is distinct from the implementation choice.
+
+Accepted bundle `.porting-state/portable_julia/runs/20261018T074402427561Z_kalman/`. Mean trials 2–5 microseconds: cuda 3179.57725000, cuda_jl 34564.33875000, ka 34926.68850000, jacc 31606.55050000. Timed scope: Sum26hostinclusive fullKalman per-seriesfilter/forecastkernel launch+sync intervals;256threadsceilgrids andpartiallastblock allmodels. Resetoutputs/copies/JITwarmup/readback/oracle/serializationoutside. Fivecheckedinprocess trials mean2–5, nooriginalrepeat-loopCLIclaim.. Allfivechecks passbothreferences; firsttimingonlyexcluded, nooutlierdrop. Candidate/checkhistory is ineachmodelmanifest; reference/adapterrepairs separatefromportabletranslation. HistoricalCUDA.jlcost remainsunknown, notzero. Current tokenproxies arepartialretainedsourcecharacters/4, input/totalunknown, sharedadaptercountedonce.
+
+## Interpretation for domain scientists
+
+For filteringusers, verify the complete innovation/state-drivenforecast outputs and mathematicallylegalcovarianceconditions, not merelyforecastvariance. The nonsymmetrictransition fixtures detect an inheritedtransposedgain-designupdate. Preciseoperatoragreement doesnotestablishmodelcalibration/forecastskill; sourcevarianccalculationisnotaconfidenceinterval. Frameworkversions use ordinaryJulia arithmetic/StaticArrays withframeworkindexing, noCUDA-specificdeviceintrinsic.
+
+Confounds: NamedlegalSPD/stableToperatorfixtures, notoriginalrandomnonsymmetricP/QCLI orphysicalforecastaccuracy; NativeC++fixedlocalarrays vsJuliaStaticArrays workspace/codegeneration, local/register/heapstorage notprofiled; Sourceconf_int producesvariances, notcalibratedconfidenceintervals; sumlogF alone isnotcompleteloglikelihood; Referencealgorithmrestoration+inlining/deviceheaprepair+inheritedKZindexrepair separatelyaccounted; KA/JACCreusefixedhelper; All26host-inclusivekernelregions include dispatch/sync, noisolateddeviceprofiling/rooflinecausalclaim; InitialreferenceaccountingENDprematureatfailedcandidate preserved; subsequentreference_completion separatelymetered, no backfill orsumoverlap. RQ1/E1 has configuration-scoped numerical fidelity; RQ2/E2 separates model/phase taxonomy and effort; RQ3/E3 has paired four-model timings; RQ4/E4 links scientific intent to audited implementation traits, with profiler mechanisms pending; RQ5/E5 gives no universal winner. No unsupported feature is inferred from an unfinished translation or an environment error.
+
+## Scientific discovery and honest boundaries
+
+VariedstableT/SPDPcases expose inheritedKZtransposebug missedbyhistoricalpartialforecastvariancecoverage. Full5outputs/independentDecimal80posteriororacle required; no tolerancechange. R1heaprepair viahelperinline andN1outerindexrepair belongreference3candidatehistory; KA/JACCreusefinalhelper firstcandidateeach. Forecastvariance isnotcalibratedinterval, sumlogFnotfulllikelihood, noforecastskillclaim. NativeGPUunchanged, initialcovariancefixturedefineslegaloperatorconditions ratherthansilentnativealgorithmrepair. PrematurereferenceENDkeptwithseparateprospectivecompletionwindow.
