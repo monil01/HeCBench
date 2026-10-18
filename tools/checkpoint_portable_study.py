@@ -42,6 +42,7 @@ for path in sorted((local / 'runs').glob('*/result.json')):
     cid = d.get('configuration_id') or config['configuration_id']
     records[(d['benchmark'], cid)] = {
         'benchmark': d['benchmark'], 'configuration_id': cid,
+        'numerical_agreement_kind':config.get('numerical_agreement_kind','declared_numeric_artifact_contract'),
         'run_id': d['run_id'], 'variants': d['variant_verified'],
         'matched_performance_valid': d.get('matched_performance_valid', False),
         'native_reference_repaired': bool(config.get('native_reference_repaired')),
@@ -131,6 +132,8 @@ payload = {
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
     'accepted_configuration_role_counts':{role:sum(r['role']==role for r in accepted_records) for role in ['primary','corrected_reference_secondary']},
     'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
+    'explicit_property_equivalence_names':sorted({r['benchmark'] for r in accepted_records if r['matched_performance_valid'] and r['numerical_agreement_kind']=='property_equivalence_not_identical_raw_values'}),
+    'matched_counter_meaning':'Four-model accepted named contracts; property equivalence is not identical raw numerical values.',
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'active_work': read(local/f'active_work_{target}.json', {}),
     'active_work_path': str((local/f'active_work_{target}.json').relative_to(root)),

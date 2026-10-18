@@ -267,6 +267,9 @@ def main():
                                      if (log_root/(b+'-julia-'+alias)/'configurations'/cid/'manifest.json').is_file()]
                 config_evidence.append({'configuration_id':cid,'run_id':d['run_id'],'result':str(p.relative_to(ROOT)),
                                         'configuration_role':disp.get(cid,{}).get('role',c.get('configuration_role','primary')),
+                                        'numerical_agreement_kind':c.get('numerical_agreement_kind','declared_numeric_artifact_contract'),
+                                        'verification_contract':c.get('verification_contract'),
+                                        'raw_output_identity_claim':False if c.get('numerical_agreement_kind')=='property_equivalence_not_identical_raw_values' else None,
                                         'scoped_effort_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q),'record':read(q),'scope':'Named configuration phase only; historical top-level effort is separate.'} for q in scoped_effort_paths],
                                         'timing_region_metadata_adjudication':d.get('timing_region_metadata_adjudication'),
                                         'native_reference_repaired':bool(c.get('native_reference_repaired')),
@@ -285,7 +288,7 @@ def main():
                                         'implementation_ontology_override':config_traits or None,
                                         'shared_configuration_traits_override':shared_config_traits or None,
                                         'configuration_ontology_semantics':'Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.',
-                                        'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
+                                        'numerical_evidence_strength':c.get('numerical_evidence_strength') or ('property_score_artifacts_with_raw_structured_state_records' if c.get('numerical_agreement_kind')=='property_equivalence_not_identical_raw_values' else 'aggregate_count_and_error_sum_only' if b=='feynman-kac' else 'full_output_artifacts')})
             per_model=traits.get('implementation_traits',{}).get(model)
             record={'schema_version':2,'study':f'julia_abstractions_{population}_v2','benchmark_id':b,'implementation_model':model,
                     'status':status,'scientific_intent_record':f'../../domains/{b}.json',
