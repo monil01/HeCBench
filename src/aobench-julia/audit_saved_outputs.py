@@ -1,0 +1,12 @@
+"""CPU-only postverification full image, constant bits, guard and source audit."""
+from pathlib import Path
+import json,hashlib,struct
+P=Path(__file__).resolve().parent;R=P.parents[1];rp=R/'.porting-state/portable_julia/runs/20261018T033237442555Z_aobench/result.json';r=json.loads(rp.read_text());assert r['matched_performance_valid']and r['reference_agreement'];goal=(P/'study_expected_u8.bin').read_bytes();prefix=(P/'study_scene_f32.bin').read_bytes()+struct.pack('<5i',256,256,2,8,100);assert len(prefix)==92;rows=[];sources=[]
+for model,z in r['models'].items():
+ assert len(z['trials'])==5 and z['provenance_valid']and z['timing_valid'];assert abs(z['mean_seconds']-sum(t['time_seconds']for t in z['trials'][1:])/4)<1e-14
+ for name,digest in z['adapter_file_hashes'].items():
+  p=Path(name);p=p if p.is_absolute()else R/p;assert p.exists()and hashlib.sha256(p.read_bytes()).hexdigest()==digest
+ sources.append({'model':model,'adapter_file_hashes':z['adapter_file_hashes'],'all_exact':True,'source_hash':z['source_hash']})
+ for t in z['trials']:
+  a=t['output_artifact'];p=Path(a['saved_path']);raw=p.read_bytes();assert hashlib.sha256(raw).hexdigest()==a['sha256'];assert raw[:92]==prefix and raw[-128:]==bytes([165])*128;got=raw[92:-128];errors=[abs(a-b)for a,b in zip(got,goal)];assert len(got)==196608 and max(errors)<=1;assert all(got[i]==got[i+1]==got[i+2]for i in range(0,len(got),3));assert not any(got[:768]);rows.append({'model':model,'trial':t['trial'],'artifact':str(p.relative_to(R)),'sha256':a['sha256'],'prefix_guard_grayscale_sky_exact':True,'Float64_geometry_max_graycode_error':max(errors),'nonidentical_RGB_bytes_vs_geometry':sum(e!=0 for e in errors),'full_predeclared_contract_pass':True})
+(P/'saved_output_audit.json').write_text(json.dumps({'all20_full_contracts_pass':len(rows)==20,'result':str(rp.relative_to(R)),'oracle_strength':'IndependentFloat64geometry/sourcePRNGmathematicaloracle+exactscene/guard/grayscale/skyproperties; onegraycodebudgetpredeclared, notstatisticalconfidence/applicationquality','captures':rows},indent=2)+'\n');(P/'source_integrity_review.json').write_text(json.dumps({'all4_model_sourceproofs_exact':True,'checks':sources},indent=2)+'\n');print({m:{'CPUmax':max(z['Float64_geometry_max_graycode_error']for z in rows if z['model']==m),'different_RGB_bytes':next(z['nonidentical_RGB_bytes_vs_geometry']for z in rows if z['model']==m)}for m in r['models']})
