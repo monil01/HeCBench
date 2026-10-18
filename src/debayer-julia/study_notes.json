@@ -1,0 +1,172 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "HistoricalCUDAjlonlytouchesscratchandprintszeros, no Bayerinterpolation. Restore actualinteger MHCshared-apron32x5tile withall4patternsupport, actualRGB3bytepixel/4wrowpitch, truncatingresponses/saturation andsource-timedruntime memset+kernelrepeat. Nativeheadersunchanged.",
+    "original_source_sha256": "652f74f1d586d1fee4e942747770cc0069d5a4bf0ea09e4ecdaab5c102fd3e5e",
+    "native_source": {
+      "path": "src/debayer-cuda/main.cu",
+      "sha256": "d4089625cc1cc4ccc08cb882590fde8b6c01425f93f71a6baa5b72aa599f693a"
+    },
+    "native_evidence": [
+      {
+        "path": "src/debayer-cuda/main.cu",
+        "sha256": "d4089625cc1cc4ccc08cb882590fde8b6c01425f93f71a6baa5b72aa599f693a"
+      },
+      {
+        "path": "src/debayer-cuda/kernel.h",
+        "sha256": "7ae2a20a262c2416b7d3e615ae226e7a64fe7f0e88ff5c5124cd78cccc13a2ef"
+      },
+      {
+        "path": "src/debayer-cuda/image.h",
+        "sha256": "b41bb8fbe68deac6222b08e8e30420a22997ee3b2be7d5afae4d5471d1088b48"
+      },
+      {
+        "path": "src/debayer-sycl/util.h",
+        "sha256": "026f389a8b02f109e951160b96e3678571cfe04701d5545c55f5fd4f30c91533"
+      }
+    ],
+    "original_native_unchanged": true
+  },
+  "algorithm": "Integer5x5MHC Bayer demosaicing withsourceRGB3rowpitch4w andtimedmemset",
+  "mapping": "32x5nativeblock,9x36Int32sharedapron cooperative324taskload, onebarrier, allpaddedthreadsfiltercompute andvalidRGBstore",
+  "launch_geometry": {
+    "threads": [
+      32,
+      5
+    ],
+    "shared_apron": [
+      9,
+      36
+    ],
+    "shared_bytes": 1296,
+    "cases": 5,
+    "internal_repeats": 5,
+    "timed_authored_kernel_calls_per_trial": 25,
+    "timed_runtime_memsets_per_trial": 25
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "review_status": "source_reviewed",
+      "application_domain": "Image sensor processing / Bayer color demosaicing",
+      "scientific_operator": "Integer Malvar\u2013He\u2013Cutler style5x5linearfilters reconstructRGBfromsinglechannelBayer mosaic",
+      "numerical_method": "Reflected-boundary sharedapron convolution, integer truncation-toward-zero, UInt8saturation; fourBayerphases",
+      "community_use": "Camera/sensor image reconstruction primitive; no photographic quality/PSNR or sensor calibration established",
+      "accuracy_requirements": "ExacteveryRGBchannelandrowpadding; independent sparsefilter oracle, measuredmosaicsamplepreservation, constantimage andguards",
+      "source_evidence": [
+        {
+          "path": "src/debayer-cuda/main.cu",
+          "sha256": "d4089625cc1cc4ccc08cb882590fde8b6c01425f93f71a6baa5b72aa599f693a"
+        },
+        {
+          "path": "src/debayer-cuda/kernel.h",
+          "sha256": "7ae2a20a262c2416b7d3e615ae226e7a64fe7f0e88ff5c5124cd78cccc13a2ef"
+        },
+        {
+          "path": "src/debayer-cuda/image.h",
+          "sha256": "b41bb8fbe68deac6222b08e8e30420a22997ee3b2be7d5afae4d5471d1088b48"
+        },
+        {
+          "path": "src/debayer-sycl/util.h",
+          "sha256": "026f389a8b02f109e951160b96e3678571cfe04701d5545c55f5fd4f30c91533"
+        }
+      ],
+      "limitations": [
+        "Source defaultOUTPUT_CHANNELS3 androwpitch4w meansRGB3+wzeropadding, notRGBA",
+        "Integerquantizedsourceoperator, notproof oforiginalreal-valuedMHCpaper imagequality",
+        "Only selectedvalidshapes; sourceone-foldreflection can produceinvalidpaddedapron index forsmallwidth33, source-index witness unmeasuredGPU",
+        "Allfourkernelpatterns tested, originalCLIonlyRGGB; optional4channelbuildunmeasured"
+      ]
+    },
+    "primary_motif": "Shared-apron2Dimage reconstruction stencil withintegerquantization",
+    "storage_precision": [
+      "UInt8",
+      "Int32"
+    ],
+    "compute_precision": [
+      "Int32",
+      "UInt8"
+    ],
+    "synchronization": [
+      "Oneblockbarrier aftercooperativeapronload",
+      "Same-stream resetthenkernel dependency",
+      "Fullcontextcompletion aroundrepeatmeans"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Source32x5threadgeometry,324sharedapronloads, integerfilters, reflectedboundaries, allpatternphases andRGB3pitch4w preserved; cornerscommonexpressionhoisted exactly underboundedInt32range"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum5_source_memset_plus_demosaic_5repeat_means_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Timedpipeline includesCUDAhostruntime memoryclear allmodels, notkernelalone",
+      "Native/CUDAjl/KAstatic1296B vsJACCdynamic1296B+324wordpublicsharedtemplatepreload",
+      "Five shortfixtures notlarge8192squarethroughput",
+      "Source3channeldefault withrowpadding, optionalRGBAunmeasured",
+      "No realimagequalityorallshapevalidation"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "observation": "The source reconstructs packed3-byteRGB into rowswith4wbytepitch; treating theallocation asRGBAwould change semantics. Exactinteger sparse-convolution oracle confirms everyRGBchannel andzero rowpadding, including truncation/saturation, allfourBayerphases, partialtiles andsourceboundarypolicy. Separate sample-preservation andconstantimage witnesses supplement dualreference agreement. The repeatedoutputreset belongs inside thetimedregion because originalsource timescudaMemset+kernel. Smallshapeone-foldreflection limits are documented without pretendingallCLIinputs work or claimingimagequality/calibration.",
+  "effort_observation": "Firstsavedcandidate andwholeprogram/JITprocess for eachJulia model. Shared source/reference/oracle preparation reused beforeKA thenJACC; ordered marginal work, not independentcoldstarts.",
+  "implementation_overrides": {
+    "cuda_jl": {
+      "host_runtime_components": [
+        "CUDA.memset pointerclear oncurrentstream insideROI",
+        "CUDA fullcontextcompletion"
+      ],
+      "resource_policy": {
+        "static_shared_bytes": 1296,
+        "dynamic_shared_bytes": 0,
+        "shared_template_preload_words": 0
+      },
+      "backend_extensions": []
+    },
+    "ka": {
+      "host_runtime_components": [
+        "CUDA.memset pointerclear oncurrentstream insideROI",
+        "CUDA fullcontextcompletion"
+      ],
+      "resource_policy": {
+        "static_shared_bytes": 1296,
+        "dynamic_shared_bytes": 0,
+        "shared_template_preload_words": 0
+      },
+      "backend_extensions": []
+    },
+    "jacc": {
+      "host_runtime_components": [
+        "CUDA.memset pointerclear oncurrentstream insideROI",
+        "CUDA fullcontextcompletion"
+      ],
+      "resource_policy": {
+        "static_shared_bytes": 0,
+        "dynamic_shared_bytes": 1296,
+        "shared_template_preload_words": 324
+      },
+      "backend_extensions": []
+    }
+  }
+}
