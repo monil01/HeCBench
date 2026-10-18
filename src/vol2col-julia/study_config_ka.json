@@ -1,0 +1,113 @@
+{
+  "benchmark": "vol2col",
+  "configuration_id": "vol2col_all5kernelsizes_two_stride_dilation_policies_fullbuffers_v1",
+  "gpu": 6,
+  "timeout": 1200,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 6500,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "channels": 2,
+    "volume_shape": [
+      3,
+      5,
+      7
+    ],
+    "column_spatial_shape": [
+      3,
+      5,
+      7
+    ],
+    "kernel_sizes": [
+      1,
+      3,
+      5,
+      7,
+      9
+    ],
+    "pad": [
+      1,
+      1,
+      1
+    ],
+    "stride_dilation_policies": [
+      2,
+      1
+    ],
+    "volume_allocation": 630,
+    "columns_allocation_formula": "(2*k^3+1)*192",
+    "input_policy": "Fully initialized signed dyadic volume including unused allocation tails; columns fully zeroed",
+    "output_policy": "All physical column/volume values, including untouched tails. Backward consumes forward columns, as source pipeline.",
+    "timing": "Two separate kernelmeans percase;3repeats each; source get_blocks and512threads retained.",
+    "scope": "Preserves explicitly supplied column dimensions rather than deriving standard convolution output shape. Named small spatial extent; no standard conv-shape or generic inverse claim."
+  },
+  "atol": 0,
+  "rtol": 0,
+  "models": {
+    "cuda": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/vol2col-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/vol2col-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/vol2col-cuda/reference.h"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "verification_method": "full_physical_columns_volume_and_overlap_identity",
+      "native_check_description": "CPUbuffers fully initialized, unlike source uninitialized referencecoltail; originalkernels unchanged."
+    },
+    "cuda_jl": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/vol2col-julia/vol2col-julia-cuda.jl",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/vol2col-julia/study_reference.jl",
+        "/home/imo/HeCBench_julia/src/vol2col-julia/study_common.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "verification_method": "full_physical_columns_volume_and_overlap_identity",
+      "native_check_description": "OriginalgenuineCUDAjl2kernelbodies andCPUrefs reused; full physical arrays checked."
+    },
+    "ka": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/vol2col-julia/vol2col-julia-KA",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/vol2col-julia/vol2col-julia-KA/study_kernels.jl",
+        "/home/imo/HeCBench_julia/src/vol2col-julia/study_cpu_reference.jl",
+        "/home/imo/HeCBench_julia/src/vol2col-julia/study_common.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "verification_method": "full_physical_columns_volume_and_overlap_identity",
+      "native_check_description": "OriginalgenuineCUDAjl2kernelbodies andCPUrefs reused; full physical arrays checked."
+    }
+  },
+  "reuse_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T010054999090Z_vol2col/result.json",
+  "reuse_models": [
+    "cuda",
+    "cuda_jl"
+  ],
+  "measurement_correction": {
+    "phase": "native_host_adapter_scope_repair",
+    "reason": "Native adapter inadvertently called get_blocks/device-property query inside each timed launch; original native eval computes it outside ROI. Hoist unchanged block calculation before all cases; reuse unchanged CUDAjl capture.",
+    "prior_native_series": "20261018T005942184139Z_vol2col",
+    "prior_native_timing_valid": false,
+    "prior_native_numerically_valid": true
+  }
+}
