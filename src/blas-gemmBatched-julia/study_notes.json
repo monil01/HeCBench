@@ -1,0 +1,150 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "Historical CUDA.jl is only include(\"../mcpr-julia/main.jl\"), an unrelated Monte Carlo photon-transport program, not native batched matrix-vector GEMM. Original bytes retained. Restore actual H/S/DgemmBatched vendor APIs, matrix/vector pointer lists, padded leading dimensions and complete size sweeps with strict full-output checks. Native operator/API unchanged; guarded named harness uses matching preallocation/context completion.",
+    "original_source_sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+    "native_source": {
+      "path": "src/blas-gemmBatched-cuda/main.cu",
+      "sha256": "453a1b3e32bf86a54a15f84f3dc19dac90be1c0e203b96cb16ddeb5f46aea628"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "Unchanged native H/S/DgemmBatched operation with framework allocation and guarded pointer arrays",
+  "mapping": "Column-major padded17 stride; independent batch pointers; GEMM m=size,n=1,k=size",
+  "launch_geometry": {
+    "authored_device_kernel_definitions": 0,
+    "library_calls_per_outer_trial": 2112,
+    "measured_calls_per_point": 10,
+    "excluded_internal_warmup_calls_per_point": 1,
+    "points": 192
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "review_status": "source_reviewed",
+      "application_domain": "Batched small dense linear operators",
+      "scientific_operator": "Independent square matrix-vector products using GEMM with n=1, alpha=1, beta=0, and padded leading dimensions",
+      "numerical_method": "Vendor H/S/DgemmBatched, no authored device algorithm",
+      "community_use": "A reproducible batched linear-operator primitive for many independent small systems; it does not validate a particular physical model or trained network",
+      "accuracy_requirements": "Every active result checked by independent dot products under typed rounding bounds; all padding/guards and actual inputs/pointer lists exact",
+      "source_evidence": [
+        {
+          "path": "src/blas-gemmBatched-cuda/main.cu",
+          "sha256": "453a1b3e32bf86a54a15f84f3dc19dac90be1c0e203b96cb16ddeb5f46aea628"
+        },
+        {
+          "path": "src/blas-gemmBatched-cuda/reference.h",
+          "sha256": "555aa1567c7b2199cbc14731977f22385496a9b3651eee0250be2673326eae5c"
+        }
+      ],
+      "limitations": [
+        "Named upper17/batches3and17, not originalupper100/batch25000 CLI",
+        "Vendor accumulation precision/algorithm selection not inferred from storage/API type",
+        "Framework allocation plus NVIDIA vendor-library interoperability, not portable authored kernels"
+      ]
+    },
+    "primary_motif": "Batched dense matrix-vector library calls",
+    "storage_precision": [
+      "Float16",
+      "Float32",
+      "Float64"
+    ],
+    "compute_precision": [
+      "H/S/D cuBLAS API; internal accumulation precision unreviewed"
+    ],
+    "synchronization": [
+      "Per-call full context completion",
+      "Julia handle bound to actual task stream"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same pointer-batched H/S/D API, padded lda/ldb/ldc17, n=1, all sizes2:17, source rep0 skipped plus10 internal means"
+    },
+    "implementation_class": {
+      "julia": "vendor_library_interop",
+      "julia-ka": "vendor_library_interop",
+      "julia-jacc": "vendor_library_interop"
+    },
+    "timing_scope": "sum192_batchedGEMV_10callmeans_skip_internal0_contextcomplete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Same vendor computation in every model; abstraction names do not identify different GEMM algorithms",
+      "Host-language vendor dispatch/synchronization contributes to measured region",
+      "Framework allocations occur outside timing",
+      "Storage/API precision does not establish internal accumulation precision"
+    ]
+  },
+  "implementation_overrides": {
+    "cuda_jl": {
+      "implementation_class": "vendor_library_interop",
+      "device_kernel_definitions": 0,
+      "backend_extensions": [
+        "Explicit raw NVIDIA cuBLAS library interoperability; no authored device extension"
+      ],
+      "resource_policy": null,
+      "library_boundary": {
+        "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "runtime_version": 120002,
+        "pinned_preload_in_all_models": true,
+        "loaded_path_reported": true,
+        "stream_binding": "native legacy default / Julia task stream, both full context completion"
+      },
+      "framework_allocation": "CUDA.zeros"
+    },
+    "ka": {
+      "implementation_class": "vendor_library_interop",
+      "device_kernel_definitions": 0,
+      "backend_extensions": [
+        "Explicit raw NVIDIA cuBLAS library interoperability; no authored device extension"
+      ],
+      "resource_policy": null,
+      "library_boundary": {
+        "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "runtime_version": 120002,
+        "pinned_preload_in_all_models": true,
+        "loaded_path_reported": true,
+        "stream_binding": "native legacy default / Julia task stream, both full context completion"
+      },
+      "framework_allocation": "KernelAbstractions.allocate(CUDA.CUDABackend())"
+    },
+    "jacc": {
+      "implementation_class": "vendor_library_interop",
+      "device_kernel_definitions": 0,
+      "backend_extensions": [
+        "Explicit raw NVIDIA cuBLAS library interoperability; no authored device extension"
+      ],
+      "resource_policy": null,
+      "library_boundary": {
+        "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "runtime_version": 120002,
+        "pinned_preload_in_all_models": true,
+        "loaded_path_reported": true,
+        "stream_binding": "native legacy default / Julia task stream, both full context completion"
+      },
+      "framework_allocation": "JACC.zeros"
+    }
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 0
+    }
+  },
+  "observation": "A benchmark named GEMM actually measures square matrix-vector products (n=1), and its historical Julia entry redirects to a different scientific algorithm. Genuine restoration uses all three original precision APIs. Complete typed outputs, exact inactive rows/padding/guards and independent bounded dots agree in all four models. Identical pinned vendor computation and zero authored kernels make this a separate interoperability stratum; do not infer a framework kernel performance advantage.",
+  "effort_observation": "One whole-program candidate/check per Julia model; all pass. One separate native build-argument B2 precedes native source compilation and is fixed by standard -L/-l spelling, not by changing the native algorithm. Shared reference/oracle/library ABI work precedes KA then JACC."
+}
