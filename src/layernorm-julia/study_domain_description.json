@@ -1,0 +1,112 @@
+{
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "neural_network_layer_normalization_forward",
+    "review_status": "source_reviewed",
+    "scientific_task": "Normalize each activation row by its channel mean and population variance, then apply channel-wise learned scale and bias",
+    "mathematical_operation": "mean=sum(x)/C; variance=sum((x-mean)^2)/C or mean(x^2)-mean(x)^2; rstd=1/sqrt(variance+Float32(1e-5)); out=(x-mean)*rstd*gamma+beta. Return full output, mean and rstd.",
+    "discretization": "Six Float32 bases with (rows,channels)=(5,256),(7,259),(3,1024), bounded textured and exact constant rows each. Three native algorithms and six block widths32..1024 give108paths, scalar tailC259 and alignedFloat4C256/1024.",
+    "accuracy_requirements": "All out/mean/rstd against independent Decimal80 central-variance oracle using actual Float32 epsilon, predeclared1e-5+2e-6|gold|; full actual input echo and guards exact, constant rows and zero gamma give exact bias outputs; finite positive rstd.",
+    "input_size_regime": "Selected small row counts and channel lengths, partial warp-per-row blocks at all widths; no full trained model or arbitrary large-offset variance conditioning.",
+    "precision_sensitivity": "Float32 reductions, FMA variance/affine arithmetic and reciprocal square root. Moment-variance algorithm has a different cancellation sensitivity than two-pass algorithms; selected bounded and exact constant fixtures all pass unchanged budget. Float4 load/store alignment retained.",
+    "community_use_case": "Repository identifies llm.c/GPT-2 layernorm forward as source context. This checks a neural-network normalization primitive, not trained-model accuracy, perplexity or backward gradients.",
+    "description": "Replace historical Julia affine touch kernel/fabricated success reports with all three real native layernorm algorithms and actual output arrays. Native source remains unchanged. Julia adds a shared-workspace read-lifetime barrier in block algorithm0; native tests pass, so static hazard is not an observed failure.",
+    "provenance": "Native header and reference.h identify layernorm forward/GPT-2; repository README layernorm links https://github.com/karpathy/llm.c . Native rmsnorm-cuda reduce/utils headers and installed CUDA cooperative_groups floating butterfly implementation reviewed. Earlier root RMSNorm helper patterns are reused with explicit provenance, not counted as independent cold framework implementation.",
+    "source_evidence": [
+      {
+        "path": "src/layernorm-cuda/main.cu",
+        "sha256": "d9a7657c3b2ab2579e39bd39d46ed67a51d473a116cc376dd42d7cff8e2b474f"
+      },
+      {
+        "path": "src/layernorm-cuda/reference.h",
+        "sha256": "74f8989ac8615ba193ec09f53527404919b3e0cd3c3c3a93bc770340cabbe3ea"
+      },
+      {
+        "path": "src/rmsnorm-cuda/reduce.cuh",
+        "sha256": "72abde04c81932ad59235c0021d75247b8daba3639378d1cc1665f12b8286df7"
+      },
+      {
+        "path": "src/rmsnorm-cuda/utils.cuh",
+        "sha256": "f470b88ee8e3325a1d19da0a5ed86ca3b23935cd99648247c354ed953080b425"
+      },
+      {
+        "path": "src/layernorm-julia/original_main.jl",
+        "sha256": "2fe867ff6e4aa8d3c0c1ce5e8764ca364d28575564698fd3fb930681c3f84e54"
+      }
+    ]
+  },
+  "primary_motif": "rowwise_float_reductions_and_affine_normalization",
+  "storage_precision": [
+    "Float32_input_weight_bias_outputs_mean_rstd",
+    "aligned_NTuple4_VecElementFloat32_vector_path"
+  ],
+  "compute_precision": [
+    "Float32_FMA_shuffle_sum_rsqrt"
+  ],
+  "synchronization": [
+    "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+    "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+    "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "All three source algorithms, vector/scalar paths and block widths preserved; CUDA shuffle/streaming/rsqrt backend extensions explicit. Extra Julia barrier secures shared read lifetime, KA localmem vs JACC shared template initialization adds distinct resource work."
+  },
+  "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+  "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+  "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+  "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+  "verification_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+  "keyconfounds": [
+    "CUDA-specific shuffle/streamingPTX/rsqrt device extensions make KA/JACC explicit hybrids, not pure portable device code",
+    "ExtraJulia shared-lifetime barrier vsunchanged nativealgorithm0; staticrisk only, allnativearrays pass",
+    "KA localmem128B vsJACC sharedtemplate128B initialization/copy+entrybarrier; warpvariants explicitly0sharedbytes",
+    "Three algorithms differ in variance identity/work and cancellation; peralgorithm/widthtimings retained, aggregate is a declared sweep not onekernel",
+    "Selected bounded/constant inputs, not arbitraryhugeoffset accuracy, trained-model quality/backwardpass",
+    "Earlier RMSNorm vector/reduction patterns reused; referenceauthoredsharedhelper reusedKAthenJACC, marginal orderedworkflowcost",
+    "Native dynamic kernel switch inside timedwrapper vs cachedJuliafactory closures precreated; hostinclusiveROI not puredeviceprofiling"
+  ],
+  "boundary_rounding_policy": "C259 usesU1, C256/1024 usephysicalFloat4 with16Balignment; no vector-tailoverread. Mean/rstd allvalidrows, wholeinvalidwarps return. Fixed1e-5+2e-6relative oraclebudget; constant/zero-gamma outputsbiasexact, input/guardbytes exact. Momentvariant no clamping or silentlychangedvarianceformula.",
+  "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+  "interpretation": "For neural network users, mean/rstd caches and affine output must all agree, and constant/zero-gamma controls distinguish normalization from a plausible affine touch stub. Sourcealgorithm2 trades work for cancellation sensitivity; preserve namedinputregime and algorithm-specific results. Backend resource/synchronization and cachedhostdispatch differences confound pureabstraction causality. No unprofiled bandwidth/roofline or trainedmodelquality claim.",
+  "reference_class": "CUDAjl_restored_three_layernorm_algorithms_CUDA_intrinsic_hybrid",
+  "ka_class": "KA_index_localmem_with_CUDA_shuffle_streaming_rsqrt_hybrid",
+  "jacc_class": "JACC_index_shared_with_CUDA_shuffle_streaming_rsqrt_hybrid",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": "128 static algorithm0,0 algorithm1/2",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "ka": {
+      "shared_bytes": "128 localmem algorithm0,0 algorithm1/2",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "jacc": {
+      "shared_bytes": "128 dynamic/JACC.shared initialization algorithm0, explicit0 algorithm1/2",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    }
+  },
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+      "CUDA.rsqrt Float32",
+      "PTX ld.global.cs.f32/st.global.cs.f32",
+      "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+    ],
+    "ka": [
+      "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+      "CUDA.rsqrt Float32",
+      "PTX ld.global.cs.f32/st.global.cs.f32",
+      "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+    ],
+    "jacc": [
+      "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+      "CUDA.rsqrt Float32",
+      "PTX ld.global.cs.f32/st.global.cs.f32",
+      "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+    ]
+  }
+}
