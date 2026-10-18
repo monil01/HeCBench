@@ -1,0 +1,142 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "P1",
+    "phase": "reference_rng_fidelity_restoration",
+    "finding": "Historical CUDA.jl implements dropout using a documented deterministic hash RNG portability substitution rather than native seeded cuRAND Philox. This changes exact seeded masks/draw mapping, not an established violation of the Bernoulli operator law. Current reference restores exact Philox counter/subsequence/offset STATE1 and source VEC-specific draw assignment using own Julia integer arithmetic. Native unchanged.",
+    "original_source_sha256": "8e5c49a51ad4a2cab809c5b2c3b552db6ff29c9c5326168b7e007791751f6bcf",
+    "native_source": {
+      "path": "src/dropout-cuda/main.cu",
+      "sha256": "46ab37cbd74ce0f124815a001966ff8d2d1751e67026f04e77f85b4cba696d0c"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "Own exact Philox4x32-10 RNG initialized inside every scalar/vector dropout kernel, native Float32 uniform conversion, mask and inverse-p scaling",
+  "mapping": "Native fixed grids 512/256/128 blocks x256 threads for VEC1/2/4; scalar unroll4 and VecElement packed VEC2/4, source VEC2 unused z/w draws preserved; inactive portable lanes remain through barriers",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": [
+      512,
+      256,
+      128
+    ],
+    "vector_instances": [
+      1,
+      2,
+      4
+    ],
+    "cases": 6,
+    "probabilities": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "timed_kernel_calls_per_trial": 24,
+    "untimed_probability_replay_calls_per_trial": 18,
+    "shared_bytes": 0
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "review_status": "source_reviewed",
+      "application_domain": "Neural-network stochastic dropout operator",
+      "scientific_operator": "Seeded elementwise Bernoulli keep mask and inverse-keep scaling",
+      "numerical_method": "Philox4x32-10 counter RNG, native Float32 uniform conversion and multiplication",
+      "community_use": "Reproducible stochastic regularization primitive; no model training or generalization experiment",
+      "accuracy_requirements": "Every seeded mask and scaled Float32 output bit exact against independent integer RNG oracle and both GPU references; signed zero included",
+      "source_evidence": [
+        {
+          "path": "src/dropout-cuda/main.cu",
+          "sha256": "46ab37cbd74ce0f124815a001966ff8d2d1751e67026f04e77f85b4cba696d0c"
+        },
+        {
+          "path": "src/dropout-julia/study_math.jl",
+          "sha256": "ab235fa132d7dac46e890fe019db869d0e2385d30066f747d5868f8cb7403db8"
+        },
+        {
+          "path": "src/dropout-julia/study_fixture_oracle.py",
+          "sha256": "1fb197383fa4bc72ed89a060051ee1b50522f5325e939c32957007babb4a8d83"
+        }
+      ],
+      "limitations": [
+        "Only two 4-aligned sizes and four probabilities; arbitrary vector tails unmeasured",
+        "No training-quality/statistical-quality certification",
+        "p1..3 captures are explicit untimed deterministic replays; p4 is actual timed pipeline final state"
+      ]
+    },
+    "primary_motif": "Counter-RNG generation plus vectorized elementwise stochastic mask/scale",
+    "storage_precision": [
+      "Float32",
+      "UInt8",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Float32",
+      "UInt32",
+      "UInt64"
+    ],
+    "synchronization": [
+      "Per-block barriers",
+      "Context completion at each four-launch pipeline boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Exact active-lane work/RNG mapping; own integer Philox instead of vendor RNG device functions, inactive portable lanes participate in barriers; emitted vector loads/stores checked separately"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum6_original_four_probability_kernel_pipelines_complete",
+    "verification_contract": "full_seeded_masks_and_raw_scaled_Float32_bits_with_explicit_replay_states",
+    "keyconfounds": [
+      "Only p4 is actual timed final output, p1..3 are deterministic untimed replays",
+      "All payloads 16B aligned including native guarded input; original cudaMalloc 256B payload alignment not replicated",
+      "Own integer Philox vs native vendor curand functions may lower differently",
+      "Raw80 RNG probe executes once per process, copied into each trial record",
+      "Short/specific sizes, no training-quality or arbitrary-tail claim"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 3,
+      "compiler_checks": 3,
+      "compiler_feedback_repairs": 1,
+      "measurement_adapter_repairs": 1
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "candidate_id": 1,
+        "check_id": 1,
+        "outcome": "failed_before_device_jit",
+        "phase": "shared_measurement_frontend",
+        "failure_event_reference": "dropout_shared_Julia_harness_generator_B2_01",
+        "run_id": "20261018T050924312285Z_dropout"
+      },
+      {
+        "candidate_id": 2,
+        "check_id": 2,
+        "outcome": "failed_device_jit",
+        "phase": "reference_device_compiler",
+        "failure_event_reference": "dropout_cuda_jl_mutable_tuple_capture_B4_01",
+        "run_id": "20261018T051124020887Z_dropout"
+      }
+    ]
+  },
+  "observation": "A documented historical hash-RNG portability compromise prevents reproducibility even when dropout algebra is retained. Exact counter layout, cached offset lane and variant-specific random draw assignment are part of this scientific contract. All 6,303,840 output mask bits and scaled Float32 bits agree exactly across four versions, including negative zero. Source VEC2 intentionally discards two of each four random values. Vector PTX inspection is separate from measured timing and does not establish bandwidth or performance causality.",
+  "effort_observation": "CUDA.jl three whole-program checks: shared parse failure before JIT, authored tuple-capture InvalidIR failure, then pass; two authored device-source candidates/JIT processes. One shared Python fixture namespace failure separate. KA/JACC first candidate/process pass. Mapping inspection adds one separate compilation process and two untimed launches per Julia model, no timing trials."
+}
