@@ -9,3 +9,8 @@ Native CUDA12.0 unchanged source actual rejection formal parameter space4104>409
 No numerical-agreement claim. Untimed full argument echo and guarded one-byte store are auxiliary diagnostics; raw arrays were not retained. Full primary compiled PTX and source-bound timing records are retained locally. Raw formal payload bytes do not establish actual traffic, bandwidth or roofline position.
 
 Inclusive prospective activity windows; shared workflow overlaps phases, paper and coordination; cached tokens subset of input, not additive; source-size proxy separate, historical unknown.
+
+
+## Model-relative classification correction
+
+Model-relative descriptor correction: CUDA.jl kernels using their own public device atomics/shuffles/pointers/shared APIs are framework_device_kernel; KA/JACC calling CUDA-specific APIs remain hybrid_device_intrinsics. No foreign device ABI in these CUDA.jl bodies; preserve CUDA-specific feature tags. No executable source, acceptance, artifacts, trials or timing change; zero GPU reruns/translation attempts.
