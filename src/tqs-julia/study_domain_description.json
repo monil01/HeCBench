@@ -1,0 +1,109 @@
+{
+  "scientific_intent": {
+    "primary_family": "hardware_data_movement",
+    "review_status": "source_reviewed",
+    "scientific_task": "Persistent block-level dynamic task-queue scheduling",
+    "description": "IMPACT source TQ system dynamically assignslight/heavytasks viaglobalatomiccountertoGPUblocks. Workconsists of repeatedintegerincrements plus taskID;itdemonstrates scheduling/loadbalancing notaparticularscientificoperator. SourceREADMEcitesChen/Villa/Krishnamoorthy/Gao dynamicloadbalancingsingle/multiGPU2010; nocorrespondingexternalpaperperformanceclaim.",
+    "mathematical_operation": "Eachlogicaltaskid hasTlanes initialized0; addT iterations times forworkopcode1 (onceforlightopcode2), thenaddid. Blockthread0 atomicallyclaimstaskIDs,broadcaststhroughsharedstate,entireblockcooperatesuntilterminaltoken.",
+    "accuracy_requirements": "ExactInt32taskoutputs/counts/input/guards, boundednooverflow. Everylogicaltaskcoveredexactlyonce andfinalatomiccounterQ+B, actualpadding/input/taskrecordstates checked.",
+    "community_use_case": "IrregularGPUcomputations canreuse blockcooperativequeue scheduling andloadimbalancecontrols. Arithmeticissynthetic;noapplicationdomainorCPU/GPUconcurrencybenefit demonstrated.",
+    "provenance": [
+      {
+        "path": "src/tqs-cuda/README",
+        "sha256": "2951fa91f7216903c014b0bcd6ce253d8342f7a5e2397317c68382e8f5b9cca9",
+        "evidence": "TaskqueueTQidentity and2010dynamicloadbalancingreference"
+      },
+      {
+        "path": "src/tqs-cuda/kernel.cu",
+        "sha256": "93a183175f713b476ccb6008030d36a481888c9dd948a0a98f85180896d2b424",
+        "evidence": "Actualpersistentatomicfetch/sharedtaskandheavyloop"
+      },
+      {
+        "path": "src/tqs-cuda/host_task.cpp",
+        "sha256": "8c687791755d8a6fe8bf0a4df0bf6c4bdd4e8fa8c7ee53e6dd9c7c485b45301e",
+        "evidence": "Originalhostenqueue usesmemcpyqueue/data andwrittenincrement, sameFFIcode used"
+      }
+    ]
+  },
+  "primary_motif": "Persistentdynamicatomicworkqueue andblockcooperativeincrementtasks",
+  "storage_precision": [
+    "Int32data/taskID/taskopcode/counter/sharedscratch",
+    "TaskAoS8bytesalign4",
+    "Float64artifactencodingexact"
+  ],
+  "compute_precision": [
+    "BoundedInt32addition/oldvalueatomicincrement",
+    "Independentintegermathematicaloracle"
+  ],
+  "synchronization": [
+    "GlobaloldvalueatomicAddclaim onlyblockthread0",
+    "Blockshared3Int32broadcast barriersbeforewhile/afterwork/afterfetch",
+    "OriginalCPUenqueue/H2D/kernel/blockingD2Horder plusfourfullobserverD2H/chunk"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched_with_host_allocation_correction",
+    "reason": "Restorepersistentatomicqueue/sharedbarriers/sourceheavyadditionloop vs historicalstaticclosedformoneblock/task. Nativekernelbyteunchanged, physicalQ+Binitializedtaskrecordsmakeunconditionalterminalfetchesvalid;conditionalhostallocationrepair. ActualsourceCPUenqueuebodycompiledsameFFIallJulia."
+  },
+  "reference_class": "cuda_jl_device_kernel_with_CPU_FFI_pipeline",
+  "ka_class": "pure_ka_device_kernel_Atomix_with_CPU_FFI_pipeline",
+  "jacc_class": "pure_jacc_device_kernel_Atomix_with_CPU_FFI_pipeline",
+  "algorithm": "Eachblockleaderatomicfetchesoldcursor,unconditionallyloadsrecordinto3Int32sharedscratch,blockbarrier,whilecursor<Q runactualheavy/lightintegeradditionloop andtaskidaddition,barrier,leaderrefetch,barrier. All11chunksindependentcounterreset0, sourceCPUqueue/datamemcpy.",
+  "work_item_mapping": "BlockcooperativeT32/64/128/256lanes, B3/320/7/5persistentblocks, Q7/320/17/3logicaltasks. GlobalcursorQ+Bfinal; schedulingnondeterministicbutfulltaskoutputs/counterdeterministic. Nooneblockpertasksubstitution.",
+  "layout": "TaskAoS{id,op}2Int32/8bytesalignment4,256Balignedprefix64records;physicalQ+B records withBinitializedterminalpadding;64recordouterguards. DataQ*TInt32 andsinglecounter64wordprefix/suffixguards. SourceCPUtaskpool/datahostarrays remaincontiguous.",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 12,
+      "policy": "Native12dynamic/JuliaCUDAjlKA3Int32static/JACC12dynamicsharedfull3templatecopy+entrybarrier",
+      "terminal_padding": "8*Bbytes percase separatefromouterguards",
+      "atomic": "Sourceglobalfetchadd; Atomixmonotonicoldpair[1]portable"
+    },
+    "ka": {
+      "shared_bytes": 12,
+      "policy": "Native12dynamic/JuliaCUDAjlKA3Int32static/JACC12dynamicsharedfull3templatecopy+entrybarrier",
+      "terminal_padding": "8*Bbytes percase separatefromouterguards",
+      "atomic": "Sourceglobalfetchadd; Atomixmonotonicoldpair[1]portable"
+    },
+    "jacc": {
+      "shared_bytes": 12,
+      "policy": "Native12dynamic/JuliaCUDAjlKA3Int32static/JACC12dynamicsharedfull3templatecopy+entrybarrier",
+      "terminal_padding": "8*Bbytes percase separatefromouterguards",
+      "atomic": "Sourceglobalfetchadd; Atomixmonotonicoldpair[1]portable"
+    }
+  },
+  "launch_geometry": "T/B=(32,3),(64,320),(128,7),(256,5);3/2/3/3chunks=11launches/trial,onekernelentrypoint; sourceparameterslegalmax256.",
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAhostallocation/transfer/synchronizationandCPUoriginalenqueueFFI",
+      "NoCUDAdeviceregister/warpintrinsics portable"
+    ],
+    "ka": [
+      "CUDAhostallocation/transfer/synchronizationandCPUoriginalenqueueFFI",
+      "NoCUDAdeviceregister/warpintrinsics portable"
+    ],
+    "jacc": [
+      "CUDAhostallocation/transfer/synchronizationandCPUoriginalenqueueFFI",
+      "NoCUDAdeviceregister/warpintrinsics portable"
+    ]
+  },
+  "supported_features": [
+    "Globaloldvalueatomicadd",
+    "Uniformblocksharedcontrol/barriers",
+    "TaskAoSdeviceaccess",
+    "OriginalCPUFFIenqueue",
+    "Fullintegerheavyloop"
+  ],
+  "verification_contract": "All20full162001Float64words exact:742scalar/inputopsprefix+161259fullstates. Everychunk actualGPUinitialdatazero/fullfinaldata/taskrecords+terminalpadding/counter+allguards,fullhostdataandwrittenCPUcounter. Independentintegerexpectedvalue/alllogicaltaskcoverage/Q+Bterminalcursor; sourcekernelactualexecutionretainednotformula. Exact/tolerance0,5checkedtrialsmean2-5,perpathclocks.",
+  "keyconfounds": [
+    "ConditionalphysicalqueuepaddingBrecords fixesoriginalallocationlogicalindexrange; noobservedoldGPUfault",
+    "StaticnativePTXqueueid/oploads beforeboundsbranchnot dynamicOOBfaulttrace",
+    "FourextraD2Hobservers/chunkinsideall4ROI dominate smallwork; fullhostpipeline notkernelthroughput",
+    "ActualCPUoriginalenqueueFFI GCC13.3samebody, nativeincludesoriginalsamecompiler; JuliaCUDAtransferdriverwrappers vsnativeruntimeAPIs hostcovariate",
+    "JACC3elementsharedtemplateentrycopy/barrier vsstaticsharedCUDAjl/KA",
+    "HistoricalJuliastaticclosedformalgorithmarchived, numericallyplausiblenotfaithfulmapping",
+    "Shortnamedit0/3/9/1,pools21/640/51/9/repeat1not1000originalheavy/repetition/defaultpatternCLI",
+    "Sourceheavymathloops/instructionevidence notmeasuredexecutedworkFLOPs/counterprofiling"
+  ],
+  "boundary_rounding_policy": "Allpoolsmultiplelogicalqueues;noincompletefinalchunk/supportuninitializeddata. ExactInt32boundvalues<32768;taskop1/2includingzeroheavyiters. PhysicalterminalpaddingcoversindicesQ..Q+B-1, allsameSentinel16384non-taskopunused.",
+  "support_boundary": "Conditionalinitializedphysicalqueuepaddingonly/unchangednativebody;originalCLIallocationnotcertified,sourcepatternfileparsing/default1000iterations/repetitionsoutscope. CUDAbackendonly,noCPU/GPUoverlap/loadbalancingscalability/instructionworkrateclaim.",
+  "interpretation": "Schedulingbenchmarksrequirealgorithmicfidelitybeyondmatchingexpectedintegers. Persistentblockqueueandsharedcontrolaretangibleportablefeatures; nativeallocationhazardisindependentofframeworksupport. FullpipelinecontainsCPUenqueue/transfers/observercopies, so abstraction/compilerkernelspeedcannotbeisolatedwithoutseparateexperiment."
+}
