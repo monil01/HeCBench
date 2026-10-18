@@ -1,5 +1,8 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+All fixture and oracle reads must fail on missing files, short reads, unexpected dtype/size or parse errors. Declare native runtime assets explicitly when the verifier runs in a temporary working directory. A default-initialized input and a default-initialized oracle can falsely agree; a self-check alone is insufficient. Preserve such adapter failures and require exact actual-device input readbacks and full independent output checks before acceptance. Record missing/incorrect adapter inputs as infrastructure effort, separately from authored GPU candidates.
+
+
 Within one verifier process, an already computed full numerical comparison may be reused for an identical ordered artifact-hash pair only after rehashing both actual saved files again and matching dtype, count, shape, byte order, tolerances, input-prefix count and agreement kind. Recheck the exact input prefix for each trial. Record `comparison_computation`; never reuse a GPU execution, self-check verdict, source/input provenance check or timing sample through this CPU-computation cache. All five independently executed trial artifacts remain required.
 
 Use JSON `null` for an uncomputed numerical error metric, with a scope note; do not use zero as an unknown value. If archived rows already contain such a placeholder, preserve every row and add a hash-bound `reported_metric_definition_erratum` through `study_evidence.py`. Keep actual oracle absolute/conditioned errors and dual-reference comparison metrics separate. This descriptive correction cannot alter tolerances, sources, acceptance or timings and adds no GPU attempt.
