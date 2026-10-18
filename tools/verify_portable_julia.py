@@ -157,6 +157,46 @@ def compare(ref, got, atol, rtol):
     ok=all(e<=atol+rtol*abs(a) for a,e in zip(ref,ae))
     return {'status':'pass' if ok else 'mismatch','checked_values':len(ae),'max_abs_error':max(ae),'max_rel_error':max(re_)}
 
+def review_missing_timing_region(config,reuse_result,reuse_config,reuse_path,results):
+    """Metadata-only review, never changes trial rows, time samples or acceptance."""
+    name=config.get('reuse_timing_region_metadata')
+    if not name:return None
+    if reuse_result is None or set(config.get('reuse_models',[]))!=set(MODELS):
+        raise ValueError('Timing metadata review requires explicit all-four-model reuse')
+    if reuse_result.get('timing_region_metadata_adjudication'):
+        raise ValueError('Do not chain timing metadata adjudications')
+    if reuse_config.get('timed_regions_equivalent_verified') is not True or not reuse_config.get('input_contract',{}).get('timing'):
+        raise ValueError('Original measurement must already declare its timing contract/equivalence')
+    path=Path(name);path=path if path.is_absolute() else ROOT/path
+    raw=path.read_bytes();review=json.loads(raw)
+    if review.get('source_run_id')!=reuse_result['run_id'] or review.get('result_sha256')!=hashlib.sha256(reuse_path.read_bytes()).hexdigest() or review.get('config_sha256')!=hashlib.sha256(reuse_path.with_name('config.json').read_bytes()).hexdigest():
+        raise ValueError('Timing metadata source/config hash mismatch')
+    region=review.get('timing_region')
+    if review.get('metadata_only') is not True or not isinstance(region,str) or not region.strip() or not review.get('reason','').strip():
+        raise ValueError('Timing metadata review needs a nonempty descriptor and reason')
+    model_reviews=review.get('model_reviews',{})
+    if set(model_reviews)!=set(MODELS):raise ValueError('Timing source review must cover all four models')
+    evidence=review.get('evidence',[])
+    if not evidence:raise ValueError('Timing metadata review requires hashed source evidence')
+    for item in evidence:
+        f=Path(item['path']);f=f if f.is_absolute() else ROOT/f
+        if not f.is_file() or hashlib.sha256(f.read_bytes()).hexdigest()!=item.get('sha256'):
+            raise ValueError('Timing metadata source evidence mismatch: '+str(f))
+    for model in MODELS:
+        data=results.get(model,{})
+        if data.get('reused_from_run_id')!=reuse_result['run_id'] or len(data.get('trials',[]))!=5:
+            raise ValueError('Timing metadata review requires twenty unchanged reused trials')
+        if any(row.get('timing_region') is not None for row in data['trials']):
+            raise ValueError('Timing metadata review only fills uniformly missing descriptors')
+        mr=model_reviews[model]
+        if not mr.get('start_boundary','').strip() or not mr.get('completion_boundary','').strip() or mr.get('setup_reset_capture_outside_roi') is not True:
+            raise ValueError('Missing timing source review boundaries: '+model)
+    return {'path':str(path.relative_to(ROOT)),'sha256':hashlib.sha256(raw).hexdigest(),
+            'source_run_id':reuse_result['run_id'],'source_result_sha256':review['result_sha256'],
+            'source_config_sha256':review['config_sha256'],'effective_timing_region':region,
+            'reason':review['reason'],'trial_rows_and_samples_unchanged':True,
+            'scope':'Postmeasurement descriptive annotation from predeclared contract and reviewed unchanged sources; no new execution, numerical acceptance, time unit or measured region.'}
+
 def parse_records(text, spec, external_trial=None):
     rows=[]
     for line in text.splitlines():
@@ -384,12 +424,18 @@ def verify(config):
     for model in ('ka','jacc'):
         comparisons_ok=all(v['status'] in ('direct_artifact_pass','numeric_summary_pass') for v in comparisons[model].values())
         variant_verified[model]=reference_agreement and comparisons_ok and all(results[m]['status']=='native_check_pass' for m in ('cuda','cuda_jl',model))
+    timing_metadata_adjudication=review_missing_timing_region(config,reuse_result,reuse_config,
+        reuse_path if reuse_result is not None else None,results)
     regions={r.get('timing_region') for v in results.values() for r in v.get('trials',[])}
+    if timing_metadata_adjudication:
+        regions={timing_metadata_adjudication['effective_timing_region']}
+        events.append({'model':'shared','phase':'metadata_only_timing_region_review',
+                       'review':timing_metadata_adjudication,'new_GPU_executions':0})
     matched=bool(config.get('inputs_shared_verified')) and bool(config.get('timed_regions_equivalent_verified')) and len(regions)==1 and None not in regions and all(v.get('timing_valid') and v.get('status')=='native_check_pass' for v in results.values()) and reference_agreement and all(variant_verified.values())
     result={'run_id':run_id,'benchmark':bench,'configuration_id':config.get('configuration_id'),'tooling_sha256':TOOL_SHA256,'database_path':str(STATE/'results.db'),'database_alias':str(STATE/'verification.db'),'protocol':PROTOCOL,'excluded_trial':1,'retained_trials':[2,3,4,5],
             'input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
-            'attempt_accounting':config.get('attempt_accounting'),'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
+            'attempt_accounting':config.get('attempt_accounting'),'timing_region_metadata_adjudication':timing_metadata_adjudication,'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     db=sqlite3.connect(STATE/'results.db',timeout=60)
     db.execute('PRAGMA journal_mode=WAL')
