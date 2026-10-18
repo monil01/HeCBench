@@ -1,0 +1,19 @@
+# Organized point-cloud normals and Boolean edge flag
+
+The original native normalEstimate operator is preserved unchanged. Historical Julia wrote one marker and printed a fabricated zero checksum; its source and Makefile are archived. The new CUDA.jl/KA/JACC implementations restore the complete organized-pointcloud geometry operator with256threads/block, exact source neighbor predicates and camera orientation.
+
+## Scientific and numerical scope
+
+A valid point uses one/two-sided horizontal and vertical differences, their cross product and unit normalization. The normal is flipped when its dot product with the query point is positive, orienting it toward the camera. Source west validity requires x>1 and north validity y>1; these asymmetric border predicates are retained. Depth difference must be strictly less than200, and the exact200 step is exercised. Input zNaN gives(0,0,0,0); insufficient neighbors give(0,0,0,1). Although called curvature in the source, the finalw component is a Boolean discontinuity/missing-neighbor flag, not differential geometric curvature.
+
+Five clouds contain505points:17×13 and9×7 analytic planes on opposite camera sides,19×11 depth-step/invalid data,1×5 and7×1 missing-neighbor controls. Three distinct positive/negative NaN payloads are preserved in actual GPU input bytes. All accepted finite cross products are nondegenerate. Zero-cross normalization, x/yNaN, arbitrary sensor noise, unorganized fitting, true curvature and native random-input CLI quality are outside certification; no NaN output is accepted or compared as equal.
+
+The independent Float64 geometric oracle uses actual Float32 coordinates and exact source validity predicates; analytic plane normals, unit length and camera-facing orientation add independent checks. Fixed normal tolerances declared before GPU work are1e-6+3e-6relative; all flags, invalid/fallback zeros, input bits and guards are exact. Native rsqrtf and Julia ordinary inv(sqrt) are source-level arithmetic mapping choices; their actual compiled instruction sequences are not isolated. Full observed errors and invariants are retained, without claiming identical machine instructions or physical sensor accuracy.
+
+Each of20 artifacts contains6621 Float64 words:1526 exact input-prefix words,2020 complete normal/flag payload values,1515 actual input bit words and1560 guards. Input floats, including NaN signs/payloads, are encoded as exact UInt32 bit words represented numerically in Float64; they are not canonicalized NaN floats. Nativefloat3 is12bytes andfloat4 is16bytes; JuliaPoint3 and4VecElementFloat32 tuples retain those physical layouts. Leading64Point3/16Float4 guard elements preserve256B payload alignment, with8 trailing guard elements each. Every actual input byte remains exact after execution.
+
+## Execution and interpretation
+
+One independent point/lane uses conditional neighbor loads, ordinary Float32 geometry and no shared memory, workgroup barrier or atomic. JACC explicitly requests zero shared bytes. Each trial times five complete launch+completion regions; allocations, output guard reset, JIT warmup, readback/CPU oracle and serialization are outside. All five checked raw times remain and only trials2–5 enter the mean. Small one-block images emphasize host dispatch and are not evidence of large-cloud throughput, occupancy or roofline position.
+
+All current GPU candidates pass their first compiler/check invocation. The old marker is a historical source/referenceS1 finding, not a portable compiler failure. Shared geometry/oracle work belongs to the reference phase and is reused KA then JACC. Prospective usage windows include cached/repeated context, annotation and coordination, overlap the outer workflow and cannot be summed or treated as exclusive billed costs. Historical creation cost remains unknown. Root alone commits shared/reference work and each verified portable variant separately.

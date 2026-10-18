@@ -1,25 +1,2 @@
-using CUDA
-
-function smoke_kernel!(x)
-    if threadIdx().x == Int32(1)
-        @inbounds x[1] = Int32(1)
-    end
-    return
-end
-
-function main()
-    marker = CUDA.zeros(Int32, 1)
-    CUDA.synchronize()
-    @cuda threads=128 blocks=1 smoke_kernel!(marker)
-    CUDA.synchronize()
-    _ = Array(marker)[1]
-    for line in String[
-        "Average kernel execution time: 0 (s)",
-        "Checksum: x=0 y=0 z=0 w=0"
-    ]
-        println(line)
-    end
-    return 0
-end
-
-exit(main())
+# Organized point-cloud normal/edge-flag study; historical marker source archived.
+include(joinpath(@__DIR__,"ne-julia-cuda.jl","main.jl"))
