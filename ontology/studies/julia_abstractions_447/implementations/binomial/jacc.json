@@ -3,7 +3,7 @@
   "study": "julia_abstractions_447_v2",
   "benchmark_id": "binomial",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/binomial.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,56 +14,487 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Source2048-step segmented backward tree; 16private values +one imported neighbor per128-thread workgroup",
+    "work_item_mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "4096workgroup barriers per tree evaluation",
+      "Context completion at boundaries"
+    ],
+    "launch_geometry": {
+      "threads": 128,
+      "blocks": [
+        16,
+        129
+      ],
+      "calls_per_trial": 2000
+    },
+    "resource_policy": {
+      "static_shared_bytes": 0,
+      "dynamic_shared_bytes": 516,
+      "private_price_slots_source_derived": 17,
+      "private_storage": "StaticArrays.MVector17",
+      "template_initialization": "Public JACC.shared vector preloads129zeroFloat32 values and synchronizes; this extra work is retained"
+    },
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "8dca4d2c068d4c47436385d7bd3fbcae58a97e13261cb471db045b9d49cc0b26",
+    "reference_repair": null,
+    "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "host_oracle_precision": "Float64 lgamma/direct terminal expectation, outside timed region",
+    "input_initialization_precision": "Serialized Float32 preprocessed coefficients",
+    "input_layout": "SoA, retained historical CUDAjl mapping versus native AoS",
+    "library_boundary": null
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source2048-step segmented backward tree; 16private values +one imported neighbor per128-thread workgroup",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+    "layout": null,
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64 lgamma/direct terminal expectation, outside timed region",
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "4096workgroup barriers per tree evaluation",
+      "Context completion at boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "static_shared_bytes": 0,
+      "dynamic_shared_bytes": 516,
+      "private_price_slots_source_derived": 17,
+      "private_storage": "StaticArrays.MVector17",
+      "template_initialization": "Public JACC.shared vector preloads129zeroFloat32 values and synchronizes; this extra work is retained"
+    },
+    "launch_geometry": {
+      "threads": 128,
+      "blocks": [
+        16,
+        129
+      ],
+      "calls_per_trial": 2000
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "8dca4d2c068d4c47436385d7bd3fbcae58a97e13261cb471db045b9d49cc0b26",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "scientific_intent": {
+      "primary_family": "stochastic_statistics",
+      "review_status": "source_reviewed",
+      "application_domain": "Computational finance: European call pricing",
+      "scientific_operator": "Discounted risk-neutral expectation of positive terminal stock-strike payoff",
+      "numerical_method": "2048-step recombining Cox\u2013Ross\u2013Rubinstein-style binomial tree; no early exercise",
+      "community_use": "Compare backward-tree parallelization and Float32 discrete pricing against an independently evaluated terminal expectation",
+      "accuracy_requirements": "All 145 prices checked individually against Float64 direct binomial expectation for exact serialized Float32 coefficients; continuous Black\u2013Scholes error reported separately",
+      "source_evidence": [
+        {
+          "path": "src/binomial-cuda/kernel.cu",
+          "sha256": "4994b1b3753d1e5a16441fee9a163dc6439260eb8c66f6b6a9fc75679e8dc1e8"
+        },
+        {
+          "path": "src/binomial-cuda/reference.cu",
+          "sha256": "e5826bcaa73de553c67c077da7d68c9f3083a4d4f93f2c782d5801fdaaed059a"
+        }
+      ],
+      "limitations": [
+        "Named 16/129 option batches; original1024-option CLI not measured",
+        "Rounded coefficients and finite2048-step discretization differ from continuous Black\u2013Scholes; no calibrated financial-market accuracy claim"
+      ]
+    },
+    "primary_motif": "Cooperative backward dynamic-programming tree",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "Two workgroup barriers per tree iteration",
+      "Context completion at timing boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same thread/work partition, original native AoS versus Julia SoA and fast native __expf versus Julia exp retained"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum2_preallocated_1000kernel_launch_means_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native AoS versus Julia SoA inputs",
+      "Native __expf versus Julia exp and recurrence contraction choices",
+      "JACC shared arena template initialization adds work",
+      "Host-inclusive thousand-launch mean; not isolated replay kernel time"
+    ],
+    "benchmark": "binomial",
+    "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T034005211493Z_binomial/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/binomial-cuda/main.cu",
+      "native_source_sha256": "324c26cfdf0556fd9c88b4c11a166dee91b2ccde1bfe61551c936f48ed355668",
+      "reviewed_at": "2026-10-18T03:41:43.269104+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Source2048-step segmented backward tree; 16private values +one imported neighbor per128-thread workgroup",
+        "work_item_mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "4096workgroup barriers per tree evaluation",
+          "Context completion at boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 128,
+          "blocks": [
+            16,
+            129
+          ],
+          "calls_per_trial": 2000
+        },
+        "resource_policy": {
+          "static_shared_bytes": 516,
+          "dynamic_shared_bytes": 0,
+          "private_price_slots_source_derived": 17,
+          "private_storage": "StaticArrays.MVector17"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "7cfd7ca07f53f38b8a47e68ab26c5d71582893a457dac1f04a64c1078ef3d4d8",
+        "reference_repair": {
+          "taxonomy_code": "P1",
+          "phase": "reference_measurement_alignment",
+          "finding": "Historical CUDA.jl faithfully implements source 2048-step segmented tree with 128 threads, 16 private values per thread and 129-value shared exchange. Study preserves device body, adds exact serialized preprocessed inputs, full per-option expectation oracle, guards and five checked trials. Native AoS and historical Julia SoA layouts remain distinct; native __expf versus Julia exp is retained under predeclared Float32 tolerance. Original 1024-option/offload-inclusive CLI is unmeasured.",
+          "original_source_sha256": "3095c4351b9693678be1a2e072f18112b5bc743ffb54e327ea9603650f257862",
+          "native_source": {
+            "path": "src/binomial-cuda/kernel.cu",
+            "sha256": "4994b1b3753d1e5a16441fee9a163dc6439260eb8c66f6b6a9fc75679e8dc1e8"
+          },
+          "original_native_unchanged": true
+        },
+        "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "host_oracle_precision": "Float64 lgamma/direct terminal expectation, outside timed region",
+        "input_initialization_precision": "Serialized Float32 preprocessed coefficients",
+        "input_layout": "SoA, retained historical CUDAjl mapping versus native AoS",
+        "library_boundary": null
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Source2048-step segmented backward tree; 16private values +one imported neighbor per128-thread workgroup",
+        "work_item_mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "4096workgroup barriers per tree evaluation",
+          "Context completion at boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 128,
+          "blocks": [
+            16,
+            129
+          ],
+          "calls_per_trial": 2000
+        },
+        "resource_policy": {
+          "static_shared_bytes": 516,
+          "dynamic_shared_bytes": 0,
+          "private_price_slots_source_derived": 17,
+          "private_storage": "KA @private across workgroup barriers"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "2daec09c8ea59d12c4899ec94cfffb76c24e4dab89e7cabb4753a93f5b943054",
+        "reference_repair": null,
+        "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "host_oracle_precision": "Float64 lgamma/direct terminal expectation, outside timed region",
+        "input_initialization_precision": "Serialized Float32 preprocessed coefficients",
+        "input_layout": "SoA, retained historical CUDAjl mapping versus native AoS",
+        "library_boundary": null
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Source2048-step segmented backward tree; 16private values +one imported neighbor per128-thread workgroup",
+        "work_item_mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "4096workgroup barriers per tree evaluation",
+          "Context completion at boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 128,
+          "blocks": [
+            16,
+            129
+          ],
+          "calls_per_trial": 2000
+        },
+        "resource_policy": {
+          "static_shared_bytes": 0,
+          "dynamic_shared_bytes": 516,
+          "private_price_slots_source_derived": 17,
+          "private_storage": "StaticArrays.MVector17",
+          "template_initialization": "Public JACC.shared vector preloads129zeroFloat32 values and synchronizes; this extra work is retained"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "8dca4d2c068d4c47436385d7bd3fbcae58a97e13261cb471db045b9d49cc0b26",
+        "reference_repair": null,
+        "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "host_oracle_precision": "Float64 lgamma/direct terminal expectation, outside timed region",
+        "input_initialization_precision": "Serialized Float32 preprocessed coefficients",
+        "input_layout": "SoA, retained historical CUDAjl mapping versus native AoS",
+        "library_boundary": null
+      }
+    },
+    "native_precision_mapping": "Native __expf vs Julia exp, no forced intrinsic substitution; fixed declared tolerance"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/binomial-julia/binomial-julia-JACC/main.jl",
+    "sha256": "8dca4d2c068d4c47436385d7bd3fbcae58a97e13261cb471db045b9d49cc0b26",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        8
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+      "run_id": "20261018T034005211493Z_binomial",
+      "result": ".porting-state/portable_julia/runs/20261018T034005211493Z_binomial/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "f4c7d04368290421c22e309c387abb057abf152f1fe8b7df37c537d334d9c1bf",
+      "source_hash": "3153f68b2f1b00c7f425e3c9ed3ba70789654d0129fb9346dd351c4f76e5667d",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T034005211493Z_binomial/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000707796644,
+        0.0006941690120000001,
+        0.0006940456010000001,
+        0.000693810288,
+        0.000693665807
+      ],
+      "mean_last_four_seconds": 0.000693922677,
+      "contract": {
+        "sizes": [
+          16,
+          129
+        ],
+        "num_steps": 2048,
+        "block_threads": 128,
+        "elements_per_thread": 16,
+        "precision": "Float32input/preprocessedcoefficients/storage/compute; independentFloat64terminalexpectation",
+        "fixture": "145variedcalloptions spot/strike/maturity/volatility; exactserializedrawparametersandpreprocessedcoefficients",
+        "timing": "Sum2 preallocatedkernel1000launchmeans withcontextcompletion; preprocessing/transfersoutside",
+        "outputs": "All145prices+4exactoutputguards; inputguardscheckedexactindependently",
+        "scope": "Sourcekernelunchanged, original1024option/offloadinclusiveCLI notmeasured; original16localvalues+exchange129 retained"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_call_prices_and_independent_terminal_binomial_expectation"
+    }
+  ],
   "failure_taxonomy": {
     "events": [],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
-    "runtime_repairs": null,
-    "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 91,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/binomial-julia/binomial-julia-JACC/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "74707927c86da3381eb6851a",
+        "begin_event_id": "6309e706b453ab18fd79e951",
+        "agent": "/root/maps_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T03:40:40.892573+00:00",
+        "usage_event_timestamp": "2026-10-18T03:40:33.293Z",
+        "elapsed_usage_event_start": "2026-10-18T03:39:32.777Z",
+        "delta_usage": {
+          "input_tokens": 788274,
+          "cached_input_tokens": 786560,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1788,
+          "reasoning_output_tokens": 713,
+          "total_tokens": 790062
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 7.599573,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "809d489d3b32a866a65d30e59879312b4c9d0bf331517e8c2d51d0f3f4a66cfd",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 14.730705,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/binomial/jacc_translation.jsonl",
+        "evidence_sha256": "57958feb4bfe700ac879f3a4855510294c10944d61923e4d87e5f79c77fd7559",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_field_provenance": {
     "candidate_attempts": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
     },
     "compiler_checks": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
     },
     "compiler_feedback_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "runtime_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
     },
     "numerical_repairs": {
-      "raw_alias_values": {},
-      "status": "missing_or_noninteger"
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
     }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/binomial-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "8d7a502ef3d394a023f398b9e7b54c5013f00abd01b2653851c0f809cd0b28f1",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/binomial-julia-jacc/manifest.json",
+        "sha256": "8d7a502ef3d394a023f398b9e7b54c5013f00abd01b2653851c0f809cd0b28f1"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
-  "explicit_outcome_evidence": null
+  "source_commit": "07406b0e2dbe04cd191519bff8979b1757650a7e",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "binomial",
+    "implementation_model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T034005211493Z_binomial/result.json",
+    "configuration_id": "binomial_2048step_original_exchange128_options16_129_repeats1000_v1",
+    "named_scope_only": true,
+    "framework_unsupported": false
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/binomial.json",
+    "annotation_sha256": "08aa1bb0cb7dc77f6ac2a6cf4e482888d8feaf68d8d2541479fca5bf1d508c7d",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
 }

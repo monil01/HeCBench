@@ -346,7 +346,8 @@ def main():
             write(OUT/'implementations'/b/(model+'.json'),record)
             statuses.append({'benchmark_id':b,'model':model,'status':status,'ontology_review':record['implementation_review_status'],
                              'scientific_review':intent.get('review_status','unspecified'),
-                             'primary_family':intent.get('primary_family',intent.get('primary_domain','unclassified'))})
+                             'primary_family':intent.get('primary_family',intent.get('primary_domain','unclassified')),
+                             'numerical_agreement_kinds':sorted({c.get('numerical_agreement_kind','declared_numeric_artifact_contract') for c in config_evidence})})
     # A reference barrier copied into several target ledgers is one origin event.
     def origin_fingerprint(event):
         raw=event['raw_event']
