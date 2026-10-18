@@ -1,0 +1,70 @@
+{
+  "scientific_intent": {
+    "review_status": "source_reviewed",
+    "primary_family": "stochastic_statistics",
+    "scientific_domain": "Computational finance: dated coupon-bond valuation and implied yield",
+    "scientific_task": "Value dated coupon cashflows and solve implied yield under source financial conventions",
+    "mathematical_operator": "Accrued/clean/dirty cashflow valuation and safeguarded scalar Newton-bisection yield solve",
+    "numerical_method": "Deterministic per-bond schedule/day-count/discount and root iteration, no stochastic path simulation",
+    "numerical_risk": "Near-maturity conditioning, source non-Gregorian day-zero representation and literal30/360 policy, extreme implied yields, derivative convention",
+    "validation_target": "All four prices/yield outputs plus mutated curve, actual AoS input bits/metadata/guards, independent FP64 cashflow inversion and NPV residual",
+    "community_use_case": "Reproducible dated-cashflow/rootfinding workload and conditioning example; validate price residual and yield error separately before applying to financial models",
+    "family_scope": "Retain existing broad stochastic_statistics family for registry continuity with computational-finance workloads. This bond operator is deterministic scalar rootfinding, not stochastic simulation; use domain/method/motif for interpretation rather than treating the broad family name as the actual algorithm.",
+    "evidence": [
+      {
+        "path": "src/bonds-cuda/bondsEngine.cu",
+        "sha256": "3f29fe3355c7df20781a10b73db032d896c547529a8e708db2a46979cf81b82f",
+        "bytes": 14545
+      },
+      {
+        "path": "src/bonds-cuda/bondsKernelsGpu.cu",
+        "sha256": "10d9a69e07e2f2871d685eafbc9a6a9c0548e2dd90612a12b4148b8049f9faa1",
+        "bytes": 33020
+      },
+      {
+        "path": "src/bonds-cuda/bondsStructs.h",
+        "sha256": "5bc0002385e876ffb1718901522c5120e90f3ad5e298fdadf0547c33c05d9c3f",
+        "bytes": 2434
+      },
+      {
+        "path": "src/bonds-julia/output_audit.json",
+        "sha256": "58e5c9e1175447ac12cf5eac192361b9138773b98db8cf538f09269bc4e6d6bf",
+        "bytes": 124162
+      },
+      {
+        "path": "src/bonds-julia/cold_generation_proof.json",
+        "sha256": "38ece9b397884dbf25f21463746aed4f47e3e16109210c47b42e006aef133f38",
+        "bytes": 2587
+      }
+    ]
+  },
+  "benchmark": "bonds",
+  "review_status": "source_reviewed",
+  "primary_motif": "Independent dated cashflow and iterative scalar root solve",
+  "storage_precision": [
+    "float32 prices/rates",
+    "int32 dates/metadata"
+  ],
+  "compute_precision": [
+    "float32 pricing/transcendentals/root arithmetic",
+    "int32 source dates/indexing; some Julia int64 table intermediates"
+  ],
+  "implementation_class": {
+    "cuda_jl": "framework_device_kernel",
+    "ka": "framework_device_kernel",
+    "jacc": "framework_device_kernel"
+  },
+  "algorithm": "Deterministic per-bond schedule/day-count/discount and root iteration, no stochastic path simulation",
+  "layout": "All three framework_device_kernel, one authored entry each, no foreign CUDA device operations or vendor pricing. Shared pure numerical/date/ABI helper authored during reference preparation then reused KA/JACC. CUDAjl static launch; KA own kernel/index/backend allocation; JACC public LaunchSpec source256 threads, shmem_size0 prescribed before checks to match zero algorithmic shared memory, not default-policy claim. Immutable AoS structs and thread-private StaticArrays.MVector9 coupon records preserve source layout and cashflow order. Some Julia literal table intermediates Int64 versus source Int32: mapping covariate, no measured bottleneck claim.",
+  "launch_geometry": "256threads and ceil(N/256) blocks, four cases, one timed launch each",
+  "synchronization": "Whole-device completion at each kernel-only timing boundary",
+  "boundary_rounding_policy": "Source full one-million-bond srand123/rand fixture plus first1/17/257 source rows for tail controls; source256 threads and ceil grid, one dated-bond kernel per case. Actual source settlement=maturity.day-1 retains35708 raw day-zero fields, not normalized Gregorian dates. All source coupon schedules <=9 private coupons proven for all1M. Named positive-coupon/default semiannual source30/360 one-day-to-maturity regime; other conventions, negative yield, long dates and general financial validity unmeasured.",
+  "verification_contract": "FP32 device pricing/date fractions/transcendentals/Newton-bisection root solve; source Int32 date/indices and literal date tables, some Julia helper indexing/table arithmetic Int64. External AoS ABI verified exactly: date16/rate16/bond36/yield64/coupon52 bytes. All seven actual raw UInt32 AoS input fields losslessly widened to Float64, plus initial output poison. Post capture includes every readonly raw input field, actual FP32 mutated forward and all four actual FP32 outputs. Typed guards/metadata/inputs exact; general math budget .002+1e-4 relative fixed before GPU. Dirty/accrued/clean additionally abs<=.002, independent final-cashflow NPV residual<=.002, source FP32 dirty-accrued==clean and actual forward==yield exact. No raw floating bit-identity claim.",
+  "support_boundary": "Source full one-million-bond srand123/rand fixture plus first1/17/257 source rows for tail controls; source256 threads and ceil grid, one dated-bond kernel per case. Actual source settlement=maturity.day-1 retains35708 raw day-zero fields, not normalized Gregorian dates. All source coupon schedules <=9 private coupons proven for all1M. Named positive-coupon/default semiannual source30/360 one-day-to-maturity regime; other conventions, negative yield, long dates and general financial validity unmeasured.",
+  "keyconfounds": [
+    "Independent FP64 closed form uses actual source cashflows/dates and no CPU-priced outputs to construct oracle: t=1/360, gross=100+50*actualcouponrate, dirty=targetclean+accrued, yield=2*expm1(log(gross/dirty)/(2*t)). Full million implied yields range114023464.94..272865488.46, extreme near-maturity conditioning. Native maximum absolute yield error11949.87184/relative5.09619196e-5; Julia CUDA maximum absolute13706.17288/relative5.26142413e-5. These are yield units at1e8, not price errors. Full per-field errors and residuals in output_audit.json; engineering agreement is not market-price or uniform financial accuracy certification. Source modified-duration derivative lacks NPV factor and duplicate convergence branch is preserved; static oddities did not cause an observed failure in named fixtures.",
+    "All three framework_device_kernel, one authored entry each, no foreign CUDA device operations or vendor pricing. Shared pure numerical/date/ABI helper authored during reference preparation then reused KA/JACC. CUDAjl static launch; KA own kernel/index/backend allocation; JACC public LaunchSpec source256 threads, shmem_size0 prescribed before checks to match zero algorithmic shared memory, not default-policy claim. Immutable AoS structs and thread-private StaticArrays.MVector9 coupon records preserve source layout and cashflow order. Some Julia literal table intermediates Int64 versus source Int32: mapping covariate, no measured bottleneck claim.",
+    "Retain existing broad stochastic_statistics family for registry continuity with computational-finance workloads. This bond operator is deterministic scalar rootfinding, not stochastic simulation; use domain/method/motif for interpretation rather than treating the broad family name as the actual algorithm."
+  ],
+  "interpretation": "Preserve dates and root iteration rather than index-derived plausible prices. Matched engineering tolerance and independent residuals support named-regime translation, not general financial-model validity. No causal performance or roofline claim without counters."
+}

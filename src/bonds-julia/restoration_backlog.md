@@ -1,0 +1,5 @@
+# Open dated-bond reference restoration
+
+Native entry is bondsEngine.cu, with bondsKernelsGpu.cu dated cashflow construction (nine private coupon slots), 30/360 versus serial day counts, compounding branches, yield root search and repricing. Historical CUDA.jl ignores all actual financial inputs and computes synthetic index-based outputs, additionally changing its answer with repeat count. Preserve original sources; this is not a verified native-equivalent reference.
+
+Full restoration must preserve cashflow/date tables and rootfinder sequencing, actual solver inputs and outputs, four result fields plus mutated curve rate, and declared solver-domain/coupon-capacity scopes. Independent date/coupon/NPV/yield residual checks and exact inputs/guards are required before timing. Source-proven solver/date oddities need targeted witnesses before defect claims. No GPU checks or target candidates have run yet; no unsupported/terminal outcome. Source input date range and nine-coupon capacity require explicit audit.
