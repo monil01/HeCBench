@@ -1,0 +1,19 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <fstream>
+#include <algorithm>
+#define main original_winograd_main
+#include "../winograd-cuda/main.cu"
+#undef main
+#define CK(x) do{auto e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s:%d %s\n",__FILE__,__LINE__,cudaGetErrorString(e));exit(2);}}while(0)
+template<class T>std::vector<T>load(const char*p){std::ifstream f(p,std::ios::binary|std::ios::ate);if(!f)exit(3);size_t n=f.tellg();f.seekg(0);std::vector<T>v(n/sizeof(T));f.read((char*)v.data(),n);return v;}
+int main(){auto input=load<float>("fixture_f32.bin");auto expected=load<double>("expected_f64.bin");constexpr int OUT=MAP_SIZE-2;const size_t count=OUT*OUT;const int tile=(OUT+1)/2,gx=(tile+31)/32,gy=(tile+7)/8;std::vector<float>prefix;
+struct Case{float*a,*c,*o;std::vector<float>host,actual,reference;};std::vector<Case>cs;
+for(int z=0;z<2;z++){size_t at=z*(16+MAP_SIZE*MAP_SIZE);Case c;CK(cudaMalloc(&c.a,MAP_SIZE*MAP_SIZE*4));CK(cudaMalloc(&c.c,16*4));CK(cudaMalloc(&c.o,count*4));CK(cudaMemcpy(c.c,input.data()+at,16*4,cudaMemcpyHostToDevice));CK(cudaMemcpy(c.a,input.data()+at+16,MAP_SIZE*MAP_SIZE*4,cudaMemcpyHostToDevice));c.host.resize(count);c.actual.resize(count);c.reference.resize(count);WinogradConv2D_2x2(input.data()+at+16,c.reference.data(),input.data()+at);std::vector<float>pc(16+MAP_SIZE*MAP_SIZE);CK(cudaMemcpy(pc.data(),c.c,16*4,cudaMemcpyDeviceToHost));CK(cudaMemcpy(pc.data()+16,c.a,MAP_SIZE*MAP_SIZE*4,cudaMemcpyDeviceToHost));prefix.insert(prefix.end(),pc.begin(),pc.end());cs.push_back(c);}
+auto co=[&](int z,int percent){auto&c=cs[z];int groups=percent*gx/100;int cpu=groups*32;bool gpu=groups<gx;size_t cpu_global[2]={(size_t)cpu,(size_t)gy*8};auto start=std::chrono::steady_clock::now();if(gpu)winograd_conv2d<<<dim3(gx-groups,gy),dim3(32,8)>>>(c.a,c.c,c.o,cpu,0);if(cpu){size_t at=z*(16+MAP_SIZE*MAP_SIZE);WinogradConv2D_2x2_omp(input.data()+at+16,c.host.data(),input.data()+at,cpu_global);size_t n=gpu?(size_t)cpu*2*OUT:count;CK(cudaMemcpy(c.o,c.host.data(),n*4,cudaMemcpyHostToDevice));}CK(cudaMemcpy(c.actual.data(),c.o,count*4,cudaMemcpyDeviceToHost));return std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();};
+for(int z=0;z<2;z++)for(int p=0;p<=100;p++)co(z,p);CK(cudaDeviceSynchronize());bool all=true;
+for(int trial=1;trial<=5;trial++){std::vector<float>out=prefix;out.resize(prefix.size()+2*101*count);double times[2]={};bool ok=true,source_ok=true;double err=0,scaled=0;
+for(int z=0;z<2;z++)for(int p=0;p<=100;p++){times[z]+=co(z,p);auto&c=cs[z];source_ok &=compareResults(c.reference.data(),c.actual.data());std::copy(c.actual.begin(),c.actual.end(),out.begin()+prefix.size()+(z*101+p)*count);for(size_t k=0;k<count;k++){double e=fabs(c.actual[k]-expected[z*count+k]);double tol=1e-5+1e-5*fabs(expected[z*count+k]);ok &=std::isfinite(c.actual[k])&&e<=tol;err=std::max(err,e);scaled=std::max(scaled,e/tol);}}
+ok &=source_ok;all &=ok;const char*dir=getenv("STUDY_OUTPUT_DIR");char file[4096];snprintf(file,sizeof(file),"%s/winograd_trial%d.bin",dir?dir:".",trial);std::ofstream f(file,std::ios::binary);f.write((char*)out.data(),out.size()*4);f.close();
+printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.12g,\"component_seconds\":[%.12g,%.12g],\"correct\":%s,\"source_percent_checker_pass\":%s,\"checked_values\":%zu,\"max_abs_error\":%.12g,\"max_rel_error\":null,\"max_scaled_absolute_oracle_error\":%.12g,\"internal_repeats\":1,\"jit_excluded\":true,\"timing_region\":\"sum_two_full101CPU_GPU_split_sweeps_CPUwork_prefixH2D_fullD2H\",\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,times[0]+times[1],times[0],times[1],ok?"true":"false",source_ok?"true":"false",2*101*count,err,scaled,file,out.size());fflush(stdout);}
+puts(all?"PASS":"FAIL");return all?0:1;}
