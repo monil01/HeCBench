@@ -1,0 +1,21 @@
+# GPP: complex plasmon-pole self-energy summation
+
+The native GPU kernel and genuine historical CUDA.jl GPU kernel are retained. Historical Julia source/Makefile and all native files are archived byte-identically; the nested CUDA.jl source adds only a CLI entrypoint guard. The matched study uses new independent numerical/measurement adapters. Original native/Julia host checkers inspect only the first frequency using a one-sided raw difference; the preserved static counterexample passes errors of -1000. This does not establish a GPU failure. The new checker covers all three complex frequencies against a Decimal80 independent all-term oracle.
+
+## Scientific scope
+
+The repository identifies this NERSC miniapp as a BerkeleyGW General Plasmon Pole self-energy summation. The primary CUG2019 paper by Vergara Larrea et al. describes GPP as a BerkeleyGW electronic excited-state miniapp: https://cug.org/proceedings/cug2019_proceedings/includes/files/pap137s2-file1.pdf . This operator study does not validate a material excitation, quasiparticle energy, complete manybody model or full BerkeleyGW calculation. The unused nvband argument is not interpreted as tested physics.
+
+Four named cases use (bands,ownedG,plane-waves)=(3,2,31),(5,3,67),(7,4,129),(2,1,1), frequencies3/4/5. They cover original uniform coefficients, varied signed complex coefficients/nonidentity index map, outer grid strides, partial plane-wave warps and an exact-zero control. The final inv_igp_index==nc intentionally reads indinv[nc] in its nc+1 allocation, mapping to nc-1; this valid sentinel is preserved. Denominators stay>=7.3916; complex sum condition<=7.55. Singular/resonant regimes and original512-band or32768-plane-wave CLI sizes are unverified.
+
+## Numerical contract
+
+Every one of20 saved trial artifacts contains18809 Float64 words:8955 exact input/metadata prefix and9854 full guarded outputs/input echoes. All24 output scalars,8934 actual device input payloads and896 physical guard values pertrial are independently checked. All input and guard bits must agree exactly; all output components must be finite and satisfy the predeclared engineering budget1e-11+1e-11|oracle|. The budget is not a universal mathematical error proof. The exact-zero control must be zero. Raw output arrays are retained without canonicalization, and every target is compared with both native and CUDA.jl. Atomics can change rounding order, so this is tolerant numerical agreement, not exact output-bit equivalence. audit_saved_outputs.py rechecks saved evidence without new GPU timings.
+
+## Mapping, timing and cost
+
+All models use32-thread blocks and matched2D grids3x2,5x3,2x2,2x1. Each thread accumulates three complex totals across source grid-stride loops then performs six global Float64 atomic additions. Native complex arrays are AoS CustomComplex<double>; the historical genuine CUDA.jl and new portable versions are SoA. Native reciprocal multiplication and sequential half/Coulomb scaling differ from the historical component divisions and precombined scale; these numerical/layout differences are retained and explicit performance covariates. KA/JACC use genuine framework indexing/dispatch and Atomix atomics, no CUDA device intrinsic; JACC explicitly requests zero shared bytes. The shared arithmetic helper was authored during KA translation by adapting the historical CUDA.jl body, then reused by JACC.
+
+Five checked in-process trials each sum four single launch+synchronization intervals, with only the first timing excluded from the mean. Resets, copies, JIT warmup, readback, oracle and serialization are outside. Per-case times and all raw samples remain. These host-inclusive short-kernel measurements are not the original10-repeat CLI timing or full-application time; no unprofiled occupancy/bandwidth/roofline bottleneck claim is made.
+
+Prospective workflow/reference/KA/JACC usage windows include repeated/cached context and coordination; they overlap and cannot be summed or treated as exclusive billed/cold framework costs. Historical CUDA.jl creation cost remains unknown; current reference GPU translation count is zero. The reference phase restores no algorithm and checks one existing candidate. KA and JACC each passed their first candidate/check. Root alone commits the shared references and each portable version separately.
