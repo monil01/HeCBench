@@ -1,0 +1,10 @@
+// Actual original GPU implementation, only owned host allocation sizes are changed.
+#include "../ans-cuda/src/multians_gpu_decoder.cu"
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <cstring>
+#include "study_cases.h"
+#define CK(x) do{auto e=(x);if(e!=cudaSuccess){std::cerr<<#x<<":"<<cudaGetErrorString(e)<<std::endl;exit(1);}}while(0)
+int main(){auto c=cases[0];std::vector<uint32_t>fixture(1859984);std::ifstream f("/home/imo/HeCBench_julia/src/ans-julia/input_u32.bin",std::ios::binary);f.read((char*)fixture.data(),fixture.size()*4);std::vector<uint8_t>oracle(15728640);std::ifstream o("/home/imo/HeCBench_julia/src/ans-julia/oracle_u8.bin",std::ios::binary);o.read((char*)oracle.data(),oracle.size());std::vector<uint32_t>in(c.allocated_input_words);memcpy(in.data(),fixture.data()+c.input_offset,c.fixture_input_words*4);uint32_t*di,*dt,*sz;uint4*sync;uint8_t*out,*flags;CK(cudaMalloc(&di,in.size()*4));CK(cudaMalloc(&dt,4096));CK(cudaMalloc(&sync,c.sync_slots*16));CK(cudaMalloc(&sz,c.sync_slots*4));CK(cudaMalloc(&out,c.output_bytes));CK(cudaMalloc(&flags,c.num_blocks));CK(cudaMemcpy(di,in.data(),in.size()*4,cudaMemcpyHostToDevice));CK(cudaMemcpy(dt,fixture.data()+c.table_offset,4096,cudaMemcpyHostToDevice));CK(cudaMemset(sync,0,c.sync_slots*16));CK(cudaMemset(sz,0,c.sync_slots*4));CK(cudaMemset(out,0,c.output_bytes));CK(cudaMemset(flags,0,c.num_blocks));std::vector<uint8_t>host(c.num_blocks);cuhd::CUHDGPUDecoder::decode(di,c.compressed_words,out,c.output_bytes,dt,sync,sz,flags,host.data(),c.first_state,c.first_bit,1024,11,4,128);CK(cudaDeviceSynchronize());std::vector<uint8_t>actual(c.output_bytes);CK(cudaMemcpy(actual.data(),out,actual.size(),cudaMemcpyDeviceToHost));bool ok=memcmp(actual.data(),oracle.data()+c.oracle_offset,actual.size())==0;std::cout<<"ANS_PADDING_ONLY_FULL_ROUNDTRIP "<<ok<<" bytes "<<actual.size()<<std::endl;CK(cudaFree(di));CK(cudaFree(dt));CK(cudaFree(sync));CK(cudaFree(sz));CK(cudaFree(out));CK(cudaFree(flags));return !ok;}

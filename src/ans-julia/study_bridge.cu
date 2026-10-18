@@ -1,0 +1,41 @@
+/*****************************************************************************
+ * MULTIANS original GPU bodies under LGPL-3.0, André Weißenberger 2017-2019.
+ * Shared owned source-shaped controller/defined allocation boundary below.
+ *****************************************************************************/
+#include "../ans-cuda/src/multians_gpu_decoder.cu"
+#include <fstream>
+#include <vector>
+#include <string>
+#include <stdexcept>
+#include <chrono>
+#include <cstring>
+#include <cstdio>
+#include "study_cases.h"
+#define CK(x) do{auto e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s:%s\n",#x,cudaGetErrorString(e));exit(1);}}while(0)
+using Callback=void(*)(int,void**,int*);
+static constexpr uint32_t SENT=0x4e5a5a5a;static constexpr int G=16;
+template<class T>std::vector<T>readv(const char*name){std::ifstream f(name,std::ios::binary|std::ios::ate);if(!f||size_t(f.tellg())%sizeof(T))throw std::runtime_error(name);size_t n=size_t(f.tellg())/sizeof(T);f.seekg(0);std::vector<T>v(n);f.read((char*)v.data(),n*sizeof(T));return v;}
+static std::vector<uint32_t>get32(void*p,size_t n){std::vector<uint32_t>x(n);CK(cudaMemcpy(x.data(),p,n*4,cudaMemcpyDeviceToHost));return x;}
+static std::vector<uint8_t>get8(void*p,size_t n){std::vector<uint8_t>x(n);CK(cudaMemcpy(x.data(),p,n,cudaMemcpyDeviceToHost));return x;}
+static uint32_t*put32(const std::vector<uint32_t>&h){uint32_t*p;CK(cudaMalloc(&p,h.size()*4));CK(cudaMemcpy(p,h.data(),h.size()*4,cudaMemcpyHostToDevice));return p;}
+static uint8_t*put8(const std::vector<uint8_t>&h){uint8_t*p;CK(cudaMalloc(&p,h.size()));CK(cudaMemcpy(p,h.data(),h.size(),cudaMemcpyHostToDevice));return p;}
+static void native_launch(int op,void**p,int*a){auto in=(uint32_t*)p[0],table=(uint32_t*)p[1];auto sync=(uint4*)p[2];auto sizes=(uint32_t*)p[3];auto flags=(uint8_t*)p[4],out=(uint8_t*)p[5];unsigned n=a[0],blocks=a[1],first=a[2],bit=a[3],bytes=a[4];switch(op){case 0:phase1_decode_subseq<<<blocks,128>>>(4,n,11,in,table,sync,32,1024,first,bit);break;case 1:phase2_synchronise_blocks<<<blocks,128>>>(4,n,11,blocks,in,table,sync,flags,32,1024,first);break;case 2:phase3_copy_num_symbols_from_sync_points_to_aux<<<blocks,128>>>(n,sync,sizes);break;case 3:phase3_copy_num_symbols_from_aux_to_sync_points<<<blocks,128>>>(n,sync,sizes);break;case 4:phase4_decode_write_output<<<blocks,128>>>(4,n,11,in,out,bytes,table,sync,32,1024,first,bit);break;}}
+static void save_scratch(const std::string&name,const Case&c,void**p,int op,int iteration){auto sy=get32(p[2],c.sync_slots*4),sz=get32(p[3],c.sync_slots);auto fl=get8(p[4],c.num_blocks);FILE*f=fopen(name.c_str(),"wb");int header[7]={op,iteration,c.id,c.num_subseq,c.sync_slots,c.num_blocks,c.output_bytes};fwrite(header,4,7,f);fwrite(sy.data(),4,sy.size(),f);fwrite(sz.data(),4,sz.size(),f);fwrite(fl.data(),1,fl.size(),f);if(op==4){auto out=get8(p[5],c.output_bytes);fwrite(out.data(),1,out.size(),f);}fclose(f);}
+extern "C" void study_run(Callback cb,int trial,const char*fixture_name,const char*oracle_name,const char*outdir){if(!cb)cb=native_launch;auto fixture=readv<uint32_t>(fixture_name);auto oracle=readv<uint8_t>(oracle_name);if(fixture.size()!=1859984||oracle.size()!=15728640)throw std::runtime_error("fixturelength");std::vector<uint32_t>prefix,values,guards;std::vector<double>times;std::vector<int>iterations;bool valid=true;long verified=0;
+ for(auto c:cases){std::vector<uint32_t>hi(c.allocated_input_words+G,SENT),ht(1024+G,SENT),hs(c.sync_slots*4+G,SENT),ha(c.sync_slots+G,SENT);std::fill(hi.begin(),hi.end()-G,0);memcpy(hi.data(),fixture.data()+c.input_offset,c.fixture_input_words*4);memcpy(ht.data(),fixture.data()+c.table_offset,4096);std::fill(hs.begin(),hs.end()-G,0);std::fill(ha.begin(),ha.end()-G,0);std::vector<uint8_t>hf(c.num_blocks+G,165),ho(c.output_bytes+G,165);std::fill(hf.begin(),hf.end()-G,0);std::fill(ho.begin(),ho.end()-G,0);
+ void*p[6]={put32(hi),put32(ht),put32(hs),put32(ha),put8(hf),put8(ho)};int a[9]={c.num_subseq,c.num_blocks,c.first_state,c.first_bit,c.output_bytes,c.sync_slots,c.allocated_input_words,c.fixture_input_words,c.compressed_words};auto ai=get32(p[0],c.allocated_input_words),at=get32(p[1],1024);prefix.insert(prefix.end(),ai.begin(),ai.end());prefix.insert(prefix.end(),at.begin(),at.end());for(auto x:{c.id,c.lambda_bits,c.output_bytes,c.compressed_words,c.num_subseq,c.num_blocks,c.first_state,c.first_bit,1024,11,4,128,c.sync_slots,c.allocated_input_words,0,0})prefix.push_back(x);CK(cudaDeviceSynchronize());int step=0;
+ auto launch=[&](int op,int iteration){cb(op,p,a);CK(cudaGetLastError());if(!trial){CK(cudaDeviceSynchronize());save_scratch(std::string(outdir)+"/warm_case"+std::to_string(c.id)+"_step"+std::to_string(step++)+".bin",c,p,op,iteration);}};
+ auto begin=std::chrono::steady_clock::now();launch(0,0);bool synced;int count=0;do{launch(1,count);CK(cudaMemcpy(hf.data(),p[4],c.num_blocks,cudaMemcpyDeviceToHost));synced=true;for(int j=1;j<c.num_blocks-1;j++)if(hf[j]==0){synced=false;break;}if(++count>1000)throw std::runtime_error("sourceconvergence exceedsstudy1000checkbudget");}while(!synced);
+ launch(2,count);std::vector<uint32_t>host(c.num_subseq+1);host[0]=0;CK(cudaMemcpy(host.data()+1,p[3],c.num_subseq*4,cudaMemcpyDeviceToHost));for(int j=1;j<c.num_subseq;j++)host[j]+=host[j-1];CK(cudaMemcpy(p[3],host.data(),c.num_subseq*4,cudaMemcpyHostToDevice));launch(3,count);launch(4,count);CK(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count());iterations.push_back(count);
+ save_scratch(std::string(outdir)+"/trial"+std::to_string(trial)+"_case"+std::to_string(c.id)+"_final.bin",c,p,4,count);
+ auto decoded=get8(p[5],c.output_bytes+G);valid &=memcmp(decoded.data(),oracle.data()+c.oracle_offset,c.output_bytes)==0;size_t start=values.size();values.resize(start+c.output_bytes/4);memcpy(values.data()+start,decoded.data(),c.output_bytes);verified+=c.output_bytes;
+ for(int j=c.output_bytes;j<c.output_bytes+G;j++){guards.push_back(decoded[j]);valid &=decoded[j]==165;}
+ auto as=get32(p[2],hs.size()),aa=get32(p[3],ha.size());auto fi=get8(p[4],hf.size());for(int j=0;j<c.num_subseq;j++){valid &=as[j*4+2]==aa[j]&&as[j*4]<4&&as[j*4+1]<32&&as[j*4+3]>=1024&&as[j*4+3]<2048&&aa[j]<=c.output_bytes;if(j)valid &=aa[j]>=aa[j-1];}valid &=aa[0]==0;for(int j=1;j<c.num_blocks-1;j++)valid &=fi[j]!=0;
+ for(auto pair:{std::make_pair(p[0],&hi),std::make_pair(p[1],&ht)}){auto actual=get32(pair.first,pair.second->size());valid &=actual==*pair.second;guards.insert(guards.end(),actual.end()-G,actual.end());}
+ for(auto pair:{std::make_pair(&as,&hs),std::make_pair(&aa,&ha)})for(size_t j=pair.first->size()-G;j<pair.first->size();j++){guards.push_back((*pair.first)[j]);valid &=(*pair.first)[j]==SENT;}
+ for(int j=c.num_blocks;j<c.num_blocks+G;j++){guards.push_back(fi[j]);valid &=fi[j]==165;}for(auto ptr:p)CK(cudaFree(ptr));
+ }
+ if(trial){auto art=prefix;art.insert(art.end(),values.begin(),values.end());art.insert(art.end(),guards.begin(),guards.end());std::string path=std::string(outdir)+"/trial"+std::to_string(trial)+".bin";FILE*f=fopen(path.c_str(),"wb");fwrite(art.data(),4,art.size(),f);fclose(f);double time=0;for(auto t:times)time+=t;printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"decoded_bytes_verified\":%ld,\"max_abs_error\":0,\"max_rel_error\":0,\"timing_region\":\"sum15lambda_full5stage_tANSdecode_CPUconvergence_prefix_devicecomplete\",\"jit_excluded\":true,\"internal_repeats\":1,\"convergence_iterations\":[",trial,time,valid?"true":"false",values.size()+guards.size(),verified);for(size_t j=0;j<iterations.size();j++)printf("%s%d",j?",":"",iterations[j]);printf("],\"component_time_seconds\":[");for(size_t j=0;j<times.size();j++)printf("%s%.17g",j?",":"",times[j]);printf("],\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"uint32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",path.c_str(),art.size());fflush(stdout);if(!valid)exit(1);}else if(!valid){fprintf(stderr,"Warmup fullroundtrip/state/guardfailure\n");exit(1);}}
+#ifdef STUDY_MAIN
+int main(){auto dir=getenv("STUDY_OUTPUT_DIR");study_run(nullptr,0,"input_u32.bin","oracle_u8.bin",dir);for(int trial=1;trial<=5;trial++)study_run(nullptr,trial,"input_u32.bin","oracle_u8.bin",dir);}
+#endif
