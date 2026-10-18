@@ -1,0 +1,593 @@
+static long long localized_events=0,midpoint_segments=0; static Real max_event_theta_residual=0;
+// CPU-only SECONDARY numerical-method prototype: localized disk event + midpoint constant-coefficient transfer. Original strict failures remain unchanged; no GPU or performance claim.
+static int fixedcpu_x,fixedcpu_y; static long long fixedcpu_accepted_steps=0,fixedcpu_shrunk_steps=0,fixedcpu_transfer_steps=0,fixedcpu_transfer_rejected_steps=0; static Real fixedcpu_initial_null_max=0;
+/*
+  Copyright 2015  Hung-Yi Pu, Kiyun Yun, Ziri Younsi, Sunk-Jin Yoon
+  Odyssey  version 1.0   (released  2015)
+  This file is part of Odyssey source code. Odyssey is a public, GPU-based code 
+  for General Relativistic Radiative Transfer (GRRT), following the 
+  ray-tracing algorithm presented in 
+  Fuerst, S. V., & Wu, K. 2007, A&A, 474, 55, 
+  and the radiative transfer formulation described in 
+  Younsi, Z., Wu, K., & Fuerst, S. V. 2012, A&A, 545, A13
+
+  Odyssey is distributed freely under the GNU general public license. 
+  You can redistribute it and/or modify it under the terms of the License
+  http://www.gnu.org/licenses/gpl.txt
+  The current distribution website is:
+  https://github.com/hungyipu/Odyssey/ 
+ */
+
+
+ static void fixedcpu_geodesic(Real* Variables, Real* VariablesIn, Real *y, Real *dydx)
+{
+  Real r = y[0];
+  Real theta = y[1];
+  Real pr = y[4];
+  Real ptheta = y[5];
+
+  Real r2  = r * r;
+  Real twor = 2.0 * r;
+
+  Real sintheta = sin(theta);
+  Real costheta = cos(theta);
+  Real cos2     = costheta * costheta;
+  Real sin2     = sintheta * sintheta;
+  Real sigma  = r2 + a2 * cos2;
+  Real delta  = r2 - twor + a2;
+  Real sd    = sigma * delta;
+  Real siginv  = 1.0 / sigma;
+  Real bot    = 1.0 / sd;
+
+
+  //avoid problems near the axis
+  if (sintheta < 1e-8)
+  {
+    sintheta = 1e-8;
+    sin2 = 1e-16;
+  }
+
+  dydx[0] = -pr * delta * siginv;  
+  dydx[1] = -ptheta * siginv;
+  dydx[2] = -(twor * A + (sigma - twor) * L / sin2) * bot;
+  dydx[3] = -(1.0 + (twor * (r2 + a2) - twor * A * L) * bot);
+  dydx[4] = -(((r - 1.0) * (-kappa) + twor * (r2 + a2) - 2.0 * A * L) * bot - 2.0 * pr * pr * (r - 1.0) * siginv);
+  dydx[5] = -sintheta * costheta*(L * L / (sin2 * sin2) - a2) * siginv;
+}
+
+ static void fixedcpu_rkstep(Real* Variables, Real* VariablesIn,Real *y,
+                              Real *dydx, Real h, Real *yout, Real *yerr)
+{
+  int i;
+  Real ak[N];
+  Real ytemp1[N], ytemp2[N], ytemp3[N], ytemp4[N], ytemp5[N];
+  Real hdydx;
+  Real yi, yt;
+
+  for (i = 0; i < N; i++)
+  {
+    hdydx     = h * dydx[i];
+    yi        = y[i];
+    ytemp1[i] = yi + 0.2 * hdydx;
+    ytemp2[i] = yi + (3.0/40.0) * hdydx;
+    ytemp3[i] = yi + 0.3 * hdydx;
+    ytemp4[i] = yi -(11.0/54.0) * hdydx;
+    ytemp5[i] = yi + (1631.0/55296.0) * hdydx;
+    yout[i]   = yi + (37.0/378.0) * hdydx;
+    yerr[i]   = ((37.0/378.0)-(2825.0/27648.0)) * hdydx;
+  }
+
+  fixedcpu_geodesic(Variables, VariablesIn, ytemp1, ak);
+
+  for (i = 0; i < N; i++)
+  {
+    yt         = h * ak[i];
+    ytemp2[i] += (9.0/40.0) * yt;
+    ytemp3[i] -= 0.9 * yt;
+    ytemp4[i] += 2.5 * yt;
+    ytemp5[i] += (175.0/512.0) * yt;
+  }
+
+  fixedcpu_geodesic(Variables, VariablesIn, ytemp2, ak);
+
+  for (i = 0; i < N; i++)
+  {
+    yt         = h * ak[i];
+    ytemp3[i] += 1.2 * yt;
+    ytemp4[i] -= (70.0/27.0) * yt;
+    ytemp5[i] += (575.0/13824.0) * yt;
+    yout[i]   += (250.0/621.0) * yt;
+    yerr[i]   += ((250.0/621.0)-(18575.0/48384.0)) * yt;
+  }
+
+  fixedcpu_geodesic(Variables, VariablesIn, ytemp3, ak);
+
+  for (i = 0; i < N; i++)
+  {
+    yt         = h * ak[i];
+    ytemp4[i] += (35.0/27.0) * yt;
+    ytemp5[i] += (44275.0/110592.0) * yt;
+    yout[i]   += (125.0/594.0) * yt;
+    yerr[i]   += ((125.0/594.0)-(13525.0/55296.0)) * yt;
+  }
+
+  fixedcpu_geodesic(Variables, VariablesIn, ytemp4, ak);
+
+  for (i = 0; i < N; i++)
+  {
+    yt         = h * ak[i];
+    ytemp5[i] += (253.0/4096.0) * yt;
+    yerr[i]   -= (277.0/14336.0) * yt;
+  }
+
+  fixedcpu_geodesic(Variables, VariablesIn, ytemp5, ak);
+
+  for (i = 0; i < N; i++)
+  {
+    yt       = h * ak[i];
+    yout[i] += (512.0/1771.0) * yt;
+    yerr[i] += ((512.0/1771.0)-0.25) * yt;
+  }
+}
+
+ static Real fixedcpu_rk5(Real* Variables, Real* VariablesIn, Real *y, Real *dydx, 
+                             Real htry, Real escal, Real *yscal, Real *hdid)
+{
+  int i;
+  Real hnext;
+  Real errmax, h = htry, htemp;
+  Real yerr[N], ytemp[N];
+
+  while (1)
+  {
+    // find adaptive step size
+    fixedcpu_rkstep(Variables, VariablesIn, y, dydx, h, ytemp, yerr);
+
+    errmax = 0.0;
+    for (i = 0; i < N; i++)
+    {
+      Real temp = fabs(yerr[i]/yscal[i]);
+      if (temp > errmax) errmax = temp;
+    }
+
+    errmax *= escal;
+    if (errmax <= 1.0) break;
+
+    htemp = 0.9 * h / sqrt(sqrt(errmax));
+
+    h *= 0.1;
+
+    if (h >= 0.0)
+    {
+      if (htemp > h) h = htemp;
+    }
+    else
+    {
+      if (htemp < h) h = htemp;
+    }
+  }
+
+  if (errmax > 1.89e-4)
+  {
+    hnext = 0.9 * h * pow(errmax, -0.2);
+  }
+  else
+  {
+    hnext = 5.0 * h;
+  }
+
+  *hdid = h; fixedcpu_accepted_steps++; if(h != htry) fixedcpu_shrunk_steps++;
+
+  memcpy(y, ytemp, N * sizeof(Real));
+
+  return hnext;
+}
+
+ static void fixedcpu_initial(Real* Variables, Real* VariablesIn, Real *y0, Real *ydot0)
+{
+  Real alpha = grid_x;
+  Real beta  = grid_y;
+
+  //see Eq[18-19], with phi_obs=0, x= alpha, y=beta, z=0
+  Real x     = sqrt(r0*r0+a2)*sin(theta0)-beta*cos(theta0);
+  Real y     = alpha;
+  Real z     = r0*cos(theta0)+beta*sin(theta0);
+  Real w     = x*x+y*y+z*z-a2;
+
+  //see Eq[20-22]
+  y0[0] = sqrt((w+sqrt(w*w+(2.*A*z)*(2.*A*z)))/2.);   
+  y0[1] = acos(z/y0[0]);                              
+  y0[2] = atan2(y,x);                                
+  y0[3] = 0;
+  Real r = y0[0];
+  Real theta = y0[1];
+  Real phi=y0[2];
+
+  Real sigma = r*r+(A*cos(theta))*(A*cos(theta));
+  Real u     = sqrt(a2+r*r);
+  Real v     = -sin(theta0)*cos(phi);
+  Real zdot  = -1.;
+
+  //see Eq[24-26]
+  Real rdot0 = zdot*(-u*u*cos(theta0)*cos(theta)+r*u*v*sin(theta))/sigma;         
+  Real thetadot0 = zdot*(cos(theta0)*r*sin(theta)+u*v*cos(theta))/sigma;          
+  Real phidot0 = zdot*sin(theta0)*sin(phi)/(u*sin(theta));                         
+
+  ydot0[0] = rdot0;
+  ydot0[1] = thetadot0;
+  ydot0[2] = phidot0;
+
+  Real sintheta=sin(theta);
+  Real sin2 = sintheta*sintheta;
+
+  Real r2 = r * r;
+  Real delta = r2 - 2.0 * r + a2;
+  Real s1 = sigma - 2.0 * r;
+
+  y0[4] = rdot0*sigma/delta;
+  y0[5] = thetadot0*sigma;
+
+  // Eq.7
+  Real energy2 = s1*(rdot0*rdot0/delta+thetadot0*thetadot0)
+    + delta*sin2*phidot0*phidot0;
+
+  Real energy = sqrt(energy2);
+
+  // rescaled by energy
+  y0[4] = y0[4]/energy;
+  y0[5] = y0[5]/energy;
+
+  // Eq.8 
+  L = ((sigma*delta*phidot0-2.0*A*r*energy)*sin2/s1)/energy;
+
+  // Eq below Eq.15
+  kappa = y0[5]*y0[5]+a2*sin2+L*L/sin2; if(A==0){Real H=-1/(1-2/r)+(1-2/r)*y0[4]*y0[4]+y0[5]*y0[5]/r2+L*L/(r2*sin2);fixedcpu_initial_null_max=fmax(fixedcpu_initial_null_max,fabs(H));}
+}
+
+ static float fixedcpu_ISCO(Real* VariablesIn)
+{
+  Real z1       = 1 + pow(1 - A * A, 1 / 3.0) * pow(1 + A, 1 / 3.0) + pow(1 - A, 1 / 3.0);
+  Real z2       = sqrt(3 * A * A + z1 * z1);
+  return 3. + z2 - sqrt((3 - z1) * (3 + z1 + 2 * z2));
+}
+
+//
+// functions for radiative transfer                                                  
+//
+
+#define Te_min    0.1
+#define Te_max    100.
+#define Te_grids  50.
+
+static   Real fixedcpu_K2_tab[] = {
+  -10.747001, //Te=0.1
+  -9.362569,
+  -8.141373,
+  -7.061568,
+  -6.104060,
+  -5.252153,
+  -4.491244,
+  -3.808555,
+  -3.192909,
+  -2.634534,
+  -2.124893,
+  -1.656543,
+  -1.223007,
+  -0.818668,
+  -0.438676,
+  -0.078863,
+  +0.264332,
+  +0.593930,
+  +0.912476,
+  +1.222098,
+  +1.524560,
+  +1.821311,
+  +2.113537,
+  +2.402193,
+  +2.688050,
+  +2.971721,
+  +3.253692,
+  +3.534347,
+  +3.813984,
+  +4.092839,
+  +4.371092,
+  +4.648884,
+  +4.926323,
+  +5.203493,
+  +5.480457,
+  +5.757264,
+  +6.033952,
+  +6.310550,
+  +6.587078,
+  +6.863554,
+  +7.139990,
+  +7.416395,
+  +7.692778,
+  +7.969143,
+  +8.245495,
+  +8.521837,
+  +8.798171,
+  +9.074500,
+  +9.350824,
+  +9.627144  //Te=87.09
+};
+
+ static Real fixedcpu_K2_find(Real Te)
+{
+  Real d = Te_grids*(log(Te / Te_min)/ log(Te_max / Te_min));
+  int    i = floor(d);
+
+  return (1 - (Real)(d-i)) * fixedcpu_K2_tab[i] + (Real)(d-i) * fixedcpu_K2_tab[i+1];
+}
+
+ static Real fixedcpu_K2(Real Te)
+{
+  Real tab_K2;
+  //avoid the boundary effect when T~T_max
+  if (Te>85.){ 
+    tab_K2=2.*Te*Te;
+    return tab_K2;
+  }
+
+  if (Te<Te_min){ 
+    //set a dummy value
+    return exp(-11.);
+  }
+
+  tab_K2= fixedcpu_K2_find(Te);
+  return exp(tab_K2);
+}
+
+ static Real fixedcpu_Jansky_Correction(Real* VariablesIn,Real ima_width)
+{
+  Real distance=C_sgrA_d*C_pc;
+  Real theta=atan(ima_width*C_sgrA_mbh*C_rgeo/distance);
+  Real pix_str=theta/(SIZE/2.)*theta/(SIZE/2.);  //radian^2 (steradians) per pixel
+  return pix_str/C_Jansky;
+}
+
+ static Real fixedcpu_Luminosity_Correction(Real* VariablesIn,Real ima_width)
+{
+  Real distance=C_sgrA_d*C_pc;
+  Real theta=atan(ima_width*C_sgrA_mbh*C_rgeo/distance);
+  Real pix_str=theta/(SIZE/2.)*theta/(SIZE/2.);  //radian^2 (steradians) per pixel
+  return pix_str*distance*distance*4.*PI*freq_obs;
+}
+
+ Real fixedcpu_task1fun_GetZ(Real* Variables, Real* VariablesIn, Real *y)
+{
+  Real r1 = y[0];
+  Real E_local = -(r1 * r1 + A * sqrt(r1)) / (r1 * sqrt(r1 * r1 - 3. * r1 + 2. * A * sqrt(r1))) + 
+                  L / sqrt(r1) / sqrt(r1 * r1 - 3. * r1  +2. * A * sqrt(r1));
+  Real E_inf = -1.0;      
+  return E_local / E_inf; 
+}
+
+ void fixedcpu_task1(Real*__restrict__ ResultsPixel,
+                      Real*__restrict__ VariablesIn,
+                      int GridIdxX, int GridIdxY)
+{
+  // to check whether the photon is inside image plane
+  if(fixedcpu_x >= SIZE || fixedcpu_y >= SIZE) return;  
+
+  Real Variables[VarNUM];
+
+  r0       = 1000.0;                 
+  theta0   = (PI/180.0) * INCLINATION;     
+  a2       = A * A;                
+  Rhor     = 1.0 + sqrt(1.0 - a2) + 1e-5;      
+  Rmstable = fixedcpu_ISCO(VariablesIn);                
+
+  Real htry = 0.5, escal = GR_ESCAL, hdid = 0.0, hnext = 0.0;
+  Real y[N], dydx[N], yscal[N], ylaststep[N];
+  Real Rdisk   = 50.;
+  Real ima_width = 55.;
+  Real s1  = ima_width;                      
+  Real s2  = 2.*ima_width/((int)SIZE+1.);   
+
+  grid_x = -s1 + s2*(fixedcpu_x+1.);
+  grid_y = -s1 + s2*(fixedcpu_y+1.);
+
+  fixedcpu_initial(Variables, VariablesIn, y, dydx);
+
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+0] = grid_x;
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+1] = grid_y;
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+2] = 0;
+
+  while (1)
+  {
+    for(int i = 0; i < N; i++) ylaststep[i] = y[i];
+
+    fixedcpu_geodesic(Variables, VariablesIn, y, dydx);
+
+    for (int i = 0; i < N; i++) yscal[i] = fabs(y[i]) + fabs(dydx[i] * htry) + 1.0e-3;
+
+    //fifth-order Runge-Kutta method
+    hnext = fixedcpu_rk5(Variables, VariablesIn, y, dydx, htry, escal, yscal, &hdid);
+
+    // hit the disk, compute redshift
+    if((ylaststep[1]-PI/2.)*(y[1]-PI/2.)<0.) {
+      Real lo=0.,hi=hdid,event[N],err[N];
+      for(int iteration=0;iteration<48;iteration++) {
+        Real middle=(lo+hi)*0.5;
+        fixedcpu_rkstep(Variables,VariablesIn,ylaststep,dydx,middle,event,err);
+        if((event[1]-PI/2.)*(ylaststep[1]-PI/2.)>0.)lo=middle;else hi=middle;
+      }
+      fixedcpu_rkstep(Variables,VariablesIn,ylaststep,dydx,(lo+hi)*0.5,event,err);
+      if(event[0]<Rdisk && event[0]>Rmstable) {
+        localized_events++;
+        max_event_theta_residual=std::max(max_event_theta_residual,std::abs(event[1]-PI/2.));
+        ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+2]=1./fixedcpu_task1fun_GetZ(Variables,VariablesIn,event);
+        break;
+      }
+    }
+
+    // Inside the event horizon radius or escape to infinity
+    if ((y[0] > r0) && (dydx[0]>0)) break;
+
+    if (y[0] < Rhor) break;
+
+    htry = hnext;
+  }
+}
+
+ Real fixedcpu_task2fun_GetZ(Real* Variables, Real* VariablesIn, Real *y)
+{
+  Real ut,uphi,ur,E_local;
+  Real E_inf= -1.0;   
+  Real r=y[0];
+  Real theta=y[1];
+  Real pr=y[4];
+
+  Real r2 = r*r;
+  Real twor = 2.0*r;
+  Real sintheta, costheta;
+  sintheta=sin(theta);
+  costheta=cos(theta);
+  Real cos2 = costheta*costheta;
+  Real sin2 = sintheta*sintheta;
+
+  Real sigma = r2+a2*cos2;
+  Real delta = r2-twor+a2;
+  Real ssig=(r2+a2)*(r2+a2)-a2*delta*sin2; 
+
+  //======define (covariant) metric component    
+  Real gtt=-(1.-2.*r/sigma);
+  Real gtph=-2.*A*r*sin2/sigma;
+  Real grr=sigma/delta;
+  Real gphph=ssig*sin2/sigma;    
+
+
+  //==========Keplerian flow: outside fixedcpu_ISCO
+  Real ut_k  =(r*r+A*sqrt(r))/(r*sqrt(r*r-3.*r+2.*A*sqrt(r)));
+  Real ur_k  =0.;
+  Real uphi_k  =1./(sqrt(r)*sqrt(r*r-3.*r+2.*A*sqrt(r)));
+
+  //==========Keplerian flow: inside fixedcpu_ISCO    
+  if( r<Rmstable)
+  {
+
+    Real delta = r*r-2.*r+a2;
+    Real lambda=(Rmstable*Rmstable-2.*A*sqrt(Rmstable)+a2)/(sqrt(Rmstable*Rmstable*Rmstable)-2.*sqrt(Rmstable)+A);
+    Real gamma=sqrt(1-2./3./Rmstable);
+    Real h=(2.*r-A*lambda)/delta;
+
+    ut_k=gamma*(1.+2/r*(1.+h));
+    ur_k=-sqrt(2./3./Rmstable)*sqrt(pow((Rmstable/r-1.),3.));
+    uphi_k=gamma/r/r*(lambda+A*h);
+  }  
+
+  //normalize the four-velocity
+  ut    = ut_k;
+  uphi  = uphi_k;
+  ur    = ur_k;  
+  Real omega = uphi/ut;
+  Real k0    = -(gtt + omega*omega*gphph + 2.*omega*gtph);
+  ut = sqrt(((1. + grr*ur*ur) / k0));
+  uphi = omega*ut;  
+
+  // compute redshift
+  E_local=-ut+L*uphi+pr*ur;
+  return E_local/E_inf; 
+}
+
+ void fixedcpu_task2(Real*__restrict__ ResultsPixel,
+                      Real*__restrict__ VariablesIn,
+                      int GridIdxX, int GridIdxY)
+{
+  if(fixedcpu_x >= SIZE || fixedcpu_y >= SIZE) return;  
+
+  Real Variables[VarNUM];
+  r0       = 1000.0;                 
+  theta0   = (PI/180.0) * INCLINATION;     
+  a2       = A * A;                
+  Rhor     = 1.0 + sqrt(1.0 - a2) + 1e-5;   
+  Rmstable = fixedcpu_ISCO(VariablesIn);  
+
+  Real htry = 0.5, escal = GR_ESCAL, hdid = 0.0, hnext = 0.0;
+  Real y[N], dydx[N], yscal[N], oldy[N], midpoint[N], midpoint_error[N];
+
+  Real Rdisk   = 500.;
+  Real ima_width = 10.;
+  Real s1  = ima_width;                      
+  Real s2  = 2.*ima_width/((int)SIZE+1.);   
+  Real Jy_corr=fixedcpu_Jansky_Correction(VariablesIn,ima_width);
+  Real L_corr=fixedcpu_Luminosity_Correction(VariablesIn,ima_width);
+
+  grid_x = -s1 + s2*(fixedcpu_x+1.);
+  grid_y = -s1 + s2*(fixedcpu_y+1.);
+
+  fixedcpu_initial(Variables, VariablesIn, y, dydx);
+
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+0] = grid_x;
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+1] = grid_y;
+  ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+2] = 0;
+
+  Real ds=0.;  
+  Real dtau=0.;
+  Real dI=0.;
+
+  while (1)
+  {
+    memcpy(oldy,y,N*sizeof(Real));
+    fixedcpu_geodesic(Variables, VariablesIn, y, dydx);
+
+    for (int i = 0; i < N; i++)
+      yscal[i] = fabs(y[i]) + fabs(dydx[i] * htry) + 1.0e-3;
+
+    hnext = fixedcpu_rk5(Variables, VariablesIn, y, dydx, htry, escal, yscal, &hdid);
+
+    if ((y[0] > r0) && (dydx[0]>0)){
+      ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+2] = dI*freq_obs*freq_obs*freq_obs*L_corr; 
+      break;
+    }
+
+    if (y[0] < Rhor){
+      ResultsPixel[3*(IMAGE_SIZE*fixedcpu_y+fixedcpu_x)+2] = dI*freq_obs*freq_obs*freq_obs*L_corr; 
+      break;
+    }
+
+    fixedcpu_rkstep(Variables,VariablesIn,oldy,dydx,hdid*0.5,midpoint,midpoint_error);
+    Real r=midpoint[0];
+    Real theta=midpoint[1];
+
+    if(r<Rdisk){
+
+      Real zzz        = fixedcpu_task2fun_GetZ(Variables, VariablesIn, midpoint); //zzz=E_em/E_obs
+      Real freq_local = freq_obs*zzz;  
+
+      // thermal synchrotron
+      Real nth0=3e7;
+      Real zc=r*cos(theta);
+      Real rc=r*sin(theta);
+
+      Real nth=nth0*exp(-zc*zc/2./rc/rc)*pow(r,-1.1);
+      Real Te=1.7e11*pow(r,-0.84); 
+      Real b=sqrt(8.*PI*0.1*nth*C_mp*C_c*C_c/6./r);
+
+      Real vb=C_e*b/2./PI/C_me/C_c;
+      Real theta_E= C_kB*Te/C_me/C_c/C_c;
+      Real v=freq_local;
+      Real x=2.*v/3./vb/theta_E/theta_E;
+
+      Real K_value=fixedcpu_K2(theta_E);
+
+      Real comp1=4.*PI*nth*C_e*C_e*v/sqrt(3.)/K_value/C_c;
+      Real comp2=4.0505/pow(x,(1./6.))*(1.+0.4/pow(x,0.25)+0.5316/sqrt(x))*exp(-1.8899*pow(x,1./3.));
+      Real j_nu=comp1*comp2;
+      Real B_nu=2.0*v*v*v*C_h/C_c/C_c/expm1(C_h*v/C_kB/Te);
+
+      // integrate intensity along ray
+      ds    =  hdid; fixedcpu_transfer_steps++; if(htry != hdid) fixedcpu_transfer_rejected_steps++;
+
+      Real absorption=C_sgrA_mbh*C_rgeo*j_nu/B_nu*zzz;
+      Real emission=C_sgrA_mbh*C_rgeo*j_nu/freq_local/freq_local/freq_local*zzz;
+      Real depth=ds*absorption;
+      Real weight=depth==0. ? ds : ds*(-expm1(-depth))/depth;
+      dI += emission*exp(-dtau)*weight;
+      dtau += depth;
+      midpoint_segments++;
+    }
+    htry = hnext;
+  }
+}
