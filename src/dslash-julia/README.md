@@ -1,0 +1,19 @@
+# dslash: source-faithful complex three-color hopping
+
+The native source describes improved KS fermion Dslash with MILC complex3 structures. The historical Julia source is a genuine scalar GPU finite-difference stencil with eight coefficients; it omits complex3x3 link matrices, three-color vectors and checkerboard indexing. It is preserved in original_main.jl with its original Makefile. New nested CUDA.jl/KA/JACC kernels restore the actual native operator. Historical translation attempts/cost remain unknown; each current reference/target candidate compiled and verified on its first check. The S1 finding is a source-contract diagnosis, not an invented historical GPU compiler/numerical failure.
+
+## Operator and numerical scope
+
+Three named Float32 periodic4D cases use L4,L6,L4, with componentwise nontrivial bounded dyadic complex inputs and an identity-link/constant-vector null control. Native links are not constrained SU3-unitary by its own random initializer; this study makes no physical gaugeensemble, complete staggeredfermion solver, continuum or observable validation claim.
+
+Every even site receives four one-hop and four three-hop forward complex3x3 matvecs, minus backward conjugate-transposed link products at corresponding neighbors. Native checkerboard coordinate indexing and all map values are independently checked. Original make_back/dslash kernel bodies are unchanged. The original native dslash_fn_field CPUchecker is not used as the sole oracle; independent Python complex algebra/coordinate enumeration checks all colors and both components. Backward adjoints are checked in full. Source ordered group sums are retained; implementation local accumulation/compiler behavior is unprofiled.
+
+Each saved trial contains872062 Float64 values:300134 exact actual-device input/dimension prefix and571928 full outputs/backward matrices/inputecho values, including600 physical guards and135600 exact unwritten odd-site tail values. Actual GPU arithmetic/storage are Float32 complex components and UInt64 indices, not Float64 GPU arithmetic. Output widening is lossless. Acceptance atol2e-5+rtol2e-6 was declared before measurement; selected dyadic data additionally produce exact bitwise agreement across all20 captures and the independent complexFloat64 oracle. That secondary exact result is restricted to these selected values. Constant vectors with identity forward/backward links produce exactly zero as required.
+
+## Timing, mapping and effort
+
+Five checked trials each sum three host-inclusive100-launch synchronized Dslash batches divided100; only trial1 timing is excluded. Backward link setup is performed/completion-synchronized outside this ROI, as native timing does, while fully numerically checked. Allocation, initialization, copies, map generation, oracle and artifact serialization are outside. This is not full nativeCLI L32 performance. Each even site maps to one lane; make_back retains1 thread/block while Dslash uses256 threads and ceil grids with guards. No workgroup synchronization/shared allocation is needed. JACC explicitly requests0 shared bytes, cached LaunchSpec lookup included in host timing.
+
+The shared dslash_math.jl helper was authored in the CUDA.jl reference-restoration phase, then reused by KA and JACC; source proxy is counted once. Prospective phase windows include repeated/cached context and coordination, overlap with outer workflow, and must not be summed or interpreted as intrinsic cold framework costs. Native uses scoped nvcc-O3 default arithmetic rather than adopting the original Makefile fastmath flag; selected bodies have no transcendental operations, and actual outputs match exactly. No profiling supports DRAM, occupancy or roofline attribution.
+
+Run audit_saved_outputs.py on the final bundle for CPU-only evidence checks. Sources/configs/dependency hashes are immutable; root alone commits.
