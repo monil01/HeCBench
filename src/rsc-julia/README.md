@@ -1,0 +1,29 @@
+# RSC: hybrid optical-flow RANSAC, property equivalence
+
+This study retains the concurrent source algorithm. It verifies the complete accepted candidate set and minimum-outlier membership, not identical raw numerical outputs. All raw append sequences and actual best IDs remain in durable sidecars. Canonical sorting is outside timing and does not serialize the GPU algorithm.
+
+## Scientific contract
+
+The source README defines each flow as tail coordinates `(x,y)` and head coordinates `(vx,vy)`, not a velocity vector. The fitter models displacement as `(D*(x-cx)-R*(y-cy), D*(y-cy)+R*(x-cx))`. Its two-flow fitting polynomial excludes degenerate models with center sentinel -2011. Evaluation separately truncates each Float32 contribution toward zero before forming integer pixel residuals. A point is an outlier if either absolute component is at least the integer error threshold. A sampled model is accepted only when its count is strictly less than `Float32(N)*convergence`.
+
+An independent Fraction oracle solves the linear system rather than copying the expanded native polynomial. Every selected fitted parameter equals the unchanged C++ routine; all actual source integer intermediates are within signed Int32. Residual classification then implements the explicitly declared source Float32/truncation convention. This tests the named discrete operator, not continuous Euclidean motion accuracy or general floating-point conditioning.
+
+Four controlled fixtures use N=257,65,96,128 flows and M=131,67,97,129 pairs, with CPU threads3,1,2,4 and GPU blocks17,3,11,19 / threads64,32,64,64. The libc123 random sequence is retained after three explicit degeneracy-control pairs. Acceptance fractions .75,.5,0,1 produce89,34,0,124 candidates. Invalid models number3,4,4,5. The empty case retains bestID=-1 and minimum=N. These are bounded synthetic tests; the supplied5922-flow dataset and default2000-model repeated CLI are not certified. No probabilistic recovery, global optimum, scientific camera-motion accuracy or general overflow-domain claim follows.
+
+## Complete raw and canonical evidence
+
+Each of20 trials has a9817-word lossless Float64 primary artifact:3061 exact input-prefix words and6756 canonical/full-state words. It includes every CPU fitted model, sorted accepted ID/count pairs padded to M, actual GPU flow and parameter readbacks, and80 guards percase. Canonical artifacts are bitwise identical against both references and the independent oracle, but this is a property vector, not raw-output identity.
+
+Each trial additionally retains6760 raw words: candidate count, actual bestID/minimum/validity, every fitted parameter, the full unsorted M ID/count arrays including zero tails, actual GPU flow/parameter readbacks and all guards. The read-only audit hashes every actual sidecar and validates strict first-minimum selection, exact full candidate membership/counts, uniqueness, tail reset, inputs and guards. The four cases exhibit20,5,1,20 distinct raw append sequences across20 captures. BestIDs vary among tied minimizers; equality is neither required nor manufactured. Rejected model outlier counts are not stored by the source GPU, so their raw numeric values are not claimed captured; rejection membership is checked against the full independent classification oracle.
+
+## Algorithm and measured scope
+
+All four paths use the exact original C++ std::thread CPU fitter through the same shared FFI library. `make fit` rebuilds it from the unchanged source. This is an explicit hybrid pipeline, not a pure Julia CPU implementation. CPU fitting joins before GPU evaluation, so there is no CPU/GPU overlap claim.
+
+The native GPU body is included unchanged. Each block handles model indices blockID:gridBlocks:M; each lane checks flow rows lane:threads:N, atomically adds its local outlier count to one4-byte shared integer, and lane0 appends accepted models through the global atomic counter. Global append order is nondeterministic. CUDA.jl preserves this mapping. KA uses its own indices, local memory, barriers and Atomix operations. JACC uses its own dispatch, shared memory, workgroup barriers and Atomix operations; the installed shared API adds an entry template copy/barrier. KA declares4static shared bytes; native/CUDA.jl/JACC use4dynamic bytes. Actual compiled resource behavior is unprofiled. Only CUDA backends are tested.
+
+Historical Julia genuinely implemented the same mathematical evaluation using a shared tree reduction and ordered host compaction. It is archived intact; this study restores the original atomic append mapping rather than claiming that historical code was a fabricated port or observed numerical failure.
+
+Each timed pass includes host zero reset, four zero-array H2D copies, original CPU fit/thread join, fitted-parameter H2D copy, GPU evaluation/completion, active candidate D2H reads and CPU minimum selection. Four pass times are summed. Six stage times and each path time are retained. Allocation, input setup, full raw readbacks, independent checks, canonicalization, serialization and explicit warmup are outside. Five checked trials are retained; only timing1 is ignored and2–5 averaged. Host frontend, FFI and CPU scheduling costs matter for these compact cases; no kernel-only latency, roofline or intrinsic abstraction ranking follows.
+
+All current authored GPU candidates compile and pass their first check. A CPU fixture-generator NameError and read-only audit reuse-path error are preserved as adapter T1 events, not framework failures or device attempts. Shared FFI/math/oracle/measurement work is attributed once to the reference phase and reused KA then JACC. Prospective token windows include repeated/cached context and coordination, overlap the outer workflow and must not be summed or interpreted as exclusive billed costs. Historical creation cost remains unknown.
