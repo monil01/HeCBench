@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "nqueen",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/nqueen.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,17 +14,441 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Source iterative per-prefix full DFS, fixed private board, column occupancy mask and non-short-circuit vertical/diagonal legality scans",
+    "mapping": "One independent source-ordered prefix per GPU lane,128 lanes, ceil(P/128) blocks; no inter-lane reduction/atomic/sync",
+    "layout": "AoS immutable QueenRoot(UInt32 control,NTuple12Int8 board)=16bytes; private MVector20Int8; separate contiguous UInt64 tree/solution vectors",
+    "precision": {
+      "storage": "Int8 board,UInt32 control,UInt64 counters",
+      "compute": "Int32 depth/column legality,UInt32 masks for bits0..14,UInt64 increments; source64bit shift literal narrowing algebraically preserved",
+      "oracle": "Independent CPU bitmask recursion, exact bytes/all-prefix counts"
+    },
+    "implementation_detail": "CUDA.@cuda explicit Int32 block/thread index and128 lanes; restored pure Julia iterative DFS/legality/MVector helper.",
+    "memory": "No explicit shared memory, fixed per-lane private20-byte board; actual register/local-stack/spill allocation unknown",
+    "synchronization": [
+      "No block/lane communication in DFS",
+      "Blocking device-wide host completion"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Own framework index plus standard StaticArrays/pure Julia search, no operator vendor library/foreign CUDA device call; CUDA host allocations/completion only NVIDIA tested",
+    "host_control_boundary": "Only full GPU DFS launch+completion timed; source prefix generation, copies/resets, independent checking, serialization excluded",
+    "resource_policy": {
+      "threads": 128,
+      "blocks": 14826,
+      "explicit_shared_bytes": 0,
+      "private_logical_board_bytes": 20,
+      "jacc_shmem_size": "not_applicable",
+      "registers_spills_occupancy": "unknown"
+    },
+    "fidelity_status": "Exact original15/depth7 complete search/counts; canonical unused root fields and actual-capacity host allocation outside ROI explicitly disclosed, native source unchanged",
+    "provenance": [
+      {
+        "path": "src/nqueen-julia/nqueen-julia-cuda.jl/main.jl",
+        "sha256": "e7267d07fb416261e1200c76ec1a53342014d5d4733448d4931ecf35b4442a83",
+        "source_locations": "Actual backend entry/index/launch"
+      },
+      {
+        "path": "src/nqueen-julia/study_device.jl",
+        "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+        "source_locations": "Actual private DFS/legality helper authored and costed in reference phase"
+      }
+    ],
+    "attempt_count_policy": "One candidate/device-JIT check each; shared algorithm/helper reference cost separate. KA metadata preflight rejection did not launch Julia or revise target code.",
+    "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source iterative per-prefix full DFS, fixed private board, column occupancy mask and non-short-circuit vertical/diagonal legality scans",
+    "work_item_mapping": "One independent source-ordered prefix per GPU lane,128 lanes, ceil(P/128) blocks; no inter-lane reduction/atomic/sync",
+    "layout": "AoS immutable QueenRoot(UInt32 control,NTuple12Int8 board)=16bytes; private MVector20Int8; separate contiguous UInt64 tree/solution vectors",
+    "storage_precision": "Int8 board,UInt32 control,UInt64 counters",
+    "compute_precision": "Int32 depth/column legality,UInt32 masks for bits0..14,UInt64 increments; source64bit shift literal narrowing algebraically preserved",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "No explicit shared memory, fixed per-lane private20-byte board; actual register/local-stack/spill allocation unknown",
+    "synchronization": [
+      "No block/lane communication in DFS",
+      "Blocking device-wide host completion"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 128,
+      "blocks": 14826,
+      "explicit_shared_bytes": 0,
+      "private_logical_board_bytes": 20,
+      "jacc_shmem_size": "not_applicable",
+      "registers_spills_occupancy": "unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Own framework index plus standard StaticArrays/pure Julia search, no operator vendor library/foreign CUDA device call; CUDA host allocations/completion only NVIDIA tested",
+    "host_control_boundary": "Only full GPU DFS launch+completion timed; source prefix generation, copies/resets, independent checking, serialization excluded",
+    "fidelity_status_and_scope": "Exact original15/depth7 complete search/counts; canonical unused root fields and actual-capacity host allocation outside ROI explicitly disclosed, native source unchanged",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "nqueen",
+    "primary_motif": "independent_prefix_partitioned_depth_first_constraint_search",
+    "storage_precision": [
+      "int8 board columns",
+      "uint32 column masks",
+      "uint64 subtree and solution counts"
+    ],
+    "compute_precision": [
+      "integer legality/control/bit shifts",
+      "uint64 count increments",
+      "independent CPU bitmask recursion"
+    ],
+    "synchronization": [
+      "No inter-lane communication in search",
+      "device-wide completion per full search"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same iterative per-prefix DFS, non-short-circuit legality scans, source prefix partition/order, fixed private20-byte board and true integer counts. Native unroll hints/private-array lowering versus Julia MVector remain code-generation differences."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "One full all-prefix GPU DFS launch and device-wide completion; prefix generation/input copies/checks excluded",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Full original source case N15/depth7 is retained, all1897702 source prefixes and complete suffix search. Source repeat100 is measurement repetition, reduced to one full search per trial after one explicit feasibility probe, before primary measurements. One warmup then five in-process trials, mean last four.",
+      "Historical Julia file included unrelated mcpr, so previous PASS is not queens evidence. Actual iterative DFS/legality/private-board helper was restored and validated in the reference phase; portable indexed wrappers reuse that separately costed work.",
+      "Original source CPU prefix generation/order/UInt32 controls/first7 Int8 columns are preserved and checked against independent bitmask prefix enumeration. Five unused root-board bytes are zero-defined only for canonical input bytes, not a repair to read arithmetic. Source GPU reads only first7 prefix columns.",
+      "The source host reserves75580635 roots and output entries; named harness allocates only actual prefix capacity outside timing. Native device kernel/source unchanged. Original entire CLI allocation/host prefix generation time is not measured or certified as full end-to-end application performance.",
+      "Every prefix UInt64 subtree-node and solution count is checked against independent recursive bitmask enumeration, plus all source global totals. No solution-board output buffer exists; count evidence is not falsely described as exported solution boards.",
+      "Tree_size counts accepted legal search nodes, not attempted columns, failed legality comparisons, instructions or divergence. Prefix size CV0.656 is descriptive irregularity, not a measured warp-idle or bottleneck cause; even zero accepted-node subtrees attempt candidates.",
+      "Native private char[20] and Julia StaticArrays.MVector{20,Int8} retain fixed-size signed-byte DFS state; Julia immutable QueenRoot UInt32+12Int8 matches16-byte native ABI. Physical scalar replacement/local spills/stack/register effects are unknown.",
+      "Native UInt64 shift literals narrow into stored UInt32 control masks; Julia uses UInt32 shifts for selected columns0..14, algebraically identical for this case. UInt64 counters remain real UInt64, no floating-point emulation.",
+      "Native pragma-unroll2 hints differ from Julia loop lowering; framework indices may have different integer widths and address lowering. Same128-lane block/grid, one prefix per lane, no block synchronization or atomics. Profiling is needed for causal explanations.",
+      "Integer legality tests, bit masks, control flow and private DFS storage are not ordinary floating-point FLOP roofline work. Counter/operation and integer-ceiling conventions are needed; no measured roofline position inferred.",
+      "Only N15/depth7 is certified. General parameters must satisfy source root-board12/private-board20/shift/index limits; no arbitrary-size or64-bit-board capability claim and no framework-unsupported claim.",
+      "All CUDA.jl/KA/JACC kernels use own framework index APIs and standard StaticArrays/pure Julia search helpers, no foreign CUDA device intrinsic. CUDA host allocation/completion is tested only on NVIDIA, not cross-vendor portability.",
+      "First KA verifier preflight rejected a corrected metadata input-contract string before Julia launched; restoring archived text with an explicit hash-bound prose erratum fixed metadata. No target program revision/compiler failure. Actual first KA/JACC candidates each reach one successful device-JIT check, no repairs.",
+      "KA translation usage window also includes descriptive CPU subtree-statistics work and metadata preflight handling; it is not exclusive kernel-code consumption. Reference/helper/native/annotation costs separate; context/cache/coordination and overlapping broad/child windows are not exclusive billed cost."
+    ],
+    "native_reference_repaired": false,
+    "exclude_untouched_native_aggregates": false,
+    "irregularity_metrics": {
+      "benchmark": "nqueen",
+      "source": "Independent CPU exact per-prefix counters, verified against actualGPUoutputs",
+      "oracle_sha256": "c61082268c3968f069fe511eaa518fc03efb47fab12e6eee0d5d05b952bd7286",
+      "prefix_order": "Original lexicographic DFS order, one prefix per GPU lane",
+      "metrics": {
+        "subtree_accepted_nodes": {
+          "count": 1897702,
+          "sum_exact": 168662962,
+          "min": 0,
+          "max": 635,
+          "mean": 88.87747496709177,
+          "stddev": 58.311208707722216,
+          "CV": 0.6560853436634291,
+          "quantiles": {
+            "p0": 0.0,
+            "p25": 46.0,
+            "p50": 77.0,
+            "p75": 119.0,
+            "p90": 167.0,
+            "p99": 275.0,
+            "p100": 635.0
+          },
+          "zero_count": 5014
+        },
+        "subtree_solutions": {
+          "count": 1897702,
+          "sum_exact": 2279184,
+          "min": 0,
+          "max": 33,
+          "mean": 1.2010231321882994,
+          "stddev": 1.8922689945368323,
+          "CV": 1.5755475009786553,
+          "quantiles": {
+            "p0": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 2.0,
+            "p90": 4.0,
+            "p99": 9.0,
+            "p100": 33.0
+          },
+          "zero_count": 981606
+        }
+      },
+      "interpretation_limit": "Accepted legal nodes/solutions are observable search counters, not total legality checks, instructions, branch divergence or measured warp idle time. A zero-node suffix still attempts rejected placements. Descriptive irregularity only, no bottleneck/causal attribution.",
+      "numpy": "2.5.4"
+    },
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "graph_irregular",
+      "primary_domain": "combinatorial_constraint_satisfaction_counting",
+      "secondary_domains": [
+        "discrete_mathematics",
+        "exhaustive_search"
+      ],
+      "scientific_task": "Count all placements of15 nonattacking queens and all accepted search-tree nodes using CPU-generated depth7 prefixes and independent GPU suffix DFS tasks. No game engine or physical simulation application is implied.",
+      "mathematical_operation": "Assign one column per row, requiring distinct columns and |column_i\u2212column_j|!=|i\u2212j|. Exhaustively count solutions and accepted legal partial placements under source lexicographic DFS ordering.",
+      "discretization_or_topology": "Implicit irregular constraint-search tree on15\u00d715 board, partitioned into1897702 legal depth7 prefix roots, one root per GPU lane.",
+      "invariants": [
+        "Every prefix is legal, UInt32 control equals OR of its seven column bits, unused five fields zero-defined.",
+        "Complete prefix enumeration/order equals independently generated bitmask prefixes, with2466109 accepted prefix-tree nodes.",
+        "Every GPU suffix-tree/solution count exactly equals independent bitmask enumeration; source totals2279184 solutions/171129071 complete accepted nodes.",
+        "All20 artifact bytes exact, including every actual root and every UInt64 output count."
+      ],
+      "accuracy_requirements": [
+        "All3795404 per-prefix UInt64 output values checked exactly, plus exact30363232 input bytes serialized as3795404 UInt64 words.",
+        "Independent CPU bitmask recursion differs from source per-column legality scanning; global source constants are supplemental only.",
+        "No floating-point tolerance or Float64 surrogate for root bits/count storage; all outputs finite by integer type."
+      ],
+      "precision_sensitivity": "Integer bitwidth, signed \u22121 board sentinel, exact mask/backtracking and count semantics; not floating roundoff. Selected15/depth7 respects native fixed board/root limits.",
+      "input_size_regimes": "Original N15/depth7, every source prefix, exhaustive suffix search; one full search/trial. Other sizes/depths and whole host workflow unmeasured.",
+      "community_use_case": "Combinatorial counting/constraint programming and irregular parallel tree-search benchmark; no identified physics or application dataset.",
+      "uncertainty": "Accepted-node count distribution is a workload descriptor, not total attempted work, branch divergence, occupancy or measured instruction cost. Private-state/register/stack lowering unprofiled.",
+      "provenance": [
+        {
+          "path": "src/nqueen-cuda/main.cu",
+          "sha256": "90faf5bc4f6ef7834fb9ba00b33c86923f86e7fa97306e88e50c4820ae995971",
+          "source_locations": "Actual source prefix and iterative GPU search, known global check, private/root layouts"
+        },
+        {
+          "path": "src/nqueen-julia/generate_study_fixture.cu",
+          "sha256": "933f1202f72860d10176c632810981657980bd7e1e46e7da0c594ec794bded4d",
+          "source_locations": "Independent bitmask prefix/suffix oracle with exact source-prefix comparison"
+        },
+        {
+          "path": "src/nqueen-julia/subtree_work_distribution.json",
+          "sha256": "edd36eeb5e5263a1271847bbccf02137c1811f3f29d2938ed6e105bcf6f79503",
+          "source_locations": "Descriptive exact per-prefix counter distribution"
+        }
+      ],
+      "reviewed_at": "2026-10-17T23:17:30.289128+00:00",
+      "review_phase": "prospective postverification annotation"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Source iterative per-prefix full DFS, fixed private board, column occupancy mask and non-short-circuit vertical/diagonal legality scans",
+        "mapping": "One independent source-ordered prefix per GPU lane,128 lanes, ceil(P/128) blocks; no inter-lane reduction/atomic/sync",
+        "layout": "AoS immutable QueenRoot(UInt32 control,NTuple12Int8 board)=16bytes; private MVector20Int8; separate contiguous UInt64 tree/solution vectors",
+        "precision": {
+          "storage": "Int8 board,UInt32 control,UInt64 counters",
+          "compute": "Int32 depth/column legality,UInt32 masks for bits0..14,UInt64 increments; source64bit shift literal narrowing algebraically preserved",
+          "oracle": "Independent CPU bitmask recursion, exact bytes/all-prefix counts"
+        },
+        "implementation_detail": "CUDA.@cuda explicit Int32 block/thread index and128 lanes; restored pure Julia iterative DFS/legality/MVector helper.",
+        "memory": "No explicit shared memory, fixed per-lane private20-byte board; actual register/local-stack/spill allocation unknown",
+        "synchronization": [
+          "No block/lane communication in DFS",
+          "Blocking device-wide host completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework index plus standard StaticArrays/pure Julia search, no operator vendor library/foreign CUDA device call; CUDA host allocations/completion only NVIDIA tested",
+        "host_control_boundary": "Only full GPU DFS launch+completion timed; source prefix generation, copies/resets, independent checking, serialization excluded",
+        "resource_policy": {
+          "threads": 128,
+          "blocks": 14826,
+          "explicit_shared_bytes": 0,
+          "private_logical_board_bytes": 20,
+          "jacc_shmem_size": "not_applicable",
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Exact original15/depth7 complete search/counts; canonical unused root fields and actual-capacity host allocation outside ROI explicitly disclosed, native source unchanged",
+        "provenance": [
+          {
+            "path": "src/nqueen-julia/nqueen-julia-cuda.jl/main.jl",
+            "sha256": "e7267d07fb416261e1200c76ec1a53342014d5d4733448d4931ecf35b4442a83",
+            "source_locations": "Actual backend entry/index/launch"
+          },
+          {
+            "path": "src/nqueen-julia/study_device.jl",
+            "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+            "source_locations": "Actual private DFS/legality helper authored and costed in reference phase"
+          }
+        ],
+        "attempt_count_policy": "One candidate/device-JIT check each; shared algorithm/helper reference cost separate. KA metadata preflight rejection did not launch Julia or revise target code.",
+        "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Source iterative per-prefix full DFS, fixed private board, column occupancy mask and non-short-circuit vertical/diagonal legality scans",
+        "mapping": "One independent source-ordered prefix per GPU lane,128 lanes, ceil(P/128) blocks; no inter-lane reduction/atomic/sync",
+        "layout": "AoS immutable QueenRoot(UInt32 control,NTuple12Int8 board)=16bytes; private MVector20Int8; separate contiguous UInt64 tree/solution vectors",
+        "precision": {
+          "storage": "Int8 board,UInt32 control,UInt64 counters",
+          "compute": "Int32 depth/column legality,UInt32 masks for bits0..14,UInt64 increments; source64bit shift literal narrowing algebraically preserved",
+          "oracle": "Independent CPU bitmask recursion, exact bytes/all-prefix counts"
+        },
+        "implementation_detail": "KA global linear index,128 lanes and guard, pure Julia/MVector fixed private state; no CUDA device intrinsic.",
+        "memory": "No explicit shared memory, fixed per-lane private20-byte board; actual register/local-stack/spill allocation unknown",
+        "synchronization": [
+          "No block/lane communication in DFS",
+          "Blocking device-wide host completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework index plus standard StaticArrays/pure Julia search, no operator vendor library/foreign CUDA device call; CUDA host allocations/completion only NVIDIA tested",
+        "host_control_boundary": "Only full GPU DFS launch+completion timed; source prefix generation, copies/resets, independent checking, serialization excluded",
+        "resource_policy": {
+          "threads": 128,
+          "blocks": 14826,
+          "explicit_shared_bytes": 0,
+          "private_logical_board_bytes": 20,
+          "jacc_shmem_size": "not_applicable",
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Exact original15/depth7 complete search/counts; canonical unused root fields and actual-capacity host allocation outside ROI explicitly disclosed, native source unchanged",
+        "provenance": [
+          {
+            "path": "src/nqueen-julia/nqueen-julia-KA/main.jl",
+            "sha256": "11a80a7b5aeeb8acd2da7e6253145d4b8837bde4df3b911a5cec5507d8f12a4c",
+            "source_locations": "Actual backend entry/index/launch"
+          },
+          {
+            "path": "src/nqueen-julia/study_device.jl",
+            "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+            "source_locations": "Actual private DFS/legality helper authored and costed in reference phase"
+          }
+        ],
+        "attempt_count_policy": "One candidate/device-JIT check each; shared algorithm/helper reference cost separate. KA metadata preflight rejection did not launch Julia or revise target code.",
+        "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Source iterative per-prefix full DFS, fixed private board, column occupancy mask and non-short-circuit vertical/diagonal legality scans",
+        "mapping": "One independent source-ordered prefix per GPU lane,128 lanes, ceil(P/128) blocks; no inter-lane reduction/atomic/sync",
+        "layout": "AoS immutable QueenRoot(UInt32 control,NTuple12Int8 board)=16bytes; private MVector20Int8; separate contiguous UInt64 tree/solution vectors",
+        "precision": {
+          "storage": "Int8 board,UInt32 control,UInt64 counters",
+          "compute": "Int32 depth/column legality,UInt32 masks for bits0..14,UInt64 increments; source64bit shift literal narrowing algebraically preserved",
+          "oracle": "Independent CPU bitmask recursion, exact bytes/all-prefix counts"
+        },
+        "implementation_detail": "JACC linear callback and128 lanes, explicit shmem_size0, pure Julia/MVector fixed private state; no CUDA device intrinsic.",
+        "memory": "No explicit shared memory, fixed per-lane private20-byte board; actual register/local-stack/spill allocation unknown",
+        "synchronization": [
+          "No block/lane communication in DFS",
+          "Blocking device-wide host completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework index plus standard StaticArrays/pure Julia search, no operator vendor library/foreign CUDA device call; CUDA host allocations/completion only NVIDIA tested",
+        "host_control_boundary": "Only full GPU DFS launch+completion timed; source prefix generation, copies/resets, independent checking, serialization excluded",
+        "resource_policy": {
+          "threads": 128,
+          "blocks": 14826,
+          "explicit_shared_bytes": 0,
+          "private_logical_board_bytes": 20,
+          "jacc_shmem_size": 0,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Exact original15/depth7 complete search/counts; canonical unused root fields and actual-capacity host allocation outside ROI explicitly disclosed, native source unchanged",
+        "provenance": [
+          {
+            "path": "src/nqueen-julia/nqueen-julia-JACC/main.jl",
+            "sha256": "86300cac241915a8c6e4d7887a01399177699cda5c8d23c8d32bd865e74bc05b",
+            "source_locations": "Actual backend entry/index/launch"
+          },
+          {
+            "path": "src/nqueen-julia/study_device.jl",
+            "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+            "source_locations": "Actual private DFS/legality helper authored and costed in reference phase"
+          }
+        ],
+        "attempt_count_policy": "One candidate/device-JIT check each; shared algorithm/helper reference cost separate. KA metadata preflight rejection did not launch Julia or revise target code.",
+        "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1"
+      }
+    },
+    "configuration_results": {
+      "full15_depth7": {
+        "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T231359817287Z_nqueen/result.json",
+        "mean_seconds": {
+          "cuda": 0.101709473,
+          "cuda_jl": 0.13637775475,
+          "ka": 0.1365062785,
+          "jacc": 0.136294961
+        },
+        "N": 15,
+        "depth": 7,
+        "prefixes": 1897702,
+        "checked_values_each_trial": 7590808,
+        "input_prefix_count_uint64_words": 3795404,
+        "input_root_bytes": 30363232,
+        "output_uint64_values": 3795404,
+        "total_solutions": 2279184,
+        "total_accepted_nodes": 171129071,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 1,
+        "native_reference_repaired": false
+      }
+    },
+    "configuration_overrides": {},
+    "performance_variability_by_configuration": {
+      "nqueen_source15_depth7_fullprefixes_r1_v1": {
+        "cuda": {
+          "retained_trial_seconds": [
+            0.102037191,
+            0.101615747,
+            0.101523116,
+            0.101661838
+          ],
+          "stddev": 0.00022596583464025354,
+          "CV": 0.0022216793379733033,
+          "outliers_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            0.136083094,
+            0.136352117,
+            0.13663432,
+            0.136441488
+          ],
+          "stddev": 0.00022903413608656625,
+          "CV": 0.0016794097872224007,
+          "outliers_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            0.1367185,
+            0.136182966,
+            0.136485038,
+            0.13663861
+          ],
+          "stddev": 0.000236313155545068,
+          "CV": 0.0017311522820913179,
+          "outliers_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            0.136338076,
+            0.136394777,
+            0.136298326,
+            0.136148665
+          ],
+          "stddev": 0.00010525521352407928,
+          "CV": 0.0007722604911569643,
+          "outliers_removed": false
+        }
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/nqueen-julia/main.jl",
-    "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+    "path": "src/nqueen-julia/nqueen-julia-cuda.jl/main.jl",
+    "sha256": "e7267d07fb416261e1200c76ec1a53342014d5d4733448d4931ecf35b4442a83",
     "syntax_features": {
-      "cuda_kernel_launch": [],
+      "cuda_kernel_launch": [
+        12
+      ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
       "local_storage": [],
@@ -35,14 +459,133 @@
     },
     "placeholder_signals": {
       "include_alias": true,
-      "tiny_source": true
+      "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1",
+      "run_id": "20261017T231359817287Z_nqueen",
+      "result": ".porting-state/portable_julia/runs/20261017T231359817287Z_nqueen/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": {
+        "field": "input_contract",
+        "raw_phrase": "5warmprocessintrialseries",
+        "actual": "One full-search warmup then five in-process full-search trials, one internal repeat.",
+        "execution_unchanged": true,
+        "evidence": "src/nqueen-julia/study_common.jl"
+      },
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_source_unchanged": true,
+        "historical_julia_alias_repaired": true,
+        "source_parameter_case_preserved": true,
+        "unused_root_bytes_zeroed": true,
+        "actual_prefix_capacity_only_host_allocation": true,
+        "native_cost_probe": ".porting-state/portable_julia/nqueen_native_probe.log"
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "f1a8cfe04136bea9e4247af3dac308d3a7930cf359a19c1ffd25d725242a57f7",
+      "source_hash": "12ae210a71c9369734ecd51f8e2878795a80b1ec9ef10efbcb21512c5d15304d",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T231359817287Z_nqueen/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.136421538,
+        0.136083094,
+        0.136352117,
+        0.13663432,
+        0.136441488
+      ],
+      "mean_last_four_seconds": 0.13637775475,
+      "contract": "Original15queens/depth7, all1897702sourceDFSlegalprefixes exactorder/masks/first7Int8columns, unused5rootboardbyteszero canonicalization only. FullperprefixUInt64tree/solutioncounts vsindependentCPUbitmaskenumeration, global2279184solutions/171129071nodes supplemental. 5warmprocessintrialseries,1fullsearch/trial, avg last4; prefixgeneration/copies/checks excluded. No sourcekernelrepair.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "43e834bd8f90415613c9",
+        "benchmark_id": "nqueen",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/nqueen.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "benchmark": "nqueen",
+          "model": "cuda_jl",
+          "phase": "reference_audit",
+          "code": "S1",
+          "is_failure": true,
+          "reason": "Historical mcpr alias was not queens search; restored actual original-case DFS and verified every prefix count independently.",
+          "evidence": [
+            {
+              "path": "src/nqueen-julia/reference_original/main.jl",
+              "sha256": "8376870316111a88f36d96e9fd0635f1b6143e6af69393862bf4cc67d1bd8375",
+              "source_locations": "Preserved unrelated include"
+            },
+            {
+              "path": "src/nqueen-julia/study_device.jl",
+              "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+              "source_locations": "Restored actual DFS"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "524b539555c508dd5de8",
+        "benchmark_id": "nqueen",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "prospective_source_mapping",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/nqueen.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "benchmark": "nqueen",
+          "model": "cuda_jl",
+          "phase": "prospective_source_mapping",
+          "code": "P1",
+          "is_failure": false,
+          "reason": "CUDA.@cuda explicit Int32 block/thread index and128 lanes; restored pure Julia iterative DFS/legality/MVector helper.",
+          "evidence": [
+            {
+              "path": "src/nqueen-julia/nqueen-julia-cuda.jl/main.jl",
+              "sha256": "e7267d07fb416261e1200c76ec1a53342014d5d4733448d4931ecf35b4442a83",
+              "source_locations": "Actual backend entry/index/launch"
+            },
+            {
+              "path": "src/nqueen-julia/study_device.jl",
+              "sha256": "62c3c609b2e553ef3ed3e9ee3429fab91982b5f8710a9edbb2788a8bd92aea8f",
+              "source_locations": "Actual private DFS/legality helper authored and costed in reference phase"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -52,7 +595,40 @@
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "733ac78c2f5e3260b645b2f0",
+        "begin_event_id": "3c597c655118b0b5be4122ac",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_audit",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T23:11:29.386555+00:00",
+        "usage_event_timestamp": "2026-10-17T23:11:19.143Z",
+        "elapsed_usage_event_start": "2026-10-17T23:04:27.144Z",
+        "delta_usage": {
+          "input_tokens": 3334286,
+          "cached_input_tokens": 3325696,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15564,
+          "reasoning_output_tokens": 8308,
+          "total_tokens": 3349850
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 10.243555,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "c423a1c04fbaa8eb63183e6cd9a9c24a552874c00168d67490129f62f5a11d3d",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "OriginalN15depth7 full1897702prefixes, fullperprefixUInt64counts vsindependentCPUbitmask+sourceglobaltotals; originalnativeunchanged, onecostprobe110mscoldincluded thenprimaryrepeat1chosenbeforetimes. FirstJuliaactualDFS/MVectorcandidate1JITcheckpass/0repairs; sharedpureJuliahelperrefphasecost. InputcontractprosetypohashboundT1erratum,noexecutionchange.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 8.658491,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nqueen/cuda_jl_reference_audit.jsonl",
+        "evidence_sha256": "ddee59a118532bea2a685218b890acb38aac0ad212c473cdeaf8a0fe0b4a3699",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/nqueen-julia-cuda/manifest.json",
@@ -61,5 +637,57 @@
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "nqueen",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T231359817287Z_nqueen/result.json"
+    ],
+    "contract": "Original15queens/depth7, all1897702sourceDFSlegalprefixes exactorder/masks/first7Int8columns, unused5rootboardbyteszero canonicalization only. FullperprefixUInt64tree/solutioncounts vsindependentCPUbitmaskenumeration, global2279184solutions/171129071nodes supplemental. 5warmprocessintrialseries,1fullsearch/trial, avg last4; prefixgeneration/copies/checks excluded. No sourcekernelrepair.",
+    "limitations": [
+      "Full original source case N15/depth7 is retained, all1897702 source prefixes and complete suffix search. Source repeat100 is measurement repetition, reduced to one full search per trial after one explicit feasibility probe, before primary measurements. One warmup then five in-process trials, mean last four.",
+      "Historical Julia file included unrelated mcpr, so previous PASS is not queens evidence. Actual iterative DFS/legality/private-board helper was restored and validated in the reference phase; portable indexed wrappers reuse that separately costed work.",
+      "Original source CPU prefix generation/order/UInt32 controls/first7 Int8 columns are preserved and checked against independent bitmask prefix enumeration. Five unused root-board bytes are zero-defined only for canonical input bytes, not a repair to read arithmetic. Source GPU reads only first7 prefix columns.",
+      "The source host reserves75580635 roots and output entries; named harness allocates only actual prefix capacity outside timing. Native device kernel/source unchanged. Original entire CLI allocation/host prefix generation time is not measured or certified as full end-to-end application performance.",
+      "Every prefix UInt64 subtree-node and solution count is checked against independent recursive bitmask enumeration, plus all source global totals. No solution-board output buffer exists; count evidence is not falsely described as exported solution boards.",
+      "Tree_size counts accepted legal search nodes, not attempted columns, failed legality comparisons, instructions or divergence. Prefix size CV0.656 is descriptive irregularity, not a measured warp-idle or bottleneck cause; even zero accepted-node subtrees attempt candidates.",
+      "Native private char[20] and Julia StaticArrays.MVector{20,Int8} retain fixed-size signed-byte DFS state; Julia immutable QueenRoot UInt32+12Int8 matches16-byte native ABI. Physical scalar replacement/local spills/stack/register effects are unknown.",
+      "Native UInt64 shift literals narrow into stored UInt32 control masks; Julia uses UInt32 shifts for selected columns0..14, algebraically identical for this case. UInt64 counters remain real UInt64, no floating-point emulation.",
+      "Native pragma-unroll2 hints differ from Julia loop lowering; framework indices may have different integer widths and address lowering. Same128-lane block/grid, one prefix per lane, no block synchronization or atomics. Profiling is needed for causal explanations.",
+      "Integer legality tests, bit masks, control flow and private DFS storage are not ordinary floating-point FLOP roofline work. Counter/operation and integer-ceiling conventions are needed; no measured roofline position inferred.",
+      "Only N15/depth7 is certified. General parameters must satisfy source root-board12/private-board20/shift/index limits; no arbitrary-size or64-bit-board capability claim and no framework-unsupported claim.",
+      "All CUDA.jl/KA/JACC kernels use own framework index APIs and standard StaticArrays/pure Julia search helpers, no foreign CUDA device intrinsic. CUDA host allocation/completion is tested only on NVIDIA, not cross-vendor portability.",
+      "First KA verifier preflight rejected a corrected metadata input-contract string before Julia launched; restoring archived text with an explicit hash-bound prose erratum fixed metadata. No target program revision/compiler failure. Actual first KA/JACC candidates each reach one successful device-JIT check, no repairs.",
+      "KA translation usage window also includes descriptive CPU subtree-statistics work and metadata preflight handling; it is not exclusive kernel-code consumption. Reference/helper/native/annotation costs separate; context/cache/coordination and overlapping broad/child windows are not exclusive billed cost."
+    ],
+    "configuration_results": {
+      "full15_depth7": {
+        "configuration_id": "nqueen_source15_depth7_fullprefixes_r1_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T231359817287Z_nqueen/result.json",
+        "mean_seconds": {
+          "cuda": 0.101709473,
+          "cuda_jl": 0.13637775475,
+          "ka": 0.1365062785,
+          "jacc": 0.136294961
+        },
+        "N": 15,
+        "depth": 7,
+        "prefixes": 1897702,
+        "checked_values_each_trial": 7590808,
+        "input_prefix_count_uint64_words": 3795404,
+        "input_root_bytes": 30363232,
+        "output_uint64_values": 3795404,
+        "total_solutions": 2279184,
+        "total_accepted_nodes": 171129071,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 1,
+        "native_reference_repaired": false
+      }
+    },
+    "implementation_class": "framework_device_kernel",
+    "native_reference_repaired": false,
+    "scope": "Full original15/depth7 exhaustive source case; host workflow timing unmeasured"
+  }
 }

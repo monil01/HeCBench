@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "quantVLLM",
   "implementation_model": "jacc",
-  "status": "not_started",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/quantVLLM.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,34 +14,1050 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "benchmark_id": "quantVLLM",
+    "configuration_id": "quantVLLM_real_dtypes_h513_5137_mixed_exactcodes_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40",
+    "status": "verified",
+    "algorithm": "Four callbacks reuse the numerical helpers and tree; JACC.shared(template) and explicit dynamic4096-byte launch resources. Int32 callback indexing fixes a demonstrated register-limit launch failure.",
+    "work_item_mapping": "Global callback index converted to Int32 before division/modulo by the physical group size. This retains the bounded source indexing and avoids the first candidate register-limit failure.",
+    "layout": "Contiguous row-major typed input arrays, dense Int8 outputs, Float32 scales and Int32 zero points. Each public array has17 guard cells. Unused scale/zero-point buffers retain exact sentinels. Raw16/32-bit input words and all outputs are losslessly widened to Float64 only for one mixed artifact.",
+    "precision": {
+      "storage": [
+        "Float16 input",
+        "BFloat16 input",
+        "Float32 input and scales",
+        "Int8 codes",
+        "Int32 zero points"
+      ],
+      "compute": [
+        "Float32 arithmetic and reductions",
+        "Int32 rounding/clamp and Julia indexing"
+      ],
+      "input_storage_types": [
+        "Float16",
+        "BFloat16",
+        "Float32"
+      ],
+      "compute_types": [
+        "Float32",
+        "Int32"
+      ],
+      "output_storage_types": [
+        "Int8",
+        "Float32",
+        "Int32"
+      ],
+      "artifact_serialization_dtype": "Float64",
+      "artifact_dtype_is_GPU_compute": false
+    },
+    "memory_access": "Typed row inputs scanned by block-strided lanes. Static paths read once and store Int8; symmetric dynamic scans then quantizes, asymmetric scans extrema then quantizes. Shared tree and JACC template-copy behavior are source traits, not measured transaction/bottleneck claims.",
+    "synchronization": [
+      "No atomics.",
+      "Static paths have no barriers.",
+      "Dynamic manual1024-slot tree: symmetric12/asymmetric24 barriers. JACC.shared adds one initial copy/barrier.",
+      "GPU completion around every timed batch; all transfers and checks outside clocks."
+    ],
+    "resource_policy": {
+      "declared_shared_bytes_by_path": {
+        "static_symmetric": 0,
+        "static_asymmetric": 0,
+        "dynamic_symmetric": 4096,
+        "dynamic_asymmetric": 4096
+      },
+      "maximum_declared_shared_bytes": 4096,
+      "shared_storage": "dynamic",
+      "source_tree_slots": 1024,
+      "source_barriers_by_dynamic_path": {
+        "symmetric": 13,
+        "asymmetric": 25
+      },
+      "atomics": false,
+      "register_count_current": "unmeasured",
+      "JACC_template_copy": "1024 Float32 template elements plus one barrier before the explicit tree; compiler elimination unprofiled",
+      "failed_candidate1_registers_per_thread": 66,
+      "current_registers_per_thread": "unmeasured"
+    },
+    "launch_geometry": {
+      "blocks": 17,
+      "threads": [
+        513,
+        1024
+      ],
+      "hidden_sizes": [
+        513,
+        5137
+      ],
+      "input_storage_types": [
+        "FP16",
+        "BF16",
+        "FP32"
+      ],
+      "kernel_definitions": 4,
+      "timed_paths": 24,
+      "requested_dtype_geometry_mode_cases": 24,
+      "actual_compiler_specialization_count": "not instrumented; not equivalent to program candidate count"
+    },
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+    "supported_features": [
+      "Actual BF16 storage and Float32 conversion on V100",
+      "FP16/BF16/FP32 typed input kernels",
+      "Non-power-of-two513-thread groups",
+      "Shared max/min reductions with padding",
+      "Exact Int8 nearest-even and clamp",
+      "Per-token scale and zero-point outputs"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Actual CUDA backend/V100 and the named mixed nondegenerate row contract. No full native CLI, all-negative/constant/NaN/Inf rows, large Int32-index overflow, BF16 arithmetic instruction or downstream inference quality claim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM",
+    "numerical_contract": "All20 artifacts are byte-identical:288180 exact typed-input/header words plus1154640 full code/scale/zero-point/guard values, serialized as1442820 Float64 numbers. Full independent reconstruction from actual input bits confirms every code and metadata field. All primary rows are finite, mixed sign and nondegenerate; no all-negative/zero-range domain certification.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.0003019762,
+      0.0002864782,
+      0.0002664214,
+      0.00027288845,
+      0.000272767
+    ],
+    "mean_last_four_seconds": 0.0002746387625,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      },
+      "BFloat16s": "0.6.2"
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl",
+        "sha256": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40"
+      },
+      {
+        "path": "src/quantVLLM-julia/study_common.jl",
+        "sha256": "00b2ca287ed4e1f1256e3ab109e54fa0a15c81103fc0c40058e04ac54fce897a"
+      },
+      {
+        "path": "src/quantVLLM-julia/quant_math.jl",
+        "sha256": "ac281982ab7b71bb5659642a45cbfad72c4afd281b38ff53507e593de29f81fb"
+      }
+    ],
+    "implementation_source_digest": "61923348b3a78d71d42e89875ef7d9893f924a8ae5e39115bf038ffd255cef94",
+    "verification_strength": "complete_quantized_codes_scales_zero_points_and_guards_with_actual_typed_input_bits",
+    "scientific_domain_conditions": [
+      "Primary rows finite, mixed sign, nondegenerate with extrema[-128,127].",
+      "Known native all-negative dynamic-asymmetric maximum initialization limitation is outside this certified domain."
+    ],
+    "input_dependent_descriptors": "src/quantVLLM-julia/independent_artifact_audit.json"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Four callbacks reuse the numerical helpers and tree; JACC.shared(template) and explicit dynamic4096-byte launch resources. Int32 callback indexing fixes a demonstrated register-limit launch failure.",
+    "work_item_mapping": "Global callback index converted to Int32 before division/modulo by the physical group size. This retains the bounded source indexing and avoids the first candidate register-limit failure.",
+    "layout": "Contiguous row-major typed input arrays, dense Int8 outputs, Float32 scales and Int32 zero points. Each public array has17 guard cells. Unused scale/zero-point buffers retain exact sentinels. Raw16/32-bit input words and all outputs are losslessly widened to Float64 only for one mixed artifact.",
+    "storage_precision": [
+      "Float16 input",
+      "BFloat16 input",
+      "Float32 input and scales",
+      "Int8 codes",
+      "Int32 zero points"
+    ],
+    "compute_precision": [
+      "Float32 arithmetic and reductions",
+      "Int32 rounding/clamp and Julia indexing"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Typed row inputs scanned by block-strided lanes. Static paths read once and store Int8; symmetric dynamic scans then quantizes, asymmetric scans extrema then quantizes. Shared tree and JACC template-copy behavior are source traits, not measured transaction/bottleneck claims.",
+    "synchronization": [
+      "No atomics.",
+      "Static paths have no barriers.",
+      "Dynamic manual1024-slot tree: symmetric12/asymmetric24 barriers. JACC.shared adds one initial copy/barrier.",
+      "GPU completion around every timed batch; all transfers and checks outside clocks."
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "declared_shared_bytes_by_path": {
+        "static_symmetric": 0,
+        "static_asymmetric": 0,
+        "dynamic_symmetric": 4096,
+        "dynamic_asymmetric": 4096
+      },
+      "maximum_declared_shared_bytes": 4096,
+      "shared_storage": "dynamic",
+      "source_tree_slots": 1024,
+      "source_barriers_by_dynamic_path": {
+        "symmetric": 13,
+        "asymmetric": 25
+      },
+      "atomics": false,
+      "register_count_current": "unmeasured",
+      "JACC_template_copy": "1024 Float32 template elements plus one barrier before the explicit tree; compiler elimination unprofiled",
+      "failed_candidate1_registers_per_thread": 66,
+      "current_registers_per_thread": "unmeasured"
+    },
+    "launch_geometry": {
+      "blocks": 17,
+      "threads": [
+        513,
+        1024
+      ],
+      "hidden_sizes": [
+        513,
+        5137
+      ],
+      "input_storage_types": [
+        "FP16",
+        "BF16",
+        "FP32"
+      ],
+      "kernel_definitions": 4,
+      "timed_paths": 24,
+      "requested_dtype_geometry_mode_cases": 24,
+      "actual_compiler_specialization_count": "not instrumented; not equivalent to program candidate count"
+    },
+    "library_backend_boundary": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl",
+        "sha256": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40"
+      },
+      {
+        "path": "src/quantVLLM-julia/study_common.jl",
+        "sha256": "00b2ca287ed4e1f1256e3ab109e54fa0a15c81103fc0c40058e04ac54fce897a"
+      },
+      {
+        "path": "src/quantVLLM-julia/quant_math.jl",
+        "sha256": "ac281982ab7b71bb5659642a45cbfad72c4afd281b38ff53507e593de29f81fb"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "quantVLLM",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "per_token_activation_quantization",
+      "secondary_domains": [
+        "low_precision_numerics",
+        "block_reductions"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Encode typed FP16, BF16 and FP32 activation rows as Int8 codes, with static or per-token dynamic scaling and optional asymmetric zero points.",
+      "mathematical_operation": "Round to nearest even and clamp to Int8. Symmetric dynamic scale is max(abs(x))/127; asymmetric scale is (max(x)-min(x))/255 with an Int32 zero point. The source uses Float32 arithmetic after loading each typed input.",
+      "discretization": "17 rows for each hidden size 513 and 5137, each in actual FP16, BF16 and FP32 storage; four quantization modes give 24 timed paths. Every primary row has true extrema -128 and127, mixed signs and nonzero range. Static rounding boundaries and a final-lane extremum exercise dtype rounding and non-power-of-two workgroups.",
+      "accuracy_requirements": "All Int8 codes, Float32 scale arrays, Int32 zero-point arrays and every guard are exact against independent Float32 operation-sequence and native CPU oracles. Encoding correctness is separate from lossy reconstruction error and clipping, which are also recorded.",
+      "input_size_regime": "Named small token batch17, hidden513 or5137, actual513 or1024 threads per block. Twenty launches per path, five outer trials, mean only trials2\u20135. This is not the original4096-token default throughput regime.",
+      "precision_sensitivity": "Input storage is genuinely16/16/32bits; arithmetic/reductions/scales are Float32 and codes Int8. Integer rounding/index operations are Int32 in Julia; native token offsets use Int64. Float64 is lossless artifact serialization only. BFloat16s0.6.2 is already pinned through CUDA, with no environment change.",
+      "community_use_case": "Quantization is relevant to activation storage/compression for inference. No trained LLM, downstream task accuracy, calibration generalization or end-to-end inference speed is measured.",
+      "description": "Original native GPU kernels and launch wrappers are byte-identical. A named harness bypasses a CUDA12.0 host-generator BF16 assignment compile error. The genuine Julia reference was repaired for a demonstrated513-thread reduction omission and for true BF16 storage. KA and JACC implement the same manual1024-slot trees, while native CUDA uses CUB block reductions.",
+      "provenance": "Actual native/old Julia witnesses and typed GPU storage checks are preserved. An all-negative native min/max initialization limitation is diagnosed outside the primary mixed-row contract. Full output and source-prefix byte audits distinguish scientific assumptions from framework support.",
+      "source_evidence": [
+        {
+          "path": "src/quantVLLM-cuda/main.cu",
+          "sha256": "4565ceb8ebe3cebc0a0c1dff5bc8c6e3e293ea2d58c228492f7d045bffd0d291"
+        },
+        {
+          "path": "src/quantVLLM-cuda/reference.h",
+          "sha256": "476bdc00788381a80a625a5985e01145e8bd4ad6e697588e9bcabd9e3125b72a"
+        },
+        {
+          "path": "src/quantVLLM-cuda/utils.h",
+          "sha256": "2f5f46cec997650c70064c1ef602bf0b9462c468d689aaa0afe5fd3fc0599a9d"
+        },
+        {
+          "path": "src/quantVLLM-julia/quantVLLM-julia-cuda.jl/legacy_main.jl",
+          "sha256": "d24d21a896393ae02a928a27c3196b1334ab91a9d660060641f86d72f40e27ae"
+        },
+        {
+          "path": "src/quantVLLM-julia/study_native_kernels.cuh",
+          "sha256": "284913ff8244bd9ce3d1f45c1db1da242e72c5d6b877962e50e7b2785f130d9a"
+        },
+        {
+          "path": "src/quantVLLM-julia/source_and_numerical_witnesses.json",
+          "sha256": "0580b365a79c9888e3f4cb9a575c40c2112cb44a69e6c0aa709d205fd7d36a68"
+        },
+        {
+          "path": "src/quantVLLM-julia/independent_artifact_audit.json",
+          "sha256": "0e60c56da64e57e105ff190f10da612dda9c889e6ca912ee9685144ca466a344"
+        }
+      ]
+    },
+    "primary_motif": "per_token_max_min_reduction_and_round_clamp_encoding",
+    "storage_precision": [
+      "Float16 input",
+      "BFloat16 input",
+      "Float32 input and scales",
+      "Int8 codes",
+      "Int32 zero points"
+    ],
+    "compute_precision": [
+      "Float32 arithmetic and reductions",
+      "Int32 rounding/clamp and Julia indexing"
+    ],
+    "synchronization": [
+      "Static paths use no shared memory or barriers.",
+      "Dynamic Julia/KA paths use initialized1024-slot Float32 binary trees; symmetric12 and asymmetric24 source barriers.",
+      "JACC.shared adds a template copy and one workgroup barrier; dynamic shared memory is explicitly4096bytes, static paths0.",
+      "GPU synchronization brackets each timed batch; allocation, H2D, reset, D2H and all oracles are outside clocks."
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native CUB BlockReduce<float,1024> becomes an explicit fixed1024-slot binary tree. Actual physical block sizes513/1024 and typed input storage are retained; max/min are order independent on finite primary rows. JACC derives local/token indices from the callback global index, while CUDA.jl/KA use block/local indices. Julia Int32 indexing is bounded by the named sizes, unlike native Int64 token offsets."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "genuine_CUDAjl_with_scoped_nonpower_reduction_and_BF16_storage_repairs",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+    "verification_contract": "All20 artifacts are byte-identical:288180 exact typed-input/header words plus1154640 full code/scale/zero-point/guard values, serialized as1442820 Float64 numbers. Full independent reconstruction from actual input bits confirms every code and metadata field. All primary rows are finite, mixed sign and nondegenerate; no all-negative/zero-range domain certification.",
+    "keyconfounds": [
+      "Native CUB reduction versus manual binary trees, plus JACC template copy/barrier, are mapping differences rather than pure framework overhead.",
+      "Named17-token batches underuse the80-SM GPU; no default4096-token bandwidth or general throughput ranking follows.",
+      "JACC candidate1 compiled but failed a1024-thread warmup launch at66 registers/thread; current exact register use is unmeasured.",
+      "The original native full CLI has a CUDA12.0 BF16 host assignment type error. The study preserves original GPU functions but does not certify that CLI.",
+      "The source native asymmetric maximum initialization is wrong for true extrema on all-negative rows; original CPU self-check shares it. Primary rows explicitly exclude that domain, as well as zero/constant rows.",
+      "Historical Julia BF16 used rounded Float32 storage. Current real BF16 storage and non-power tree repairs are reference costs, separate from portable translation attempts.",
+      "Static scale0.1 clips this source-like range heavily; exact code agreement does not imply small reconstruction error or good inference accuracy.",
+      "No CUDA FP64 arithmetic coverage is implied by Float64 mixed-artifact serialization.",
+      "Declared shared bytes and barriers are source evidence; transaction, occupancy and roofline bottlenecks are not measured."
+    ],
+    "boundary_rounding_policy": "Nearest-even Float32 operation sequences precede Int8 clamp. Finite mixed rows have extrema[-128,127], no zero denominator or Int32 saturation/addition overflow. Typed input rounding is explicit; static near-half inputs may encode differently across FP16/BF16/FP32 and are compared only against the identical typed input in each model.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "quantVLLM",
+        "configuration_id": "quantVLLM_real_dtypes_h513_5137_mixed_exactcodes_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "c230e8c94284df7dab9b85e6bb0058795c8b70e8884d0dd993c77e642164d444",
+        "status": "verified",
+        "algorithm": "Corrected genuine Julia kernels: full1024-slot identity padding and binary tree, genuine BF16 input constructor, unchanged Float32 round/clamp math.",
+        "work_item_mapping": "Original Int32 block/thread indices and Int32 base offsets, bounded by17*5137; initialized tree padding covers all1024 slots.",
+        "layout": "Contiguous row-major typed input arrays, dense Int8 outputs, Float32 scales and Int32 zero points. Each public array has17 guard cells. Unused scale/zero-point buffers retain exact sentinels. Raw16/32-bit input words and all outputs are losslessly widened to Float64 only for one mixed artifact.",
+        "precision": {
+          "storage": [
+            "Float16 input",
+            "BFloat16 input",
+            "Float32 input and scales",
+            "Int8 codes",
+            "Int32 zero points"
+          ],
+          "compute": [
+            "Float32 arithmetic and reductions",
+            "Int32 rounding/clamp and Julia indexing"
+          ],
+          "input_storage_types": [
+            "Float16",
+            "BFloat16",
+            "Float32"
+          ],
+          "compute_types": [
+            "Float32",
+            "Int32"
+          ],
+          "output_storage_types": [
+            "Int8",
+            "Float32",
+            "Int32"
+          ],
+          "artifact_serialization_dtype": "Float64",
+          "artifact_dtype_is_GPU_compute": false
+        },
+        "memory_access": "Typed row inputs scanned by block-strided lanes. Static paths read once and store Int8; symmetric dynamic scans then quantizes, asymmetric scans extrema then quantizes. Shared tree and JACC template-copy behavior are source traits, not measured transaction/bottleneck claims.",
+        "synchronization": [
+          "No atomics.",
+          "Static paths have no barriers.",
+          "Dynamic manual1024-slot tree: symmetric12/asymmetric24 barriers.",
+          "GPU completion around every timed batch; all transfers and checks outside clocks."
+        ],
+        "resource_policy": {
+          "declared_shared_bytes_by_path": {
+            "static_symmetric": 0,
+            "static_asymmetric": 0,
+            "dynamic_symmetric": 4096,
+            "dynamic_asymmetric": 4096
+          },
+          "maximum_declared_shared_bytes": 4096,
+          "shared_storage": "static",
+          "source_tree_slots": 1024,
+          "source_barriers_by_dynamic_path": {
+            "symmetric": 12,
+            "asymmetric": 24
+          },
+          "atomics": false,
+          "register_count_current": "unmeasured",
+          "JACC_template_copy": null
+        },
+        "launch_geometry": {
+          "blocks": 17,
+          "threads": [
+            513,
+            1024
+          ],
+          "hidden_sizes": [
+            513,
+            5137
+          ],
+          "input_storage_types": [
+            "FP16",
+            "BF16",
+            "FP32"
+          ],
+          "kernel_definitions": 4,
+          "timed_paths": 24,
+          "requested_dtype_geometry_mode_cases": 24,
+          "actual_compiler_specialization_count": "not instrumented; not equivalent to program candidate count"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+        "supported_features": [
+          "Actual BF16 storage and Float32 conversion on V100",
+          "FP16/BF16/FP32 typed input kernels",
+          "Non-power-of-two513-thread groups",
+          "Shared max/min reductions with padding",
+          "Exact Int8 nearest-even and clamp",
+          "Per-token scale and zero-point outputs"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Actual CUDA backend/V100 and the named mixed nondegenerate row contract. No full native CLI, all-negative/constant/NaN/Inf rows, large Int32-index overflow, BF16 arithmetic instruction or downstream inference quality claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM",
+        "numerical_contract": "All20 artifacts are byte-identical:288180 exact typed-input/header words plus1154640 full code/scale/zero-point/guard values, serialized as1442820 Float64 numbers. Full independent reconstruction from actual input bits confirms every code and metadata field. All primary rows are finite, mixed sign and nondegenerate; no all-negative/zero-range domain certification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00014776385000000002,
+          0.00014576845000000005,
+          0.00014246270000000001,
+          0.00014126820000000002,
+          0.00014399885
+        ],
+        "mean_last_four_seconds": 0.00014337455,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          },
+          "BFloat16s": "0.6.2"
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/quantVLLM-julia/quantVLLM-julia-cuda.jl/main.jl",
+            "sha256": "c230e8c94284df7dab9b85e6bb0058795c8b70e8884d0dd993c77e642164d444"
+          },
+          {
+            "path": "src/quantVLLM-julia/study_common.jl",
+            "sha256": "00b2ca287ed4e1f1256e3ab109e54fa0a15c81103fc0c40058e04ac54fce897a"
+          }
+        ],
+        "implementation_source_digest": "2173b4a026afea8eaec4ac4b56c0a22b5d8327f3f593b37ca674fb148a5d33c6",
+        "verification_strength": "complete_quantized_codes_scales_zero_points_and_guards_with_actual_typed_input_bits",
+        "scientific_domain_conditions": [
+          "Primary rows finite, mixed sign, nondegenerate with extrema[-128,127].",
+          "Known native all-negative dynamic-asymmetric maximum initialization limitation is outside this certified domain."
+        ],
+        "input_dependent_descriptors": "src/quantVLLM-julia/independent_artifact_audit.json"
+      },
+      "ka": {
+        "benchmark_id": "quantVLLM",
+        "configuration_id": "quantVLLM_real_dtypes_h513_5137_mixed_exactcodes_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "809a579696456eaef9f9e2bc2b565c59c2a17f0b79a6f5facec297e5425b46b8",
+        "status": "verified",
+        "algorithm": "Four KA kernels with local1024-element Float32 storage and the same corrected binary trees; exact typed input conversion.",
+        "work_item_mapping": "KA Group/Local indices converted to Int32; workgroup size is513/1024, with full groups so all barrier participants are active.",
+        "layout": "Contiguous row-major typed input arrays, dense Int8 outputs, Float32 scales and Int32 zero points. Each public array has17 guard cells. Unused scale/zero-point buffers retain exact sentinels. Raw16/32-bit input words and all outputs are losslessly widened to Float64 only for one mixed artifact.",
+        "precision": {
+          "storage": [
+            "Float16 input",
+            "BFloat16 input",
+            "Float32 input and scales",
+            "Int8 codes",
+            "Int32 zero points"
+          ],
+          "compute": [
+            "Float32 arithmetic and reductions",
+            "Int32 rounding/clamp and Julia indexing"
+          ],
+          "input_storage_types": [
+            "Float16",
+            "BFloat16",
+            "Float32"
+          ],
+          "compute_types": [
+            "Float32",
+            "Int32"
+          ],
+          "output_storage_types": [
+            "Int8",
+            "Float32",
+            "Int32"
+          ],
+          "artifact_serialization_dtype": "Float64",
+          "artifact_dtype_is_GPU_compute": false
+        },
+        "memory_access": "Typed row inputs scanned by block-strided lanes. Static paths read once and store Int8; symmetric dynamic scans then quantizes, asymmetric scans extrema then quantizes. Shared tree and JACC template-copy behavior are source traits, not measured transaction/bottleneck claims.",
+        "synchronization": [
+          "No atomics.",
+          "Static paths have no barriers.",
+          "Dynamic manual1024-slot tree: symmetric12/asymmetric24 barriers.",
+          "GPU completion around every timed batch; all transfers and checks outside clocks."
+        ],
+        "resource_policy": {
+          "declared_shared_bytes_by_path": {
+            "static_symmetric": 0,
+            "static_asymmetric": 0,
+            "dynamic_symmetric": 4096,
+            "dynamic_asymmetric": 4096
+          },
+          "maximum_declared_shared_bytes": 4096,
+          "shared_storage": "static",
+          "source_tree_slots": 1024,
+          "source_barriers_by_dynamic_path": {
+            "symmetric": 12,
+            "asymmetric": 24
+          },
+          "atomics": false,
+          "register_count_current": "unmeasured",
+          "JACC_template_copy": null
+        },
+        "launch_geometry": {
+          "blocks": 17,
+          "threads": [
+            513,
+            1024
+          ],
+          "hidden_sizes": [
+            513,
+            5137
+          ],
+          "input_storage_types": [
+            "FP16",
+            "BF16",
+            "FP32"
+          ],
+          "kernel_definitions": 4,
+          "timed_paths": 24,
+          "requested_dtype_geometry_mode_cases": 24,
+          "actual_compiler_specialization_count": "not instrumented; not equivalent to program candidate count"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+        "supported_features": [
+          "Actual BF16 storage and Float32 conversion on V100",
+          "FP16/BF16/FP32 typed input kernels",
+          "Non-power-of-two513-thread groups",
+          "Shared max/min reductions with padding",
+          "Exact Int8 nearest-even and clamp",
+          "Per-token scale and zero-point outputs"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Actual CUDA backend/V100 and the named mixed nondegenerate row contract. No full native CLI, all-negative/constant/NaN/Inf rows, large Int32-index overflow, BF16 arithmetic instruction or downstream inference quality claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM",
+        "numerical_contract": "All20 artifacts are byte-identical:288180 exact typed-input/header words plus1154640 full code/scale/zero-point/guard values, serialized as1442820 Float64 numbers. Full independent reconstruction from actual input bits confirms every code and metadata field. All primary rows are finite, mixed sign and nondegenerate; no all-negative/zero-range domain certification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000220448,
+          0.00018468410000000004,
+          0.0001782506,
+          0.0001754756,
+          0.00017909605
+        ],
+        "mean_last_four_seconds": 0.0001793765875,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          },
+          "BFloat16s": "0.6.2"
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/quantVLLM-julia/quantVLLM-julia-KA/main.jl",
+            "sha256": "809a579696456eaef9f9e2bc2b565c59c2a17f0b79a6f5facec297e5425b46b8"
+          },
+          {
+            "path": "src/quantVLLM-julia/study_common.jl",
+            "sha256": "00b2ca287ed4e1f1256e3ab109e54fa0a15c81103fc0c40058e04ac54fce897a"
+          },
+          {
+            "path": "src/quantVLLM-julia/quant_math.jl",
+            "sha256": "ac281982ab7b71bb5659642a45cbfad72c4afd281b38ff53507e593de29f81fb"
+          }
+        ],
+        "implementation_source_digest": "3f89ecdb4b2b10ef59d6e3b86672580a43a185cd559f6c019b8adc6f63626686",
+        "verification_strength": "complete_quantized_codes_scales_zero_points_and_guards_with_actual_typed_input_bits",
+        "scientific_domain_conditions": [
+          "Primary rows finite, mixed sign, nondegenerate with extrema[-128,127].",
+          "Known native all-negative dynamic-asymmetric maximum initialization limitation is outside this certified domain."
+        ],
+        "input_dependent_descriptors": "src/quantVLLM-julia/independent_artifact_audit.json"
+      },
+      "jacc": {
+        "benchmark_id": "quantVLLM",
+        "configuration_id": "quantVLLM_real_dtypes_h513_5137_mixed_exactcodes_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40",
+        "status": "verified",
+        "algorithm": "Four callbacks reuse the numerical helpers and tree; JACC.shared(template) and explicit dynamic4096-byte launch resources. Int32 callback indexing fixes a demonstrated register-limit launch failure.",
+        "work_item_mapping": "Global callback index converted to Int32 before division/modulo by the physical group size. This retains the bounded source indexing and avoids the first candidate register-limit failure.",
+        "layout": "Contiguous row-major typed input arrays, dense Int8 outputs, Float32 scales and Int32 zero points. Each public array has17 guard cells. Unused scale/zero-point buffers retain exact sentinels. Raw16/32-bit input words and all outputs are losslessly widened to Float64 only for one mixed artifact.",
+        "precision": {
+          "storage": [
+            "Float16 input",
+            "BFloat16 input",
+            "Float32 input and scales",
+            "Int8 codes",
+            "Int32 zero points"
+          ],
+          "compute": [
+            "Float32 arithmetic and reductions",
+            "Int32 rounding/clamp and Julia indexing"
+          ],
+          "input_storage_types": [
+            "Float16",
+            "BFloat16",
+            "Float32"
+          ],
+          "compute_types": [
+            "Float32",
+            "Int32"
+          ],
+          "output_storage_types": [
+            "Int8",
+            "Float32",
+            "Int32"
+          ],
+          "artifact_serialization_dtype": "Float64",
+          "artifact_dtype_is_GPU_compute": false
+        },
+        "memory_access": "Typed row inputs scanned by block-strided lanes. Static paths read once and store Int8; symmetric dynamic scans then quantizes, asymmetric scans extrema then quantizes. Shared tree and JACC template-copy behavior are source traits, not measured transaction/bottleneck claims.",
+        "synchronization": [
+          "No atomics.",
+          "Static paths have no barriers.",
+          "Dynamic manual1024-slot tree: symmetric12/asymmetric24 barriers. JACC.shared adds one initial copy/barrier.",
+          "GPU completion around every timed batch; all transfers and checks outside clocks."
+        ],
+        "resource_policy": {
+          "declared_shared_bytes_by_path": {
+            "static_symmetric": 0,
+            "static_asymmetric": 0,
+            "dynamic_symmetric": 4096,
+            "dynamic_asymmetric": 4096
+          },
+          "maximum_declared_shared_bytes": 4096,
+          "shared_storage": "dynamic",
+          "source_tree_slots": 1024,
+          "source_barriers_by_dynamic_path": {
+            "symmetric": 13,
+            "asymmetric": 25
+          },
+          "atomics": false,
+          "register_count_current": "unmeasured",
+          "JACC_template_copy": "1024 Float32 template elements plus one barrier before the explicit tree; compiler elimination unprofiled",
+          "failed_candidate1_registers_per_thread": 66,
+          "current_registers_per_thread": "unmeasured"
+        },
+        "launch_geometry": {
+          "blocks": 17,
+          "threads": [
+            513,
+            1024
+          ],
+          "hidden_sizes": [
+            513,
+            5137
+          ],
+          "input_storage_types": [
+            "FP16",
+            "BF16",
+            "FP32"
+          ],
+          "kernel_definitions": 4,
+          "timed_paths": 24,
+          "requested_dtype_geometry_mode_cases": 24,
+          "actual_compiler_specialization_count": "not instrumented; not equivalent to program candidate count"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+        "supported_features": [
+          "Actual BF16 storage and Float32 conversion on V100",
+          "FP16/BF16/FP32 typed input kernels",
+          "Non-power-of-two513-thread groups",
+          "Shared max/min reductions with padding",
+          "Exact Int8 nearest-even and clamp",
+          "Per-token scale and zero-point outputs"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Actual CUDA backend/V100 and the named mixed nondegenerate row contract. No full native CLI, all-negative/constant/NaN/Inf rows, large Int32-index overflow, BF16 arithmetic instruction or downstream inference quality claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM",
+        "numerical_contract": "All20 artifacts are byte-identical:288180 exact typed-input/header words plus1154640 full code/scale/zero-point/guard values, serialized as1442820 Float64 numbers. Full independent reconstruction from actual input bits confirms every code and metadata field. All primary rows are finite, mixed sign and nondegenerate; no all-negative/zero-range domain certification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0003019762,
+          0.0002864782,
+          0.0002664214,
+          0.00027288845,
+          0.000272767
+        ],
+        "mean_last_four_seconds": 0.0002746387625,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          },
+          "BFloat16s": "0.6.2"
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl",
+            "sha256": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40"
+          },
+          {
+            "path": "src/quantVLLM-julia/study_common.jl",
+            "sha256": "00b2ca287ed4e1f1256e3ab109e54fa0a15c81103fc0c40058e04ac54fce897a"
+          },
+          {
+            "path": "src/quantVLLM-julia/quant_math.jl",
+            "sha256": "ac281982ab7b71bb5659642a45cbfad72c4afd281b38ff53507e593de29f81fb"
+          }
+        ],
+        "implementation_source_digest": "61923348b3a78d71d42e89875ef7d9893f924a8ae5e39115bf038ffd255cef94",
+        "verification_strength": "complete_quantized_codes_scales_zero_points_and_guards_with_actual_typed_input_bits",
+        "scientific_domain_conditions": [
+          "Primary rows finite, mixed sign, nondegenerate with extrema[-128,127].",
+          "Known native all-negative dynamic-asymmetric maximum initialization limitation is outside this certified domain."
+        ],
+        "input_dependent_descriptors": "src/quantVLLM-julia/independent_artifact_audit.json"
+      }
+    },
+    "source_sha256": {
+      "src/quantVLLM-julia/quantVLLM-julia-cuda.jl/main.jl": "c230e8c94284df7dab9b85e6bb0058795c8b70e8884d0dd993c77e642164d444",
+      "src/quantVLLM-julia/quantVLLM-julia-KA/main.jl": "809a579696456eaef9f9e2bc2b565c59c2a17f0b79a6f5facec297e5425b46b8",
+      "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40"
+    },
+    "ontology_sha256": "51eb0ec9afc18200e9364135f1207edad1242d28894864a9c723c34b1619f9d1",
+    "CUB_header_observed_version": "2.0.1",
+    "native_boundary_witness": "src/quantVLLM-julia/source_and_numerical_witnesses.json"
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
-  "source_syntax_evidence": null,
-  "configurations": [],
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl",
+    "sha256": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        161,
+        163,
+        165,
+        167
+      ],
+      "local_storage": [],
+      "barrier": [
+        54,
+        63,
+        71,
+        106,
+        114,
+        118,
+        126,
+        134,
+        145
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "quantVLLM_real_dtypes_h513_5137_mixed_exactcodes_v1",
+      "run_id": "20261017T235746536984Z_quantVLLM",
+      "result": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": {
+        "artifact_float64": "Lossless widening of UInt32 raw input words and Int8/Float32/Int32 outputs, not actual GPU FP64 arithmetic.",
+        "quantization_accuracy": "Computed exact encoding error0 is distinct from reconstructed activation error; observed reconstruction/clipping metrics are in independent_artifact_audit.json.",
+        "relative_error": "Uncomputed and null; no zero placeholder."
+      },
+      "source_scope_adjudication": {
+        "native_GPU_kernels_unchanged": true,
+        "native_source_extraction": "study_native_kernels.cuh exactprefix before hostquantgenerator, originalmain/kernelcode unchanged. OriginalfullCLI localCUDA12.0compilefailsambiguousBF16=int assignment; recordedB2hostfailure, notGPUalgorithmrepair.",
+        "primary_scientific_domain": "Allrowsfinite/mixedsign/nondegenerate, actualmin-128/max127 ensurescorrectoriginalnative minmax; allnegativepositivefloatmininitialhazard separatelywitnessedoutofprimaryscope, no zero/constantrowclaim.",
+        "current_cuda_jl_repair": "Actualnon-power-of-tworeduction numericalfailure fixedsharedpadding/fixed1024tree, BF16storageactual16bit, oldsources/witnesspreserved.",
+        "quantization_accuracy": "Exactcode/scales/AZPcorrectness isdistinctfromlossyreconstructionaccuracy/clipping; fixturedescriptors reportboth."
+      },
+      "reference_provenance": null,
+      "configuration_classification_adjudication": {
+        "path": "src/quantVLLM-julia/study_adjudications.json",
+        "sha256": "f49ea0a9a48548df10b429c573615d3c9dcd1b5ef8ad51f368f05a28fc9c96ff",
+        "run_id": "20261017T235746536984Z_quantVLLM",
+        "reason": "Clarify actual storage versus mixed-artifact serialization and the source-contract domain, already declared before first primary measurement. No execution, tolerance or timing change.",
+        "recorded_at": "2026-10-18T00:07:06.311045+00:00",
+        "updated_fields": [
+          "numerical_evidence_strength",
+          "reported_metric_definition_erratum",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "953f59c34c146726ade73c0fc2451f2e8984ad1fc60bfe3a1bef219625a21f08",
+      "source_hash": "7e1ea9efd5ccc15d9255f82acea085afbb20709dc268e08533b54acc37ce2dd3",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T235746536984Z_quantVLLM/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0003019762,
+        0.0002864782,
+        0.0002664214,
+        0.00027288845,
+        0.000272767
+      ],
+      "mean_last_four_seconds": 0.0002746387625,
+      "contract": {
+        "metric": "Sum24separatelytimedquantizationkernels (FP16/realBF16/FP32 xhidden513/5137 xstaticSym/staticAsym/dynamicSym/dynamicAsym),20launches/pathaveragedtoone,5outertrialsmeanlast4,explicitallpathscompilewarmup. Allocation/typedH2D/outputresets/D2H/alloracles/artifactwideningoutsideclock.",
+        "fixtures": "17tokens/type/hidden, allrowsmixed/nonconstant withfixedactualextrema-128/127, lastlaneextremum catchesnonpowerreduction. Dyadicmasterinputs+Float32staticroundties .05,-.05,.15,.25,.35,-.15, actual16/32-bittypedstorage anddtype-specificrounding.",
+        "artifact": "288180 actualinputrawUInt32wordprefix (raw16/32bitcodesand5headers/case) losslesslywidenedFloat64, followed by1154640 fullInt8quantcodes/Float32scales/Int32AZPbuffers+17guards eachalso widenedlosslessly. Exactallfields0/0, noFloat64GPUcomputeclaim.",
+        "mapping": "Originalnativekernels+wrappers byte-identicalprefix, hostCLI BF16=int compileambiguitybypassednamedharnessonly. CUDAjlpadshared1024/fixedtree fixesactualh513oldbug, trueBFloat16storage fixesoldFloat32approx. Nativepositivefloatminmaxinitialhazardforallnegative/zero-range rows explicitlyoutsideprimarymixedcontractwithactualwitness.",
+        "path_order": [
+          "FP16_h513_static_symmetric",
+          "FP16_h513_static_asymmetric",
+          "FP16_h513_dynamic_symmetric",
+          "FP16_h513_dynamic_asymmetric",
+          "FP16_h5137_static_symmetric",
+          "FP16_h5137_static_asymmetric",
+          "FP16_h5137_dynamic_symmetric",
+          "FP16_h5137_dynamic_asymmetric",
+          "BF16_h513_static_symmetric",
+          "BF16_h513_static_asymmetric",
+          "BF16_h513_dynamic_symmetric",
+          "BF16_h513_dynamic_asymmetric",
+          "BF16_h5137_static_symmetric",
+          "BF16_h5137_static_asymmetric",
+          "BF16_h5137_dynamic_symmetric",
+          "BF16_h5137_dynamic_asymmetric",
+          "FP32_h513_static_symmetric",
+          "FP32_h513_static_asymmetric",
+          "FP32_h513_dynamic_symmetric",
+          "FP32_h513_dynamic_asymmetric",
+          "FP32_h5137_static_symmetric",
+          "FP32_h5137_static_asymmetric",
+          "FP32_h5137_dynamic_symmetric",
+          "FP32_h5137_dynamic_asymmetric"
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "complete_quantized_codes_scales_zero_points_and_guards_with_actual_typed_input_bits"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "quantVLLM:jacc:register_limit_candidate1",
+        "benchmark_id": "quantVLLM",
+        "implementation_model": "jacc",
+        "taxonomy_code": "R1",
+        "phase": "warmup_launch",
+        "origin_model": "jacc",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/quantVLLM.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "quantVLLM:jacc:register_limit_candidate1",
+          "benchmark_id": "quantVLLM",
+          "implementation_model": "jacc",
+          "origin_model": "jacc",
+          "phase": "warmup_launch",
+          "code": "R1",
+          "is_failure": true,
+          "candidate_id": 1,
+          "exact_error": "Candidate1 device compilation succeeded, but FP16 dynamic-asymmetric1024-thread launch failed CUDA701:66registers/thread*1024=67584>65536registers/block. Converting callback index to Int32 before divide/modulo resolves the launch in candidate2 while retaining1024 threads,4096-byte shared memory and exact contract. New register count is not measured; no compiler failure or unsupported feature claim.",
+          "root_cause": "Candidate1 device compilation succeeded, but FP16 dynamic-asymmetric1024-thread launch failed CUDA701:66registers/thread*1024=67584>65536registers/block. Converting callback index to Int32 before divide/modulo resolves the launch in candidate2 while retaining1024 threads,4096-byte shared memory and exact contract. New register count is not measured; no compiler failure or unsupported feature claim.",
+          "root_cause_evidence": [
+            {
+              "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/candidate01.jl",
+              "sha256": "04887fad2de0d3f8189897867a814762654297c6bf6663ff8ef0f17809e50ef7"
+            },
+            {
+              "path": ".porting-state/portable_julia/runs/20261017T235557400525Z_quantVLLM/jacc_run1.log",
+              "sha256": "9ddbcbf975c459a4085ac436de57e5503f4656b5ab187be109481ce647607f6e"
+            },
+            {
+              "path": "src/quantVLLM-julia/quantVLLM-julia-JACC/main.jl",
+              "sha256": "daa56fd7a49710c744ba9abb56cfda32c4c9915b14e2ed74d79b821238352f40"
+            }
+          ],
+          "final_outcome": "verified_named_mixed_nondegenerate_contract",
+          "historical_total_attempts_known": null
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
+    "candidate_attempts": 2,
     "compiler_checks": null,
     "compiler_feedback_repairs": null,
     "runtime_repairs": null,
     "numerical_repairs": null,
     "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "51d101ffabbb52f46a19c1a9",
+        "begin_event_id": "ad950e58af328c9c89042248",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T23:58:36.077683+00:00",
+        "usage_event_timestamp": "2026-10-17T23:58:23.658Z",
+        "elapsed_usage_event_start": "2026-10-17T23:54:50.561Z",
+        "delta_usage": {
+          "input_tokens": 2226106,
+          "cached_input_tokens": 2217216,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8714,
+          "reasoning_output_tokens": 6893,
+          "total_tokens": 2234820
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 12.419683,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "e31f04026b921ed9f6c7ab9968a7241df4fe1c44cdd26a2ef422229e02a6a9ca",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Candidate2 afterInt32callbackindexrepair passesall5 bitexactfull24paths againstbothrefs/CPUoracle. Candidate1compiledthenwarmuplaunchR1resource701(66regs*1024>65536);2programcandidates/2deviceprocesses/1launchrepair/0devicecompilerfeedbackrepairs, same1024threads/4096shared/contract retained.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 7.660212,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/quantVLLM/jacc_translation.jsonl",
+        "evidence_sha256": "efd311cce7bf24d5909bf6a06ca43397c675b4a646b78f8458740eecb70df666",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/quantVLLM/measurement_scope_review.json",
+      "sha256": "8385d016d7d5659a7ff65cf09d04f5c636e31754d2d82e7336843b60d780ef4d",
+      "record": {
+        "benchmark_id": "quantVLLM",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/quantVLLM-julia-jacc/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "5e90c9fb9d546c8fe2a472785ece6dd5a07a8148fba68f649c0760a628edb878",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/quantVLLM-julia-jacc/manifest.json",
+        "sha256": "5e90c9fb9d546c8fe2a472785ece6dd5a07a8148fba68f649c0760a628edb878"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
-  "source_commit": null,
+  "source_commit": "97ffd28f23f15ef54f9d29a6b31c90b14d4299f1",
   "explicit_outcome_evidence": null
 }

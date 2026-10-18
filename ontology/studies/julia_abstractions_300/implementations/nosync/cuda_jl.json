@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "nosync",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/nosync.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,15 +14,511 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Source Thrust sequence(customblockingstream par_nosync), std::async hostthread reduce(defaultlegacy stream), synchronous inclusive_scan(customstream),futureget andlastscanD2H; completepreallocatedlibrarypipeline.",
+    "work_item_mapping": "All4execute same C ABI bridge sourceThrustalgorithms. CUDA.jl/KA/JACC provideactualdeviceallocation; noauthoredtranslateddevicekernel. Explicit--default-stream legacy, streamcreation/destruction outsideROI, contextwidecompletion.",
+    "storage_precision": [
+      "Int32 vectors/results"
+    ],
+    "compute_precision": [
+      "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+    ],
+    "synchronization": [
+      "sourcecustomblockingCUDAstream",
+      "Thrustsynchronousscanpolicy",
+      "std::futureget",
+      "lastscanblockingD2H",
+      "contextwideROIcompletion"
+    ],
+    "launch_geometry": {
+      "status": "vendor_library_internal_unprofiled",
+      "authored_device_kernel_definitions": 0,
+      "host_async_threads_per_pipeline": 1
+    },
+    "resource_policy": "Vendorinternalgeometry/sharedmemory/registers unprofiled; do notinfer0shared",
+    "backend_extensions": [
+      "HostCABIThrustinterop",
+      "CUDAstreamcreation/destruction",
+      "contextwideCUDAcompletion"
+    ],
+    "implementation_class": "vendor_library_interop",
+    "source_sha256": "5e52fd28e431823d5a351d522d0d0de5d8a87bf7e1b7fe09da1cdcbb86656a1b",
+    "reference_repair": {
+      "phase": "reference_mapping_alignment",
+      "taxonomy_code": "P1",
+      "finding": "HistoricalCUDA.jl host-generatessequence andsequentially calls accumulate/sum ondefaulttaskstream, omitting nativeexplicitblockingcustomstream andstd::async hostfuture ordering. Outputs mathematically equivalent; mapping/hostexecutionpolicy difference, notS1. New namedinteropreference executes same nativeThrustpipeline with actualCUDA.jl allocation.",
+      "original_main_sha256": "7d7a3841af0802f132b43f0c15c70f5bd52f5ef253bb1a8c5888691fb7277bcb",
+      "native_source_sha256": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8",
+      "native_mapping_scope": "Native originalmain compiledunchanged underalternateentry; adapterextracts sameThrust policies/calls to preallocatedpointerarguments. Allocation/freeoriginalROIexcludedexplicitly all4; no nativearithmeticrepair."
+    },
+    "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "authored_device_kernel_definitions": 0,
+    "translated_device_kernels": 0,
+    "actual_framework_use": "CUDA.zeros(Int32,n) outsideROI; fullbuffersresetbeforeeachtrial",
+    "vendor_library": {
+      "name": "Thrust",
+      "version_macro": 200001,
+      "backend": "CUDA",
+      "bridge_source_sha256": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+      "compiler_default_stream": "legacy",
+      "compile_command": "nvcc -std=c++17 -O3 --default-stream legacy -arch=sm70 -shared -Xcompiler -fPIC study_vendor_bridge.cu -o libnosync_study.so -lpthread"
+    },
+    "host_boundary": "std::async threadcreation/futureget andlastscanD2H inside; allocation/reset/streamcreate/fulloutputD2H outside",
+    "source_dependencies_sha256": {
+      "/home/imo/HeCBench_julia/src/nosync-julia/study_common.jl": "e2fe939adaadd8b698f44235736893fa4bd20ff55d6324dabb6223ba091a7c11",
+      "/home/imo/HeCBench_julia/src/nosync-julia/study_vendor_bridge.cu": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+      "/home/imo/HeCBench_julia/src/nosync-cuda/main.cu": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8"
+    },
+    "authored_device_kernel_jit_checks": 0,
+    "host_fixture_precision": [
+      "Int32 initialzeros/control"
+    ],
+    "host_oracle_precision": [
+      "Int64 exactformula"
+    ],
+    "scientific_witness": {
+      "captured_trials_checked": 20,
+      "full_output_count": 133126,
+      "input_prefix_count": 133128,
+      "all_exact": true,
+      "identities": [
+        "sequence[i]=i",
+        "scan[i]=i*(i+1)/2",
+        "scan[i]-scan[i-1]=sequence[i]",
+        "serialsum=reduce=lastscan",
+        "difference=0"
+      ],
+      "largest_sum": 2147385345,
+      "scope": "SourceThrust hostfuture/explicitstream calls retained viaCABI. This proves output/ordering correctness fornamedblockingstream/legacydefaultstream sizes, not actualkerneloverlap/asynchrony ofpar_nosync hint. Noauthoredframeworkdevicekernels.",
+      "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/nosync.json"
+    },
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source Thrust sequence(customblockingstream par_nosync), std::async hostthread reduce(defaultlegacy stream), synchronous inclusive_scan(customstream),futureget andlastscanD2H; completepreallocatedlibrarypipeline.",
+    "work_item_mapping": "All4execute same C ABI bridge sourceThrustalgorithms. CUDA.jl/KA/JACC provideactualdeviceallocation; noauthoredtranslateddevicekernel. Explicit--default-stream legacy, streamcreation/destruction outsideROI, contextwidecompletion.",
+    "layout": null,
+    "storage_precision": [
+      "Int32 vectors/results"
+    ],
+    "compute_precision": [
+      "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Int64 exactformula"
+    ],
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "sourcecustomblockingCUDAstream",
+      "Thrustsynchronousscanpolicy",
+      "std::futureget",
+      "lastscanblockingD2H",
+      "contextwideROIcompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Vendorinternalgeometry/sharedmemory/registers unprofiled; do notinfer0shared",
+    "launch_geometry": {
+      "status": "vendor_library_internal_unprofiled",
+      "authored_device_kernel_definitions": 0,
+      "host_async_threads_per_pipeline": 1
+    },
+    "library_backend_boundary": [
+      "HostCABIThrustinterop",
+      "CUDAstreamcreation/destruction",
+      "contextwideCUDAcompletion"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "5e52fd28e431823d5a351d522d0d0de5d8a87bf7e1b7fe09da1cdcbb86656a1b",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "vendor_sequence_scan_reduction_stream_hostfuture",
+    "storage_precision": [
+      "Int32 vectors/results"
+    ],
+    "compute_precision": [
+      "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+    ],
+    "synchronization": [
+      "sourcecustomblockingCUDAstream",
+      "Thrustsynchronousscanpolicy",
+      "std::futureget",
+      "lastscanblockingD2H",
+      "contextwideROIcompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Samevendorlibraryalgorithm/CABI pipeline withactualframeworkallocation outsideROI; historicalJulia sequentialhighlevelmapping replaced, nativeouteralloc/freeROIexcluded matchedall4."
+    },
+    "implementation_class": {
+      "cuda_jl": "vendor_library_interop",
+      "ka": "vendor_library_interop",
+      "jacc": "vendor_library_interop"
+    },
+    "timing_scope": "sum_two_preallocated_three_thrust_pipeline_means_including_hostfuture_and_scalar_D2H",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "hardware_data_movement",
+      "secondary_families": [
+        "domain_neutral_primitives"
+      ],
+      "application_domain": "CUDAstreamordering/hostconcurrency demonstration",
+      "operator": "Generatearithmeticsequence, inclusiveprefixsum andindependent totalreduction with streamandhostthread coordination",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/nosync-cuda/main.cu",
+          "sha256": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8"
+        }
+      ],
+      "scope": "Fullsequence/scan/reductionexactat1025/65535; noassertion ofactualoverlap, asynchronouspar_nosyncbehavior,arbitraryInt32overfloworwholeallocationinclusiveCLIperformance."
+    },
+    "keyconfounds": [
+      "0authoreddevicekernels; exclude pureframeworkkernelcounts/aggregates",
+      "Thrustsamealgorithm sharedall4 so timingcannotidentifyKA/JACCdevicekernelperformance",
+      "PreallocatednamedROIexcludes originaldevice_vector alloc/free butincludesvendorinternalscratchandhostthread",
+      "Hoststd::async startup/get+FFIruntime canaffecttiming; no measuredcausalattribution",
+      "par_nosync policy is hint; actualoverlap notprofiled",
+      "Legacydefaultstream+blockingcustomstream scope, notnonblockingstreamconcurrency",
+      "Native/libraryversionThrust200001; targetpinnedCUDAbackendinteroperabilitynotcross-vendorportable"
+    ],
+    "host_oracle_precision": [
+      "Int64 exactintegertriangularformula/serialsum"
+    ],
+    "artifact_encoding": "Int32 exact fullvalues",
+    "benchmark": "nosync",
+    "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T233602322034Z_nosync/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/nosync-cuda/main.cu",
+      "native_source_sha256": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8",
+      "reviewed_at": "2026-10-17T23:36:56.531598+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Source Thrust sequence(customblockingstream par_nosync), std::async hostthread reduce(defaultlegacy stream), synchronous inclusive_scan(customstream),futureget andlastscanD2H; completepreallocatedlibrarypipeline.",
+        "work_item_mapping": "All4execute same C ABI bridge sourceThrustalgorithms. CUDA.jl/KA/JACC provideactualdeviceallocation; noauthoredtranslateddevicekernel. Explicit--default-stream legacy, streamcreation/destruction outsideROI, contextwidecompletion.",
+        "storage_precision": [
+          "Int32 vectors/results"
+        ],
+        "compute_precision": [
+          "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+        ],
+        "synchronization": [
+          "sourcecustomblockingCUDAstream",
+          "Thrustsynchronousscanpolicy",
+          "std::futureget",
+          "lastscanblockingD2H",
+          "contextwideROIcompletion"
+        ],
+        "launch_geometry": {
+          "status": "vendor_library_internal_unprofiled",
+          "authored_device_kernel_definitions": 0,
+          "host_async_threads_per_pipeline": 1
+        },
+        "resource_policy": "Vendorinternalgeometry/sharedmemory/registers unprofiled; do notinfer0shared",
+        "backend_extensions": [
+          "HostCABIThrustinterop",
+          "CUDAstreamcreation/destruction",
+          "contextwideCUDAcompletion"
+        ],
+        "implementation_class": "vendor_library_interop",
+        "source_sha256": "5e52fd28e431823d5a351d522d0d0de5d8a87bf7e1b7fe09da1cdcbb86656a1b",
+        "reference_repair": {
+          "phase": "reference_mapping_alignment",
+          "taxonomy_code": "P1",
+          "finding": "HistoricalCUDA.jl host-generatessequence andsequentially calls accumulate/sum ondefaulttaskstream, omitting nativeexplicitblockingcustomstream andstd::async hostfuture ordering. Outputs mathematically equivalent; mapping/hostexecutionpolicy difference, notS1. New namedinteropreference executes same nativeThrustpipeline with actualCUDA.jl allocation.",
+          "original_main_sha256": "7d7a3841af0802f132b43f0c15c70f5bd52f5ef253bb1a8c5888691fb7277bcb",
+          "native_source_sha256": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8",
+          "native_mapping_scope": "Native originalmain compiledunchanged underalternateentry; adapterextracts sameThrust policies/calls to preallocatedpointerarguments. Allocation/freeoriginalROIexcludedexplicitly all4; no nativearithmeticrepair."
+        },
+        "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 0,
+        "translated_device_kernels": 0,
+        "actual_framework_use": "CUDA.zeros(Int32,n) outsideROI; fullbuffersresetbeforeeachtrial",
+        "vendor_library": {
+          "name": "Thrust",
+          "version_macro": 200001,
+          "backend": "CUDA",
+          "bridge_source_sha256": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "compiler_default_stream": "legacy",
+          "compile_command": "nvcc -std=c++17 -O3 --default-stream legacy -arch=sm70 -shared -Xcompiler -fPIC study_vendor_bridge.cu -o libnosync_study.so -lpthread"
+        },
+        "host_boundary": "std::async threadcreation/futureget andlastscanD2H inside; allocation/reset/streamcreate/fulloutputD2H outside",
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_common.jl": "e2fe939adaadd8b698f44235736893fa4bd20ff55d6324dabb6223ba091a7c11",
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_vendor_bridge.cu": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "/home/imo/HeCBench_julia/src/nosync-cuda/main.cu": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8"
+        },
+        "authored_device_kernel_jit_checks": 0,
+        "host_fixture_precision": [
+          "Int32 initialzeros/control"
+        ],
+        "host_oracle_precision": [
+          "Int64 exactformula"
+        ],
+        "scientific_witness": {
+          "captured_trials_checked": 20,
+          "full_output_count": 133126,
+          "input_prefix_count": 133128,
+          "all_exact": true,
+          "identities": [
+            "sequence[i]=i",
+            "scan[i]=i*(i+1)/2",
+            "scan[i]-scan[i-1]=sequence[i]",
+            "serialsum=reduce=lastscan",
+            "difference=0"
+          ],
+          "largest_sum": 2147385345,
+          "scope": "SourceThrust hostfuture/explicitstream calls retained viaCABI. This proves output/ordering correctness fornamedblockingstream/legacydefaultstream sizes, not actualkerneloverlap/asynchrony ofpar_nosync hint. Noauthoredframeworkdevicekernels.",
+          "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/nosync.json"
+        },
+        "source_review_status": "source_reviewed"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Source Thrust sequence(customblockingstream par_nosync), std::async hostthread reduce(defaultlegacy stream), synchronous inclusive_scan(customstream),futureget andlastscanD2H; completepreallocatedlibrarypipeline.",
+        "work_item_mapping": "All4execute same C ABI bridge sourceThrustalgorithms. CUDA.jl/KA/JACC provideactualdeviceallocation; noauthoredtranslateddevicekernel. Explicit--default-stream legacy, streamcreation/destruction outsideROI, contextwidecompletion.",
+        "storage_precision": [
+          "Int32 vectors/results"
+        ],
+        "compute_precision": [
+          "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+        ],
+        "synchronization": [
+          "sourcecustomblockingCUDAstream",
+          "Thrustsynchronousscanpolicy",
+          "std::futureget",
+          "lastscanblockingD2H",
+          "contextwideROIcompletion"
+        ],
+        "launch_geometry": {
+          "status": "vendor_library_internal_unprofiled",
+          "authored_device_kernel_definitions": 0,
+          "host_async_threads_per_pipeline": 1
+        },
+        "resource_policy": "Vendorinternalgeometry/sharedmemory/registers unprofiled; do notinfer0shared",
+        "backend_extensions": [
+          "HostCABIThrustinterop",
+          "CUDAstreamcreation/destruction",
+          "contextwideCUDAcompletion"
+        ],
+        "implementation_class": "vendor_library_interop",
+        "source_sha256": "ceb41d1d1f0c7fb2d33054e86b1cf19af5ce987d3f5b6c746c0aed921fde43b8",
+        "reference_repair": null,
+        "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 0,
+        "translated_device_kernels": 0,
+        "actual_framework_use": "KernelAbstractions.allocate(CUDA.CUDABackend(),Int32,n) outsideROI; fullbuffersresetbeforeeachtrial",
+        "vendor_library": {
+          "name": "Thrust",
+          "version_macro": 200001,
+          "backend": "CUDA",
+          "bridge_source_sha256": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "compiler_default_stream": "legacy",
+          "compile_command": "nvcc -std=c++17 -O3 --default-stream legacy -arch=sm70 -shared -Xcompiler -fPIC study_vendor_bridge.cu -o libnosync_study.so -lpthread"
+        },
+        "host_boundary": "std::async threadcreation/futureget andlastscanD2H inside; allocation/reset/streamcreate/fulloutputD2H outside",
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_common.jl": "e2fe939adaadd8b698f44235736893fa4bd20ff55d6324dabb6223ba091a7c11",
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_vendor_bridge.cu": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "/home/imo/HeCBench_julia/src/nosync-cuda/main.cu": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8"
+        },
+        "authored_device_kernel_jit_checks": 0,
+        "host_fixture_precision": [
+          "Int32 initialzeros/control"
+        ],
+        "host_oracle_precision": [
+          "Int64 exactformula"
+        ],
+        "scientific_witness": {
+          "captured_trials_checked": 20,
+          "full_output_count": 133126,
+          "input_prefix_count": 133128,
+          "all_exact": true,
+          "identities": [
+            "sequence[i]=i",
+            "scan[i]=i*(i+1)/2",
+            "scan[i]-scan[i-1]=sequence[i]",
+            "serialsum=reduce=lastscan",
+            "difference=0"
+          ],
+          "largest_sum": 2147385345,
+          "scope": "SourceThrust hostfuture/explicitstream calls retained viaCABI. This proves output/ordering correctness fornamedblockingstream/legacydefaultstream sizes, not actualkerneloverlap/asynchrony ofpar_nosync hint. Noauthoredframeworkdevicekernels.",
+          "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/nosync.json"
+        },
+        "source_review_status": "source_reviewed"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Source Thrust sequence(customblockingstream par_nosync), std::async hostthread reduce(defaultlegacy stream), synchronous inclusive_scan(customstream),futureget andlastscanD2H; completepreallocatedlibrarypipeline.",
+        "work_item_mapping": "All4execute same C ABI bridge sourceThrustalgorithms. CUDA.jl/KA/JACC provideactualdeviceallocation; noauthoredtranslateddevicekernel. Explicit--default-stream legacy, streamcreation/destruction outsideROI, contextwidecompletion.",
+        "storage_precision": [
+          "Int32 vectors/results"
+        ],
+        "compute_precision": [
+          "Int32 sourceThrustsequence/scan/reduce; namedinteger sumsfitInt32"
+        ],
+        "synchronization": [
+          "sourcecustomblockingCUDAstream",
+          "Thrustsynchronousscanpolicy",
+          "std::futureget",
+          "lastscanblockingD2H",
+          "contextwideROIcompletion"
+        ],
+        "launch_geometry": {
+          "status": "vendor_library_internal_unprofiled",
+          "authored_device_kernel_definitions": 0,
+          "host_async_threads_per_pipeline": 1
+        },
+        "resource_policy": "Vendorinternalgeometry/sharedmemory/registers unprofiled; do notinfer0shared",
+        "backend_extensions": [
+          "HostCABIThrustinterop",
+          "CUDAstreamcreation/destruction",
+          "contextwideCUDAcompletion"
+        ],
+        "implementation_class": "vendor_library_interop",
+        "source_sha256": "b1281600f6ca162b1fe717ef88d3f424ee989cb1e79d640abac1d2cc54aba01c",
+        "reference_repair": null,
+        "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 0,
+        "translated_device_kernels": 0,
+        "actual_framework_use": "JACC.zeros(Int32,n) outsideROI; fullbuffersresetbeforeeachtrial",
+        "vendor_library": {
+          "name": "Thrust",
+          "version_macro": 200001,
+          "backend": "CUDA",
+          "bridge_source_sha256": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "compiler_default_stream": "legacy",
+          "compile_command": "nvcc -std=c++17 -O3 --default-stream legacy -arch=sm70 -shared -Xcompiler -fPIC study_vendor_bridge.cu -o libnosync_study.so -lpthread"
+        },
+        "host_boundary": "std::async threadcreation/futureget andlastscanD2H inside; allocation/reset/streamcreate/fulloutputD2H outside",
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_common.jl": "e2fe939adaadd8b698f44235736893fa4bd20ff55d6324dabb6223ba091a7c11",
+          "/home/imo/HeCBench_julia/src/nosync-julia/study_vendor_bridge.cu": "f5f7a2edabac8a88baff81e04fd385033e0debd6b6689275b855c174fb71804f",
+          "/home/imo/HeCBench_julia/src/nosync-cuda/main.cu": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8"
+        },
+        "authored_device_kernel_jit_checks": 0,
+        "host_fixture_precision": [
+          "Int32 initialzeros/control"
+        ],
+        "host_oracle_precision": [
+          "Int64 exactformula"
+        ],
+        "scientific_witness": {
+          "captured_trials_checked": 20,
+          "full_output_count": 133126,
+          "input_prefix_count": 133128,
+          "all_exact": true,
+          "identities": [
+            "sequence[i]=i",
+            "scan[i]=i*(i+1)/2",
+            "scan[i]-scan[i-1]=sequence[i]",
+            "serialsum=reduce=lastscan",
+            "difference=0"
+          ],
+          "largest_sum": 2147385345,
+          "scope": "SourceThrust hostfuture/explicitstream calls retained viaCABI. This proves output/ordering correctness fornamedblockingstream/legacydefaultstream sizes, not actualkerneloverlap/asynchrony ofpar_nosync hint. Noauthoredframeworkdevicekernels.",
+          "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/nosync.json"
+        },
+        "source_review_status": "source_reviewed"
+      }
+    },
+    "scientific_witness": {
+      "captured_trials_checked": 20,
+      "full_output_count": 133126,
+      "input_prefix_count": 133128,
+      "all_exact": true,
+      "identities": [
+        "sequence[i]=i",
+        "scan[i]=i*(i+1)/2",
+        "scan[i]-scan[i-1]=sequence[i]",
+        "serialsum=reduce=lastscan",
+        "difference=0"
+      ],
+      "largest_sum": 2147385345,
+      "scope": "SourceThrust hostfuture/explicitstream calls retained viaCABI. This proves output/ordering correctness fornamedblockingstream/legacydefaultstream sizes, not actualkerneloverlap/asynchrony ofpar_nosync hint. Noauthoredframeworkdevicekernels.",
+      "evidence": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/nosync.json"
+    },
+    "prospective_usage_intervals": [
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/nosync/ka_translation.jsonl",
+        "end_event": "3e2d2333a5a630b44a985f01",
+        "delta_usage": {
+          "input_tokens": 279166,
+          "cached_input_tokens": 276992,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1609,
+          "reasoning_output_tokens": 430,
+          "total_tokens": 280775
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/nosync/shared_benchmark_workflow.jsonl",
+        "end_event": "34589ca08d9e32b02cf64161",
+        "delta_usage": {
+          "input_tokens": 1373616,
+          "cached_input_tokens": 1361024,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 12186,
+          "reasoning_output_tokens": 3571,
+          "total_tokens": 1385802
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/nosync/jacc_translation.jsonl",
+        "end_event": "473a8f690fb968c19a5a9f2d",
+        "delta_usage": {
+          "input_tokens": 288051,
+          "cached_input_tokens": 286080,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2457,
+          "reasoning_output_tokens": 354,
+          "total_tokens": 290508
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/nosync/shared_reference_preparation.jsonl",
+        "end_event": "403cb728e949d09b57f33a5c",
+        "delta_usage": {
+          "input_tokens": 605620,
+          "cached_input_tokens": 601600,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 6733,
+          "reasoning_output_tokens": 2699,
+          "total_tokens": 612353
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/nosync-julia/main.jl",
-    "sha256": "7d7a3841af0802f132b43f0c15c70f5bd52f5ef253bb1a8c5888691fb7277bcb",
+    "path": "src/nosync-julia/nosync-julia-cuda.jl/main.jl",
+    "sha256": "5e52fd28e431823d5a351d522d0d0de5d8a87bf7e1b7fe09da1cdcbb86656a1b",
     "syntax_features": {
       "cuda_kernel_launch": [],
       "ka_kernel": [],
@@ -35,29 +531,145 @@
     },
     "placeholder_signals": {
       "include_alias": false,
-      "tiny_source": false
+      "tiny_source": true
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+      "run_id": "20261017T233602322034Z_nosync",
+      "result": ".porting-state/portable_julia/runs/20261017T233602322034Z_nosync/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "32fb542b7ee72fd53b32d0af53cbffda96577f9a27f1c63e63c0b8cd5ffb9dbf",
+      "source_hash": "d92ed8b4b008c4846653cfcea2ac94a55271fecad54b3364a5227b29c14d87a8",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T233602322034Z_nosync/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.002414905,
+        0.003603989,
+        0.002588706666666667,
+        0.0015698270000000002,
+        0.0021930763333333336
+      ],
+      "mean_last_four_seconds": 0.00248889975,
+      "contract": {
+        "sizes": [
+          1025,
+          65535
+        ],
+        "sequence_start": 0,
+        "step": 1,
+        "scalar_type": "Int32; all exact triangular sums fit Int32",
+        "initial_buffers": "Bothcompletevectorszeroed outsideROI,zerosserializedprefix; sequence/scanoverwriteallentries.",
+        "input_prefix_count": 133128,
+        "output_count": 133126,
+        "checked_values": 266254,
+        "internal_repeats": 3,
+        "timing": "Sum2case means of3preallocated Thrust sequence+concurrenthostfuture reduction+inclusive_scan+scalarD2Hpipelines; outsidealloc/reset/finalfullD2H; internalThrustscratch+hostthread included.",
+        "mapping": "Explicitblockingcustomstream,par_nosyncsequence (whenTHRUST>=101700),parscan;std::async reduction onlegacydefaultstream. Compiler explicit--default-stream legacy. Contextwidecompletionallmodels.",
+        "output": "Fullgeneratedsequence,fullinclusiveprefixscan,Int32reducedsum,lastscan,zero difference.",
+        "scope": "Thrustinteroperability0authoreddevicekernels,notportableKA/JACCscanimplementation; n65535avoidsInt32overflow; notoriginalallocationinclusiveCLIruntime.",
+        "native_mapping_adaptation": "Extract identical sourceThrustcalls into preallocated C ABI adapter, originalmaincompiledunchangedunder alternateentry; namedROIexcludesoriginaldevice_vector allocation/free."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
+    "events": [
+      {
+        "event_id": "nosync_cuda_jl_reference_mapping_01",
+        "benchmark_id": "nosync",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_mapping_alignment",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/nosync.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "nosync_cuda_jl_reference_mapping_01",
+          "benchmark_id": "nosync",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "nosync_thrust_stream_hostfuture1025_65535_preallocated_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_mapping_alignment",
+          "taxonomy_code": "P1",
+          "symptom": "HistoricalCUDA.jl host-generatessequence andsequentially calls accumulate/sum ondefaulttaskstream, omitting nativeexplicitblockingcustomstream andstd::async hostfuture ordering. Outputs mathematically equivalent; mapping/hostexecutionpolicy difference, notS1. New namedinteropreference executes same nativeThrustpipeline with actualCUDA.jl allocation.",
+          "cause": "HistoricalCUDA.jl host-generatessequence andsequentially calls accumulate/sum ondefaulttaskstream, omitting nativeexplicitblockingcustomstream andstd::async hostfuture ordering. Outputs mathematically equivalent; mapping/hostexecutionpolicy difference, notS1. New namedinteropreference executes same nativeThrustpipeline with actualCUDA.jl allocation.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "phase": "reference_mapping_alignment",
+            "taxonomy_code": "P1",
+            "finding": "HistoricalCUDA.jl host-generatessequence andsequentially calls accumulate/sum ondefaulttaskstream, omitting nativeexplicitblockingcustomstream andstd::async hostfuture ordering. Outputs mathematically equivalent; mapping/hostexecutionpolicy difference, notS1. New namedinteropreference executes same nativeThrustpipeline with actualCUDA.jl allocation.",
+            "original_main_sha256": "7d7a3841af0802f132b43f0c15c70f5bd52f5ef253bb1a8c5888691fb7277bcb",
+            "native_source_sha256": "1dc5640e8b2837faa19d6f02b5f567bd339b93dcb0102bb85c5d9e49a9f1c9b8",
+            "native_mapping_scope": "Native originalmain compiledunchanged underalternateentry; adapterextracts sameThrust policies/calls to preallocatedpointerarguments. Allocation/freeoriginalROIexcludedexplicitly all4; no nativearithmeticrepair."
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "7d7a3841af0802f132b43f0c15c70f5bd52f5ef253bb1a8c5888691fb7277bcb",
+          "log_reference": "/home/imo/HeCBench_julia/src/nosync-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
     "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
-    "candidate_attempts": null,
-    "compiler_checks": null,
-    "compiler_feedback_repairs": null,
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
     "runtime_repairs": null,
     "numerical_repairs": null,
-    "translation_tokens": null,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 21,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/nosync-julia/nosync-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
     "observed_harness_activity_windows": []
   },
   "effort_manifest_provenance": {
-    "selected_path": ".porting-state/porting_logs/nosync-julia-cuda/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_path": ".porting-state/porting_logs/nosync-julia-cuda_jl/manifest.json",
+    "selected_sha256": "77c4aff5de449aef5fa13515a97dada862463a789d2b7db8c7c13b6632a6cf26",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/nosync-julia-cuda_jl/manifest.json",
+        "sha256": "77c4aff5de449aef5fa13515a97dada862463a789d2b7db8c7c13b6632a6cf26"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,

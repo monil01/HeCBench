@@ -2,21 +2,50 @@
   "schema_version": 2,
   "benchmark_id": "overlay",
   "scientific_intent": {
+    "review_status": "source_audited",
     "primary_family": "signal_image",
-    "application_domain": "Image compositing",
-    "scientific_task": "Overlay a colored box onto image pixels",
-    "mathematical_method": "Bounded pixel selection and alpha blending",
-    "community_use_case": "Visual annotation of image results; not a scientific simulation",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-backed operator/probe intent; application-scale accuracy and performance assessed separately.",
-    "accuracy_requirements": "Configuration-specific mathematical/numerical contract still required; not certified by intent review.",
-    "evidence": [
+    "primary_domain": "RGB_detection_window_overlay_visualization",
+    "secondary_domains": [
+      "computer_vision_postprocessing",
+      "graphics_compositing"
+    ],
+    "scientific_task": "Render translucent rectangular detection-window overlays onto an RGB image using a fixed source color and opacity. The source supplies synthetic pixels/windows, not detections from a trained model.",
+    "mathematical_operation": "For each rectangle and in-image pixel, output=alpha*colorRGB+(1-alpha)*originalInputRGB, alpha=Float32(1/255). All rectangles share color and read original input, so union coverage determines final single-blend output.",
+    "discretization_or_topology": "640\u00d7480 row-major RGB image,245760 axis-aligned integer rectangles,8\u00d78 GPU blocks per rectangle, upper-edge clipping and dense overlap.",
+    "invariants": [
+      "All output channels finite and within RGB range up to source tolerance.",
+      "Every covered pixel equals one source blend, regardless of overlap count; every uncovered pixel equals original input.",
+      "All source boxes/launch order/grid extents preserved; all1904647 actual input-prefix values byteexact.",
+      "Every921600 RGB output value checked against independent coverage/affine oracle in every model/trial."
+    ],
+    "accuracy_requirements": [
+      "Original absolute1e-3 source tolerance for full RGB arrays, plus direct CUDA/CUDA.jl comparisons for allfive trials.",
+      "Independent Float64 affine oracle with actual rounded Float32 alpha/ialpha and integer rectangle-union coverage; no GPU work reduction.",
+      "Exact actual input image/Box/color/shape prefix, finite outputs, range and two unchanged-pixel checks."
+    ],
+    "precision_sensitivity": "Float32 blending/FMA contraction introduces tolerated real-arithmetic drift; geometry remains actual Int32. Alpha source convention1/255 is preserved rather than changed to opacity1.",
+    "input_size_regimes": "Original640\u00d7480/0.8pixels box count245760 and source seed123; other resolutions, per-box colors, negative coordinates and alternate alpha conventions unmeasured.",
+    "community_use_case": "Computer-vision detection visualization and image compositing primitive, not model accuracy or physics inference.",
+    "uncertainty": "Full-batch ROI includes many host dispatch calls; no causal host/GPU bottleneck or measured roofline position without profiles. Dense overlap creates redundant but intentionally retained source work.",
+    "provenance": [
       {
         "path": "src/overlay-cuda/main.cu",
         "sha256": "bfa6712505e93158ca0ee1ddb43428f3f1c33bb12a205f815121eae829a6da8e",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
+        "source_locations": "Original blend kernel/launch loop/RNG/count/color/tolerance"
+      },
+      {
+        "path": "src/overlay-cuda/reference.h",
+        "sha256": "2e1b326c2759072dca5055ce3b4e1a5c34571143d0f531702c71f44a8dc843ca",
+        "source_locations": "Original-input read and clipped pixel loops"
+      },
+      {
+        "path": "src/overlay-julia/generate_study_oracle.py",
+        "sha256": "bda8d6e839b9969e631aa1cc4a7294d7ff99fcec0bffa46b5726ea85281e2a29",
+        "source_locations": "Independent union coverage and affine oracle"
       }
-    ]
+    ],
+    "reviewed_at": "2026-10-17T23:31:42.570007+00:00",
+    "review_phase": "prospective postverification annotation"
   },
   "base_ontology": {
     "path": "ontology/benchmarks/overlay.yaml",
@@ -25,5 +54,70 @@
   },
   "historical_pass_method": "native_pass_trusted",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "3986bc7b2190fd94b2939942",
+      "begin_event_id": "433253bb53e81eec4c07a7e8",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T23:32:18.734348+00:00",
+      "usage_event_timestamp": "2026-10-17T23:31:42.778Z",
+      "elapsed_usage_event_start": "2026-10-17T23:28:55.624Z",
+      "delta_usage": {
+        "input_tokens": 844213,
+        "cached_input_tokens": 841344,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7532,
+        "reasoning_output_tokens": 1550,
+        "total_tokens": 851745
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 35.956348,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "b3bcdad4661d76549d183204425195718a255591f2faeefe40b5891c0ef9b566",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "After20fullartifactRGB/inputprefix/coveragefiniteaudit, fullsourcework/logicaltraffic/hostROI/domain/permodeltraits, N3rounding/S1historicaldummy events, manifests/status/STUDY/paper/checkpoint. NoGPUretime/algorithmshortcut; sourcepublicfullcase all245760launches matched.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 7.633025,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/overlay/shared_annotation.jsonl",
+      "evidence_sha256": "2548deebc9d2686e57cfba0ec9b51e7870c4ac584a7990095d7b1fd51d024a7c",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "52efab5604b48ceb73922543",
+      "begin_event_id": "e9f72693fd434702d7326ab1",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T23:32:27.117628+00:00",
+      "usage_event_timestamp": "2026-10-17T23:32:18.778Z",
+      "elapsed_usage_event_start": "2026-10-17T23:18:09.417Z",
+      "delta_usage": {
+        "input_tokens": 8911503,
+        "cached_input_tokens": 8895488,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 31640,
+        "reasoning_output_tokens": 15375,
+        "total_tokens": 8943143
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 8.339628,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "a13d9f24bcde26ecbc6192a757b8fa15a58897be14c8a6929a6aa26e42247591",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Completeoriginal640x480/245760boxbatch source/RNG/Float3/Box/privatehelper/reference/KA/JACC/probe/20artifacts/ontology/paper/effort. Allactualsourcepixelwork preserved, CPUuniononlyoracle. Context/cache/coordinationandbroadoverlapchildwindowsnotadditiveexclusivebilling; sourcehelperreferencecost separatefromwrappers.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 10.839567,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/overlay/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "7c0452ba12e03436f0e40e778bfd1fb6d00d411fa45423c5eba1c9716da7d2b9",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }

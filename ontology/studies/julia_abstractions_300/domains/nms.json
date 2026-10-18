@@ -2,21 +2,54 @@
   "schema_version": 2,
   "benchmark_id": "nms",
   "scientific_intent": {
+    "review_status": "source_audited",
     "primary_family": "machine_learning",
-    "application_domain": "Detection postprocessing",
-    "scientific_task": "Pairwise suppression bitmap for scored square boxes",
-    "mathematical_method": "Score comparison and overlap divided by one box area; not assumed intersection-over-union",
-    "community_use_case": "Detection filtering; exact native area/threshold policy matters",
-    "review_status": "source_header_and_operator_structure_reviewed",
-    "confidence": "Source-backed operator/probe intent; application-scale accuracy and performance assessed separately.",
-    "accuracy_requirements": "Configuration-specific mathematical/numerical contract still required; not certified by intent review.",
-    "evidence": [
+    "primary_domain": "computer_vision_detection_postprocessing",
+    "secondary_domains": [
+      "signal_image",
+      "face_detection_candidate_windows"
+    ],
+    "scientific_task": "Suppress lower-score overlapping square detection windows by a parallel all-pairs predicate and rowwise keep mask. Source README gives a face-detection use case; current study uses synthetic boxes.",
+    "mathematical_operation": "For score_i<score_j, pairkeep(i,j)=[intersection(i,j)/(width_j+1)^2 < Float32(.3)] AND [width_j!=0]; otherwise pairkeep=1. Keep(i)=AND_j pairkeep(i,j). Integer-pixel +1 convention, square widths, equal-score ties retained.",
+    "discretization_or_topology": "4096 square windows in512 spatial clusters of8; dense4096\u00d74096 pair graph, rowwise logical reduction, no PDE discretization.",
+    "invariants": [
+      "All pair/keep bytes are0 or1, all diagonal pairs remain1, equal scores do not suppress each other.",
+      "Every keep flag equals AND of its4096 pair bytes.",
+      "All40 saved artifacts byte-exact against actual input bytes and full independent Float64 predicate oracle;1024 windows kept."
+    ],
+    "accuracy_requirements": [
+      "Full16777216 pair bytes plus4096 keep flags in every model/trial/configuration.",
+      "Exact65536-byte serialized Float32 input prefix, all input values finite.",
+      "Independent Float64 predicate uses exact promoted source Float32 threshold; minimum active threshold margin0.008641963, no tolerance applied to logical outputs."
+    ],
+    "precision_sensitivity": "Float32 overlap division controls a discrete threshold decision; large threshold margin in this fixture avoids rounding-boundary ambiguity. General near-threshold behavior is not certified.",
+    "input_size_regimes": "Full source maximum4096 detections, positive widths8/12/16, clustered overlap and tied scores; source text-input parsing, small/padded cases, zero/negative widths and real-image quality unmeasured.",
+    "community_use_case": "Computer-vision candidate-window postprocessing, source-documented face detection example; not a trained detector or accuracy evaluation.",
+    "uncertainty": "Source pairwise operator is not claimed equivalent to IoU/greedy alternatives. Layout/reduction adaptations and unprofiled implementation effects constrain performance attribution.",
+    "provenance": [
+      {
+        "path": "src/nms-cuda/README",
+        "sha256": "105148dccdaff92cf8b5c7d348683abb1c14c45522279e9b0fecd62d169aca34",
+        "source_locations": "Source application, original publication pointer and absent sample-image description"
+      },
       {
         "path": "src/nms-cuda/main.cu",
         "sha256": "3b86ea69ac0bd25d94bcb411585a510bb262d0e8c991cd5926e9adc3f6965a88",
-        "scope": "Source declarations, operator structure or explicitly stated intent reviewed; no per-implementation or numerical certification implied."
+        "source_locations": "Actual overlap formula, collective reduction, layout and separate timers"
+      },
+      {
+        "path": "src/nms-julia/reference_original/main.jl",
+        "sha256": "7e63f7f386d3d92814093d8f06b8b99285199f78e2bb2372544b36d4cdf6a2b4",
+        "source_locations": "Existing genuine SoA/tree implementation"
+      },
+      {
+        "path": "src/nms-julia/generate_study_fixture.py",
+        "sha256": "cba0b03c395f515d2e50c951ee88e9ce9667b3de551526c92342f759bf0e6545",
+        "source_locations": "Synthetic fixture and independent full oracle"
       }
-    ]
+    ],
+    "reviewed_at": "2026-10-17T23:03:35.297669+00:00",
+    "review_phase": "prospective postverification annotation"
   },
   "base_ontology": {
     "path": "ontology/benchmarks/nms.yaml",
@@ -25,5 +58,102 @@
   },
   "historical_pass_method": "numeric_stdout",
   "historical_pass_is_strengthened_verification": false,
-  "shared_observed_usage_windows": []
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "27d022999c12ea976fd5d91d",
+      "begin_event_id": "1223812fc0e4ee652643bd5e",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T23:03:59.331431+00:00",
+      "usage_event_timestamp": "2026-10-17T23:03:35.495Z",
+      "elapsed_usage_event_start": "2026-10-17T23:00:42.068Z",
+      "delta_usage": {
+        "input_tokens": 813613,
+        "cached_input_tokens": 812416,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7487,
+        "reasoning_output_tokens": 1222,
+        "total_tokens": 821100
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 23.836431,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "39e372dc57af8982e0eb3c0c76beb590f367f13384fa55e0e886e92ef678ffd6",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "After40fullartifactCPUbyteaudit/inputfiniteproof/originalJuliakernelbodypreservation, permodelscientifictraits/status/manifest/effort/frontendJITclarification/STUDY/paperobs/checkpoint. Genericownedhelper nowhonorsreferencephaseusagefile soinitialpartial/resumedNMSwindowsseparate, no historicalreceipt/sourcekerneloverwrite.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 7.189972,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nms/shared_annotation.jsonl",
+      "evidence_sha256": "2dd0914443cdd7dff6aed579677829ff9baae8b4d8734662dec67875fb9d691c",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "036bd7dc7dc09ab60b85cd92",
+      "begin_event_id": "94ad2c6191e9d4d3b6d6ef69",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T22:43:12.348498+00:00",
+      "usage_event_timestamp": "2026-10-17T22:43:05.916Z",
+      "elapsed_usage_event_start": "2026-10-17T22:42:16.471Z",
+      "delta_usage": {
+        "input_tokens": 705712,
+        "cached_input_tokens": 687744,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 793,
+        "reasoning_output_tokens": 110,
+        "total_tokens": 706505
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 6.432498,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "6dccc410e1e3bd60ae867755d9615a494f5c70b998dde6138cc966fc6af6094c",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Partialinterruptedworkflowonlysourceinspection, noimplementationorvalidation. ClosedbeforeurgentMLPretrospectivemeasurementrepair toavoidinterleavingbenchmarkwindows; nmscompletioncostunknownuntilresumeseparatewindow.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 7.366866,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nms/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "be2e87fc76a89c2e732c14f2188d01b282875d5a5b4596cfd53062aba7dcf1b4",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "c7ae0e32d730fd07bd228376",
+      "begin_event_id": "318819573f51143930a8ea2a",
+      "agent": "/root/portable_infrastructure",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow_resume",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T23:04:06.789128+00:00",
+      "usage_event_timestamp": "2026-10-17T23:03:59.373Z",
+      "elapsed_usage_event_start": "2026-10-17T22:50:33.898Z",
+      "delta_usage": {
+        "input_tokens": 7013808,
+        "cached_input_tokens": 6990208,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 30117,
+        "reasoning_output_tokens": 13465,
+        "total_tokens": 7043925
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "marker_lag_seconds": 7.416128,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "b06ab2f76174da8328d09acc1c598d41d4fd85a383d4abdb7a043ae7ffb29c24",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "CompletedresumeafterseparateMLPrepair: full4096pairbitmap+mask reference/KA/JACC bothsource timerregions,40CPUbyteauditedartifacts/ontology/paper/effort. Initialsourceinspectionsegmentseparateclosedwindow; resumebroadnotfullsinglewindowcost, overlappingchildrennotadditivebilling.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 50.14737,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nms/shared_benchmark_workflow_resume.jsonl",
+      "evidence_sha256": "e68957ef9c24f23c1e0c682a92ccdbd50155612ac9fa4e6fa36f72c09bb75645",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
 }

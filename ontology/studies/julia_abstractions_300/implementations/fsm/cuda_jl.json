@@ -3,7 +3,7 @@
   "study": "julia_abstractions_300_v2",
   "benchmark_id": "fsm",
   "implementation_model": "cuda_jl",
-  "status": "historical_pass_not_reaudited",
+  "status": "verified_named_configuration",
   "scientific_intent_record": "../../domains/fsm.json",
   "environment": {
     "julia_release": "1.12.6",
@@ -14,37 +14,707 @@
     "gpu": "Tesla V100-PCIE-32GB sm70",
     "release_comparison_performed": false
   },
-  "implementation_ontology": null,
-  "implementation_ontology_normalized": null,
-  "implementation_review_status": "not_yet_reviewed_per_model",
-  "shared_benchmark_traits": null,
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_audited",
+    "source_revision": {
+      "path": "src/fsm-julia/fsm-julia-cuda.jl/main.jl",
+      "sha256": "530c1a5cf13760d759e6ef8477594e8bd5ba6490c8068d4dd2f42e9147dfda7b"
+    },
+    "configuration_id": "fsm_source1024x256_8states_table32768_three_traces_full_public_state_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "actual_algorithm": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+    "work_item_mapping": "1024blocks x256lanes, onecandidate/lane, per-blockpersistentgenerations; separate1threadMax",
+    "data_layout": "UInt16 trace; shared16UInt8FSM/lane; lane-major-in-word SoA global packedstate8192UInt32/lane",
+    "storage_precision": [
+      "uint8",
+      "uint16",
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "synchronization": [
+      "Blockbarriers andatomicmaxfitness/lane",
+      "GlobalInt32generationatomic/UInt64packedwinneratomic",
+      "SequentialGAthenMax same taskstream",
+      "BlockingdevicewideROIcompletion"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1024,
+      "shared_bytes": 4096,
+      "explicit_global_state_bytes": 8589934592,
+      "registers": null,
+      "spills": null,
+      "template_copy_bytes": 0
+    },
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [
+      "CUDAhostallocationandcompletion"
+    ],
+    "native_to_model_mapping": {
+      "status": "logical_algorithm_preserved_storage_mapping_adapted",
+      "reason": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled"
+    },
+    "host_device_boundary": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+    "support_boundary": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.1210943281,
+      0.1210407555,
+      0.1209249734,
+      0.1207147146,
+      0.1208176395
+    ],
+    "mean_last_four_seconds": 0.12087452074999999,
+    "profile_ids": [],
+    "keyconfounds": [
+      "Original65536 trace CLI unmeasured; named257/4099/source-rand traces and1021 repeated-PC trace retain full1024x256 population/table32768/cutoff1/repeat10",
+      "LCG low3bits repeat across corresponding lanes in all1024 islands; this is not1024 independent random searches. Initial machines have at most8 low-bit classes; no heldout prediction/generalization claim",
+      "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+      "Native shared4096UInt8 versus CUDAjl/KA staticshared4096; JACC publicshared copies4096-byte template and synchronizes before overwriting, allocation outside ROI",
+      "Exact winning-machine/fitness contract retains highest-lane and highest-block tie priorities, all public RNG/population outputs. Private intermediate trajectories are not fully captured",
+      "Independent CPUoracle uses sparse PC dictionaries, unlike dense GPU tables; block0/1023 simulated separately, all global RNG states independently jumped using exact draws. Proof conditions are source/seed/geometry specific",
+      "Shared math/body authored in reference phase once, portable wrappers ordered/marginal; prospective activity windows include cache/repeated context, paper/guides/other commits and team coordination; broad workflow overlaps and is not exclusive billing"
+    ],
+    "attempt_accounting": {
+      "historical_translation_counts": null,
+      "phase": "reference_restoration",
+      "current_program_candidates": 2,
+      "current_process_evaluations": 2,
+      "current_device_candidates": 2,
+      "actual_device_jit_checks": 2,
+      "frontend_rejections": 0,
+      "device_compiler_feedback_repairs": 0,
+      "current_numerical_repairs": 1,
+      "source_kernel_definitions": 2,
+      "numerical_cases": 3,
+      "trials_per_configuration": 5,
+      "first_verified_run": "20261018T000652342047Z_fsm",
+      "definition": "CUDAjl candidate1 reached GPU and all5failed independent exact oracle dueatomicset-versus-modify syntax; candidate2passes. KA/JACC first devicecandidates pass with already corrected sharedbody. Timedrepeat10/cases/trials are not attempts."
+    },
+    "failure_history": {
+      "historical_counts": null,
+      "path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+    "work_item_mapping": "1024blocks x256lanes, onecandidate/lane, per-blockpersistentgenerations; separate1threadMax",
+    "layout": "UInt16 trace; shared16UInt8FSM/lane; lane-major-in-word SoA global packedstate8192UInt32/lane",
+    "storage_precision": [
+      "uint8",
+      "uint16",
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Blockbarriers andatomicmaxfitness/lane",
+      "GlobalInt32generationatomic/UInt64packedwinneratomic",
+      "SequentialGAthenMax same taskstream",
+      "BlockingdevicewideROIcompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1024,
+      "shared_bytes": 4096,
+      "explicit_global_state_bytes": 8589934592,
+      "registers": null,
+      "spills": null,
+      "template_copy_bytes": 0
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": [
+      "CUDAhostallocationandcompletion"
+    ],
+    "host_control_boundary": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/fsm-julia/fsm-julia-cuda.jl/main.jl",
+      "sha256": "530c1a5cf13760d759e6ef8477594e8bd5ba6490c8068d4dd2f42e9147dfda7b"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "fsm",
+    "scientific_intent": {
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "stochastic_optimization",
+      "scientific_task": "Genetic optimization of an eight-state finite-state predictor on a binary address trace",
+      "mathematical_method": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+      "input_size_regime": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+      "accuracy_requirements": [
+        "Exact complete public states and trace fitness against independent sparse-state CPU GA",
+        "All262144 final RNG states checked using affine jump and per-lane draw counts",
+        "Exact input readback prefix, all five captures and both GPU reference comparisons"
+      ],
+      "precision_sensitivity": "UInt16 trace, UInt8 FSM/state, UInt32 LCG, Int32 fitness/indices/counts, UInt64 winner atomic; no floating-point device computation",
+      "community_use_case": "Controlled irregular stochastic-search operator for studying state-table layout, synchronization and reproducibility. Low-bit RNG diversity and same-trace evaluation limit inference about optimization or predictive quality.",
+      "review_status": "source_audited",
+      "evidence": [
+        {
+          "path": "src/fsm-cuda/kernels.h",
+          "sha256": "a8598d3d6fece6c8da763ba595b6d1ae3a9c474635833a03a5f8b41b261705d7"
+        },
+        {
+          "path": "src/fsm-julia/generate_study_fixture.py",
+          "sha256": "ba82bee0097d1856eaceac805ebc4e8ce70bb03f47144f7fa0c24464871ba294"
+        }
+      ]
+    },
+    "primary_motif": "irregular_stateful_genetic_search",
+    "storage_precision": [
+      "uint8",
+      "uint16",
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "timed_compute_precision": [
+      "uint32",
+      "int32",
+      "uint64"
+    ],
+    "host_oracle_precision": [
+      "integer_exact"
+    ],
+    "artifact_encoding": [
+      "uint64"
+    ],
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "native_to_julia_mapping": {
+      "status": "logical_algorithm_preserved_storage_mapping_adapted",
+      "reason": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled"
+    },
+    "timing_scope": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+    "verification_contract": "All847929publicoutputs+5377exactactualGPUinputprefix onall20captures, exactindependentCPU GA/LCG oracle",
+    "numerical_evidence_strength": "complete_recorded_output_arrays",
+    "keyconfounds": [
+      "Original65536 trace CLI unmeasured; named257/4099/source-rand traces and1021 repeated-PC trace retain full1024x256 population/table32768/cutoff1/repeat10",
+      "LCG low3bits repeat across corresponding lanes in all1024 islands; this is not1024 independent random searches. Initial machines have at most8 low-bit classes; no heldout prediction/generalization claim",
+      "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+      "Native shared4096UInt8 versus CUDAjl/KA staticshared4096; JACC publicshared copies4096-byte template and synchronizes before overwriting, allocation outside ROI",
+      "Exact winning-machine/fitness contract retains highest-lane and highest-block tie priorities, all public RNG/population outputs. Private intermediate trajectories are not fully captured",
+      "Independent CPUoracle uses sparse PC dictionaries, unlike dense GPU tables; block0/1023 simulated separately, all global RNG states independently jumped using exact draws. Proof conditions are source/seed/geometry specific",
+      "Shared math/body authored in reference phase once, portable wrappers ordered/marginal; prospective activity windows include cache/repeated context, paper/guides/other commits and team coordination; broad workflow overlaps and is not exclusive billing"
+    ],
+    "input_dependent_descriptors": {
+      "trace_lengths": [
+        257,
+        4099,
+        1021
+      ],
+      "generations_per_block": [
+        2,
+        2,
+        2
+      ],
+      "fitness": [
+        124,
+        2011,
+        654
+      ],
+      "winner_lanes": [
+        255,
+        255,
+        255
+      ],
+      "distinct_initial_machine_lowbit_classes_upper_bound": 8,
+      "equivalent_islands": 1024
+    },
+    "scientific_witness": "src/fsm-julia/independent_artifact_audit.json",
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/fsm-julia/fsm-julia-cuda.jl/main.jl",
+          "sha256": "530c1a5cf13760d759e6ef8477594e8bd5ba6490c8068d4dd2f42e9147dfda7b"
+        },
+        "configuration_id": "fsm_source1024x256_8states_table32768_three_traces_full_public_state_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+        "work_item_mapping": "1024blocks x256lanes, onecandidate/lane, per-blockpersistentgenerations; separate1threadMax",
+        "data_layout": "UInt16 trace; shared16UInt8FSM/lane; lane-major-in-word SoA global packedstate8192UInt32/lane",
+        "storage_precision": [
+          "uint8",
+          "uint16",
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "synchronization": [
+          "Blockbarriers andatomicmaxfitness/lane",
+          "GlobalInt32generationatomic/UInt64packedwinneratomic",
+          "SequentialGAthenMax same taskstream",
+          "BlockingdevicewideROIcompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 4096,
+          "explicit_global_state_bytes": 8589934592,
+          "registers": null,
+          "spills": null,
+          "template_copy_bytes": 0
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocationandcompletion"
+        ],
+        "native_to_model_mapping": {
+          "status": "logical_algorithm_preserved_storage_mapping_adapted",
+          "reason": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled"
+        },
+        "host_device_boundary": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+        "support_boundary": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.1210943281,
+          0.1210407555,
+          0.1209249734,
+          0.1207147146,
+          0.1208176395
+        ],
+        "mean_last_four_seconds": 0.12087452074999999,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Original65536 trace CLI unmeasured; named257/4099/source-rand traces and1021 repeated-PC trace retain full1024x256 population/table32768/cutoff1/repeat10",
+          "LCG low3bits repeat across corresponding lanes in all1024 islands; this is not1024 independent random searches. Initial machines have at most8 low-bit classes; no heldout prediction/generalization claim",
+          "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+          "Native shared4096UInt8 versus CUDAjl/KA staticshared4096; JACC publicshared copies4096-byte template and synchronizes before overwriting, allocation outside ROI",
+          "Exact winning-machine/fitness contract retains highest-lane and highest-block tie priorities, all public RNG/population outputs. Private intermediate trajectories are not fully captured",
+          "Independent CPUoracle uses sparse PC dictionaries, unlike dense GPU tables; block0/1023 simulated separately, all global RNG states independently jumped using exact draws. Proof conditions are source/seed/geometry specific",
+          "Shared math/body authored in reference phase once, portable wrappers ordered/marginal; prospective activity windows include cache/repeated context, paper/guides/other commits and team coordination; broad workflow overlaps and is not exclusive billing"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "reference_restoration",
+          "current_program_candidates": 2,
+          "current_process_evaluations": 2,
+          "current_device_candidates": 2,
+          "actual_device_jit_checks": 2,
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 1,
+          "source_kernel_definitions": 2,
+          "numerical_cases": 3,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T000652342047Z_fsm",
+          "definition": "CUDAjl candidate1 reached GPU and all5failed independent exact oracle dueatomicset-versus-modify syntax; candidate2passes. KA/JACC first devicecandidates pass with already corrected sharedbody. Timedrepeat10/cases/trials are not attempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl"
+        }
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/fsm-julia/fsm-julia-KA/main.jl",
+          "sha256": "571a40a5ee21162473a9a71dfc9ebe21c7338002549ac6903d774b582251f474"
+        },
+        "configuration_id": "fsm_source1024x256_8states_table32768_three_traces_full_public_state_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+        "work_item_mapping": "1024blocks x256lanes, onecandidate/lane, per-blockpersistentgenerations; separate1threadMax",
+        "data_layout": "UInt16 trace; shared16UInt8FSM/lane; lane-major-in-word SoA global packedstate8192UInt32/lane",
+        "storage_precision": [
+          "uint8",
+          "uint16",
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "synchronization": [
+          "Blockbarriers andatomicmaxfitness/lane",
+          "GlobalInt32generationatomic/UInt64packedwinneratomic",
+          "SequentialGAthenMax same taskstream",
+          "BlockingdevicewideROIcompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 4096,
+          "explicit_global_state_bytes": 8589934592,
+          "registers": null,
+          "spills": null,
+          "template_copy_bytes": 0
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocationandcompletion"
+        ],
+        "native_to_model_mapping": {
+          "status": "logical_algorithm_preserved_storage_mapping_adapted",
+          "reason": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled"
+        },
+        "host_device_boundary": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+        "support_boundary": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.1196137318,
+          0.119210286,
+          0.1193604764,
+          0.1192631795,
+          0.1192762907
+        ],
+        "mean_last_four_seconds": 0.11927755814999999,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Original65536 trace CLI unmeasured; named257/4099/source-rand traces and1021 repeated-PC trace retain full1024x256 population/table32768/cutoff1/repeat10",
+          "LCG low3bits repeat across corresponding lanes in all1024 islands; this is not1024 independent random searches. Initial machines have at most8 low-bit classes; no heldout prediction/generalization claim",
+          "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+          "Native shared4096UInt8 versus CUDAjl/KA staticshared4096; JACC publicshared copies4096-byte template and synchronizes before overwriting, allocation outside ROI",
+          "Exact winning-machine/fitness contract retains highest-lane and highest-block tie priorities, all public RNG/population outputs. Private intermediate trajectories are not fully captured",
+          "Independent CPUoracle uses sparse PC dictionaries, unlike dense GPU tables; block0/1023 simulated separately, all global RNG states independently jumped using exact draws. Proof conditions are source/seed/geometry specific",
+          "Shared math/body authored in reference phase once, portable wrappers ordered/marginal; prospective activity windows include cache/repeated context, paper/guides/other commits and team coordination; broad workflow overlaps and is not exclusive billing"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "source_kernel_definitions": 2,
+          "numerical_cases": 3,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T000903518545Z_fsm",
+          "definition": "CUDAjl candidate1 reached GPU and all5failed independent exact oracle dueatomicset-versus-modify syntax; candidate2passes. KA/JACC first devicecandidates pass with already corrected sharedbody. Timedrepeat10/cases/trials are not attempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl"
+        }
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/fsm-julia/fsm-julia-JACC/main.jl",
+          "sha256": "43af4cdff81f3f882a6587c49a2fe6d4008ee752bd552621c685e71421413d50"
+        },
+        "configuration_id": "fsm_source1024x256_8states_table32768_three_traces_full_public_state_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "Block-local populations, exact trace fitness, highest-lane tie selection, mutation/crossover and LCG random states",
+        "work_item_mapping": "1024blocks x256lanes, onecandidate/lane, per-blockpersistentgenerations; separate1threadMax",
+        "data_layout": "UInt16 trace; shared16UInt8FSM/lane; lane-major-in-word SoA global packedstate8192UInt32/lane",
+        "storage_precision": [
+          "uint8",
+          "uint16",
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "uint32",
+          "int32",
+          "uint64"
+        ],
+        "synchronization": [
+          "Blockbarriers andatomicmaxfitness/lane",
+          "GlobalInt32generationatomic/UInt64packedwinneratomic",
+          "SequentialGAthenMax same taskstream",
+          "BlockingdevicewideROIcompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 4096,
+          "explicit_global_state_bytes": 8589934592,
+          "registers": null,
+          "spills": null,
+          "template_copy_bytes": 4096
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocationandcompletion"
+        ],
+        "native_to_model_mapping": {
+          "status": "logical_algorithm_preserved_storage_mapping_adapted",
+          "reason": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled"
+        },
+        "host_device_boundary": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+        "support_boundary": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.1222973608,
+          0.122322188,
+          0.1220690228,
+          0.1222118841,
+          0.1222535973
+        ],
+        "mean_last_four_seconds": 0.12221417305,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Original65536 trace CLI unmeasured; named257/4099/source-rand traces and1021 repeated-PC trace retain full1024x256 population/table32768/cutoff1/repeat10",
+          "LCG low3bits repeat across corresponding lanes in all1024 islands; this is not1024 independent random searches. Initial machines have at most8 low-bit classes; no heldout prediction/generalization claim",
+          "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+          "Native shared4096UInt8 versus CUDAjl/KA staticshared4096; JACC publicshared copies4096-byte template and synchronizes before overwriting, allocation outside ROI",
+          "Exact winning-machine/fitness contract retains highest-lane and highest-block tie priorities, all public RNG/population outputs. Private intermediate trajectories are not fully captured",
+          "Independent CPUoracle uses sparse PC dictionaries, unlike dense GPU tables; block0/1023 simulated separately, all global RNG states independently jumped using exact draws. Proof conditions are source/seed/geometry specific",
+          "Shared math/body authored in reference phase once, portable wrappers ordered/marginal; prospective activity windows include cache/repeated context, paper/guides/other commits and team coordination; broad workflow overlaps and is not exclusive billing"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "source_kernel_definitions": 2,
+          "numerical_cases": 3,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T001004858427Z_fsm",
+          "definition": "CUDAjl candidate1 reached GPU and all5failed independent exact oracle dueatomicset-versus-modify syntax; candidate2passes. KA/JACC first devicecandidates pass with already corrected sharedbody. Timedrepeat10/cases/trials are not attempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl"
+        }
+      }
+    }
+  },
   "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
   "source_syntax_evidence": {
     "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
-    "path": "src/fsm-julia/main.jl",
-    "sha256": "a75d189746c24df1e87dd2a3d61c446e1ba8e939c4310c0c268e2f626a7b2910",
+    "path": "src/fsm-julia/fsm-julia-cuda.jl/main.jl",
+    "sha256": "530c1a5cf13760d759e6ef8477594e8bd5ba6490c8068d4dd2f42e9147dfda7b",
     "syntax_features": {
       "cuda_kernel_launch": [
-        19
+        79,
+        80
       ],
       "ka_kernel": [],
       "jacc_parallel_loop": [],
       "local_storage": [],
-      "barrier": [],
-      "atomic": [],
+      "barrier": [
+        10,
+        33,
+        35,
+        39,
+        50
+      ],
+      "atomic": [
+        1,
+        30,
+        34,
+        37,
+        60
+      ],
       "vendor_library": [],
       "explicit_zero_dynamic_shared": []
     },
     "placeholder_signals": {
-      "include_alias": false,
+      "include_alias": true,
       "tiny_source": false
     }
   },
-  "configurations": [],
+  "configurations": [
+    {
+      "configuration_id": "fsm_source1024x256_8states_table32768_three_traces_full_public_state_v1",
+      "run_id": "20261018T001004858427Z_fsm",
+      "result": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm/result.json",
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "89f2300bc76712f9da4cf0233afccb2345cd27f9ba3d1249b527c9181c33852c",
+      "source_hash": "9c297286e8a659e5cc8fc661d5b29a3b02666882de9de6093a8897de83a6908b",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.1210943281,
+        0.1210407555,
+        0.1209249734,
+        0.1207147146,
+        0.1208176395
+      ],
+      "mean_last_four_seconds": 0.12087452074999999,
+      "contract": {
+        "traces": [
+          "rand257",
+          "rand4099",
+          "repeated_pc1021"
+        ],
+        "ROI": "Sumthree10repeatmeans,eachbestmemset+sourceGA+Max,devicewidecompletion;allocation/upload/capture/oracleoutside",
+        "scope": "Full source1024x256 population,32768-byte state,8-state FSM,cutoff1,repeat10; named shorter traces. Original65536 CLI unmeasured. Training-trace fitness only, no heldout prediction claim.",
+        "mapping": "Nativeprivate32768bytearray/thread;Julia8GiBexplicitglobalSoAUInt32packed4bytes/word,full8192wordreset/thread/generation. Same32KiBlogicalstate, distinctphysicalmapping; no measuredresource/trafficclaim",
+        "scientific_scope": "Trainingfitness/operatorsonly; low3bitLCGdegeneracyprovesidenticalcorrespondinglaneevolutionacrossall1024islands, notindependentsearches"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
   "failure_taxonomy": {
-    "events": [],
-    "observed_failure_event_count": 0,
-    "history_completeness": "unknown",
+    "events": [
+      {
+        "event_id": "fsm-root-stub",
+        "benchmark_id": "fsm",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "fsm-root-stub",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "S1",
+          "phase": "reference_audit",
+          "is_failure": true,
+          "cause": "Historicalentrypointprints cannedincorrectsourceparameters,fitness/PASS/runtime withoutGA",
+          "evidence": {
+            "path": "src/fsm-julia/reference_history/main.jl",
+            "sha256": "a75d189746c24df1e87dd2a3d61c446e1ba8e939c4310c0c268e2f626a7b2910"
+          },
+          "resolution": "RestoredgenuineGAandfullpublicoutputsindependentoracle"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "fsm-root-atomic",
+        "benchmark_id": "fsm",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N2",
+        "phase": "reference_restoration",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "fsm-root-atomic",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "N2",
+          "phase": "reference_restoration",
+          "is_failure": true,
+          "cause": "Atomix atomicset ofmax(nonatomicread,value)losesupdates; all5exactchecksfailed. Compiler/deviceJITsucceeded.",
+          "resolution": "Modifyingcall @atomic max(array[index],value), sameinputs/tolerances/ROI; secondcandidateall5pass",
+          "run_id": "20261018T000426407011Z_fsm",
+          "evidence": {
+            "path": "src/fsm-julia/reference_history/candidate1/diagnosis.json",
+            "sha256": "70a2538c84eb895becfc8e4433d1d58dd348d53069516d8582e284c798556eee"
+          }
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "fsm-root-mapping-cuda_jl",
+        "benchmark_id": "fsm",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/fsm.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "fsm-root-mapping-cuda_jl",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "Native private32768-byte array per lane vs Julia explicit8GiB global SoA backing packed4UInt8 states/UInt32,8192word zeroing/lane/generation. Logical capacity/reset retained; traffic, registers, spills and occupancy unprofiled",
+          "resolution": "Explicitstorage/resourceconfound, notunsupported; logicaldensecapacityandresetretained"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 2,
+    "history_completeness": "partial",
     "missing_history_is_zero": false
   },
   "effort": {
@@ -53,15 +723,154 @@
     "compiler_feedback_repairs": null,
     "runtime_repairs": null,
     "numerical_repairs": null,
-    "translation_tokens": null,
-    "observed_harness_activity_windows": []
+    "translation_tokens": {
+      "status": "prospective_activity_windows_with_unknown_history",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/fsm/cuda_jl_reference_restoration.jsonl",
+          "model": "cuda_jl",
+          "phase": "reference_restoration",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1742221,
+            "cached_input_tokens": 1681664,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 15137,
+            "reasoning_output_tokens": 2981,
+            "total_tokens": 1757358
+          },
+          "scope": "Oracle/native and2CUDAjl candidates; actualatomicassignmentN2repair. InterleavespaperDSOchart,Keccak/particlediscussion,SPD/Keccak/MCPRcommits,particlefixturecommitanddigesthandoff. Notexclusive/billing."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/fsm/jacc_translation.jsonl",
+          "model": "jacc",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 442924,
+            "cached_input_tokens": 439296,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1783,
+            "reasoning_output_tokens": 193,
+            "total_tokens": 444707
+          },
+          "scope": "FirstJACCdevicecandidate all5exact847929outputs+5377actualinputprefix. Interleavespapernumerical/effortaudit/buildandXKCPcitationinspection. Frameworksharedtemplate4096Bcopyandbarrierexplicit."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/fsm/ka_translation.jsonl",
+          "model": "ka",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 333564,
+            "cached_input_tokens": 328832,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1859,
+            "reasoning_output_tokens": 151,
+            "total_tokens": 335423
+          },
+          "scope": "FirstKAdevicecandidate all5exact againstbothrefs+oracle. Interleavesparticle/quant/MCPRcommitcoordination, guideatomicsemanticsamendment,papertable/figurework. NoKAfailure."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/fsm/shared_annotation.jsonl",
+          "model": "shared",
+          "phase": "annotation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 520953,
+            "cached_input_tokens": 503808,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 4920,
+            "reasoning_output_tokens": 233,
+            "total_tokens": 525873
+          },
+          "scope": "All20captures CPU byteaudit,scientific/physicalmapping/attempt/taxonomy/manifests/paperobservations written inprecedingmodelturn. Metadataonly noGPUreruns. ENDseparateroundfromwrites."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/fsm/shared_benchmark_workflow.jsonl",
+          "model": "shared",
+          "phase": "benchmark_workflow",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 5085365,
+            "cached_input_tokens": 4989440,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 26787,
+            "reasoning_output_tokens": 5454,
+            "total_tokens": 5112152
+          },
+          "scope": "InclusiveFSMworkflow includesinitialDPannotation/sourcecommitactivity beforeactualFSMreferenceBEGIN, sharedfailedcapturetoolrepairoverlap,paper/guides/audits, otherbenchmarkcommits/teamcoordination. Nonadditive/nonexclusive, notbilledtranslationcost. ENDafterannotationsinseparatetoolround."
+        }
+      ],
+      "estimated_saved_source_tokens": 614,
+      "method": "Sourcecharacters/4 proxy not consumption; observed per-phase counters include cache/repeatedcontext/coordination. Broad workflow overlaps subphases and other study work. Historical stub effort unknown. See per-window scope; no additive/exclusive/billed cost.",
+      "receipt_scope": "END markers in separate later model round from scientific annotation; subsequent counter-receipt metadata and commit work are outside closed phase windows."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "40f440b807d693ca4a2e8b51",
+        "begin_event_id": "fbc31b9da35e809ff1833fd9",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_restoration",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T00:08:40.743464+00:00",
+        "usage_event_timestamp": "2026-10-18T00:08:31.807Z",
+        "elapsed_usage_event_start": "2026-10-17T23:57:14.201Z",
+        "delta_usage": {
+          "input_tokens": 1742221,
+          "cached_input_tokens": 1681664,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15137,
+          "reasoning_output_tokens": 2981,
+          "total_tokens": 1757358
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 8.936464,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "b5476eff82f5cc3c01b3120a186bb6da9e66c82951872176776ccde9efb74c59",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Oracle/native and2CUDAjl candidates; actualatomicassignmentN2repair. InterleavespaperDSOchart,Keccak/particlediscussion,SPD/Keccak/MCPRcommits,particlefixturecommitanddigesthandoff. Notexclusive/billing.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 58.273669,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/fsm/cuda_jl_reference_restoration.jsonl",
+        "evidence_sha256": "29ef5b9d70c7b0024b319d550229ff933f243a892e0489bcb69f58fe46bdf79f",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
   },
   "effort_manifest_provenance": {
     "selected_path": ".porting-state/porting_logs/fsm-julia-cuda/manifest.json",
-    "selected_sha256": null,
-    "candidate_alias_records": [],
+    "selected_sha256": "1f4cb273b945962e290aa18489593cc956a476ef46accbda0e001ca45fedeae6",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/fsm-julia-cuda/manifest.json",
+        "sha256": "1f4cb273b945962e290aa18489593cc956a476ef46accbda0e001ca45fedeae6"
+      }
+    ],
     "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
   },
   "source_commit": null,
-  "explicit_outcome_evidence": null
+  "explicit_outcome_evidence": {
+    "benchmark": "fsm",
+    "model": "cuda_jl",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm/result.json",
+    "evidence": [
+      {
+        "path": "src/fsm-julia/fsm-julia-cuda.jl/main.jl",
+        "sha256": "530c1a5cf13760d759e6ef8477594e8bd5ba6490c8068d4dd2f42e9147dfda7b"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261018T001004858427Z_fsm/result.json",
+        "sha256": "89f2300bc76712f9da4cf0233afccb2345cd27f9ba3d1249b527c9181c33852c"
+      }
+    ]
+  }
 }
