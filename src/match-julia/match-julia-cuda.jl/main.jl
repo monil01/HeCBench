@@ -1,0 +1,16 @@
+using CUDA
+include(joinpath(@__DIR__,"..","study_reference_kernels.jl"))
+include(joinpath(@__DIR__,"..","study_common.jl"))
+function launch(k,a,b,o,idx)
+ k==1&&return CUDA.@cuda threads=(128,1) blocks=1 match1!(a,b,o,idx)
+ k==2&&return CUDA.@cuda threads=(16,16) blocks=8 match2!(a,b,o,idx)
+ k==3&&return CUDA.@cuda threads=(16,16) blocks=8 match3!(a,b,o,idx)
+ k==4&&return CUDA.@cuda threads=(16,16) blocks=8 match4!(a,b,o,idx)
+ k==5&&return CUDA.@cuda threads=(16,16) blocks=8 match5!(a,b,o,idx)
+ k==6&&return CUDA.@cuda threads=(16,16) blocks=8 match6!(a,b,o,idx)
+ k==7&&return CUDA.@cuda threads=(32,8) blocks=4 match7!(a,b,o,idx)
+ k==8&&return CUDA.@cuda threads=(32,8) blocks=4 match8!(a,b,o,idx)
+ k==9&&return CUDA.@cuda threads=(32,4) blocks=4 match9!(a,b,o,idx)
+ k==10&&return CUDA.@cuda threads=(32,8) blocks=4 match10!(a,b,o,idx)
+end
+study((T,n)->CUDA.zeros(T,n),launch)
