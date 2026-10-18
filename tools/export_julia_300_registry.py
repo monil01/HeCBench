@@ -51,6 +51,24 @@ def usage_windows(benchmark,model):
             w['marker_lag_derived_from_archived_timestamps']=True
     return windows
 
+# Preserve equivalent historical counter spellings and expose conflicts rather
+# than silently interpreting absent canonical keys as absent evidence.
+EFFORT_ALIASES={
+    'candidate_attempts':['candidate_attempts','translation_candidate_attempts'],
+    'compiler_checks':['compiler_checks','compiler_check_invocations'],
+    'compiler_feedback_repairs':['compiler_feedback_repairs','compiler_feedback_repair_rounds'],
+    'runtime_repairs':['runtime_repairs','runtime_repair_rounds','runtime_feedback_repairs'],
+    'numerical_repairs':['numerical_repairs','numerical_repair_rounds','numerical_feedback_repairs','translation_numerical_repairs']}
+def normalize_effort(manifest):
+    values={};provenance={}
+    for field,aliases in EFFORT_ALIASES.items():
+        raw={name:manifest[name] for name in aliases if name in manifest}
+        explicit={v for v in raw.values() if type(v) is int and v>=0}
+        values[field]=next(iter(explicit)) if len(explicit)==1 else None
+        provenance[field]={'raw_alias_values':raw,'status':'conflict' if len(explicit)>1 else 'recorded' if explicit else 'missing_or_noninteger'}
+    values['translation_tokens']=manifest.get('translation_tokens')
+    return values,provenance
+
 # Candidate families are an explicitly provisional sorting aid, not reviewed provenance.
 FAMILIES={
 'pde_continuum':'adv axhelm burger cooling divergence fdtd3d fluidSim heat heat2d hotspot iso2dfd jacobi laplace laplace3d lid-driven-cavity rtm8 s3d stencil1d stencil3d sw4ck vanGenuchten damage tissue',
@@ -162,6 +180,7 @@ def main():
             selected_manifest=max(manifest_candidates,key=lambda q:(bool(digest(path) and read(q,{}).get('source_sha256')==digest(path)),q.stat().st_mtime_ns)) if manifest_candidates else log_root/(b+'-julia-'+aliases[0])/'manifest.json'
             log=selected_manifest.parent
             manifest=read(selected_manifest,{})
+            normalized_effort,effort_field_provenance=normalize_effort(manifest)
             evidence=[(cid,v) for (bench,m,cid),v in latest.items() if bench==b and m==model]
             scan=scan_source(path)
             status='verified_named_configuration' if evidence else 'in_progress' if manifest or (model!='cuda_jl' and path.exists()) else 'historical_pass_not_reaudited' if model=='cuda_jl' else 'not_started'
@@ -235,7 +254,7 @@ def main():
                     'failure_taxonomy':{'events':events,'observed_failure_event_count':sum(e['is_failure'] for e in events),
                                         'history_completeness':'partial' if (log/'compiler_attempts.jsonl').exists() or events else 'unknown',
                                         'missing_history_is_zero':False},
-                    'effort':{k:manifest.get(k) for k in ['candidate_attempts','compiler_checks','compiler_feedback_repairs','runtime_repairs','numerical_repairs','translation_tokens']},
+                    'effort':normalized_effort,'effort_field_provenance':effort_field_provenance,
                     'effort_manifest_provenance':{'selected_path':str(selected_manifest.relative_to(ROOT)),'selected_sha256':digest(selected_manifest) if selected_manifest.is_file() else None,'candidate_alias_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q)} for q in manifest_candidates],'selection_rule':'Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged.'},
                     'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
             record['effort']['observed_harness_activity_windows']=usage_windows(b,model)
