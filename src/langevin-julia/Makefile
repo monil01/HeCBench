@@ -1,12 +1,3 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
-main:
-	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1048576 10
+PYTHON ?= python3
+run:
+	cd ../.. && $(PYTHON) tools/verify_portable_julia.py --config src/langevin-julia/study_config.json
