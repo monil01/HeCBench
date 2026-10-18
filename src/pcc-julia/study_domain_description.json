@@ -1,0 +1,129 @@
+{
+  "scientific_intent": {
+    "primary_family": "stochastic_statistics",
+    "primary_domain": "fMRI_voxel_time_series_Pearson_correlation_component",
+    "review_status": "source_reviewed",
+    "scientific_task": "Compute packed pairwise correlations between voxel time series by centering/norm normalization followed by a Gram matrix and upper-triangle extraction.",
+    "mathematical_operation": "For nonconstantrows x_i, z_i=(x_i-mean(x_i))/||x_i-mean(x_i)||2 andr_ij=z_i dot z_j. Source mapsconstantrows tozero, assigningzerocorrelations bypolicy; Pearsoncoefficient forzerovariance ismathematicallyundefined, notcertifiedasdefinedcorrelation.",
+    "discretization": "Five syntheticvoxel/timecases9x17single,9x17forcedmulti54availfloats,17x33forcedmulti160,5x1allconstant,7x64single. Source remaining_B policy selects3/4/2 and4/6/7 rowchunks.9totalSGEMMAPIcalls+9extractionlaunches acrossallcases; libraryinternalGPUkernelcountunknown.",
+    "accuracy_requirements": "All405computedGramcells+239packeduppervalues vsindependentDecimal80rawcenteredPearson withconstantzero convention, fixed1e-6+3e-6relative. Exactnormalizedinputbytes/guards/constantzeros; nonconstantdiagonals1, |r|<=1within3e-6. Identical/anticorrelated/offsetrows exerciseanalyticrelations.",
+    "input_size_regime": "Compactsynthetictimeseries; singlepass andforcedsourcechunk-memorypolicy GPUcomponent, notoriginal4GBthreshold/fullhostCLI/preprocessing performance orreal fMRIdataset.",
+    "precision_sensitivity": "ActualsourceCPUFloat64normalization thenF32storage, independentDecimal80normalizationerror1.47997e-8. TypedFloat32cublasSgemm_v2 ownHOSTscalar/defaultMath0handles; sameactualvendor12.0.2binary. Vendoralgorithm/accumulationinternalsopaque; Float32API isnotproofspecificFMAprecision.",
+    "community_use_case": "Source commentsidentifyfMRIvoxelcorrelation andauthorsTabanEslami/FahadSaeed. This numericalcomponent canprepare pairwiseassociation matrices, but syntheticsmallseries do notestablishfunctionalconnectivity, significance, causalbrainrelations orphysiologicalvalidity.",
+    "description": "HistoricalJulia genuinehighlevelcuBLASGram+singleupperextract ispreserved. StudyretainsvendorSGEMMdelegation for allversionsandrestoresnativeflatuppermapping/multipasspartition. KA/JACCauthoronlytwoextractionentrypoints, notportableGEMM. Hostnormalizationfixtures/provenance/commonvendorABIintegration separatefromactualdevicekernelportcost.",
+    "provenance": "Native main.cpp preprocessing/remaining_B, device.cu cublasSgemm/ker/ker2, COPYRIGHTauthors. Existinginfra vendorresolutionbothprojects supplementedcurrentperprocessdladdr/dllist/SHA/mathmodechecks. No inferredneuroimagingdata/protocol claims.",
+    "source_evidence": [
+      {
+        "path": "src/pcc-cuda/main.cpp",
+        "sha256": "f46198a9d96c1806c6bfd7fbca3e9f8b2bb663fb43c594209b97c1ea63fa907e"
+      },
+      {
+        "path": "src/pcc-cuda/device.cu",
+        "sha256": "6e6522eb795c62a3a718161cf3573934835ee447ab0f7f9fb60aec457e5594bf"
+      },
+      {
+        "path": "src/pcc-cuda/COPYRIGHT",
+        "sha256": "5c37722dc794407d84f4f62fa8814734df8d433849dafadb3b372c2d2dc3fef1"
+      },
+      {
+        "path": "src/pcc-julia/original_main.jl",
+        "sha256": "52f407db66354f8e74534b9162239bd2a3f6a297e3f586302bf6d99d64b5bb84"
+      },
+      {
+        "path": "src/pcc-julia/normalization_native.cpp",
+        "sha256": "9538f04e212f222268e5044e14a3d8955aa3895e0145d785c08d44a8770ee65e"
+      }
+    ]
+  },
+  "primary_motif": "vendor_Gram_matrix_plus_packed_upper_triangle_extraction",
+  "storage_precision": [
+    "Float32_normalized_time_series_and_Gram_upper_outputs",
+    "Float64_CPU_normalization",
+    "Float64_lossless_F32_artifact_encoding_only"
+  ],
+  "compute_precision": [
+    "Float32_typed_cublasSgemm_API_vendorinternalsopaque",
+    "Int64_Julia_and_size_t64_native_extraction_indices",
+    "Decimal80_independent_raw_Pearson_oracle_notGPU"
+  ],
+  "synchronization": [
+    "VendorSGEMMcompletion beforeeachauthoredextraction",
+    "Authoredextractioncompletion perchunk",
+    "Noextractionworkgroupcommunication/sharedmemory/atomics"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "SamevendorcublasSgemm_v2 API/librarybinary/defaultMath/HOSTscalars andoriginalsingle/multirowchunkpolicy+packedupperordering. JuliaownedhostABIccallpreservesnativeHOSTsemantics; backendlibraryinteroperability, notauthoredGEMM. Actualnativeker/ker2bodiesunchanged; portableextractionframework-owned."
+  },
+  "algorithm": "NormalizeCPUoutsideGPUtiming usingactualsourceC++Double routine, frozencommonF32dataLxNcolumnmajor. Forchunk rowsn1andremainingNprime, vendorGEMM(transposeData,Data) producesn1xNprimeGram, source1024threadker/ker2writespacked i<j upper. Concatenateupperchunks inglobalroworder; fullcomputedCchunks retained.",
+  "work_item_mapping": "VendorSGEMMinternalsopaque; authoredextractiononeflattenedcormatindex/lane, i=idx/Nprime,j=idx%Nprime, i<j/i<n1, t=Nprime*i-i(i+1)/2+j-i-1.1024threads/sourceblock,allnamedchunkmatrixsizes<1024sooneblock, restmasked.",
+  "layout": "Rawsourcevoxelrows contiguousL; normalizedGPUmemorycolumnmajorLxN. Cchunkcolumnmajor n1xNprime, upperpackedrowwise.64leadingFloat32/8trailingguards forinput/C/U preserve256Bpayloadalignment. OutputC/UinitializedNaNoutsideROI soeveryacceptedvalue mustbewrittenfiniteunderbeta0.",
+  "launch_geometry": "9vendorSGEMMAPIcalls(internalGPUkernelsunknown) and9authored1024threadextractionlaunches,5cases. Twoauthoredentrypoints:singleker andmultiker2; zeroauthoredGEMMkernels.",
+  "verification_contract": "All20artifacts6276Float64losslessF32words:2656exactprefix(raw+normalizedinput+metadata),405fullGram+239upperpayloads,1320actualnormalizedGPUinputecho,1656guards. IndependentDecimal80rawPearson, exactconstantpolicy/input/guards, diag/bounds/identical/anti controls andbothGPUrefs. NaNcanarynotacceptedoutput.",
+  "keyconfounds": [
+    "Librarydelegationall4, zeroauthoredGEMMkernels; abstractioncomparisoncoversorchestration+authoredextraction, notportableGEMMimplementationranking",
+    "ActualcuBLAS12.0.2samebinary/hash/defaultMath0 perprocess; samevendorAPI doesnotestablishsameinternalalgorithm/workspacebehavior inallshapes",
+    "Forcedsource54/160availablefloatmemorybudgets differfromdefault4GBCLI; multipass computesfewerGramcells andmorelaunches thanfullsinglepass, do notpoolascase-identicaltimings",
+    "CPUsourceDoublepreprocessing/handlecreation/allocationsoutsideoriginalGPUtimedregions; nofullhostCLI/preprocessingtimeclaim",
+    "Constantrowszerocorrelation issourcepolicy, notdefinedPearsonorbrainconnectivityinference",
+    "HistoricalJulia genuinevendorpipeline changedtoABI-exact32bitSGEMM/commonvendor andnativeflatmatrixextract; nohistoricalwrongnumericalkernelclaim",
+    "Ownedvendorprobe/integrationrepairs precedeauthoreddevicekernelcompile: RPATHsyntax,mathmodeRefABI,HOSTvsdeviceCuRef,PointerMode_v2/name/refABI; T1separatefromframeworkcompilerfailure",
+    "Oneverifierreusepreflight rejecteddescriptivemetadatachange; revertedcontractdescription, unchangednativefirst5reused, noGPUattempt",
+    "Verysmalloneblockextraction/compactBLASmatrices emphasizehost/libraryoverheads, notlargefMRIthroughput/roofline",
+    "Sharedsourcepreprocess/Decimal80oracle/vendorhostFFI authoredreferencephase reusedKAthenJACC; nonexclusivecachedcontextcost windowsnotintrinsicframeworkcost"
+  ],
+  "boundary_rounding_policy": "Sourceconstantrowssum2==0 ->allzero; allotherCPUcenteredDouble/l2normalize thenF32commoninput. GEMMalpha1/beta0, ownedHOSTscalar/defaultMathhandles; exactNaNcanaryfinitepostcondition. Perpointcorrelationbudget1e-6+3e-6relative, constantzeros/input/guards exact. Nativeflatrowpackeduppermapping,allrows coveredoncemultipass.",
+  "support_boundary": "Compactsynthetictimeseries; singlepass andforcedsourcechunk-memorypolicy GPUcomponent, notoriginal4GBthreshold/fullhostCLI/preprocessing performance orreal fMRIdataset. Source commentsidentifyfMRIvoxelcorrelation andauthorsTabanEslami/FahadSaeed. This numericalcomponent canprepare pairwiseassociation matrices, but syntheticsmallseries do notestablishfunctionalconnectivity, significance, causalbrainrelations orphysiologicalvalidity.",
+  "interpretation": "Forstatistical/neuroimagingusers, commonnormalization/constantrowpolicy/layout/vendorlibrary andchunkworkmatter. FullrawPearsonchecks cannotjustifybrainconnectivityorstatisticalinference. Frameworktargetsorchestratevendorcomputeandportextraction; codegen/hostAPIeffortmustbeseparatefromhandwrittenGEMM andscientificmethodvalidation.",
+  "reference_class": "CUDAjl_vendor_cublasSgemm_HOST_ABI_pipeline_two_authored_extract_kernels",
+  "ka_class": "KA_vendor_cublasSgemm_HOST_ABI_orchestration_two_extract_kernels",
+  "jacc_class": "JACC_vendor_cublasSgemm_HOST_ABI_orchestration_two_extract_kernels",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "authored_device_kernel_entrypoints": 2,
+      "authored_GEMM_kernels": 0,
+      "vendor_GPU_kernel_count": "unknown",
+      "vendor_accumulation_and_registers": "opaque/unprofiled",
+      "cublas_version": "12.0.2",
+      "cublas_binary_sha256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2",
+      "math_mode": 0,
+      "pointer_mode": "HOST"
+    },
+    "ka": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "authored_device_kernel_entrypoints": 2,
+      "authored_GEMM_kernels": 0,
+      "vendor_GPU_kernel_count": "unknown",
+      "vendor_accumulation_and_registers": "opaque/unprofiled",
+      "cublas_version": "12.0.2",
+      "cublas_binary_sha256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2",
+      "math_mode": 0,
+      "pointer_mode": "HOST"
+    },
+    "jacc": {
+      "shared_bytes": 0,
+      "source_reviewed": true,
+      "authored_device_kernel_entrypoints": 2,
+      "authored_GEMM_kernels": 0,
+      "vendor_GPU_kernel_count": "unknown",
+      "vendor_accumulation_and_registers": "opaque/unprofiled",
+      "cublas_version": "12.0.2",
+      "cublas_binary_sha256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2",
+      "math_mode": 0,
+      "pointer_mode": "HOST"
+    }
+  },
+  "backend_extensions": {
+    "ka": [
+      "CUDA-specificvendorhostFFIcublasSgemm_v2onownhandlewithnativeHOSTscalarABI; notauthoreddeviceGEMM",
+      "CUDAhostallocation/copy/completion; ordinaryJuliaframework-owned extractiondevicekernel"
+    ],
+    "jacc": [
+      "CUDA-specificvendorhostFFIcublasSgemm_v2onownhandlewithnativeHOSTscalarABI; notauthoreddeviceGEMM",
+      "CUDAhostallocation/copy/completion; ordinaryJuliaframework-owned extractiondevicekernel"
+    ]
+  }
+}
