@@ -1,0 +1,32 @@
+# pad: Pad compact matrix rows in place using a statically partitioned cooperative CPU/GPU pipeline
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: pad_static_hybrid_two_aligned_shapes_six_partitions_f64_perpath_v2
+
+## Scientific intent and fidelity
+
+Original IMPACT2016 source implements CPU/GPU hybrid in-place data sliding with a load-completion flag chain. Historical Julia computes correct out-of-place padding but omits the hybrid pipeline; preserved intact, with a separate faithful study completion.
+
+Scientific task: For compact row-major m×n input, write m×(n+pad) output preserving every input bit and inserting positive-zero padding columns.. Requirements and precision sensitivity: ExactinputIEEEbits including signedzero/subnormal, fullpaddedmatrix,16host+16GPUmatrixguards/path and fullCPU/GPUdependencyflags+16flagguards. Independentinputscatteroracle and taskpartitionenumeration, bothnative/CUDAjlfullartifactcomparisons allfive.. Community use case: Storage padding and layout preparation are reusable matrix/pipeline components; no original physical simulation or scientificdataset attribution.. Provenance/uncertainty: Native README cites Gómez-Luna etal2015 Inplace data sliding algorithms for many-core architectures. The study retains original CPU/GPU algorithms but declares legal aligned finite fixtures and static partition scope.. Domain-neutral examples are illustrative uses, not claimed original application provenance.
+
+## Numerical evidence and implementation ontology
+
+1147828UInt64words/trial:163948input/parameterprefixwords +983880paddedoutput/guards/CPUflag/GPUflagwords. Exactall20arrays; CPUinput-scatter andflagincrementoracles independent ofGPUdestinationgather. No checksum-only/NaNequality pass.
+
+Mapping: Same static task partition, private32Float64loads, twoGPUbarriers andRMWflagchain pertask, backwardinplacestores; shared unchanged originalC++CPUworker viahash-boundFFI controlsCPUalgorithm all4. Historical out-of-place Julia workflow preserved separately, reference completed.. Support boundary: Named12staticpartitionlegalalignedFloat64paths only; GPUkernels genuine CUDAjl/KA/JACC, CPUoriginalC++FFI intentionally retained. Dynamicpartition/systemscopeatomics, unalignedhostprefix, arbitraryoversubscribedgrid, fullCLI/unprofiledoverlap notcertified.. Per-model implementation records include actual algorithm, layout, mapping, synchronization, resources, pinned versions, allfive samples and hash-linked evidence. The scientific requirement is distinct from the implementation choice.
+
+Accepted bundle `.porting-state/portable_julia/runs/20261018T043107570177Z_pad/`. Mean trials 2–5 microseconds: cuda 5884.16066667, cuda_jl 5471.80591667, ka 4987.34100000, jacc 4530.19550000. Timed scope: Two Float64 legal task-aligned in-place padding matrices (256x127 +1; 256x503 +9), compact prefix, initialized zero tail; finite signed dyadic/signedzero/subnormal fixture bits; Float32 alpha 0,.1,.25,.5,.75,1; BT256 REGS32 blocks8 CPUworkers4 static partition; artifact prefix inputs+params exact; full padded matrix + CPU/GPU guards and dependency flags. Allfivechecks passbothreferences; firsttimingonlyexcluded, nooutlierdrop. Candidate/checkhistory is ineachmodelmanifest; reference/adapterrepairs separatefromportabletranslation. HistoricalCUDA.jlcost remainsunknown, notzero. Current tokenproxies arepartialretainedsourcecharacters/4, input/totalunknown, sharedadaptercountedonce.
+
+## Interpretation for domain scientists
+
+Numericalequivalence requires bitpreservinglayout plusflag-chain/progress andownershipconditions. FrameworkGPUportsretain identicalload-before-store taskprotocol andsharedCPUalgorithm. Aggregatepipelineperformance includessubstantialCPUthreadstartup/transfer/resetwork, so cannotinferGPUbandwidth/rooflineorintrinsicframeworkoverhead. ActualCPU/GPUtemporaloverlap remainsunknown. Endpointsretainemptyoppositecomponentlaunch/spawn semantics.
+
+Confounds: Allmodels share originalC++CPUFFI worker; notpureJuliaend-to-endCPUtranslation; Aggregate12pathpipeline time includesreset/H2D/threadspawn/launch/join, notkernelonlyroofline; ActualCPU/GPUoverlap unprofiledunknown; Fixed8block flagprogress/residency scope; notgeneraloversubscribedgrid; StaticseparateCPU/GPUbuffers only; dynamicmanagedsystematomic modeunverified; Originalnonalignedalpha0 hostcopy canexceedlogicalallocation; bothstudyshapesaligned andprefixcap<=logicalsize; Requestedalpha.1 on4tasks givescut0; sourceFloat32cuttruncation preserved; Historical out-of-placeJulianumericaloperator notfaithfulhybridworkflow; oldbody preserved, currentcompletioncostseparate; MarginalorderedKAthenJACC helperreuse/tokenwindows overlapworkflow; notcoldframeworkranking. RQ1/E1 has configuration-scoped numerical fidelity; RQ2/E2 separates model/phase taxonomy and effort; RQ3/E3 has paired four-model timings; RQ4/E4 links scientific intent to audited implementation traits, with profiler mechanisms pending; RQ5/E5 gives no universal winner. No unsupported feature is inferred from an unfinished translation or an environment error.
+
+
+## Partition telemetry and unchanged GPU candidates
+
+The original aggregate-only all4 series passed bitwise and is retained. A protocol-selected instrumentation revision records each of12 constituent path durations and their aggregate; all4 models received a fresh five-trial series, all full arrays pass again. Oldseries is excluded from primary aggregates by hash-bound classification only, without changing raw measurements. The kernels and mathematical contract are unchanged. This is one GPUtranslationcandidate permodel with two actual verifier/JITcheck invocations (one initial plus one telemetry recheck), zero repair rounds; extra instrumentation tokens belong to the shared phase, not invented second translation attempts.
+
+Per-path means and allfive raw values are in path_timing_summary.json. Alpha0 still creates four empty CPUworkers and alpha1 launches eight empty GPUblocks, so their durations are pipeline endpoints rather than pure GPU/CPU latency. Actual alpha.1 atfour tasks has cut0. No actual CPU/GPU overlap or hardware mechanism is inferred. Shared CPUthreadstartup and systemnoise contribute, and ranking changes across the preserved series demonstrate why a single five-trial pipeline sample is not a stable intrinsic framework claim. HistoricalJulia body/cost remains separate.
