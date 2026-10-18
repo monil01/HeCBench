@@ -1,5 +1,14 @@
 # Julia Correctness Check
 
+## Current authority: completed frozen-300 assessments
+
+All 300 benchmark names have reviewed scientific intent and separate CUDA.jl, KernelAbstractions and JACC records (900 model slots). The final evidence audit covers 297 matched names, 350 accepted configurations (348 primary and two explicitly corrected secondary configurations), and 7,000 checked trial artifacts, with zero hard audit issues. The three remaining names—`blas-fp4gemm`, `blas-fp8gemm` and `blas-mxfp8gemm`—have reviewed native hardware/library limitations; they are not successful ports or demonstrated framework limitations. Each model's conservative census separates 274 ordinary, 15 conditional, eight known-native-defect and three unavailable names. Do not describe this as 300 universally correct scientific applications.
+
+Resume through the joint `2026-PASC-Hecbench-Julia-paper/research/checkpoints/LATEST.json`. A `complete_300_assessments_manuscript_review_ready` checkpoint supersedes historical active queues and completed-100 notes. Preserve the 100-name pilot as its own historical analysis. Do not automatically rerun or restart completed translations. GRRT's original configuration remains blocked; its independently checked numerical-method revision is a separate conditional secondary study. Preserve this distinction and MTF's corrected secondary algorithm in every aggregate.
+
+The paper must explain scientific workload families and community reuse, organize experiments around research questions, and connect implementation-specific ontology to measured performance without asserting causation from descriptive correlations. Keep release versions separate from abstraction names. Report unknown historical attempts and partial/nonexclusive token accounting honestly. Author/publication metadata and an archival release remain submission tasks; the technical companion is a working document, not an approved PASC supplement. Keep research evidence local and ignored by the paper repository.
+
+
 ### Ready outcomes and conditional method sources
 
 Before reporting a conditional or known-defect version ready, load its effective configuration and check the exact canonical `reference_provenance` field is nonempty, with source/correction/witness hashes. Alternate descriptive key names do not satisfy this gate. Use a hash-bound classification supplement for a missing descriptive field after measurement; preserve archived configs/results and all trial data.
