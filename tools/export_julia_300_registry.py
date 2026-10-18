@@ -141,8 +141,8 @@ def normalize_traits(t):
         'declared_environment':pick('environment','environment_id'),
         'package_versions':pick('package_versions'),
         'julia_language_version':pick('julia_language_version'),
-        'work_item_mapping':pick('work_item_mapping','mapping','algorithm_and_mapping'),
-        'layout':pick('layout','data_layout'),
+        'work_item_mapping':pick('work_item_mapping','mapping','algorithm_and_mapping','thread_mapping'),
+        'layout':pick('layout','data_layout','memory_layout','storage_layout'),
         'storage_precision':pick('storage_precision') or precision.get('storage'),
         'compute_precision':pick('compute_precision') or precision.get('compute'),
         'timed_compute_precision':pick('timed_compute_precision'),
@@ -327,7 +327,7 @@ def main():
                                         'missing_history_is_zero':False},
                     'effort':normalized_effort,'effort_field_provenance':effort_field_provenance,
                     'effort_manifest_provenance':{'selected_path':str(selected_manifest.relative_to(ROOT)),'selected_sha256':digest(selected_manifest) if selected_manifest.is_file() else None,'candidate_alias_records':[{'path':str(q.relative_to(ROOT)),'sha256':digest(q)} for q in manifest_candidates],'selection_rule':'Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged.'},
-                    'source_commit':manifest.get('source_commit'),'explicit_outcome_evidence':explicit or None}
+                    'source_commit':manifest.get('source_commit') or manifest.get('commit'),'source_commit_field':('source_commit' if manifest.get('source_commit') else 'legacy_manifest_commit' if manifest.get('commit') else None),'source_commit_scope':'Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.','explicit_outcome_evidence':explicit or None}
             # Some reviewed annotations store separate model classes in the
             # parent dictionary. Retain that explicit model entry, never infer
             # a model class from a shared string or source syntax.
