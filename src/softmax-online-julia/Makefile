@@ -1,15 +1,11 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+REPEATS ?= 20
+.PHONY: main run clean
 main:
-	@true
-
+	@echo "Named native kernel4 block-online study, 30 paths."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(REPEATS)
 clean:
-	rm -rf __pycache__
-
-run: main
-	@$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 1 2 8 257 5
-	@$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 2 2 8 257 5
-	@$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 3 2 8 257 5
-	@$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 4 2 8 257 5
+	@echo "Retain study fixtures."
