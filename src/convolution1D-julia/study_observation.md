@@ -1,0 +1,34 @@
+# convolution1D: Apply source-orderedcenteredzero-paddedFIRfilter totyped1Ddata
+
+rq_ids: RQ1, RQ2, RQ3, RQ4, RQ5
+experiment_ids: E1, E2, E3, E4, E5
+configuration_id: convolution1D_exact360paths_F64F32I16_zero_padding_v1
+
+## Scientific intent and fidelity
+
+SourceKirk/HwuChapter7tutorialuses3genuinestrategies/constantcoeffmemory. HistoricalCUDAjl genuinelycomputesbasicoperator buttiling/cachelabelsreuseit; preservebasicbodyandcompleterealtiledvariants. Namedasymmetricmaskfixtureexposesorientation/boundary errors hiddenbyoriginalonesmask.
+
+Scientific task: y[i]=sum_j x[i-floor(MW/2)+j]*m[j] forvalidinputindices; masknotreversed. Requirements and precision sensitivity: Exacttypedinputbits,fulloutputsandguards; Int64directgatherandindependentinput-scatteroracles agree; exactintegerboundsensureall3datatypeopswithoutoverflow/roundoff.. Community use case: FIRfiltering andlocalstenciloperators illustrate1Dsignal/simulationcomponents; no originalscientificdataset/applicationqualityclaim.. Provenance/uncertainty: NativecommentattributesProgrammingMassivelyParallelProcessorsChapter7. Canonicalinputreproducesactualhostlibcsrand123/rand%256 andonesmask; variedoperatorfixturedeclaredseparately. Sourceoperatornotnecessarilyreversed-filtermathematicalconvolution.. Domain-neutral examples are illustrative uses, not claimed original application provenance.
+
+## Numerical evidence and implementation ontology
+
+755472UInt64artifact:12432typedIEEE/two-complementinputwords +360×(2048typedoutputs+16guards)losslesslyFloat64encoded. All20selfchecks/each5targettrialsvsBOTHrefs exact; independentInt64gather/scatter/bounds/maskorientation/zero-boundarycontrols.
+
+Mapping: All3algorithm/halo/geometries matched; native__constant__coefficients becomeJuliaread-onlyglobaldevicearray. JACC addsfulltemplatecopyinitialization. Theseareexplicitphysicalmemory/dispatchcovariates, not unsupportedoperatorclaims.. Support boundary: All3algorithms/5geometries/4masks/Float64+Float32+Int16,2048alignedcells/2exactboundedfixtures;noarbitraryfloatroundoff/overflow,nonalignedtails/largeCLIperformance/crossvendorvalidation. Constantspacecoefficientstorageadaptedglobalnotclaimeduniversalunsupported.. Per-model implementation records include actual algorithm, layout, mapping, synchronization, resources, pinned versions, allfive samples and hash-linked evidence. The scientific requirement is distinct from the implementation choice.
+
+Accepted bundle `.porting-state/portable_julia/runs/20261018T040059959771Z_convolution1D/`. Mean trials 2–5 microseconds: cuda 1165.46250000, cuda_jl 1632.37333333, ka 3703.35600000, jacc 5527.11358333. Timed scope: Sum24group kernelbatchlaunch+syncdurations/3repeats; parameterupload/readback/reset/oracleoutsideeachgroupROI. Allfivechecks passbothreferences; firsttimingonlyexcluded, nooutlierdrop. Candidate/checkhistory is ineachmodelmanifest; reference/adapterrepairs separatefromportabletranslation. HistoricalCUDA.jlcost remainsunknown, notzero. Current tokenproxies arepartialretainedsourcecharacters/4, input/totalunknown, sharedadaptercountedonce.
+
+## Interpretation for domain scientists
+
+Scientificfiltersemantics requirezeroboundaries/maskorientation andtypedprecisionconditions, whilephysicalmemorypolicy mattersforperformance. Exactalloutputs cancoexistwithdifferentcoefficientaddressspaces andJACCinitialization. Pairedaggregatebatchcostsdonotisolatetheircauses; perkernelprofilingwouldbeneededbeforeassigningroofline/occupancymotifs.
+
+Confounds: Nativeconstantcoeffaddressspace vsallJuliaglobalcoeffarray; JACCsharedtemplatecopy andextrabarrier; JACCcachedspec/templateDictlookup andheterogeneousJuliahostdispatch insidetimedkernelbatch; Aggregate24groupbatchtimes mixes3types/3algorithms; no singlerooflinecoordinate/intrinsicabstractioncause; Masks/inputsboundedexactintegers; no generalfloatingerror/Int16overflowclaim; OriginalCUDAjltiled/cachelabelsbaselinealiases repairedbyreferencecompletion, notobservedwrongbasicnumericaloperator; SourceCLIonlyonesmask; variedasymmetriccase isdeclaredoperatorfixture; Orderedhelper/compilationknowledge reuse andphaseoverlap. RQ1/E1 has configuration-scoped numerical fidelity; RQ2/E2 separates model/phase taxonomy and effort; RQ3/E3 has paired four-model timings; RQ4/E4 links scientific intent to audited implementation traits, with profiler mechanisms pending; RQ5/E5 gives no universal winner. No unsupported feature is inferred from an unfinished translation or an environment error.
+
+
+## Real feedback, exactness and distinct source scopes
+
+ReferenceGPUfunctionset1passesfirstactualbenchmarkkernelcheck. Initialhostfixtureadapterstate1 hadone-basedgroupindexBoundsError, fixedinstate2 beforeanybenchmarkkernelcompiled; CUDAallocation/fillinitializers mayalreadyhaverun. This isT1/sharedmeasurementpreparation, not aGPUcompiler rejection, numericalerror orKA/JACCfailure. Referenceworkflowchecks2; sharedadapterstates2; KAandJACCeachcandidate1/check1success. Fullsaved-arrayaudit usesanindependentinput-scatterlinearoperator andchecksall20artifacts bitexact, including5760typedguards and99456inputprefixbytes.
+
+Canonicalfixturematchesdefinedsourceonesmask/sourcehostlibcrand123. Asymmetricmaskfixture is a separatelydeclaredoperator-levelcase, exposingfilterorientation hiddenbyones; nochangednativeGPUbody orarbitraryfloatingroundoffclaim. AllFloat64/Float32/Int16intermediates areboundedexactintegers.
+
+Nativeconstantcoefficientstorage vsJuliaglobalbuffer andJACCtemplateinitialization areexplicitmemorymappingchoices. No API-expressibility/hardware unsupportedclaimfollows. Aggregated24groupbatchtimings mix3types/3algorithms andhostdispatch, so not a singlekernelrooflineposition. CachedLaunchSpec/templateDictlookups arepartofactualJACChostROI, notintrinsicabstractioncausality. Prospectivewindows includerepeated/cachedcontext,helperknowledge andlocalmetadata; modelphasesoverlapworkflow andcannotbesummed. Historicalgenuinebasictranslationcost remainsunknown.
