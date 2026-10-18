@@ -1,0 +1,115 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "Historical CUDA.jl only executes a one-value smoke marker and prints zero-iteration timing; no native Cahn\u2013Hilliard computation. Preserve original bytes. Restore periodic chemical potential, local free energy, conserved concentration Euler update and elementwise swap with matching source thread geometry. Native device bodies unchanged; named compiletime dimensions and preallocated kernel-only region explicitly exclude original diagnostic D2H/integrals/file I/O.",
+    "original_source_sha256": "7117eed9d8036539fbf25279bb719a5ebeca1b50494e8a6053d0813d24b6e4cb",
+    "native_source": {
+      "path": "src/che-cuda/main.cu",
+      "sha256": "7e5ed2efe19542a20bb5fc349a835daa53fa872e029ec3f53c2ed19e06aac4d2"
+    },
+    "native_kernels": {
+      "path": "src/che-cuda/kernels.h",
+      "sha256": "20cdb83e93c633b196f06ef3de9556e098c39e0e9c04219f62e69e6e1a5ce793"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "Source four-stage periodic Cahn\u2013Hilliard update with actual elementwise field swap",
+  "mapping": "C row-major x-fast flat storage; source16x4x4 block, padded 3D global coordinates and per-stage bounds",
+  "launch_geometry": {
+    "threads": [
+      16,
+      4,
+      4
+    ],
+    "grids": [
+      [
+        1,
+        2,
+        2
+      ],
+      [
+        2,
+        3,
+        2
+      ]
+    ],
+    "source_native_definitions": 4,
+    "julia_generic_entry_definitions": 1,
+    "requested_Val_stage_specializations": 4,
+    "kernel_calls_per_trial": 40
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "application_domain": "Conserved phase-field / binary-mixture separation",
+      "scientific_operator": "Cahn\u2013Hilliard: chemical potential as local double-well derivative minus gradient penalty, concentration advanced by periodic Laplacian(mu)",
+      "numerical_method": "Centered periodic seven-point Laplacian, explicit Euler; local free-energy diagnostic uses centered gradients",
+      "community_use": "A small conserved-phase operator for comparing stencil translation, periodic boundaries and discrete mass conservation; not a validated material coarsening simulation",
+      "accuracy_requirements": "All current/previous concentration, chemical potential and local-energy fields against an independent reduced-potential oracle; analytic constant state and discrete mass invariant",
+      "source_evidence": [
+        {
+          "path": "src/che-cuda/main.cu",
+          "sha256": "7e5ed2efe19542a20bb5fc349a835daa53fa872e029ec3f53c2ed19e06aac4d2"
+        },
+        {
+          "path": "src/che-cuda/kernels.h",
+          "sha256": "20cdb83e93c633b196f06ef3de9556e098c39e0e9c04219f62e69e6e1a5ce793"
+        }
+      ],
+      "limitations": [
+        "Only named16x8x8/19x9x7 grids and1/3steps, not256cubed/25000-stepCLI",
+        "No continuous PDE convergence, coarsening kinetics, or energy-decay theorem established",
+        "Matched kernel-only timing excludes source diagnostic host work in all four models"
+      ]
+    },
+    "primary_motif": "Coupled periodic3D stencil and local free-energy evaluation",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "synchronization": [
+      "Ordered kernel stages",
+      "Full context completion at boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Source16x4x4 geometry/partial tiles and four stage boundaries, periodic wrap, actual elementwise swap preserved"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum4_preallocated_periodic_fourlaunch_step_pipelines",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Short launch-dominated cases, not large256cubed throughput",
+      "Julia source generic entry is specialized by four Val stage tags; native has four authored definitions",
+      "Native default contraction versus Julia arithmetic yields near-roundoff differences",
+      "Source file I/O and diagnostic host integrals excluded from matched timing"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "observation": "The native binary-mixture coefficients reduce mathematically to a quartic double-well potential. An independent implementation uses that reduced expression and periodic neighbor-difference sums, while GPU translations retain the original coefficient arithmetic. Complete four-field comparisons plus a separate periodic concentration invariant test more than native array agreement. Constant and Fourier-mode inputs supplement signed dyadic fields and partial tiles; neither short-step accuracy nor conservation establishes long-time coarsening or continuous PDE convergence.",
+  "effort_observation": "First saved candidate and whole-program/JIT process passes for each Julia model; no observed target repair. The historical smoke reference is S1, not a historical compiler failure. Reference/oracle work is shared before KA then JACC."
+}
