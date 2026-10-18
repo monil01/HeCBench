@@ -1,0 +1,1 @@
+const CASES=[(n=1,threads=36,mode=0,ldim=1,io=0,oo=0,),(n=16,threads=128,mode=1,ldim=2,io=152,oo=80,),(n=17,threads=128,mode=2,ldim=4,io=1504,oo=1360,),(n=33,threads=64,mode=3,ldim=4,io=2936,oo=2720,),(n=257,threads=64,mode=4,ldim=8,io=5648,oo=5360,),(n=4096,threads=128,mode=2,ldim=8,io=26280,oo=25920,),(n=1048576,threads=128,mode=1,ldim=32,io=354032,oo=353600,)]
