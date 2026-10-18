@@ -1,5 +1,10 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+### Version-scoped capability conclusions
+
+Bind every capability conclusion to the actual operation, compiler/toolkit, loaded library, generated target and device. A build rejection in one installed toolchain does not establish a universal hardware requirement: check another available toolchain when source/API evidence suggests a changed implementation. Preserve contrary successful probes and retract overgeneralized classifications explicitly. Capability execution alone is not full operator verification or a five-trial measurement. Explicit software storage/rounding that preserves every required low-precision intermediate is a semantic implementation choice; disclose it and generated arithmetic rather than silently replacing the contract with FP32, or inferring hardware instructions from a dtype name. Update per-model ontology and paper conclusions when new version-specific evidence changes a boundary.
+
+
 ### Native compatibility repairs and manuscript page accounting
 
 Distinguish compile-only compatibility interventions (for example an exact zero literal selecting the intended FP16/BF16 constructor) from corrections to scientific mathematics or concurrency. Preserve unchanged source, rejected compiler diagnostics and the exact patch; conservatively classify a changed native reference as conditional and explain the intervention subtype. Never infer a scientific numerical defect from a build rejection.

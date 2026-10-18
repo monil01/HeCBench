@@ -1,5 +1,10 @@
 # Julia Correctness Check
 
+### Version-scoped capability conclusions
+
+Bind every capability conclusion to the actual operation, compiler/toolkit, loaded library, generated target and device. A build rejection in one installed toolchain does not establish a universal hardware requirement: check another available toolchain when source/API evidence suggests a changed implementation. Preserve contrary successful probes and retract overgeneralized classifications explicitly. Capability execution alone is not full operator verification or a five-trial measurement. Explicit software storage/rounding that preserves every required low-precision intermediate is a semantic implementation choice; disclose it and generated arithmetic rather than silently replacing the contract with FP32, or inferring hardware instructions from a dtype name. Update per-model ontology and paper conclusions when new version-specific evidence changes a boundary.
+
+
 ### Native compile compatibility and publication checks
 
 A source patch that only disambiguates an exact zero constructor is a compile-compatibility intervention, not evidence of wrong scientific mathematics. Preserve the original rejection and patch, classify changed-native results conservatively as conditional, and record the intervention subtype separately from mathematical or synchronization repairs. Retain all five numerical comparisons under the same inputs and tolerances.

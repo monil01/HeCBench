@@ -1,5 +1,10 @@
 # PASC27 Julia translation paper — writing instructions
 
+### Version-scoped capability conclusions
+
+Bind every capability conclusion to the actual operation, compiler/toolkit, loaded library, generated target and device. A build rejection in one installed toolchain does not establish a universal hardware requirement: check another available toolchain when source/API evidence suggests a changed implementation. Preserve contrary successful probes and retract overgeneralized classifications explicitly. Capability execution alone is not full operator verification or a five-trial measurement. Explicit software storage/rounding that preserves every required low-precision intermediate is a semantic implementation choice; disclose it and generated arithmetic rather than silently replacing the contract with FP32, or inferring hardware instructions from a dtype name. Update per-model ontology and paper conclusions when new version-specific evidence changes a boundary.
+
+
 ### Honest page budgets and repair subtypes
 
 Before a paper checkpoint, flush body floats before the bibliography and inspect the rendered PDF. PASC's ten-page body limit includes every figure, table and appendix, including any float otherwise deferred beyond the references. Record body and reference page counts separately. Keep ACM fonts and margins; transfer supporting analyses to the clearly labeled working technical companion. This companion has no implied conference supplement or archival status.
