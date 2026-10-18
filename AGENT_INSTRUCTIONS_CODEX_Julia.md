@@ -1,5 +1,12 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+### Ready outcomes and conditional method sources
+
+Before reporting a conditional or known-defect version ready, load its effective configuration and check the exact canonical `reference_provenance` field is nonempty, with source/correction/witness hashes. Alternate descriptive key names do not satisfy this gate. Use a hash-bound classification supplement for a missing descriptive field after measurement; preserve archived configs/results and all trial data.
+
+A separately justified numerical-method repair retains its original blocked configuration and a named `corrected_reference_secondary` configuration. Record actual executed entry points and every source dependency, not only the canonical child-tree hash. Scoped nested model directories remain inside the benchmark's single Julia parent; the coordinator stages shared/native work and each model's actual scoped source separately, with explicit execution bindings in verification receipts. Never stage another model's new device source in the shared reference commit. Mathematical equivalence on an exact constraint manifold does not establish floating-point stability; preserve independent analytic/convergence controls and distinguish method changes from abstraction effects.
+
+
 ### Missing descriptive timing labels
 
 A uniformly missing machine-readable timing label can be reviewed without rerunning when the original configuration already declared the region and source inspection proves it. Use `reuse_timing_region_metadata` only for explicit all-four-model reuse, twenty unchanged rows, original result/config hashes, hashed source evidence and reviewed boundaries for each model. Retain raw missing labels and all samples; the derived result adds a separate effective descriptor and review provenance. This cannot repair a different region, unit, completion boundary, input or numerical acceptance. Preserve the original nonmatched result and count annotation/tooling effort separately. The numerical audit independently checks the review hashes and original-row equality.
