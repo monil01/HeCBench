@@ -1,12 +1,3 @@
-JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
-main:
-	@true
-
-clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 64 5
+run:
+	python3 ../../tools/verify_portable_julia.py --config study_config_fp32.json
+	python3 ../../tools/verify_portable_julia.py --config study_config_fp64.json
