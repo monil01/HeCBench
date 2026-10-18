@@ -1,5 +1,14 @@
 # PASC27 Julia translation paper — writing instructions
 
+## Completed assessment checkpoint — 18 October 2026
+
+The 150-source worklist is fully assessed on the recorded environment: **139 named numerical agreements, 2 property contracts, 5 execution-only contracts, 4 native hardware barriers, 0 pending entries**. Numerical agreement includes explicitly separated corrected-native, known-defect and revised-contract strata; it is not universal application accuracy or raw bit identity. The 447-name union contains 436 numerical names, those two property names, five execution-only names and four unavailable operations.
+
+Resume from `2026-PASC-Hecbench-Julia-paper/research/checkpoints/LATEST.json`, `.porting-state/portable_julia/active_work_447.json`, and `src/_portable_study/remaining150_completion_20261018.md`. The final numerical audit checks 501 accepted numerical/property configurations and 10,020 saved artifact hashes with zero hard issues. The effort audit finds all 443 working names in each of KA and JACC matching committed source, with zero provenance flags; missing historical fields remain unknown. The paper has a 10-body-page PASC manuscript plus references and a separate technical companion. Research/raw captures remain local, excluded from GitHub/Overleaf.
+
+Preserve verified implementations and separate commits. Reopen `blas-fp4gemm`, `blas-fp8gemm`, `blas-mxfp6gemm` or `blas-mxfp8gemm` only after an explicitly recorded environment/device change permits genuine native execution. Their reviewed barriers do not establish KA/JACC language limitations. Do not fabricate numerical outputs for execution-only cases, count property checks as identical raw values, or restart completed queues from historical pending notes below.
+
+
 All fixture and oracle reads must fail on missing files, short reads, unexpected dtype/size or parse errors. Declare native runtime assets explicitly when the verifier runs in a temporary working directory. A default-initialized input and a default-initialized oracle can falsely agree; a self-check alone is insufficient. Preserve such adapter failures and require exact actual-device input readbacks and full independent output checks before acceptance. Record missing/incorrect adapter inputs as infrastructure effort, separately from authored GPU candidates.
 
 
