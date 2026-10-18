@@ -1,0 +1,73 @@
+{
+  "benchmark": "upsample",
+  "configuration_id": "upsample_all4kernels_all18launches_two_shapes_full_adjoint_v1",
+  "gpu": 6,
+  "timeout": 900,
+  "inputs_shared_verified": true,
+  "input_prefix_count": 12880,
+  "timed_regions_equivalent_verified": true,
+  "input_contract": {
+    "shapes": [
+      [
+        2,
+        3,
+        7,
+        11
+      ],
+      [
+        1,
+        2,
+        32,
+        33
+      ]
+    ],
+    "operator": "2x nearest-neighbor replication and its four-value-sum adjoint",
+    "variants": "All4native kernels; all6scalar block sizes32..1024 and3squared2Dblock8/16/32",
+    "inner_repeats": 3,
+    "inputs": "Signed exact Float32 dyadics fully initialized; x and independent dout",
+    "outputs": "Every forward pixel and backward gradient at each launch geometry",
+    "scope": "Allsourcekernel/launch choices, two namedshapes inclodd/tail/multibatchchannel; no large-size bandwidth claim"
+  },
+  "atol": 0.0001,
+  "rtol": 0,
+  "models": {
+    "cuda": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/upsample-julia",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/upsample-cuda/main.cu",
+        "/home/imo/HeCBench_julia/src/upsample-cuda/reference.h",
+        "/home/imo/HeCBench_julia/src/upsample-cuda/common.h"
+      ],
+      "build": [
+        "nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch={arch}",
+        "study_native.cu",
+        "-o",
+        "study_native"
+      ],
+      "command": [
+        "./study_native"
+      ],
+      "verification_method": "complete_forward_backward_all_geometries_adjoint_witness",
+      "native_check_description": "Fullarrays not source shortened forward prefix; exact dyadicCPU checks."
+    },
+    "cuda_jl": {
+      "structured": true,
+      "cwd": "/home/imo/HeCBench_julia/src/upsample-julia/upsample-julia-cuda.jl",
+      "source_dependencies": [
+        "/home/imo/HeCBench_julia/src/upsample-julia/study_reference_kernels.jl",
+        "/home/imo/HeCBench_julia/src/upsample-julia/study_common.jl"
+      ],
+      "command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "main.jl"
+      ],
+      "verification_method": "complete_forward_backward_all_geometries_adjoint_witness",
+      "native_check_description": "OriginalfourCUDAjlkernelbodies preserved; full forward/backwardarrays allgeometries."
+    }
+  }
+}
