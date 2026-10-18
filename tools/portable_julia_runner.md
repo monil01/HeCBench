@@ -173,3 +173,7 @@ Every declared `source_dependencies` and `runtime_assets` file is then required
 and hashed before execution and at stability/reuse checks, including `.inc`,
 `.bin`, and `.txt` files. Legacy default bindings are preserved. Do not switch
 this option on in a reused model spec and imply historical hashes existed.
+
+## Empty native kernels
+
+An inspected source kernel with no inputs or numerical outputs uses the explicit top-level `numerical_agreement_kind: no_numerical_outputs_execution_only`. Every row must declare `source_empty_kernel: true`, `execution_checked: true`, `correct: true`, `checked_values: 0`, no output artifact, and no nonempty numerical values/outputs. Record bound source-review evidence and actual launch/completion checks. The comparison is `execution_only_pass`, with null numerical errors and `numerical_agreement_claim: false`; no numerical array or oracle is fabricated. Five checked timing trials and mean2–5 still apply. `variant_verified` then means the named execution-only contract; registry status is `execution_only_verified`, with separate census/checkpoint counts, outside numerical artifact audits and numerical fidelity aggregates.

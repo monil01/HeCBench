@@ -104,7 +104,7 @@ if args.complete:
     # Census completion includes evidence-backed unavailable outcomes; it never
     # converts these outcomes to passing ports or relaxes any verification check.
     registry=root/f'ontology/studies/julia_abstractions_{target}'
-    passing={'verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect'}
+    passing={'verified_named_configuration','conditionally_verified_native_reference_repaired','verified_native_behavior_known_scientific_defect','execution_only_verified'}
     unavailable={'hardware_blocked','environment_blocked','reference_blocked','feature_unsupported','failed'}
     unfinished=[]
     for b in sorted(selected):
@@ -131,6 +131,7 @@ payload = {
     'cohort': str(cohort_path.relative_to(root)), 'target_benchmarks': target,
     'frozen_baseline': str((local/f'baseline_{target}.json').relative_to(root)),
     'verified_matched_benchmarks': pairs, 'verified_portable_versions': versions,
+    'execution_only_portable_versions':{k:len({r['benchmark'] for r in execution_only_records if r['variants'].get(k)}) for k in ['ka','jacc']},
     'accepted_configuration_role_counts':{role:sum(r['role']==role for r in accepted_records) for role in ['primary','corrected_reference_secondary']},
     'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
     'execution_only_validated_names':sorted({r['benchmark'] for r in execution_only_records if r['matched_performance_valid']}),
@@ -170,7 +171,9 @@ latest = {'checkpoint_id': stamp, 'path': str(out.relative_to(root)),
           'accepted_contract_names':pairs,
           'matched_counter_meaning':payload['matched_counter_meaning'],
           'explicitly_tagged_property_equivalence_names':payload['explicit_property_equivalence_names'],
-          'verified_portable_versions': versions, 'target_pairs': target,
+          'execution_only_validated_names':payload['execution_only_validated_names'],
+          'verified_portable_versions': versions,
+    'execution_only_portable_versions':{k:len({r['benchmark'] for r in execution_only_records if r['variants'].get(k)}) for k in ['ka','jacc']}, 'target_pairs': target,
           'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
           'performance_protocol': 'five_trials_last_four_v1',
           'source_head': heads['source'], 'paper_head': heads['paper']}
