@@ -1,0 +1,852 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "moe-align",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/moe-align.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+    "work_item_mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+    "storage_precision": [
+      "Int32 expert IDs/token IDs/counts/prefix/labels"
+    ],
+    "compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "synchronization": [
+      "Small3block barriers with fill threads kept alive in Julia",
+      "General histogram barriers and20-stage Blelloch scan barriers",
+      "Atomix portable shared/globalInt32 atomics",
+      "Sequential kernel stream and context-wide completion"
+    ],
+    "launch_geometry": {
+      "small_threads": [
+        288,
+        320
+      ],
+      "small_shared_bytes": [
+        4356,
+        16900
+      ],
+      "general_threads": 1024,
+      "general_groups": 2,
+      "general_counts_shared_bytes": [
+        128,
+        512
+      ],
+      "julia_general_scan_shared_bytes": 4096,
+      "scatter_threads": 256,
+      "scatter_grid_axis": "Y",
+      "block_size": 32
+    },
+    "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+    "backend_extensions": [
+      "Atomix shared/global integer atomic update"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "7d8ec0236c607acb20a05c77e74285419eecedc8c91dfa4e8e906b74eb65713d",
+    "reference_repair": {
+      "finding": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+      "taxonomy_code": "P1",
+      "phase": "reference_algorithm_mapping_alignment",
+      "original_path": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl/original_main.jl",
+      "original_sha256": "a96803efc7d269ab8ccd80fca6eb215b0c27e3c774d20234d599204e8d984c8f",
+      "original_preserved": true,
+      "historical_compiler_attempts": null
+    },
+    "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "translated_device_kernels": 3,
+    "timed_compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer grouping/multiset/padding"
+    ],
+    "artifact_encoding": [
+      "Int32 exact input/output words"
+    ],
+    "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+    "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers.",
+    "source_review_status": "source_reviewed",
+    "host_device_boundary": "Inputs/scratch allocated outside timer;3 complete GPU pipeline repeats/case; context-wide completion and D2H/canonicalization after timer.",
+    "requested_shared_by_case": [
+      4356,
+      16900,
+      4608,
+      4224,
+      4608
+    ],
+    "shared_memory_adaptation": "Dynamic small/count storage and static1024-word scan; same mathematical Blelloch as targets."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+    "layout": null,
+    "storage_precision": [
+      "Int32 expert IDs/token IDs/counts/prefix/labels"
+    ],
+    "compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "timed_compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Exact Python integer grouping/multiset/padding"
+    ],
+    "artifact_encoding": [
+      "Int32 exact input/output words"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Small3block barriers with fill threads kept alive in Julia",
+      "General histogram barriers and20-stage Blelloch scan barriers",
+      "Atomix portable shared/globalInt32 atomics",
+      "Sequential kernel stream and context-wide completion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+    "launch_geometry": {
+      "small_threads": [
+        288,
+        320
+      ],
+      "small_shared_bytes": [
+        4356,
+        16900
+      ],
+      "general_threads": 1024,
+      "general_groups": 2,
+      "general_counts_shared_bytes": [
+        128,
+        512
+      ],
+      "julia_general_scan_shared_bytes": 4096,
+      "scatter_threads": 256,
+      "scatter_grid_axis": "Y",
+      "block_size": 32
+    },
+    "library_backend_boundary": [
+      "Atomix shared/global integer atomic update"
+    ],
+    "host_control_boundary": "Inputs/scratch allocated outside timer;3 complete GPU pipeline repeats/case; context-wide completion and D2H/canonicalization after timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "7d8ec0236c607acb20a05c77e74285419eecedc8c91dfa4e8e906b74eb65713d",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "MoE_token_routing_histogram_prefix_scan_padded_partition_atomic_scatter",
+    "storage_precision": [
+      "Int32 expert IDs/token IDs/counts/prefix/labels"
+    ],
+    "compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "timed_compute_precision": [
+      "Int32 integer histograms/atomic ranks/padding/prefix"
+    ],
+    "host_oracle_precision": [
+      "Exact Python integer grouping/multiset/padding"
+    ],
+    "artifact_encoding": [
+      "Int32 exact input/output words"
+    ],
+    "synchronization": [
+      "Small3block barriers with fill threads kept alive in Julia",
+      "General histogram barriers and20-stage Blelloch scan barriers",
+      "Atomix portable shared/globalInt32 atomics",
+      "Sequential kernel stream and context-wide completion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native small prefix structure retained; fill-only threads idle rather than exit after first barrier. Native CUB1024 scan replaced with explicit Blelloch shared scan, changing algorithm/resource cost. Original host prefix roundtrip removed in named reference."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_pipeline_only_scratch_preallocated_sum_five_three_call_means",
+    "verification_contract": "canonical_complete_token_partition_padding_labels_total_and_general_finalprefix",
+    "keyconfounds": [
+      "CUB versus Blelloch scan algorithm/resource change, not pure API difference",
+      "Small fill threads participate in later barriers in Julia",
+      "Scratch allocation outside named ROI, unlike original general host wrapper",
+      "Within-expert atomic output order removed by canonicalization",
+      "JACC shared template copy/initial barrier extra API work",
+      "Singlemodeloffset0, tokenmasknull; small out-of-range IDs unmeasured"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "Mixture-of-experts neural network inference preprocessing",
+      "scientific_task": "Group routed token assignments by expert and pad each group to matrix block size for downstream expert matrix multiplication.",
+      "governing_method": "Integer histogram, exclusive prefix, per-expert ceil-to32 padding and token permutation/scatter.",
+      "accuracy_needs": [
+        "Every eligible assignment appears exactly once under its mapped expert",
+        "Excluded expert IDs never appear",
+        "All padding/labels/total counts exact",
+        "All general atomic final prefix endpoints exact"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/moe-align-cuda/main.cu",
+          "sha256": "deeacc4d160028496080b6d2fbfee8bc70afc1a77f611f248a8bc06bd689655c"
+        }
+      ]
+    },
+    "benchmark": "moe-align",
+    "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T231445670786Z_moe-align/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/moe-align-cuda/main.cu",
+      "native_source_sha256": "deeacc4d160028496080b6d2fbfee8bc70afc1a77f611f248a8bc06bd689655c",
+      "reviewed_at": "2026-10-17T23:16:20.885506+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+        "work_item_mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+        "storage_precision": [
+          "Int32 expert IDs/token IDs/counts/prefix/labels"
+        ],
+        "compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "synchronization": [
+          "Small3block barriers with fill threads kept alive in Julia",
+          "General histogram barriers and20-stage Blelloch scan barriers",
+          "Atomix portable shared/globalInt32 atomics",
+          "Sequential kernel stream and context-wide completion"
+        ],
+        "launch_geometry": {
+          "small_threads": [
+            288,
+            320
+          ],
+          "small_shared_bytes": [
+            4356,
+            16900
+          ],
+          "general_threads": 1024,
+          "general_groups": 2,
+          "general_counts_shared_bytes": [
+            128,
+            512
+          ],
+          "julia_general_scan_shared_bytes": 4096,
+          "scatter_threads": 256,
+          "scatter_grid_axis": "Y",
+          "block_size": 32
+        },
+        "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+        "backend_extensions": [
+          "Atomix shared/global integer atomic update"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "7d8ec0236c607acb20a05c77e74285419eecedc8c91dfa4e8e906b74eb65713d",
+        "reference_repair": {
+          "finding": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+          "taxonomy_code": "P1",
+          "phase": "reference_algorithm_mapping_alignment",
+          "original_path": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl/original_main.jl",
+          "original_sha256": "a96803efc7d269ab8ccd80fca6eb215b0c27e3c774d20234d599204e8d984c8f",
+          "original_preserved": true,
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 3,
+        "timed_compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer grouping/multiset/padding"
+        ],
+        "artifact_encoding": [
+          "Int32 exact input/output words"
+        ],
+        "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+        "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers.",
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Inputs/scratch allocated outside timer;3 complete GPU pipeline repeats/case; context-wide completion and D2H/canonicalization after timer.",
+        "requested_shared_by_case": [
+          4356,
+          16900,
+          4608,
+          4224,
+          4608
+        ],
+        "shared_memory_adaptation": "Dynamic small/count storage and static1024-word scan; same mathematical Blelloch as targets."
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+        "work_item_mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+        "storage_precision": [
+          "Int32 expert IDs/token IDs/counts/prefix/labels"
+        ],
+        "compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "synchronization": [
+          "Small3block barriers with fill threads kept alive in Julia",
+          "General histogram barriers and20-stage Blelloch scan barriers",
+          "Atomix portable shared/globalInt32 atomics",
+          "Sequential kernel stream and context-wide completion"
+        ],
+        "launch_geometry": {
+          "small_threads": [
+            288,
+            320
+          ],
+          "small_shared_bytes": [
+            4356,
+            16900
+          ],
+          "general_threads": 1024,
+          "general_groups": 2,
+          "general_counts_shared_bytes": [
+            128,
+            512
+          ],
+          "julia_general_scan_shared_bytes": 4096,
+          "scatter_threads": 256,
+          "scatter_grid_axis": "Y",
+          "block_size": 32
+        },
+        "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+        "backend_extensions": [
+          "Atomix shared/global integer atomic update"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "a1b528837a43a25f5da973f648b825e643cbfb0ba2db1c6dc2e8d2faf105b1a9",
+        "reference_repair": null,
+        "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 3,
+        "timed_compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer grouping/multiset/padding"
+        ],
+        "artifact_encoding": [
+          "Int32 exact input/output words"
+        ],
+        "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+        "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers.",
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Inputs/scratch allocated outside timer;3 complete GPU pipeline repeats/case; context-wide completion and D2H/canonicalization after timer.",
+        "requested_shared_by_case": [
+          4356,
+          16900,
+          4608,
+          4224,
+          4608
+        ],
+        "shared_memory_adaptation": "Compile-time Val specialized local shared arrays for small words/general paddedexpert counts plus1024-word scan."
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Small fused per-thread expert histogram, per-expert serial prefix and scatter; general shared histogram,1024-value exclusive scan and atomic token scatter with per-expert block32 padding.",
+        "work_item_mapping": "Small256 fill threads plus32/64 counting threads; general1024threads2groups histogram/fill plus256-thread2D scatter. Portable Blelloch scan replaces native CUB. Exact integer outputs canonicalized only within expert groups.",
+        "storage_precision": [
+          "Int32 expert IDs/token IDs/counts/prefix/labels"
+        ],
+        "compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "synchronization": [
+          "Small3block barriers with fill threads kept alive in Julia",
+          "General histogram barriers and20-stage Blelloch scan barriers",
+          "Atomix portable shared/globalInt32 atomics",
+          "Sequential kernel stream and context-wide completion"
+        ],
+        "launch_geometry": {
+          "small_threads": [
+            288,
+            320
+          ],
+          "small_shared_bytes": [
+            4356,
+            16900
+          ],
+          "general_threads": 1024,
+          "general_groups": 2,
+          "general_counts_shared_bytes": [
+            128,
+            512
+          ],
+          "julia_general_scan_shared_bytes": 4096,
+          "scatter_threads": 256,
+          "scatter_grid_axis": "Y",
+          "block_size": 32
+        },
+        "resource_policy": "Small4356/16900Bshared; general padded-expertcounts128/512B plus4096Bscan;1024thread scan;256thread scatter",
+        "backend_extensions": [
+          "Atomix shared/global integer atomic update"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "7ff162a7725c7417276f7dd7077e9f820396ed256e84db0a74336433e0c75cdd",
+        "reference_repair": null,
+        "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "translated_device_kernels": 3,
+        "timed_compute_precision": [
+          "Int32 integer histograms/atomic ranks/padding/prefix"
+        ],
+        "host_oracle_precision": [
+          "Exact Python integer grouping/multiset/padding"
+        ],
+        "artifact_encoding": [
+          "Int32 exact input/output words"
+        ],
+        "algorithm_adaptation": "CUBBlockScan to explicit1024-value Blelloch scan",
+        "control_flow_adaptation": "Fill-only small-mode threads stay alive through all3barriers.",
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Inputs/scratch allocated outside timer;3 complete GPU pipeline repeats/case; context-wide completion and D2H/canonicalization after timer.",
+        "requested_shared_by_case": [
+          4356,
+          16900,
+          4608,
+          4224,
+          4608
+        ],
+        "shared_memory_adaptation": "JACC.shared copies full initialized template and performs initial barrier on each block before source algorithm; combined general counts+scan storage."
+      }
+    },
+    "numerical_evidence_strength": "canonical_complete_token_partition_padding_labels_total_and_general_atomic_prefix_endpoints",
+    "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/moe-align.json",
+    "padding_statistics": [
+      {
+        "tokens": 3,
+        "experts": 32,
+        "topk": 3,
+        "valid_assignments": 9,
+        "excluded_assignments": 0,
+        "padded_total": 288,
+        "padding_amplification": 32.0
+      },
+      {
+        "tokens": 127,
+        "experts": 64,
+        "topk": 4,
+        "valid_assignments": 508,
+        "excluded_assignments": 0,
+        "padded_total": 2048,
+        "padding_amplification": 4.031496062992126
+      },
+      {
+        "tokens": 3,
+        "experts": 128,
+        "topk": 3,
+        "valid_assignments": 9,
+        "excluded_assignments": 0,
+        "padded_total": 288,
+        "padding_amplification": 32.0
+      },
+      {
+        "tokens": 600,
+        "experts": 32,
+        "topk": 3,
+        "valid_assignments": 1800,
+        "excluded_assignments": 0,
+        "padded_total": 2048,
+        "padding_amplification": 1.1377777777777778
+      },
+      {
+        "tokens": 257,
+        "experts": 128,
+        "topk": 4,
+        "valid_assignments": 822,
+        "excluded_assignments": 206,
+        "padded_total": 3488,
+        "padding_amplification": 4.24330900243309
+      }
+    ],
+    "prospective_usage_intervals": [
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/moe-align/jacc_translation.jsonl",
+        "end_event": "cb5b082bacea38f0f32cba2f",
+        "delta_usage": {
+          "input_tokens": 925294,
+          "cached_input_tokens": 923264,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5728,
+          "reasoning_output_tokens": 1835,
+          "total_tokens": 931022
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/moe-align/shared_reference_preparation.jsonl",
+        "end_event": "3eb590d834177b537716fcdc",
+        "delta_usage": {
+          "input_tokens": 4909489,
+          "cached_input_tokens": 4888832,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 23560,
+          "reasoning_output_tokens": 12678,
+          "total_tokens": 4933049
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/moe-align/ka_translation.jsonl",
+        "end_event": "e40b7a72ef72faba5528a8c1",
+        "delta_usage": {
+          "input_tokens": 1214860,
+          "cached_input_tokens": 1213440,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3824,
+          "reasoning_output_tokens": 2139,
+          "total_tokens": 1218684
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "annotation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/moe-align/shared_annotation.jsonl",
+        "end_event": "f6ba945e551770f0ae316d70",
+        "delta_usage": {
+          "input_tokens": 629965,
+          "cached_input_tokens": 627968,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 688,
+          "reasoning_output_tokens": 348,
+          "total_tokens": 630653
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/moe-align/shared_benchmark_workflow.jsonl",
+        "end_event": "816fe4f63c593d045948ca35",
+        "delta_usage": {
+          "input_tokens": 8464044,
+          "cached_input_tokens": 8436736,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 34424,
+          "reasoning_output_tokens": 17000,
+          "total_tokens": 8498468
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/moe-align-julia/moe-align-julia-cuda.jl/main.jl",
+    "sha256": "7d8ec0236c607acb20a05c77e74285419eecedc8c91dfa4e8e906b74eb65713d",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        5,
+        7,
+        8
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+      "run_id": "20261017T231445670786Z_moe-align",
+      "result": ".porting-state/portable_julia/runs/20261017T231445670786Z_moe-align/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "bbe98aa8975ca075378f58de90f58e46cef0e7b67af53c5b4419370de4a7f389",
+      "source_hash": "7a1dc772ddae5e4c8842451b297db9a5cf915dfc5ab96a5da507b8ff028e63b0",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T231445670786Z_moe-align/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00010222733333333333,
+        0.00010828400000000001,
+        8.624366666666668e-05,
+        8.545033333333334e-05,
+        8.312166666666666e-05
+      ],
+      "mean_last_four_seconds": 9.077491666666667e-05,
+      "contract": {
+        "cases": [
+          {
+            "tokens": 3,
+            "experts": 32,
+            "topk": 3,
+            "mapped_invalid": false,
+            "N": 9,
+            "maxpad": 288,
+            "small": true,
+            "output_count": 298
+          },
+          {
+            "tokens": 127,
+            "experts": 64,
+            "topk": 4,
+            "mapped_invalid": false,
+            "N": 508,
+            "maxpad": 2496,
+            "small": true,
+            "output_count": 2575
+          },
+          {
+            "tokens": 3,
+            "experts": 128,
+            "topk": 3,
+            "mapped_invalid": false,
+            "N": 9,
+            "maxpad": 288,
+            "small": false,
+            "output_count": 427
+          },
+          {
+            "tokens": 600,
+            "experts": 32,
+            "topk": 3,
+            "mapped_invalid": false,
+            "N": 1800,
+            "maxpad": 2816,
+            "small": false,
+            "output_count": 2938
+          },
+          {
+            "tokens": 257,
+            "experts": 128,
+            "topk": 4,
+            "mapped_invalid": true,
+            "N": 1028,
+            "maxpad": 5024,
+            "small": false,
+            "output_count": 5311
+          }
+        ],
+        "block_size": 32,
+        "expert_map": "Final general case maps multiples7 to-1, othersE-1-e; input>=E every17thignored. Othersmapnull. Nonnegative inputIDs only.",
+        "input_prefix_count": 3778,
+        "output_count": 11549,
+        "checked_values": 15327,
+        "timing": "3 complete kernel pipeline repeats/case, sum5case means; all scratch allocation outside, unlike original general wrapper malloc/free.",
+        "small_mapping": "Native256fill threads+max(E,32)count threads, exact prefix tables; Julia fill threads stay alive through all3barriers for portable control flow.",
+        "general_mapping": "Native1024thread2block histogram/fill +CUBexclusive scan +256thread2D atomic scatter; Julia portable1024word Blellochscan explicit P1 algorithm/resource adaptation.",
+        "output_contract": "All sorted token slots/padding, expert labels, paddedtotal and general final mutatedcumsum; canonicalize only within-expert token ordering, not counts/labels/padding.",
+        "scope": "5cases spanning thresholds/32,64,128 experts; null tokenmask and singlemodeloffset0 only; smallinvalid>=E inputs nottested."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "moe-align_cuda_jl_grid_tuple_types_02",
+        "benchmark_id": "moe-align",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B3",
+        "phase": "host_launch",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/moe-align.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "moe-align_cuda_jl_grid_tuple_types_02",
+          "benchmark_id": "moe-align",
+          "implementation_model": "cuda_jl",
+          "phase": "host_launch",
+          "taxonomy_code": "B3",
+          "is_failure": true,
+          "symptom": "CuDim3 has no constructor for Tuple{Int64,Int32}; scatter compiled but failed launch during warmup.",
+          "cause": "Host grid tuple(1,blocksY) mixed integer types; installed API requires homogeneous tuple.",
+          "resolution": "Convert blocksY toInt at launch boundary; actual geometry unchanged.",
+          "authored_device_compiler_failure": false,
+          "device_kernels_compiled_before_failure": true,
+          "candidate_id": 2,
+          "check_id": 1,
+          "log_reference": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T230942438793Z_moe-align/cuda_jl_run1.log",
+          "final_outcome": "resolved_in_final_configuration",
+          "final_result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T231445670786Z_moe-align/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "moe-align_cuda_jl_reference_mapping_01",
+        "benchmark_id": "moe-align",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_algorithm_mapping_alignment",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/moe-align.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "moe-align_cuda_jl_reference_mapping_01",
+          "benchmark_id": "moe-align",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "moe_align_small_general_five_cases_full_partition_padding_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_algorithm_mapping_alignment",
+          "taxonomy_code": "P1",
+          "symptom": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+          "cause": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "finding": "Historical Julia computes mathematically equivalent histogram/padding/scatter through a host prefix-scan roundtrip instead of native small/general GPU paths. Its expert_ids zero-fill and thread0 expert-label stores can overlap across warps, a source-observed potential race, not a measured historical failure. Named reference preserves original bytes, restores actual source small/general algorithm structure, uses explicit portable Blelloch scan instead of CUB, and keeps fill threads alive through barriers. These are P1 mapping/control-flow adaptations with output-equivalent intent.",
+            "taxonomy_code": "P1",
+            "phase": "reference_algorithm_mapping_alignment",
+            "original_path": "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl/original_main.jl",
+            "original_sha256": "a96803efc7d269ab8ccd80fca6eb215b0c27e3c774d20234d599204e8d984c8f",
+            "original_preserved": true,
+            "historical_compiler_attempts": null
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "a96803efc7d269ab8ccd80fca6eb215b0c27e3c774d20234d599204e8d984c8f",
+          "log_reference": "/home/imo/HeCBench_julia/src/moe-align-julia/study_notes.json",
+          "historical_observed_failure_attempt": false,
+          "is_failure": false,
+          "scientific_operator_incorrect": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 3,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 182,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/moe-align-julia/moe-align-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 3
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/moe-align-julia-cuda_jl/manifest.json",
+    "selected_sha256": "1fd0395e412939c80883918f5a090367853cc6e6fd0d4d0bf2f38d8031a180af",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/moe-align-julia-cuda_jl/manifest.json",
+        "sha256": "1fd0395e412939c80883918f5a090367853cc6e6fd0d4d0bf2f38d8031a180af"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/moe-align.json",
+    "annotation_sha256": "a7d52bf709919c60dc21ef2b5dffe99ba3b9cc038f9088682ea95eb657b05763",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

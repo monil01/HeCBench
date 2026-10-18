@@ -1,0 +1,442 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "channelShuffle",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/channelShuffle.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "NHWC channel permutation uses direct global loads; NCHW uses native-equivalent 3D layout mapping.",
+    "work_item_mapping": "NCHW native3D grid(1,4,32) with256threads; NHWC256blocks and256threads, first32active",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Int32"
+    ],
+    "synchronization": [
+      "host_device_between_layouts"
+    ],
+    "launch_geometry": {
+      "nhwc_threads": 256,
+      "nhwc_blocks": 256,
+      "nchw_threads": [
+        256,
+        1,
+        1
+      ],
+      "nchw_blocks": [
+        1,
+        4,
+        32
+      ]
+    },
+    "resource_policy": "No shared memory in either CUDA.jl kernel.",
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "bd8d4f86bb143453235d3276979aa769cc65ea9b7fbc04f9e06e1f69432b92fc",
+    "reference_repair": {
+      "finding": "Historical CUDA.jl outputs are numerically faithful. Its NHWC kernel directly reads global inputs instead of native shared staging; retain this actual mapping as an explicit performance confound. New reference changes only fixture/measurement harness.",
+      "taxonomy_code": null,
+      "original_path": "/home/imo/HeCBench_julia/src/channelShuffle-julia/channelShuffle-julia-cuda.jl/original_main.jl",
+      "original_sha256": "365fb8175cd22a740b8b8a8b3dbaef80d6776d702e2c8237325eef3f3ee1857d",
+      "original_preserved": true,
+      "phase": "measurement",
+      "historical_compiler_attempts": null
+    },
+    "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "NHWC channel permutation uses direct global loads; NCHW uses native-equivalent 3D layout mapping.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "NCHW native3D grid(1,4,32) with256threads; NHWC256blocks and256threads, first32active",
+    "layout": null,
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Int32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "host_device_between_layouts"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "No shared memory in either CUDA.jl kernel.",
+    "launch_geometry": {
+      "nhwc_threads": 256,
+      "nhwc_blocks": 256,
+      "nchw_threads": [
+        256,
+        1,
+        1
+      ],
+      "nchw_blocks": [
+        1,
+        4,
+        32
+      ]
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "bd8d4f86bb143453235d3276979aa769cc65ea9b7fbc04f9e06e1f69432b92fc",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "tensor_layout_permutation",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Int32"
+    ],
+    "synchronization": [
+      "NHWC_workgroup_barrier_for_shared_variants",
+      "host_device_between_layouts"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "CUDA.jl NHWC direct-global, KA static shared, JACC dynamic shared with template copy; native3D NCHW geometry retained"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_nhwc_nchw_synchronized_loop_means",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Different NHWC shared staging across models",
+      "Small C32 fixture; inactive threads in native-equivalent256thread blocks"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "scientific machine learning",
+      "scientific_task": "Permute grouped neural tensor channels",
+      "governing_method": "Group/channel index transpose for NHWC and NCHW",
+      "discretization": "Independent feature-map tensor permutation, no spatial numerical stencil",
+      "accuracy_needs": [
+        "exact permutation",
+        "layout-specific index agreement"
+      ],
+      "input_regime": "N4 C32 G4 H8 W8",
+      "precision_sensitivity": "None in payload; FP32 values are copied exactly",
+      "community_use_case": "Group-convolution feature exchange; benchmark is an operator proxy rather than whole-model study",
+      "evidence": [
+        "src/channelShuffle-cuda/main.cu",
+        "src/channelShuffle-cuda/reference.h"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/channelShuffle-cuda/main.cu",
+          "sha256": "3510c04b1d5bfba219bed790eb8387ee693650ad0b3268badf6f3a897758190f"
+        }
+      ]
+    },
+    "benchmark": "channelShuffle",
+    "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T162849202248Z_channelShuffle/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/channelShuffle-cuda/main.cu",
+      "native_source_sha256": "3510c04b1d5bfba219bed790eb8387ee693650ad0b3268badf6f3a897758190f",
+      "reviewed_at": "2026-10-17T16:29:40.777373+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "NHWC channel permutation uses direct global loads; NCHW uses native-equivalent 3D layout mapping.",
+        "work_item_mapping": "NCHW native3D grid(1,4,32) with256threads; NHWC256blocks and256threads, first32active",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Int32"
+        ],
+        "synchronization": [
+          "host_device_between_layouts"
+        ],
+        "launch_geometry": {
+          "nhwc_threads": 256,
+          "nhwc_blocks": 256,
+          "nchw_threads": [
+            256,
+            1,
+            1
+          ],
+          "nchw_blocks": [
+            1,
+            4,
+            32
+          ]
+        },
+        "resource_policy": "No shared memory in either CUDA.jl kernel.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "bd8d4f86bb143453235d3276979aa769cc65ea9b7fbc04f9e06e1f69432b92fc",
+        "reference_repair": {
+          "finding": "Historical CUDA.jl outputs are numerically faithful. Its NHWC kernel directly reads global inputs instead of native shared staging; retain this actual mapping as an explicit performance confound. New reference changes only fixture/measurement harness.",
+          "taxonomy_code": null,
+          "original_path": "/home/imo/HeCBench_julia/src/channelShuffle-julia/channelShuffle-julia-cuda.jl/original_main.jl",
+          "original_sha256": "365fb8175cd22a740b8b8a8b3dbaef80d6776d702e2c8237325eef3f3ee1857d",
+          "original_preserved": true,
+          "phase": "measurement",
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Channel-group transpose permutation in NHWC and NCHW layouts",
+        "work_item_mapping": "NCHW native3D grid(1,4,32) with256threads; NHWC256blocks and256threads, first32active",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Int32"
+        ],
+        "synchronization": [
+          "NHWC_workgroup_barrier_for_shared_variants",
+          "host_device_between_layouts"
+        ],
+        "launch_geometry": {
+          "nhwc_threads": 256,
+          "nhwc_blocks": 256,
+          "nchw_threads": [
+            256,
+            1,
+            1
+          ],
+          "nchw_blocks": [
+            1,
+            4,
+            32
+          ]
+        },
+        "resource_policy": "NHWC static @localmem Float32[32],128bytes and workgroup barrier; NCHW no shared memory.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "3c3172038f8d700d26d8a5986a54c68c26e02efaae07a680eefed9c160c93279",
+        "reference_repair": null,
+        "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Channel-group transpose permutation in NHWC and NCHW layouts",
+        "work_item_mapping": "NCHW native3D grid(1,4,32) with256threads; NHWC256blocks and256threads, first32active",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Int32"
+        ],
+        "synchronization": [
+          "NHWC_workgroup_barrier_for_shared_variants",
+          "host_device_between_layouts"
+        ],
+        "launch_geometry": {
+          "nhwc_threads": 256,
+          "nhwc_blocks": 256,
+          "nchw_threads": [
+            256,
+            1,
+            1
+          ],
+          "nchw_blocks": [
+            1,
+            4,
+            32
+          ]
+        },
+        "resource_policy": "NHWC explicit shmem_size=128 and JACC.shared zero template copy; NCHW shmem_size=0.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "cb084b20e80317ecc57c3cf4796021170475f493508c20b016d8c33d49511bd3",
+        "reference_repair": null,
+        "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "extra_memory_traffic": "32-entry zero template copied per NHWC block before loading actual pixels."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/channelShuffle-julia/channelShuffle-julia-cuda.jl/main.jl",
+    "sha256": "bd8d4f86bb143453235d3276979aa769cc65ea9b7fbc04f9e06e1f69432b92fc",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        47,
+        52,
+        68,
+        97,
+        99
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "shuffle_n4_c32_g4_hw64_bothlayouts_r10_v1",
+      "run_id": "20261017T162849202248Z_channelShuffle",
+      "result": ".porting-state/portable_julia/runs/20261017T162849202248Z_channelShuffle/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "3fa92daa4153e78387a51f8b18c2b42ffc8f570f9f4824f2de92ccfb799299e6",
+      "source_hash": "efd595e630d85362501fce8f3620a3107aebd86f270fc62b6b93630d27f6243b",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162849202248Z_channelShuffle/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.0449000000000001e-05,
+        1.71581e-05,
+        9.697200000000001e-06,
+        1.0164e-05,
+        9.381e-06
+      ],
+      "mean_last_four_seconds": 1.1600075000000001e-05,
+      "contract": {
+        "precision": "float32",
+        "shape": {
+          "N": 4,
+          "C": 32,
+          "G": 4,
+          "H": 8,
+          "W": 8
+        },
+        "internal_repeats": 10,
+        "fixture": "X_i=i/8192, exact binary values, original native initialization",
+        "checked_outputs": "full NHWC and NCHW shuffled tensors",
+        "acceptance": "native bytewise equality",
+        "scope": "one original N/C sweep entry and G4 H8 W8; large N branch unmeasured"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 787,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/channelShuffle-julia/channelShuffle-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/channelShuffle-julia-cuda_jl/manifest.json",
+    "selected_sha256": "af4c7fc9e87bbd1d1adcd8b24378c0536550bf94a94280086e77ea0e463bb076",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/channelShuffle-julia-cuda_jl/manifest.json",
+        "sha256": "af4c7fc9e87bbd1d1adcd8b24378c0536550bf94a94280086e77ea0e463bb076"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null
+}

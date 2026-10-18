@@ -1,0 +1,1103 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "backprop",
+  "implementation_model": "cuda_jl",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/backprop.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "backprop",
+    "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b",
+    "status": "conditional_reference_repaired",
+    "algorithm": "Existing CUDA.jl vendor GEMV sigmoid forward and vendor outerproduct/broadcast input update; same CPU output-layer/backprop stage, freshstate andactual GPUmomentum exposed",
+    "work_item_mapping": "Vendor GEMV over full inputmatrix; vendor outerproduct then broadcasts, opaque internal launchgeometry",
+    "layout": "ExistingJulia colmajor fullmatrices/slicedvendorGEMV/outerproduct; rawoutput canonicalrowflatten actualweights/momentum, no propertycanonicalization",
+    "precision": {
+      "storage": [
+        "Float32_input_weights_momentum_activations_deltas"
+      ],
+      "compute": [
+        "Float32_CUBLAS_GEMV_and_outerproduct",
+        "Float32_broadcast_and_host_arithmetic",
+        "vendor_internal_reduction_schedule_not_measured"
+      ]
+    },
+    "memory_access": "Vendor GEMV/outerproduct oncolmajor slices andtemporaryarrays plusbroadcast updates; internal tiling/traffic unknown",
+    "synchronization": [
+      "forward_D2H_before_host_backprop",
+      "restore_H2D_before_inputweight_update",
+      "update_weights_and_momentum_D2H",
+      "all_stage_allocations_transfers_and_free_inside_timer"
+    ],
+    "resource_policy": {
+      "vendor_resource_policy": "opaque; notclaimed0shared",
+      "temporary_GPU_arrays": "slices,broadcasts,andvendor_outputs; explicit cleanupnamedarrays, transientpool/GCpolicy differsnative"
+    },
+    "launch_geometry": {
+      "vendor_internal": "notmeasured"
+    },
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+    "supported_features": [
+      "shared_tree_reduction",
+      "workgroup_barriers",
+      "Float32_gradient_momentum",
+      "CUDAvendor_library_interoperability",
+      "host_device_hybrid_training"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Two complete named corrected-standard-dot single-example training steps, full outputstate; no untouchednative agreement, originalCLIchecker validation, production training/convergence orkernel-onlyspeedup claim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop",
+    "numerical_contract": "11534 Float32 artifactvalues allfive:5810 byte-identical inputprefix,5724 actual updatedweight/momentum+hidden/outputactivation+delta+hiddenweight/momentum+error outputs. Independent Float64 standard freshstate training, finite-difference gradientabs error<1e-9, dualGPUatol1e-5+rtol1e-6. CUDA reference is explicitly corrected, not untouched native. Config input_contract retains initial manual count typo5824/11634 for frozen reference reuse; authoritative erratum/trial arrays11534/5724.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.000547505,
+      0.001231142,
+      0.000585826,
+      0.000553456,
+      0.000529085
+    ],
+    "mean_last_four_seconds": 0.0007248772499999999,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/backprop-julia/backprop-julia-cuda.jl/main.jl",
+        "sha256": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b"
+      },
+      {
+        "path": "src/backprop-julia/study_common.jl",
+        "sha256": "412338e54d2523d57d9957d0dcdd754387334ba8f7ea1558bd8482028e56d036"
+      },
+      {
+        "path": "src/backprop-julia/backprop_host.jl",
+        "sha256": "a321f3cfd633f81a028f26bfbfd7fdab0772bd5ff901a616607406a5a23aa8c6"
+      }
+    ],
+    "implementation_source_digest": "8de975bd25297ee5e6040b9be4219aba3bc0f995f0aa00ea82de76df93db6c24",
+    "reference_provenance": {
+      "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+      "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+      "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+      "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+      "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+      "witnesses": {
+        ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+      },
+      "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+      "status": "conditional_reference_repaired",
+      "exclude_untouched_native_aggregates": true,
+      "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+      "original_checker_defects": [
+        {
+          "kind": "actual_CPU_witness",
+          "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+          "value": 0.690000057220459,
+          "expected_single_bias_update": 0.30000001192092896,
+          "blocks": 2,
+          "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+        },
+        {
+          "kind": "static_source_order_hazard",
+          "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+          "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+        }
+      ],
+      "raw_witnesses": {
+        "backprop_native_witness.log": {
+          "path": ".porting-state/portable_julia/backprop_native_witness.log",
+          "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+          "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+        },
+        "backprop_checker_witness.log": {
+          "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+          "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+          "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+        }
+      }
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Existing CUDA.jl vendor GEMV sigmoid forward and vendor outerproduct/broadcast input update; same CPU output-layer/backprop stage, freshstate andactual GPUmomentum exposed",
+    "implementation_class": "genuine_existing_vendor_cuda_jl_with_freshstate_fulloutput_study_adapter",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Vendor GEMV over full inputmatrix; vendor outerproduct then broadcasts, opaque internal launchgeometry",
+    "layout": "ExistingJulia colmajor fullmatrices/slicedvendorGEMV/outerproduct; rawoutput canonicalrowflatten actualweights/momentum, no propertycanonicalization",
+    "storage_precision": [
+      "Float32_input_weights_momentum_activations_deltas"
+    ],
+    "compute_precision": [
+      "Float32_CUBLAS_GEMV_and_outerproduct",
+      "Float32_broadcast_and_host_arithmetic",
+      "vendor_internal_reduction_schedule_not_measured"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Vendor GEMV/outerproduct oncolmajor slices andtemporaryarrays plusbroadcast updates; internal tiling/traffic unknown",
+    "synchronization": [
+      "forward_D2H_before_host_backprop",
+      "restore_H2D_before_inputweight_update",
+      "update_weights_and_momentum_D2H",
+      "all_stage_allocations_transfers_and_free_inside_timer"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "vendor_resource_policy": "opaque; notclaimed0shared",
+      "temporary_GPU_arrays": "slices,broadcasts,andvendor_outputs; explicit cleanupnamedarrays, transientpool/GCpolicy differsnative"
+    },
+    "launch_geometry": {
+      "vendor_internal": "notmeasured"
+    },
+    "library_backend_boundary": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_control_boundary": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+    "support_boundary": "Two complete named corrected-standard-dot single-example training steps, full outputstate; no untouchednative agreement, originalCLIchecker validation, production training/convergence orkernel-onlyspeedup claim.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/backprop-julia/backprop-julia-cuda.jl/main.jl",
+        "sha256": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b"
+      },
+      {
+        "path": "src/backprop-julia/study_common.jl",
+        "sha256": "412338e54d2523d57d9957d0dcdd754387334ba8f7ea1558bd8482028e56d036"
+      },
+      {
+        "path": "src/backprop-julia/backprop_host.jl",
+        "sha256": "a321f3cfd633f81a028f26bfbfd7fdab0772bd5ff901a616607406a5a23aa8c6"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "backprop",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "feedforward_neural_network_backpropagation",
+      "secondary_domains": [
+        "squared_error_gradient_SGD_momentum"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "One complete fresh-state sigmoid network training step, forward activations, backpropagated errors and both-layer momentum updates",
+      "mathematical_operation": "h=sigmoid(Wx+b),o=sigmoid(Vh+c),delta_o=o(1-o)(target-o),delta_h=h(1-h)Vdelta_o, update weights by0.3delta*input+0.3previous_update",
+      "discretization": "Two fullyinitialized signed networks64\u219216\u21921 and96\u219216\u21921, nonzero initial momentum andtargets0.2/0.7",
+      "accuracy_requirements": "5724 actual Float32 updatedweights/momentum, activations,deltas anderror outputs; independent Float64 standard model from freshstate, finite-difference one-weight gradient, allfive dualrefs within1e-5+1e-6relative. Native reference requires independently justified one-line correction.",
+      "input_size_regime": "Two small complete single-example training steps, inputmultiples16,16hiddenunits, oneoutput; no training epochs/dataset convergence claim",
+      "precision_sensitivity": "Float32 device arithmetics/storage and source hostFloat32 sums; native/tiled first sigmoid usesDoubleexp thenFloat32, existing Juliahost/vendor usesFloat32sigmoid. Within fixed tolerance, no exactfloat agreement claim.",
+      "community_use_case": "Gradient-based neural network training/miniature scientific ML kernel. Source generic network benchmark, no specific imaging/physical surrogate application attributed.",
+      "description": "Full named single-training-step state is verified, including GPU-updated input momentum that original output checker ignored. Genuine untouched native witness establishes a reduction self-addition bug; study uses an explicit one-line corrected native variant, never claims original CUDA agreement.",
+      "provenance": "Native weighted-dot CPUfeedforward intent and analytical16terms(1/16)^2=1/16 conflict with actual native1/8; loop starts1 and doubles all entries. Corrected copy starts2 only. Original CPUchecker additionally updatesbias onceperblock and reuses alreadyupdated hidden state; both retained/documented, freshstate independent oracle used.",
+      "source_evidence": [
+        {
+          "path": "src/backprop-cuda/bpnn_layerforward.h",
+          "sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6"
+        },
+        {
+          "path": "src/backprop-cuda/bpnn_adjust_weights.h",
+          "sha256": "e6b34583b5683f51b9168c2917eed1702b013c893732198c5a3fe68a74c75134"
+        },
+        {
+          "path": "src/backprop-cuda/backprop.cu",
+          "sha256": "c7cfb4e64da179dad51713d0708b8b1b0dd91aabe99e1a95c1e1a533ec33bbe7"
+        },
+        {
+          "path": "src/backprop-cuda/main.cu",
+          "sha256": "b09d696037930225a0bf158758ffb57659f104d435c44fd19fd9f2ed7120ec73"
+        },
+        {
+          "path": "src/backprop-cuda/reference.h",
+          "sha256": "b9ce2b5aef3c2a25200d5d3293ae9e18ab594e270186aab8b21db6183b12e0c2"
+        }
+      ]
+    },
+    "primary_motif": "dense_sigmoid_forward_backward_weight_momentum_update",
+    "storage_precision": [
+      "Float32_input_weights_momentum_activations_deltas"
+    ],
+    "compute_precision": [
+      "Float32_device_products_sums_updates",
+      "mixed_Float32_Float64_source_host_sigmoid"
+    ],
+    "synchronization": [
+      "forward_D2H_before_host_backprop",
+      "restore_H2D_before_inputweight_update",
+      "update_weights_and_momentum_D2H",
+      "all_stage_allocations_transfers_and_free_inside_timer"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Corrected native/KA/JACC16x16shared tiled dot plus scalar weightupdate; existing genuine CUDA.jl retains vendor GEMV/outerproduct+broadcast strategy with column-major matrix slices. CPUbackprop/hiddenweightupdate follows same mathematical model but source host precision and allocator policies differ. JACC adds shared-template initialization."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "genuine_existing_vendor_cuda_jl_with_freshstate_fulloutput_study_adapter",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+    "verification_contract": "11534 Float32 artifactvalues allfive:5810 byte-identical inputprefix,5724 actual updatedweight/momentum+hidden/outputactivation+delta+hiddenweight/momentum+error outputs. Independent Float64 standard freshstate training, finite-difference gradientabs error<1e-9, dualGPUatol1e-5+rtol1e-6. CUDA reference is explicitly corrected, not untouched native. Config input_contract retains initial manual count typo5824/11634 for frozen reference reuse; authoritative erratum/trial arrays11534/5724.",
+    "keyconfounds": [
+      "Conditional corrected-native stratum: originalnative reduces exactly2xdot; excludes untouchedCUDAaggregate",
+      "Only forward tree loop initial1\u21922 changed; originalCUDAfilesunchanged; no silentfullCLIcheckerfix",
+      "OriginalCPUchecker bias repeatsperblock (actual0.69vs0.3twoblocks) andmutatednetreusehazard; strong freshstate oracle replacesunreliablechecker",
+      "ExistingCUDAjl vendor GEMV/outerproduct vsKA/JACC/native tiled kernels andlayout changes, not pureframeworkoverhead",
+      "Host-inclusive timing includes GPUalloc/transfers, CPUhoststages andfrees; Juliaallocatorpool/temporaries differscudaMalloc/free, no devicekernel/roofline interpretation",
+      "JACC1088byte shared-templatecopyandbarrier extra, reusabletemplate createdoutside step timer",
+      "Allretainedspikes kept, e.gCUDAjltrial2 larger; no preferredreruns",
+      "Named64/96input16hidden1output onefreshstep, no realistictrainingthroughput/epochaccuracy inference",
+      "Existing copied CPUhelpers/oldvendor body excluded fromnewsourceproxies; neworacles/adapters countonce, marginal ordered reuse",
+      "Input_contract manualsize typo retained only for frozenreuse, expliciterratum andallstructuredtrials actual11534artifact/5724outputs"
+    ],
+    "boundary_rounding_policy": "Inputlengthsdivisible16,16hiddenand1output, fullyinitialized unusedbias/delta/columnzero fields preserved; exactonce biasowner, freshstate/momentum pertrial. Allfinite signed lowmagnitude data avoidsigmoid saturation masking doubled-dot source bug.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "backprop",
+        "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b",
+        "status": "conditional_reference_repaired",
+        "algorithm": "Existing CUDA.jl vendor GEMV sigmoid forward and vendor outerproduct/broadcast input update; same CPU output-layer/backprop stage, freshstate andactual GPUmomentum exposed",
+        "work_item_mapping": "Vendor GEMV over full inputmatrix; vendor outerproduct then broadcasts, opaque internal launchgeometry",
+        "layout": "ExistingJulia colmajor fullmatrices/slicedvendorGEMV/outerproduct; rawoutput canonicalrowflatten actualweights/momentum, no propertycanonicalization",
+        "precision": {
+          "storage": [
+            "Float32_input_weights_momentum_activations_deltas"
+          ],
+          "compute": [
+            "Float32_CUBLAS_GEMV_and_outerproduct",
+            "Float32_broadcast_and_host_arithmetic",
+            "vendor_internal_reduction_schedule_not_measured"
+          ]
+        },
+        "memory_access": "Vendor GEMV/outerproduct oncolmajor slices andtemporaryarrays plusbroadcast updates; internal tiling/traffic unknown",
+        "synchronization": [
+          "forward_D2H_before_host_backprop",
+          "restore_H2D_before_inputweight_update",
+          "update_weights_and_momentum_D2H",
+          "all_stage_allocations_transfers_and_free_inside_timer"
+        ],
+        "resource_policy": {
+          "vendor_resource_policy": "opaque; notclaimed0shared",
+          "temporary_GPU_arrays": "slices,broadcasts,andvendor_outputs; explicit cleanupnamedarrays, transientpool/GCpolicy differsnative"
+        },
+        "launch_geometry": {
+          "vendor_internal": "notmeasured"
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+        "supported_features": [
+          "shared_tree_reduction",
+          "workgroup_barriers",
+          "Float32_gradient_momentum",
+          "CUDAvendor_library_interoperability",
+          "host_device_hybrid_training"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Two complete named corrected-standard-dot single-example training steps, full outputstate; no untouchednative agreement, originalCLIchecker validation, production training/convergence orkernel-onlyspeedup claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop",
+        "numerical_contract": "11534 Float32 artifactvalues allfive:5810 byte-identical inputprefix,5724 actual updatedweight/momentum+hidden/outputactivation+delta+hiddenweight/momentum+error outputs. Independent Float64 standard freshstate training, finite-difference gradientabs error<1e-9, dualGPUatol1e-5+rtol1e-6. CUDA reference is explicitly corrected, not untouched native. Config input_contract retains initial manual count typo5824/11634 for frozen reference reuse; authoritative erratum/trial arrays11534/5724.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000547505,
+          0.001231142,
+          0.000585826,
+          0.000553456,
+          0.000529085
+        ],
+        "mean_last_four_seconds": 0.0007248772499999999,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/backprop-julia/backprop-julia-cuda.jl/main.jl",
+            "sha256": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b"
+          },
+          {
+            "path": "src/backprop-julia/study_common.jl",
+            "sha256": "412338e54d2523d57d9957d0dcdd754387334ba8f7ea1558bd8482028e56d036"
+          },
+          {
+            "path": "src/backprop-julia/backprop_host.jl",
+            "sha256": "a321f3cfd633f81a028f26bfbfd7fdab0772bd5ff901a616607406a5a23aa8c6"
+          }
+        ],
+        "implementation_source_digest": "8de975bd25297ee5e6040b9be4219aba3bc0f995f0aa00ea82de76df93db6c24",
+        "reference_provenance": {
+          "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+          "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+          "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+          "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+          "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+          "witnesses": {
+            ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+          },
+          "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+          "status": "conditional_reference_repaired",
+          "exclude_untouched_native_aggregates": true,
+          "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+          "original_checker_defects": [
+            {
+              "kind": "actual_CPU_witness",
+              "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+              "value": 0.690000057220459,
+              "expected_single_bias_update": 0.30000001192092896,
+              "blocks": 2,
+              "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+            },
+            {
+              "kind": "static_source_order_hazard",
+              "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+              "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+            }
+          ],
+          "raw_witnesses": {
+            "backprop_native_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_native_witness.log",
+              "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+              "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+            },
+            "backprop_checker_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+              "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+              "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+            }
+          }
+        }
+      },
+      "ka": {
+        "benchmark_id": "backprop",
+        "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "782e30a0513bb983601d236bf32ea8e240cce0caffb9519acda5e6afc5ffbc7b",
+        "status": "conditional_reference_repaired",
+        "algorithm": "Corrected source 16-input shared-tree tiled forward and scalar gradient/momentum kernel with common CPU output-layer/backprop stage",
+        "work_item_mapping": "16x16 group hidden\u00d7inputtile,4/6groups; binary-tree16inputs, outputCPUreducegroups, scalar GPUweightupdate",
+        "layout": "Native/KA/JACC row-major flat(input+1)\u00d717 weights withunusedcolumn0; CUDA.jl column-major sliced matrices, full canonical row-major actual output/momentum",
+        "precision": {
+          "storage": [
+            "Float32_input_weights_momentum_activations_deltas"
+          ],
+          "compute": [
+            "Float32_shared_tree_and_updates",
+            "Float64_exp_first_hidden_sigmoid_then_Float32",
+            "Float32_other_host_arithmetic"
+          ]
+        },
+        "memory_access": "Inputtile16 plusweighttile256 shared, allvalid inputweightloads/stores; directglobal update/momentum, explicitbiasowner",
+        "synchronization": [
+          "forward_D2H_before_host_backprop",
+          "restore_H2D_before_inputweight_update",
+          "update_weights_and_momentum_D2H",
+          "all_stage_allocations_transfers_and_free_inside_timer"
+        ],
+        "resource_policy": {
+          "forward_shared_bytes": 1088,
+          "update_shared_bytes": 0,
+          "explicit": true
+        },
+        "launch_geometry": {
+          "threads": [
+            16,
+            16
+          ],
+          "blocks": [
+            [
+              1,
+              4
+            ],
+            [
+              1,
+              6
+            ]
+          ]
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+        "supported_features": [
+          "shared_tree_reduction",
+          "workgroup_barriers",
+          "Float32_gradient_momentum",
+          "CUDAvendor_library_interoperability",
+          "host_device_hybrid_training"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Two complete named corrected-standard-dot single-example training steps, full outputstate; no untouchednative agreement, originalCLIchecker validation, production training/convergence orkernel-onlyspeedup claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop",
+        "numerical_contract": "11534 Float32 artifactvalues allfive:5810 byte-identical inputprefix,5724 actual updatedweight/momentum+hidden/outputactivation+delta+hiddenweight/momentum+error outputs. Independent Float64 standard freshstate training, finite-difference gradientabs error<1e-9, dualGPUatol1e-5+rtol1e-6. CUDA reference is explicitly corrected, not untouched native. Config input_contract retains initial manual count typo5824/11634 for frozen reference reuse; authoritative erratum/trial arrays11534/5724.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000232152,
+          0.000383043,
+          0.000251982,
+          0.00023789200000000002,
+          0.000248912
+        ],
+        "mean_last_four_seconds": 0.00028045725,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/backprop-julia/backprop-julia-KA/main.jl",
+            "sha256": "782e30a0513bb983601d236bf32ea8e240cce0caffb9519acda5e6afc5ffbc7b"
+          },
+          {
+            "path": "src/backprop-julia/study_common.jl",
+            "sha256": "412338e54d2523d57d9957d0dcdd754387334ba8f7ea1558bd8482028e56d036"
+          },
+          {
+            "path": "src/backprop-julia/backprop_host.jl",
+            "sha256": "a321f3cfd633f81a028f26bfbfd7fdab0772bd5ff901a616607406a5a23aa8c6"
+          }
+        ],
+        "implementation_source_digest": "cda272a881c9b55715aa0312fe2d7b758ca83e1c5f5066eea62ee27c59fcba65",
+        "reference_provenance": {
+          "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+          "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+          "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+          "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+          "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+          "witnesses": {
+            ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+          },
+          "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+          "status": "conditional_reference_repaired",
+          "exclude_untouched_native_aggregates": true,
+          "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+          "original_checker_defects": [
+            {
+              "kind": "actual_CPU_witness",
+              "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+              "value": 0.690000057220459,
+              "expected_single_bias_update": 0.30000001192092896,
+              "blocks": 2,
+              "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+            },
+            {
+              "kind": "static_source_order_hazard",
+              "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+              "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+            }
+          ],
+          "raw_witnesses": {
+            "backprop_native_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_native_witness.log",
+              "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+              "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+            },
+            "backprop_checker_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+              "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+              "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+            }
+          }
+        }
+      },
+      "jacc": {
+        "benchmark_id": "backprop",
+        "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "16bb44edb0f44b2ec16b6ee1aec90a22845fe358fc64715106582d1ea4211dfc",
+        "status": "conditional_reference_repaired",
+        "algorithm": "Corrected source 16-input shared-tree tiled forward and scalar gradient/momentum kernel with common CPU output-layer/backprop stage",
+        "work_item_mapping": "16x16 group hidden\u00d7inputtile,4/6groups; binary-tree16inputs, outputCPUreducegroups, scalar GPUweightupdate",
+        "layout": "Native/KA/JACC row-major flat(input+1)\u00d717 weights withunusedcolumn0; CUDA.jl column-major sliced matrices, full canonical row-major actual output/momentum",
+        "precision": {
+          "storage": [
+            "Float32_input_weights_momentum_activations_deltas"
+          ],
+          "compute": [
+            "Float32_shared_tree_and_updates",
+            "Float64_exp_first_hidden_sigmoid_then_Float32",
+            "Float32_other_host_arithmetic"
+          ]
+        },
+        "memory_access": "Inputtile16 plusweighttile256 shared, allvalid inputweightloads/stores; directglobal update/momentum, explicitbiasowner;272floattemplatecopy/barrierextra",
+        "synchronization": [
+          "forward_D2H_before_host_backprop",
+          "restore_H2D_before_inputweight_update",
+          "update_weights_and_momentum_D2H",
+          "all_stage_allocations_transfers_and_free_inside_timer"
+        ],
+        "resource_policy": {
+          "forward_shared_bytes": 1088,
+          "update_shared_bytes": 0,
+          "explicit": true,
+          "template_copy_extra": true
+        },
+        "launch_geometry": {
+          "threads": [
+            16,
+            16
+          ],
+          "blocks": [
+            [
+              1,
+              4
+            ],
+            [
+              1,
+              6
+            ]
+          ]
+        },
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+        "supported_features": [
+          "shared_tree_reduction",
+          "workgroup_barriers",
+          "Float32_gradient_momentum",
+          "CUDAvendor_library_interoperability",
+          "host_device_hybrid_training"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Two complete named corrected-standard-dot single-example training steps, full outputstate; no untouchednative agreement, originalCLIchecker validation, production training/convergence orkernel-onlyspeedup claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop",
+        "numerical_contract": "11534 Float32 artifactvalues allfive:5810 byte-identical inputprefix,5724 actual updatedweight/momentum+hidden/outputactivation+delta+hiddenweight/momentum+error outputs. Independent Float64 standard freshstate training, finite-difference gradientabs error<1e-9, dualGPUatol1e-5+rtol1e-6. CUDA reference is explicitly corrected, not untouched native. Config input_contract retains initial manual count typo5824/11634 for frozen reference reuse; authoritative erratum/trial arrays11534/5724.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.000292643,
+          0.00043622400000000003,
+          0.00031209400000000006,
+          0.000289932,
+          0.000287983
+        ],
+        "mean_last_four_seconds": 0.00033155825,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/backprop-julia/backprop-julia-JACC/main.jl",
+            "sha256": "16bb44edb0f44b2ec16b6ee1aec90a22845fe358fc64715106582d1ea4211dfc"
+          },
+          {
+            "path": "src/backprop-julia/study_common.jl",
+            "sha256": "412338e54d2523d57d9957d0dcdd754387334ba8f7ea1558bd8482028e56d036"
+          },
+          {
+            "path": "src/backprop-julia/backprop_host.jl",
+            "sha256": "a321f3cfd633f81a028f26bfbfd7fdab0772bd5ff901a616607406a5a23aa8c6"
+          }
+        ],
+        "implementation_source_digest": "603f0f002fbcec59d3b805697d487a5413e13a6eb8bf68ea94ce03226b79077d",
+        "reference_provenance": {
+          "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+          "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+          "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+          "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+          "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+          "witnesses": {
+            ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+          },
+          "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+          "status": "conditional_reference_repaired",
+          "exclude_untouched_native_aggregates": true,
+          "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+          "original_checker_defects": [
+            {
+              "kind": "actual_CPU_witness",
+              "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+              "value": 0.690000057220459,
+              "expected_single_bias_update": 0.30000001192092896,
+              "blocks": 2,
+              "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+            },
+            {
+              "kind": "static_source_order_hazard",
+              "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+              "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+            }
+          ],
+          "raw_witnesses": {
+            "backprop_native_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_native_witness.log",
+              "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+              "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+            },
+            "backprop_checker_witness.log": {
+              "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+              "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+              "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+            }
+          }
+        }
+      }
+    },
+    "source_sha256": {
+      "src/backprop-julia/backprop-julia-cuda.jl/main.jl": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b",
+      "src/backprop-julia/backprop-julia-KA/main.jl": "782e30a0513bb983601d236bf32ea8e240cce0caffb9519acda5e6afc5ffbc7b",
+      "src/backprop-julia/backprop-julia-JACC/main.jl": "16bb44edb0f44b2ec16b6ee1aec90a22845fe358fc64715106582d1ea4211dfc"
+    },
+    "ontology_sha256": "c7610697b8c51cac1b11ae1405ee2c68706cfb325c06951370efd893be0dac65",
+    "native_reference_repaired": true,
+    "status": "conditional_reference_repaired",
+    "reference_provenance": {
+      "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+      "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+      "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+      "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+      "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+      "witnesses": {
+        ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+      },
+      "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+      "status": "conditional_reference_repaired",
+      "exclude_untouched_native_aggregates": true,
+      "standard_model_contract": "Single standard weighted-dot sigmoid feedforward, squared-error deltas, one SGD+momentum update from identical fresh network state.",
+      "original_checker_defects": [
+        {
+          "kind": "actual_CPU_witness",
+          "source": "src/backprop-cuda/reference.h:kernel_adjust_weights_ref",
+          "value": 0.690000057220459,
+          "expected_single_bias_update": 0.30000001192092896,
+          "blocks": 2,
+          "explanation": "Original CPUchecker updatesbias onceperblock; GPUonceoverall, prior momentum compounds."
+        },
+        {
+          "kind": "static_source_order_hazard",
+          "source": "src/backprop-cuda/main.cu:bpnn_train_kernel",
+          "explanation": "reference() receives net after hidden weights alreadyupdated by GPU/host workflow, then performs another forward/backprop/update; freshstate equivalence not established by original checker."
+        }
+      ],
+      "raw_witnesses": {
+        "backprop_native_witness.log": {
+          "path": ".porting-state/portable_julia/backprop_native_witness.log",
+          "sha256": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab",
+          "stdout": "{\"native_partial0\":0.125,\"standard_dot_expected\":0.0625,\"all16_are_exact_double\":true}\n"
+        },
+        "backprop_checker_witness.log": {
+          "path": ".porting-state/portable_julia/backprop_checker_witness.log",
+          "sha256": "90d063da3dd3a773ce0422312056da903469747d201aafa0348188e4bc974673",
+          "stdout": "{\"original_CPU_checker_bias\":0.69000005722045898,\"single_step_expected_bias\":0.30000001192092896,\"block_count\":2,\"source_checker_disagrees\":true}\n"
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/backprop-julia/backprop-julia-cuda.jl/main.jl",
+    "sha256": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+      "run_id": "20261017T191652669062Z_backprop",
+      "result": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": {
+        "checked_outputs": 5724,
+        "artifact_values": 11534,
+        "explanation": "Initial manual count typo retained in historical input_contract for byte-identical reference reuse. Actual generated trial/artifact lengths always5724/11534; no input, output array, executable or measurement changed."
+      },
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "original_path": "src/backprop-cuda/bpnn_layerforward.h",
+        "original_sha256": "723cab56d2415229a987cd1bbfd04f190ef2cd22fc45f76dd76ee5c2104cd9a6",
+        "corrected_path": "src/backprop-julia/native_reference_repaired.cuh",
+        "corrected_sha256": "5d0b128eca19b053c6f748096180c324b40a30256604fe844db28c0a81e9a4c6",
+        "change": "Only reduction loop initial i=1 -> i=2; remove self-addition/doubling before binary tree.",
+        "witnesses": {
+          ".porting-state/portable_julia/backprop_native_witness.log": "9cc309e82283b78cee16845f6fc0df894f2c2927775aa2b3d23d8615782335ab"
+        },
+        "justification": "16 inputs/weights each1/16 imply dot1/16; actual untouched kernel produces1/8 inall16 outputs. Standard bpnn_layerforward weighted sum and independent analytical dot establish self-addition bug.",
+        "status": "conditional_reference_repaired",
+        "exclude_untouched_native_aggregates": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "0b557ee27dcce64bd62709da26b62a51ca8824ee0a814143e09b2d1444ebc063",
+      "source_hash": "36f2b113176312fe6b98f95c5c49b38927ba205e5490552633847784ad5ef20a",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000547505,
+        0.001231142,
+        0.000585826,
+        0.000553456,
+        0.000529085
+      ],
+      "mean_last_four_seconds": 0.0007248772499999999,
+      "contract": {
+        "input_sizes": [
+          64,
+          96
+        ],
+        "hidden": 16,
+        "output": 1,
+        "fixtures": "signed dyadic weights/inputs, nonzero momentum andtwo distincttargets",
+        "metric": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+        "checked_outputs": 5824,
+        "input_prefix_values": 5810,
+        "artifact_values": 11634,
+        "native_variant": "one-line corrected forward reduction i=2; original i=1 doubles dot; conditional repaired-reference stratum",
+        "cuda_jl_mapping": "existing vendor GEMV/outerproduct vsnative/KA/JACC sharedtiled forward"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "backprop:cuda_jl:20261017T191652669062Z_backprop:N3:accepted",
+        "benchmark_id": "backprop",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/backprop.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "backprop:cuda_jl:20261017T191652669062Z_backprop:N3:accepted",
+          "benchmark_id": "backprop",
+          "configuration_id": "backprop_corrected_native_fresh2training64_96_v1",
+          "implementation_model": "cuda_jl",
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "source_revision": "2195f85fe23ad0bd3bd7eee3b106f4b2b505449e9cd6db3d87fd3e9000cc7c7b",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 4.321302027321394e-08; unchangedtolerance 1e-05+1e-06*abs(ref).",
+          "minimal_trigger": {
+            "input_sizes": [
+              64,
+              96
+            ],
+            "hidden": 16,
+            "output": 1,
+            "fixtures": "signed dyadic weights/inputs, nonzero momentum andtwo distincttargets",
+            "metric": "sum two fresh full training steps hostinclusive GPUallocation/H2D,forward/CPUactivation/error/hiddenweightupdate,restoreH2D,GPUinputweightupdate,completeweights+momentumD2H/free; hostfixturecopy/preprocessingoutside",
+            "checked_outputs": 5824,
+            "input_prefix_values": 5810,
+            "artifact_values": 11634,
+            "native_variant": "one-line corrected forward reduction i=2; original i=1 doubles dot; conditional repaired-reference stratum",
+            "cuda_jl_mapping": "existing vendor GEMV/outerproduct vsnative/KA/JACC sharedtiled forward"
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261017T191652669062Z_backprop/result.json",
+              "sha256": "0b557ee27dcce64bd62709da26b62a51ca8824ee0a814143e09b2d1444ebc063"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "3380529ae7079e86ffe14ef0",
+        "begin_event_id": "a0e6cef846a6e7da3a2d66c4",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T19:14:27.166275+00:00",
+        "usage_event_timestamp": "2026-10-17T19:14:17.642Z",
+        "elapsed_usage_event_start": "2026-10-17T19:10:36.128Z",
+        "delta_usage": {
+          "input_tokens": 593742,
+          "cached_input_tokens": 572672,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8867,
+          "reasoning_output_tokens": 2948,
+          "total_tokens": 602609
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 9.524275,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "ece179034adc417b9245ba556ad356793130bc4d09bed7b4dbb675631396cfa2",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 30.66828,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/backprop/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "87d2fa23ebaeee47337567d95bd79e00ba9de5fbe0ff4c2d307f82345bad1872",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/backprop/measurement_scope_review.json",
+      "sha256": "a896529c080e708f8f36c4448d6878ecba8e2e6601186f741c92564f8ae369a5",
+      "record": {
+        "benchmark_id": "backprop",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/backprop-julia-cuda/manifest.json",
+    "selected_sha256": null,
+    "candidate_alias_records": [],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "genuine_existing_vendor_cuda_jl_with_freshstate_fulloutput_study_adapter",
+    "annotation_path": ".porting-state/portable_julia/traits/backprop.json",
+    "annotation_sha256": "c18f84e94d8a5c156f8c5dd4bbebba6957eecb19394c8b9c78936f3e6eff1a54",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/backprop-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "77e0848649634889e4f2731ea8841848f95754fbfb8f9e720ae4a9829a603d0c",
+      "record": {
+        "benchmark_id": "backprop",
+        "implementation_model": "cuda_jl",
+        "phase": "native_correction_and_freshstate_full_training_adapters",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 1,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 332,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "Existing fullCUDAjl vendor operations andhosthelpers preserved asorigin, studyadapter freshly exposes actualGPUmomentum andfreshstate oracle; originalbody not newlytranslatedcost. SharedFloat64/gradientoracles/nativeconditionalrepair countonce. Extra CPUchecker witness documented during sharedannotation phase; historicaleffort unknown.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 593742,
+          "cached_input_tokens": 572672,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8867,
+          "reasoning_output_tokens": 2948,
+          "total_tokens": 602609
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/backprop/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+        "proxy_excludes_preserved_existing_main_body": true,
+        "conditional_reference_provenance": "src/backprop-julia/native_reference_provenance.json"
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/backprop-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "77e0848649634889e4f2731ea8841848f95754fbfb8f9e720ae4a9829a603d0c",
+    "record": {
+      "benchmark_id": "backprop",
+      "implementation_model": "cuda_jl",
+      "phase": "native_correction_and_freshstate_full_training_adapters",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 1,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 332,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "Existing fullCUDAjl vendor operations andhosthelpers preserved asorigin, studyadapter freshly exposes actualGPUmomentum andfreshstate oracle; originalbody not newlytranslatedcost. SharedFloat64/gradientoracles/nativeconditionalrepair countonce. Extra CPUchecker witness documented during sharedannotation phase; historicaleffort unknown.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 593742,
+        "cached_input_tokens": 572672,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 8867,
+        "reasoning_output_tokens": 2948,
+        "total_tokens": 602609
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/backprop/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+      "proxy_excludes_preserved_existing_main_body": true,
+      "conditional_reference_provenance": "src/backprop-julia/native_reference_provenance.json"
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

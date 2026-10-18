@@ -1,0 +1,951 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "radixsort2",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/radixsort2.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Stable32-pass binaryLSD sort through block-local zero-prefix scans, block offset scan and stable scatter; values carried only inpairmode",
+    "mapping": "96kernellaunches/sort,1024-thread rank/scatter groups and one1024-thread offsets group, same model-familyalgorithm inall4cases",
+    "layout": "FlatFloat32orUInt32keys, optionalUInt32originalindexvalues; UInt32localprefix/blockcounts/offsets/zero total; separate ping-pong key/value buffers",
+    "precision": {
+      "storage": "Float32/UInt32keys,UInt32payload/prefix/counts",
+      "compute": "UInt32bitwise/rank arithmetic; Int32indices with ordinary address lowering; no numericFloat32key arithmetic",
+      "oracle": "IndependentCPUstdsort plus exact multiset/permutation/association, raw tie-order comparisons"
+    },
+    "implementation_detail": "OwnKAindices/@localmem/@synchronize; same customLSD rank/offset/scatter algorithm and launch geometry, no foreign CUDA device intrinsic.",
+    "memory": "Preallocated scratch: tempkey4MiB/localprefix4MiB/groupcounts+offsets8KiB/zero4B, plus4MiBtempvalues inpairs;4096Bsharedscan scratch",
+    "synchronization": [
+      "21workgroupbarriers perrank/scan block (initialload+two per10scanstrides)",
+      "Orderedrank\u2192offset\u2192scatter launches for32bitpasses",
+      "Blockingdevice-wide completion perfullsort"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "OwnKAindices/@localmem/@synchronize; same customLSD rank/offset/scatter algorithm and launch geometry, no foreign CUDA device intrinsic. CUDAhostallocation/completion only; no deviceoperator library.",
+    "host_control_boundary": "All96 kernel host dispatches and final device completion timed; custom workspace allocated outside ROI, inputH2D reset outside each of100sort intervals",
+    "resource_policy": {
+      "threads_per_block": 1024,
+      "rank_scatter_blocks": 1024,
+      "offset_scan_blocks": 1,
+      "rank_scan_shared_bytes": 4096,
+      "scatter_shared_bytes": 0,
+      "jacc_template_copy_and_barrier": false,
+      "registers_spills_occupancy_traffic": "unknown"
+    },
+    "fidelity_status": "Exactcompleteoperatoroutputs onall4defaultsizecases; algorithm/workspace adapted fromnativeThrust/CUB, not a matchedvendoralgorithm or generalCLI/library replacement.",
+    "provenance": [
+      {
+        "path": "src/radixsort2-julia/radixsort2-julia-KA/main.jl",
+        "sha256": "d2e7d6e36f9b8af27274347ab538ec6dd5a8a3f9effead9d7c92ac4e8422b229",
+        "source_locations": "actualindependentmodelmapping"
+      },
+      {
+        "path": "src/radixsort2-julia/study_device.jl",
+        "sha256": "3ad83046070671b56b60c03eab55b5c40a0fdd2bc4588bc1043274edcb0ce108",
+        "source_locations": "sharedexactbit/rankhelperauthoredreferencephase"
+      }
+    ],
+    "attempt_count_policy": "One program candidate/four actualdevice-JIT process checks for4cases;4genericdefs/3activepercase;96launches/sort and100sorts/trial notrepairiterations.",
+    "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Stable32-pass binaryLSD sort through block-local zero-prefix scans, block offset scan and stable scatter; values carried only inpairmode",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "96kernellaunches/sort,1024-thread rank/scatter groups and one1024-thread offsets group, same model-familyalgorithm inall4cases",
+    "layout": "FlatFloat32orUInt32keys, optionalUInt32originalindexvalues; UInt32localprefix/blockcounts/offsets/zero total; separate ping-pong key/value buffers",
+    "storage_precision": "Float32/UInt32keys,UInt32payload/prefix/counts",
+    "compute_precision": "UInt32bitwise/rank arithmetic; Int32indices with ordinary address lowering; no numericFloat32key arithmetic",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Preallocated scratch: tempkey4MiB/localprefix4MiB/groupcounts+offsets8KiB/zero4B, plus4MiBtempvalues inpairs;4096Bsharedscan scratch",
+    "synchronization": [
+      "21workgroupbarriers perrank/scan block (initialload+two per10scanstrides)",
+      "Orderedrank\u2192offset\u2192scatter launches for32bitpasses",
+      "Blockingdevice-wide completion perfullsort"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads_per_block": 1024,
+      "rank_scatter_blocks": 1024,
+      "offset_scan_blocks": 1,
+      "rank_scan_shared_bytes": 4096,
+      "scatter_shared_bytes": 0,
+      "jacc_template_copy_and_barrier": false,
+      "registers_spills_occupancy_traffic": "unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "OwnKAindices/@localmem/@synchronize; same customLSD rank/offset/scatter algorithm and launch geometry, no foreign CUDA device intrinsic. CUDAhostallocation/completion only; no deviceoperator library.",
+    "host_control_boundary": "All96 kernel host dispatches and final device completion timed; custom workspace allocated outside ROI, inputH2D reset outside each of100sort intervals",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Exactcompleteoperatoroutputs onall4defaultsizecases; algorithm/workspace adapted fromnativeThrust/CUB, not a matchedvendoralgorithm or generalCLI/library replacement.",
+    "source_review_evidence": [
+      {
+        "path": "src/radixsort2-julia/radixsort2-julia-KA/main.jl",
+        "sha256": "d2e7d6e36f9b8af27274347ab538ec6dd5a8a3f9effead9d7c92ac4e8422b229",
+        "source_locations": "actualindependentmodelmapping"
+      },
+      {
+        "path": "src/radixsort2-julia/study_device.jl",
+        "sha256": "3ad83046070671b56b60c03eab55b5c40a0fdd2bc4588bc1043274edcb0ce108",
+        "source_locations": "sharedexactbit/rankhelperauthoredreferencephase"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "radixsort2",
+    "primary_motif": "stable_radix_sort_via_shared_prefix_scans_and_scatter",
+    "storage_precision": [
+      "float32",
+      "uint32"
+    ],
+    "compute_precision": [
+      "uint32bitwise/scans",
+      "int32indices"
+    ],
+    "synchronization": [
+      "workgroupbarriers",
+      "orderedkernels",
+      "devicecompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "NativeThrust/CUB arithmetic sorting operation reimplemented ascommoncustomstablebinaryLSD forJuliafamily; exactoperatorresults, distinctalgorithm/resource/workspacepolicy."
+    },
+    "implementation_class": {
+      "cuda": "vendor_library_interop",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Whole sort API/work+device completion, input reset excluded;100inner sorts/trial,5trialsmeanlast4",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "All four source dtype/mode combinations are measured: Float32 keys from source uniform[0,1), full-range UInt32 keys, keys-only and keys+UInt32 original indices. Source defaultN=1048576 and100internal sorts preserved. MakefileN536870912 and other CLI sizes/options are unmeasured; custom group scan is currently fixed to1024 groups/defaultN, not a general sort-library replacement.",
+      "Native remains actual Thrust sort/sort_by_key API (compiled Thrust2.0.1, inspected arithmetic-key dispatch reaches CUB DeviceRadixSort). Native library kernel count, digit/pass policies and workspace sizes are not profiled. Do not infer an authored radix kernel from the benchmark label alone.",
+      "CUDA.jl reference replaces historical marker/PASS with a custom stable32-pass one-bit LSD algorithm: localzero rank scan, one-block block-offset scan, stable scatter;96launches/sort. All three Julia versions use this same algorithm, which differs from native vendor implementation. Native-vs-Julia speed differences cannot be attributed solely to abstraction.",
+      "Workspace policy differs: custom Julia temporary keys/local-prefix/group tables and optional values are preallocated outside ROI; native Thrust manages its own internal temporary storage inside the sort API. Both time a complete sorting operation plus device-wide completion, excluding input reset/transfers. Allocation-policy confound is explicit, not hidden as pure kernel-codegen effect.",
+      "Float32 source inputs are finite/nonnegative, so IEEE bit order equals numeric order. Custom raw-bit ranking is certified for this source domain, not arbitrary negative/NaN IEEE sorting. UInt32 keys retain all32bits onGPU; no Float32 integer emulation. Float64 artifacts serialize full UInt32 values exactly.",
+      "Originalkeybits option is advisory/printed but does not mask sort keys; default32 remains metadata. Keys-only scatter never loads/stores values; pairs carry actual originalUInt32index payloads. Source std::mt19937seed19937 distributions reproduced withC++ generators, identical inputs across models/modes.",
+      "Native original correctness checks only key sortedness. Study additionally checks complete sorted key array against independent CPU sort, all value indices form a full permutation and each sorted key equals its input key at returned index. Raw pair order is preserved, not canonicalized or replaced by checksums.",
+      "Thrust sort does not guarantee stable equal-key order (installed sort.h source documentation). Current native arithmetic/CUB output happens to match stable CPU indices for all captured trials:21369 Float32 and138 UInt32 duplicate adjacencies. All models match raw tie order on this fixture; no cross-version API stability guarantee claimed.",
+      "80 final artifacts checked:4cases\u00d74models\u00d75trials, with2097157Double values/keys-only case and4194309/pairs, including exact1048581/2097157-value input prefixes. Each artifact is the final result of a100-sort trial; intermediate99outputs are not individually serialized or independently audited, as source also validates final result only.",
+      "Each trial averages100 timed sorts, resetting source input withH2D copy outside each interval; one full-sort warmup precedes5inprocess trials and meanruns2\u20135. Four retained sample means, not400independent timing samples. No outlier removal or fastest selection; all raw outertrial averages retained.",
+      "Custom shared scratch is4096B per rank/scan kernel,1024threads/block;1024 rank/scatter blocks and one group-scan block. CUDA.jl/KA use static shared storage, JACC uses dynamic4096B and shared(template) copy/barrier. Scatter explicitly0B, separate LaunchSpecs avoid cached grid/resource mismatch. Actual registers/spills/occupancy/traffic unmeasured.",
+      "All device indices/shared/barriers are own framework APIs with pure Julia integer helpers; no foreign CUDA device intrinsics or operator library in Julia variants. CUDA host allocation/completion glue onlyNVIDIA tested. Native is vendor header-library interop, not identical implementation class.",
+      "JACC measured~9.1\u20139.4ms/sort vsCUDA.jl/KA~1.5\u20132.1ms; correctness is exact. Cause is unresolved without profiling; no invented allocation/shared-memory/occupancy diagnosis. Integer scan/bitwise sorting is not an ordinary floating-FLOP roofline workload.",
+      "One current reference/KA/JACC program candidate, four process/device-JIT checks each for fourdtype/mode cases; four authored generic kernel definitions but three active per case. Definitions, specializations, cases, sort passes/repeats and compiler repair iterations are distinct; compiler internal passes/specialization count unknown. No target feedback repairs.",
+      "Shared source-library-to-custom-algorithm design and semantic helper cost belongs current CUDA.jl reference preparation; KA/JACC reuse it and prior framework knowledge. CUDA.jl Base.sort! bitonic API exists but is an unmeasured alternative, not asserted unavailable or same asThrust. No framework unsupported-feature claim.",
+      "Prospective context/cache/reasoning/coordination consumption overlaps broad/child windows and includes queue handoff coordination, not additive exclusive billed translation. Source chars/4 proxies remain separately partial. Original historical CUDA.jl attempts/consumption unknown."
+    ],
+    "native_reference_repaired": false,
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "GPU_library_sorting_and_key_value_reordering",
+      "secondary_domains": [
+        "scientific_data_preprocessing",
+        "ordered_index_construction"
+      ],
+      "scientific_task": "Order synthetic numeric keys, optionally carrying original record indices; a domain-neutral data preprocessing primitive, not a supplied application dataset.",
+      "mathematical_operation": "Ascending sort of full32-bit UInt32 or source nonnegative Float32; paired output must preserve each key/payload association and full index permutation. Julia uses stable binary LSD rank/scan/scatter; native invokes Thrust arithmetic sorting dispatch.",
+      "discretization_or_topology": "1048576 keys, one-dimensional arrays, optionalUInt32indices, syntheticC++stdMT19937seed19937;1024\u00d71024-thread custom rank/scatter and one1024-thread block scan,32bitpasses.",
+      "invariants": [
+        "Sorted keys exactly match independent CPU ordering and preserve full input multiset.",
+        "Every pair index occurs exactly once and references its associated original key.",
+        "All raw output/value indices match both references in every captured trial; duplicate tie order observed but no API stability guarantee."
+      ],
+      "accuracy_requirements": [
+        "Tolerance0 and exact actualinput-prefix bytes, complete key arrays and raw key/value outputs, all5 dual-reference comparisons percase.",
+        "Independent CPU sort/permutation/association audit of80 final artifacts; intermediate99sorts/trial not individually captured.",
+        "FullUInt32 range exact, Float32 finite/nonnegative source domain only; no approximate sorting."
+      ],
+      "precision_sensitivity": "Sorting uses exact integer bit operations/ranks; Float32 keys are moved rather than numerically transformed. UInt32 metadata converted exactly only forDouble serialization. NaN/negative float ordering and arbitrary shapes are outside measured custom scope.",
+      "input_size_regimes": "Source default1048576 and100repeats, all4dtype/modes; sourceMakefile536870912/10repeat regime and other CLI options not measured.",
+      "provenance": [
+        {
+          "path": "src/radixsort2-cuda/main.cu",
+          "sha256": "a3c2002a1f34616489296a7468443d6d35028bbb8269426f59bda34985f39ac1",
+          "source_locations": "actualThrustoperators/sourceinput/RNG/options/timing/weakvalidation"
+        },
+        {
+          "path": "src/radixsort2-julia/generate_study_fixture.cpp",
+          "sha256": "d41c7171d83373a59c602604dbb470344319b91236a82d2957547d9879973662",
+          "source_locations": "independentCPUstable-keyoracle/sourceRNGreproduction"
+        },
+        {
+          "path": "src/radixsort2-julia/diagnostics/native_four_mode_observation.json",
+          "sha256": "f3798d1c76aac818f05b4b96a05f23e1f79274212a22496c4c01edfa48b06540",
+          "source_locations": "raw native pair ties matchstableCPU atcurrentfixture"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Stable32-pass binaryLSD sort through block-local zero-prefix scans, block offset scan and stable scatter; values carried only inpairmode",
+        "mapping": "96kernellaunches/sort,1024-thread rank/scatter groups and one1024-thread offsets group, same model-familyalgorithm inall4cases",
+        "layout": "FlatFloat32orUInt32keys, optionalUInt32originalindexvalues; UInt32localprefix/blockcounts/offsets/zero total; separate ping-pong key/value buffers",
+        "precision": {
+          "storage": "Float32/UInt32keys,UInt32payload/prefix/counts",
+          "compute": "UInt32bitwise/rank arithmetic; Int32indices with ordinary address lowering; no numericFloat32key arithmetic",
+          "oracle": "IndependentCPUstdsort plus exact multiset/permutation/association, raw tie-order comparisons"
+        },
+        "implementation_detail": "OwnCUDA.jlindices/CuStaticSharedArray/sync_threads; four authored customLSD kernel definitions, no vendor sort call.",
+        "memory": "Preallocated scratch: tempkey4MiB/localprefix4MiB/groupcounts+offsets8KiB/zero4B, plus4MiBtempvalues inpairs;4096Bsharedscan scratch",
+        "synchronization": [
+          "21workgroupbarriers perrank/scan block (initialload+two per10scanstrides)",
+          "Orderedrank\u2192offset\u2192scatter launches for32bitpasses",
+          "Blockingdevice-wide completion perfullsort"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "OwnCUDA.jlindices/CuStaticSharedArray/sync_threads; four authored customLSD kernel definitions, no vendor sort call. CUDAhostallocation/completion only; no deviceoperator library.",
+        "host_control_boundary": "All96 kernel host dispatches and final device completion timed; custom workspace allocated outside ROI, inputH2D reset outside each of100sort intervals",
+        "resource_policy": {
+          "threads_per_block": 1024,
+          "rank_scatter_blocks": 1024,
+          "offset_scan_blocks": 1,
+          "rank_scan_shared_bytes": 4096,
+          "scatter_shared_bytes": 0,
+          "jacc_template_copy_and_barrier": false,
+          "registers_spills_occupancy_traffic": "unknown"
+        },
+        "fidelity_status": "Exactcompleteoperatoroutputs onall4defaultsizecases; algorithm/workspace adapted fromnativeThrust/CUB, not a matchedvendoralgorithm or generalCLI/library replacement.",
+        "provenance": [
+          {
+            "path": "src/radixsort2-julia/radixsort2-julia-cuda.jl/main.jl",
+            "sha256": "0077dd83349979cca8ee3bfb745a38d71d03773868918b8f281b53e58655da82",
+            "source_locations": "actualindependentmodelmapping"
+          },
+          {
+            "path": "src/radixsort2-julia/study_device.jl",
+            "sha256": "3ad83046070671b56b60c03eab55b5c40a0fdd2bc4588bc1043274edcb0ce108",
+            "source_locations": "sharedexactbit/rankhelperauthoredreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/four actualdevice-JIT process checks for4cases;4genericdefs/3activepercase;96launches/sort and100sorts/trial notrepairiterations.",
+        "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Stable32-pass binaryLSD sort through block-local zero-prefix scans, block offset scan and stable scatter; values carried only inpairmode",
+        "mapping": "96kernellaunches/sort,1024-thread rank/scatter groups and one1024-thread offsets group, same model-familyalgorithm inall4cases",
+        "layout": "FlatFloat32orUInt32keys, optionalUInt32originalindexvalues; UInt32localprefix/blockcounts/offsets/zero total; separate ping-pong key/value buffers",
+        "precision": {
+          "storage": "Float32/UInt32keys,UInt32payload/prefix/counts",
+          "compute": "UInt32bitwise/rank arithmetic; Int32indices with ordinary address lowering; no numericFloat32key arithmetic",
+          "oracle": "IndependentCPUstdsort plus exact multiset/permutation/association, raw tie-order comparisons"
+        },
+        "implementation_detail": "OwnKAindices/@localmem/@synchronize; same customLSD rank/offset/scatter algorithm and launch geometry, no foreign CUDA device intrinsic.",
+        "memory": "Preallocated scratch: tempkey4MiB/localprefix4MiB/groupcounts+offsets8KiB/zero4B, plus4MiBtempvalues inpairs;4096Bsharedscan scratch",
+        "synchronization": [
+          "21workgroupbarriers perrank/scan block (initialload+two per10scanstrides)",
+          "Orderedrank\u2192offset\u2192scatter launches for32bitpasses",
+          "Blockingdevice-wide completion perfullsort"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "OwnKAindices/@localmem/@synchronize; same customLSD rank/offset/scatter algorithm and launch geometry, no foreign CUDA device intrinsic. CUDAhostallocation/completion only; no deviceoperator library.",
+        "host_control_boundary": "All96 kernel host dispatches and final device completion timed; custom workspace allocated outside ROI, inputH2D reset outside each of100sort intervals",
+        "resource_policy": {
+          "threads_per_block": 1024,
+          "rank_scatter_blocks": 1024,
+          "offset_scan_blocks": 1,
+          "rank_scan_shared_bytes": 4096,
+          "scatter_shared_bytes": 0,
+          "jacc_template_copy_and_barrier": false,
+          "registers_spills_occupancy_traffic": "unknown"
+        },
+        "fidelity_status": "Exactcompleteoperatoroutputs onall4defaultsizecases; algorithm/workspace adapted fromnativeThrust/CUB, not a matchedvendoralgorithm or generalCLI/library replacement.",
+        "provenance": [
+          {
+            "path": "src/radixsort2-julia/radixsort2-julia-KA/main.jl",
+            "sha256": "d2e7d6e36f9b8af27274347ab538ec6dd5a8a3f9effead9d7c92ac4e8422b229",
+            "source_locations": "actualindependentmodelmapping"
+          },
+          {
+            "path": "src/radixsort2-julia/study_device.jl",
+            "sha256": "3ad83046070671b56b60c03eab55b5c40a0fdd2bc4588bc1043274edcb0ce108",
+            "source_locations": "sharedexactbit/rankhelperauthoredreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/four actualdevice-JIT process checks for4cases;4genericdefs/3activepercase;96launches/sort and100sorts/trial notrepairiterations.",
+        "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Stable32-pass binaryLSD sort through block-local zero-prefix scans, block offset scan and stable scatter; values carried only inpairmode",
+        "mapping": "96kernellaunches/sort,1024-thread rank/scatter groups and one1024-thread offsets group, same model-familyalgorithm inall4cases",
+        "layout": "FlatFloat32orUInt32keys, optionalUInt32originalindexvalues; UInt32localprefix/blockcounts/offsets/zero total; separate ping-pong key/value buffers",
+        "precision": {
+          "storage": "Float32/UInt32keys,UInt32payload/prefix/counts",
+          "compute": "UInt32bitwise/rank arithmetic; Int32indices with ordinary address lowering; no numericFloat32key arithmetic",
+          "oracle": "IndependentCPUstdsort plus exact multiset/permutation/association, raw tie-order comparisons"
+        },
+        "implementation_detail": "OwnJACCflat indices/shared(template)/sync_workgroup; explicit rankSpec(1024threads,1024blocks,4096B), scanSpec(1024threads,1block,4096B), scatterSpec(1024threads,1024blocks,0B).",
+        "memory": "Preallocated scratch: tempkey4MiB/localprefix4MiB/groupcounts+offsets8KiB/zero4B, plus4MiBtempvalues inpairs;4096Bsharedscan scratch",
+        "synchronization": [
+          "21workgroupbarriers perrank/scan block (initialload+two per10scanstrides)",
+          "Orderedrank\u2192offset\u2192scatter launches for32bitpasses",
+          "Blockingdevice-wide completion perfullsort"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "OwnJACCflat indices/shared(template)/sync_workgroup; explicit rankSpec(1024threads,1024blocks,4096B), scanSpec(1024threads,1block,4096B), scatterSpec(1024threads,1024blocks,0B). CUDAhostallocation/completion only; no deviceoperator library.",
+        "host_control_boundary": "All96 kernel host dispatches and final device completion timed; custom workspace allocated outside ROI, inputH2D reset outside each of100sort intervals",
+        "resource_policy": {
+          "threads_per_block": 1024,
+          "rank_scatter_blocks": 1024,
+          "offset_scan_blocks": 1,
+          "rank_scan_shared_bytes": 4096,
+          "scatter_shared_bytes": 0,
+          "jacc_template_copy_and_barrier": true,
+          "registers_spills_occupancy_traffic": "unknown"
+        },
+        "fidelity_status": "Exactcompleteoperatoroutputs onall4defaultsizecases; algorithm/workspace adapted fromnativeThrust/CUB, not a matchedvendoralgorithm or generalCLI/library replacement.",
+        "provenance": [
+          {
+            "path": "src/radixsort2-julia/radixsort2-julia-JACC/main.jl",
+            "sha256": "98cd68680d69c3f6c833023d129ed7388baf88ac375cf386ea9f14d05a2de791",
+            "source_locations": "actualindependentmodelmapping"
+          },
+          {
+            "path": "src/radixsort2-julia/study_device.jl",
+            "sha256": "3ad83046070671b56b60c03eab55b5c40a0fdd2bc4588bc1043274edcb0ce108",
+            "source_locations": "sharedexactbit/rankhelperauthoredreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/four actualdevice-JIT process checks for4cases;4genericdefs/3activepercase;96launches/sort and100sorts/trial notrepairiterations.",
+        "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1"
+      }
+    },
+    "configuration_results": {
+      "float_keys": {
+        "configuration_id": "radixsort2_default1048576_float_keys_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005044379162Z_radixsort2/result.json",
+        "dtype": "float32",
+        "keys_only": true,
+        "mean_seconds": {
+          "cuda": 0.0006945937974999999,
+          "cuda_jl": 0.001526395505,
+          "ka": 0.0015728242925,
+          "jacc": 0.0090828190775
+        },
+        "input_prefix_values": 1048581,
+        "checked_values_each_trial": 2097157,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "float_pairs": {
+        "configuration_id": "radixsort2_default1048576_float_pairs_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005147391044Z_radixsort2/result.json",
+        "dtype": "float32",
+        "keys_only": false,
+        "mean_seconds": {
+          "cuda": 0.0008308771575000001,
+          "cuda_jl": 0.001988682785,
+          "ka": 0.0020282566049999997,
+          "jacc": 0.0093916019525
+        },
+        "input_prefix_values": 2097157,
+        "checked_values_each_trial": 4194309,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "uint_keys": {
+        "configuration_id": "radixsort2_default1048576_uint_keys_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005147218957Z_radixsort2/result.json",
+        "dtype": "uint32",
+        "keys_only": true,
+        "mean_seconds": {
+          "cuda": 0.00068899345,
+          "cuda_jl": 0.0015369035225,
+          "ka": 0.0015872005625000001,
+          "jacc": 0.00915068883
+        },
+        "input_prefix_values": 1048581,
+        "checked_values_each_trial": 2097157,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "uint_pairs": {
+        "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005146107669Z_radixsort2/result.json",
+        "dtype": "uint32",
+        "keys_only": false,
+        "mean_seconds": {
+          "cuda": 0.0009849803375,
+          "cuda_jl": 0.0020003271175,
+          "ka": 0.002051382125,
+          "jacc": 0.0093847477075
+        },
+        "input_prefix_values": 2097157,
+        "checked_values_each_trial": 4194309,
+        "exact_all5_dual_reference_comparisons": true
+      }
+    },
+    "configuration_overrides": {
+      "radixsort2_default1048576_float_keys_r100_v1": {
+        "dtype": "float32",
+        "keys_only": true,
+        "input_prefix_values": 1048581,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "radixsort2_default1048576_float_pairs_r100_v1": {
+        "dtype": "float32",
+        "keys_only": false,
+        "input_prefix_values": 2097157,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "radixsort2_default1048576_uint_keys_r100_v1": {
+        "dtype": "uint32",
+        "keys_only": true,
+        "input_prefix_values": 1048581,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "radixsort2_default1048576_uint_pairs_r100_v1": {
+        "dtype": "uint32",
+        "keys_only": false,
+        "input_prefix_values": 2097157,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      }
+    },
+    "logical_work": {
+      "N": 1048576,
+      "source_Makefile_N_unmeasured": 536870912,
+      "custom_bit_passes": 32,
+      "custom_active_kernels_per_pass": 3,
+      "custom_kernel_launches_per_sort": 96,
+      "internal_sorts_per_trial": 100,
+      "outer_trials": 5,
+      "retained_outer_sample_means": 4,
+      "native_kernel_count": "unknown_library_internal"
+    },
+    "environment_observations": {
+      "native_Thrust_compiled_version": 200001,
+      "native_Thrust_semver": "2.0.1",
+      "native_arithmetic_dispatch_evidence": "/usr/include/thrust/system/cuda/detail/sort.h lines387..470",
+      "vendor_kernel_policy_counters": "unknown"
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/radixsort2-julia/radixsort2-julia-KA/main.jl",
+    "sha256": "d2e7d6e36f9b8af27274347ab538ec6dd5a8a3f9effead9d7c92ac4e8422b229",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        14,
+        23,
+        28
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        4,
+        15
+      ],
+      "barrier": [
+        6,
+        8,
+        15,
+        17
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "radixsort2_default1048576_float_keys_r100_v1",
+      "run_id": "20261018T005044379162Z_radixsort2",
+      "result": ".porting-state/portable_julia/runs/20261018T005044379162Z_radixsort2/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_Thrust_API_preserved": true,
+        "source_default_N1048576": true,
+        "Makefile_N536870912_unmeasured": true,
+        "keybits_advisory_not_masked_in_source": 32,
+        "allfour_source_dtype_mode_cases": true,
+        "pair_validation_strengthened_beyond_original_sortedkeys_only": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "2eabdeedd30dfd6e9f4a28ccfe9526f3c8a2cb9fdf96308b1d13b276c70e94a3",
+      "source_hash": "09ed8f306d1f1a3e018401fc14afd51aacbe4bf00a4b3461d2df0fec90dddd15",
+      "declared_environment": {
+        "native_vendor_algorithm": "ThrustCUDAheaderlibrarysort/sort_by_key",
+        "thrust_version_header": "/usr/include/thrust/version.h",
+        "thrust_version_header_sha256": "169e3da67ac65f0aae9d4f71cc0e05e404b8f514e9c045f1fb505b077c17a86f"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T005044379162Z_radixsort2/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0016659698,
+        0.00158637411,
+        0.00156698253,
+        0.00156884897,
+        0.00156909156
+      ],
+      "mean_last_four_seconds": 0.0015728242925,
+      "contract": "SourceDefaultN1048576/dtypeFloat32positiveuniform[0,1)/modekeysonly/stdmt19937seed19937/keybits32advisorynotmask. Fullascendingkeysandactualrawpairvalueorderartifacts; independentCPUkeys/permutation/associationchecks, currentnativeobservedtieorderretainednotuniversalstableThrustguarantee. Source100sortrepetitionspertrialwithinputH2DresetoutsideeachROI,1fullsortwarmupthen5trialsmeanlast4seconds/sort. ROIwholeGPU-sortoperatorAPI/work+deviceglobalcompletion; vendorinsideAPIworkspacepolicyversuscustompreallocatedworkspaceexplicitalgorithm/resourceconfound. FullUInt32notFloat32emulation; Float64artifactserializationonlyexact32bitints.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "dtype": "float32",
+        "keys_only": true,
+        "input_prefix_values": 1048581,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1",
+      "run_id": "20261018T005146107669Z_radixsort2",
+      "result": ".porting-state/portable_julia/runs/20261018T005146107669Z_radixsort2/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_Thrust_API_preserved": true,
+        "source_default_N1048576": true,
+        "Makefile_N536870912_unmeasured": true,
+        "keybits_advisory_not_masked_in_source": 32,
+        "allfour_source_dtype_mode_cases": true,
+        "pair_validation_strengthened_beyond_original_sortedkeys_only": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "6fd74da9e3cef13e3c995ee570025ab29e6aeebfdc364c186b9f36152394c686",
+      "source_hash": "09ed8f306d1f1a3e018401fc14afd51aacbe4bf00a4b3461d2df0fec90dddd15",
+      "declared_environment": {
+        "native_vendor_algorithm": "ThrustCUDAheaderlibrarysort/sort_by_key",
+        "thrust_version_header": "/usr/include/thrust/version.h",
+        "thrust_version_header_sha256": "169e3da67ac65f0aae9d4f71cc0e05e404b8f514e9c045f1fb505b077c17a86f"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T005146107669Z_radixsort2/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00212506075,
+        0.00204638106,
+        0.00205446134,
+        0.00204954122,
+        0.00205514488
+      ],
+      "mean_last_four_seconds": 0.002051382125,
+      "contract": "SourceDefaultN1048576/dtypeUInt32fullrange/modekeyvalueoriginalUInt32indices/stdmt19937seed19937/keybits32advisorynotmask. Fullascendingkeysandactualrawpairvalueorderartifacts; independentCPUkeys/permutation/associationchecks, currentnativeobservedtieorderretainednotuniversalstableThrustguarantee. Source100sortrepetitionspertrialwithinputH2DresetoutsideeachROI,1fullsortwarmupthen5trialsmeanlast4seconds/sort. ROIwholeGPU-sortoperatorAPI/work+deviceglobalcompletion; vendorinsideAPIworkspacepolicyversuscustompreallocatedworkspaceexplicitalgorithm/resourceconfound. FullUInt32notFloat32emulation; Float64artifactserializationonlyexact32bitints.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "dtype": "uint32",
+        "keys_only": false,
+        "input_prefix_values": 2097157,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "radixsort2_default1048576_float_pairs_r100_v1",
+      "run_id": "20261018T005147391044Z_radixsort2",
+      "result": ".porting-state/portable_julia/runs/20261018T005147391044Z_radixsort2/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_Thrust_API_preserved": true,
+        "source_default_N1048576": true,
+        "Makefile_N536870912_unmeasured": true,
+        "keybits_advisory_not_masked_in_source": 32,
+        "allfour_source_dtype_mode_cases": true,
+        "pair_validation_strengthened_beyond_original_sortedkeys_only": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "b36ef028b83fe7dae2d304fa00e8e7062cf9b3be7fc76d2d0b14a0d2eb4ea996",
+      "source_hash": "09ed8f306d1f1a3e018401fc14afd51aacbe4bf00a4b3461d2df0fec90dddd15",
+      "declared_environment": {
+        "native_vendor_algorithm": "ThrustCUDAheaderlibrarysort/sort_by_key",
+        "thrust_version_header": "/usr/include/thrust/version.h",
+        "thrust_version_header_sha256": "169e3da67ac65f0aae9d4f71cc0e05e404b8f514e9c045f1fb505b077c17a86f"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T005147391044Z_radixsort2/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00202735034,
+        0.00202933444,
+        0.00203045965,
+        0.00202542449,
+        0.00202780784
+      ],
+      "mean_last_four_seconds": 0.0020282566049999997,
+      "contract": "SourceDefaultN1048576/dtypeFloat32positiveuniform[0,1)/modekeyvalueoriginalUInt32indices/stdmt19937seed19937/keybits32advisorynotmask. Fullascendingkeysandactualrawpairvalueorderartifacts; independentCPUkeys/permutation/associationchecks, currentnativeobservedtieorderretainednotuniversalstableThrustguarantee. Source100sortrepetitionspertrialwithinputH2DresetoutsideeachROI,1fullsortwarmupthen5trialsmeanlast4seconds/sort. ROIwholeGPU-sortoperatorAPI/work+deviceglobalcompletion; vendorinsideAPIworkspacepolicyversuscustompreallocatedworkspaceexplicitalgorithm/resourceconfound. FullUInt32notFloat32emulation; Float64artifactserializationonlyexact32bitints.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "dtype": "float32",
+        "keys_only": false,
+        "input_prefix_values": 2097157,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "radixsort2_default1048576_uint_keys_r100_v1",
+      "run_id": "20261018T005147218957Z_radixsort2",
+      "result": ".porting-state/portable_julia/runs/20261018T005147218957Z_radixsort2/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_Thrust_API_preserved": true,
+        "source_default_N1048576": true,
+        "Makefile_N536870912_unmeasured": true,
+        "keybits_advisory_not_masked_in_source": 32,
+        "allfour_source_dtype_mode_cases": true,
+        "pair_validation_strengthened_beyond_original_sortedkeys_only": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "61bd70098a8013ea5447c01b6b9e4f03f9a0026920c41a8e6da3ff071ed71c25",
+      "source_hash": "09ed8f306d1f1a3e018401fc14afd51aacbe4bf00a4b3461d2df0fec90dddd15",
+      "declared_environment": {
+        "native_vendor_algorithm": "ThrustCUDAheaderlibrarysort/sort_by_key",
+        "thrust_version_header": "/usr/include/thrust/version.h",
+        "thrust_version_header_sha256": "169e3da67ac65f0aae9d4f71cc0e05e404b8f514e9c045f1fb505b077c17a86f"
+      },
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T005147218957Z_radixsort2/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00169685071,
+        0.0016164649,
+        0.00157494712,
+        0.00157964407,
+        0.00157774616
+      ],
+      "mean_last_four_seconds": 0.0015872005625000001,
+      "contract": "SourceDefaultN1048576/dtypeUInt32fullrange/modekeysonly/stdmt19937seed19937/keybits32advisorynotmask. Fullascendingkeysandactualrawpairvalueorderartifacts; independentCPUkeys/permutation/associationchecks, currentnativeobservedtieorderretainednotuniversalstableThrustguarantee. Source100sortrepetitionspertrialwithinputH2DresetoutsideeachROI,1fullsortwarmupthen5trialsmeanlast4seconds/sort. ROIwholeGPU-sortoperatorAPI/work+deviceglobalcompletion; vendorinsideAPIworkspacepolicyversuscustompreallocatedworkspaceexplicitalgorithm/resourceconfound. FullUInt32notFloat32emulation; Float64artifactserializationonlyexact32bitints.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "dtype": "uint32",
+        "keys_only": true,
+        "input_prefix_values": 1048581,
+        "native_algorithm": "Thrust2.0.1 arithmeticCUB radix dispatch, internalpolicyunprofiled",
+        "Julia_algorithm": "custom32passbinaryLSD/96launches",
+        "native_workspace_policy": "insidevendorAPI",
+        "Julia_workspace_policy": "preallocatedoutsideROI"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 4,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 3262,
+      "output_tokens": 699,
+      "cached_tokens": null,
+      "total_tokens": 3961,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/radixsort2-cuda/main.cu",
+        "src/radixsort2-cuda/helper_string.h",
+        "src/radixsort2-julia/radixsort2-julia-cuda.jl/main.jl",
+        "src/radixsort2-julia/radixsort2-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/radixsort2/ka_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "fb2979af96b409a8881f91c2",
+        "begin_event_id": "3cd7a37d8f42da6e42deba2c",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T00:49:29.937092+00:00",
+        "usage_event_timestamp": "2026-10-18T00:49:21.806Z",
+        "elapsed_usage_event_start": "2026-10-18T00:45:08.109Z",
+        "delta_usage": {
+          "input_tokens": 3258245,
+          "cached_input_tokens": 3101952,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 6761,
+          "reasoning_output_tokens": 3572,
+          "total_tokens": 3265006
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 8.131092,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "6261957c277ba49ed1727a058beeb682f5f5bf751d246a7f14debfca3ba2119c",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "OneKAprogramcandidate/fouractualdeviceJITprocesschecks(all4dtype/modecases)passall5fullrawarraysandexactduals.4authoredgenericdefs/3activepercase/96launches-sort. No feedbackrepair; includesbriefrootownershiphandoffcoordination(nonexclusive), no JACCdraftbeforeclosed.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 6.713686,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/radixsort2/ka_translation.jsonl",
+        "evidence_sha256": "06a4beea470b3818d6082b416a05a1de2cf15e4c6b8aa20ad93048948e7b172d",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 4,
+        "compiler_check_invocations": 4
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/radixsort2-julia-ka/manifest.json",
+    "selected_sha256": "e85cb1d530b151f2dc92fb7a0261586448c157adcd34c7a1890f0bea70bba172",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/radixsort2-julia-ka/manifest.json",
+        "sha256": "e85cb1d530b151f2dc92fb7a0261586448c157adcd34c7a1890f0bea70bba172"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "afbe242a30b6a6dd9cbfa0d014b9b90348a8398b",
+  "explicit_outcome_evidence": {
+    "benchmark": "radixsort2",
+    "model": "ka",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261018T005044379162Z_radixsort2/result.json",
+      ".porting-state/portable_julia/runs/20261018T005147391044Z_radixsort2/result.json",
+      ".porting-state/portable_julia/runs/20261018T005147218957Z_radixsort2/result.json",
+      ".porting-state/portable_julia/runs/20261018T005146107669Z_radixsort2/result.json"
+    ],
+    "contract": "SourceDefaultN1048576/dtypeUInt32fullrange/modekeyvalueoriginalUInt32indices/stdmt19937seed19937/keybits32advisorynotmask. Fullascendingkeysandactualrawpairvalueorderartifacts; independentCPUkeys/permutation/associationchecks, currentnativeobservedtieorderretainednotuniversalstableThrustguarantee. Source100sortrepetitionspertrialwithinputH2DresetoutsideeachROI,1fullsortwarmupthen5trialsmeanlast4seconds/sort. ROIwholeGPU-sortoperatorAPI/work+deviceglobalcompletion; vendorinsideAPIworkspacepolicyversuscustompreallocatedworkspaceexplicitalgorithm/resourceconfound. FullUInt32notFloat32emulation; Float64artifactserializationonlyexact32bitints.",
+    "limitations": [
+      "All four source dtype/mode combinations are measured: Float32 keys from source uniform[0,1), full-range UInt32 keys, keys-only and keys+UInt32 original indices. Source defaultN=1048576 and100internal sorts preserved. MakefileN536870912 and other CLI sizes/options are unmeasured; custom group scan is currently fixed to1024 groups/defaultN, not a general sort-library replacement.",
+      "Native remains actual Thrust sort/sort_by_key API (compiled Thrust2.0.1, inspected arithmetic-key dispatch reaches CUB DeviceRadixSort). Native library kernel count, digit/pass policies and workspace sizes are not profiled. Do not infer an authored radix kernel from the benchmark label alone.",
+      "CUDA.jl reference replaces historical marker/PASS with a custom stable32-pass one-bit LSD algorithm: localzero rank scan, one-block block-offset scan, stable scatter;96launches/sort. All three Julia versions use this same algorithm, which differs from native vendor implementation. Native-vs-Julia speed differences cannot be attributed solely to abstraction.",
+      "Workspace policy differs: custom Julia temporary keys/local-prefix/group tables and optional values are preallocated outside ROI; native Thrust manages its own internal temporary storage inside the sort API. Both time a complete sorting operation plus device-wide completion, excluding input reset/transfers. Allocation-policy confound is explicit, not hidden as pure kernel-codegen effect.",
+      "Float32 source inputs are finite/nonnegative, so IEEE bit order equals numeric order. Custom raw-bit ranking is certified for this source domain, not arbitrary negative/NaN IEEE sorting. UInt32 keys retain all32bits onGPU; no Float32 integer emulation. Float64 artifacts serialize full UInt32 values exactly.",
+      "Originalkeybits option is advisory/printed but does not mask sort keys; default32 remains metadata. Keys-only scatter never loads/stores values; pairs carry actual originalUInt32index payloads. Source std::mt19937seed19937 distributions reproduced withC++ generators, identical inputs across models/modes.",
+      "Native original correctness checks only key sortedness. Study additionally checks complete sorted key array against independent CPU sort, all value indices form a full permutation and each sorted key equals its input key at returned index. Raw pair order is preserved, not canonicalized or replaced by checksums.",
+      "Thrust sort does not guarantee stable equal-key order (installed sort.h source documentation). Current native arithmetic/CUB output happens to match stable CPU indices for all captured trials:21369 Float32 and138 UInt32 duplicate adjacencies. All models match raw tie order on this fixture; no cross-version API stability guarantee claimed.",
+      "80 final artifacts checked:4cases\u00d74models\u00d75trials, with2097157Double values/keys-only case and4194309/pairs, including exact1048581/2097157-value input prefixes. Each artifact is the final result of a100-sort trial; intermediate99outputs are not individually serialized or independently audited, as source also validates final result only.",
+      "Each trial averages100 timed sorts, resetting source input withH2D copy outside each interval; one full-sort warmup precedes5inprocess trials and meanruns2\u20135. Four retained sample means, not400independent timing samples. No outlier removal or fastest selection; all raw outertrial averages retained.",
+      "Custom shared scratch is4096B per rank/scan kernel,1024threads/block;1024 rank/scatter blocks and one group-scan block. CUDA.jl/KA use static shared storage, JACC uses dynamic4096B and shared(template) copy/barrier. Scatter explicitly0B, separate LaunchSpecs avoid cached grid/resource mismatch. Actual registers/spills/occupancy/traffic unmeasured.",
+      "All device indices/shared/barriers are own framework APIs with pure Julia integer helpers; no foreign CUDA device intrinsics or operator library in Julia variants. CUDA host allocation/completion glue onlyNVIDIA tested. Native is vendor header-library interop, not identical implementation class.",
+      "JACC measured~9.1\u20139.4ms/sort vsCUDA.jl/KA~1.5\u20132.1ms; correctness is exact. Cause is unresolved without profiling; no invented allocation/shared-memory/occupancy diagnosis. Integer scan/bitwise sorting is not an ordinary floating-FLOP roofline workload.",
+      "One current reference/KA/JACC program candidate, four process/device-JIT checks each for fourdtype/mode cases; four authored generic kernel definitions but three active per case. Definitions, specializations, cases, sort passes/repeats and compiler repair iterations are distinct; compiler internal passes/specialization count unknown. No target feedback repairs.",
+      "Shared source-library-to-custom-algorithm design and semantic helper cost belongs current CUDA.jl reference preparation; KA/JACC reuse it and prior framework knowledge. CUDA.jl Base.sort! bitonic API exists but is an unmeasured alternative, not asserted unavailable or same asThrust. No framework unsupported-feature claim.",
+      "Prospective context/cache/reasoning/coordination consumption overlaps broad/child windows and includes queue handoff coordination, not additive exclusive billed translation. Source chars/4 proxies remain separately partial. Original historical CUDA.jl attempts/consumption unknown."
+    ],
+    "configuration_results": {
+      "float_keys": {
+        "configuration_id": "radixsort2_default1048576_float_keys_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005044379162Z_radixsort2/result.json",
+        "dtype": "float32",
+        "keys_only": true,
+        "mean_seconds": {
+          "cuda": 0.0006945937974999999,
+          "cuda_jl": 0.001526395505,
+          "ka": 0.0015728242925,
+          "jacc": 0.0090828190775
+        },
+        "input_prefix_values": 1048581,
+        "checked_values_each_trial": 2097157,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "float_pairs": {
+        "configuration_id": "radixsort2_default1048576_float_pairs_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005147391044Z_radixsort2/result.json",
+        "dtype": "float32",
+        "keys_only": false,
+        "mean_seconds": {
+          "cuda": 0.0008308771575000001,
+          "cuda_jl": 0.001988682785,
+          "ka": 0.0020282566049999997,
+          "jacc": 0.0093916019525
+        },
+        "input_prefix_values": 2097157,
+        "checked_values_each_trial": 4194309,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "uint_keys": {
+        "configuration_id": "radixsort2_default1048576_uint_keys_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005147218957Z_radixsort2/result.json",
+        "dtype": "uint32",
+        "keys_only": true,
+        "mean_seconds": {
+          "cuda": 0.00068899345,
+          "cuda_jl": 0.0015369035225,
+          "ka": 0.0015872005625000001,
+          "jacc": 0.00915068883
+        },
+        "input_prefix_values": 1048581,
+        "checked_values_each_trial": 2097157,
+        "exact_all5_dual_reference_comparisons": true
+      },
+      "uint_pairs": {
+        "configuration_id": "radixsort2_default1048576_uint_pairs_r100_v1",
+        "result": ".porting-state/portable_julia/runs/20261018T005146107669Z_radixsort2/result.json",
+        "dtype": "uint32",
+        "keys_only": false,
+        "mean_seconds": {
+          "cuda": 0.0009849803375,
+          "cuda_jl": 0.0020003271175,
+          "ka": 0.002051382125,
+          "jacc": 0.0093847477075
+        },
+        "input_prefix_values": 2097157,
+        "checked_values_each_trial": 4194309,
+        "exact_all5_dual_reference_comparisons": true
+      }
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/radixsort2.json",
+    "annotation_sha256": "d6f198f81923a44877a2369f96d2b79cc4b90338efc8b5de2e6975ff91bc23bc",
+    "field": "implementation_class.julia-ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

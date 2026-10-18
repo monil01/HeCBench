@@ -1,0 +1,793 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "radixsort",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/radixsort.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+    "work_item_mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+    "storage_precision": [
+      "UInt32 keys, counters, scratch"
+    ],
+    "compute_precision": [
+      "UInt32 bitwise/rank/count arithmetic",
+      "Int32 bounded indices"
+    ],
+    "synchronization": [
+      "Local sort: 72 algorithm block barriers versus source approximately 25",
+      "Other stages preserve scan/offset/reorder barrier structure"
+    ],
+    "launch_geometry": {
+      "block_sort_threads": 128,
+      "offset_reorder_threads": 128,
+      "scan_threads": 256,
+      "keys_per_local_block": 512,
+      "bits_per_digit": 4,
+      "digits": 8,
+      "kernel_launches_per_sort": 48,
+      "internal_full_sorts": 3,
+      "sizes": [
+        32768,
+        65536
+      ],
+      "native_shared_bytes_per_stage": [
+        2052,
+        1088,
+        2048,
+        2048,
+        4,
+        1152
+      ],
+      "julia_shared_bytes_per_stage": [
+        2048,
+        1088,
+        2048,
+        2048,
+        4,
+        1152
+      ]
+    },
+    "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "e0017f140b1c5e86e0c36a246372ae5d30958755ebf5b6daa1199388ae2326f7",
+    "reference_repair": {
+      "phase": "reference_algorithm_and_measurement_alignment",
+      "taxonomy_code": "P1",
+      "finding": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+      "original_main_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+      "native_source_sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22",
+      "native_source_unchanged": true
+    },
+    "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "authored_device_kernel_definitions": 6,
+    "source_dependencies_sha256": {
+      "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+      "/home/imo/HeCBench_julia/src/radixsort-julia/study_reference_kernels.jl": "cf24822db00dfd12a595e4029a5c81312bebded7299343a51c10279792c1fb83"
+    },
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+    },
+    "distinct_device_candidates": 1,
+    "successful_program_checks": 2,
+    "configuration_experiments": 2,
+    "host_oracle_precision": [
+      "Python arbitrary-precision integer"
+    ],
+    "artifact_encoding": "UInt32 little-endian",
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+    "layout": null,
+    "storage_precision": [
+      "UInt32 keys, counters, scratch"
+    ],
+    "compute_precision": [
+      "UInt32 bitwise/rank/count arithmetic",
+      "Int32 bounded indices"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Python arbitrary-precision integer"
+    ],
+    "artifact_encoding": "UInt32 little-endian",
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Local sort: 72 algorithm block barriers versus source approximately 25",
+      "Other stages preserve scan/offset/reorder barrier structure"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+    "launch_geometry": {
+      "block_sort_threads": 128,
+      "offset_reorder_threads": 128,
+      "scan_threads": 256,
+      "keys_per_local_block": 512,
+      "bits_per_digit": 4,
+      "digits": 8,
+      "kernel_launches_per_sort": 48,
+      "internal_full_sorts": 3,
+      "sizes": [
+        32768,
+        65536
+      ],
+      "native_shared_bytes_per_stage": [
+        2052,
+        1088,
+        2048,
+        2048,
+        4,
+        1152
+      ],
+      "julia_shared_bytes_per_stage": [
+        2048,
+        1088,
+        2048,
+        2048,
+        4,
+        1152
+      ]
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "e0017f140b1c5e86e0c36a246372ae5d30958755ebf5b6daa1199388ae2326f7",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "cooperative_radix_partition_histogram_hierarchical_prefix_scatter",
+    "storage_precision": [
+      "UInt32 keys, counters, scratch"
+    ],
+    "compute_precision": [
+      "UInt32 bitwise/rank/count arithmetic",
+      "Int32 bounded indices"
+    ],
+    "synchronization": [
+      "block barriers",
+      "kernel launch boundaries",
+      "context-wide timing boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum of two means of three full 48-kernel sorts; input reset before each outer trial only",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "application_domain": "Key sorting as a generic computational preprocessing primitive",
+      "operator": "Ascending unsigned 32-bit key ordering",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/radixsort-cuda/main.cu",
+          "sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22"
+        },
+        {
+          "path": "src/radixsort-cuda/RadixSort_kernels.cu",
+          "sha256": "3982632f81cb3a594017fb1bdd7e94e2be9f687dfcd29d78702cccee1fae9118"
+        }
+      ],
+      "scientific_scope": "No associated-value/stability certification or physical-model accuracy claim."
+    },
+    "keyconfounds": [
+      "Explicit block scan increases synchronization versus source warp scan",
+      "Scalar UInt32 loads replace C++ uint4 access syntax; actual compiler vectorization unprofiled",
+      "Three internal sorts do not reset keys: two sort already sorted data",
+      "Named small fixtures do not certify default four-million-key CLI performance"
+    ],
+    "benchmark": "radixsort",
+    "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T002733261235Z_radixsort/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/radixsort-cuda/main.cu",
+      "native_source_sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22",
+      "reviewed_at": "2026-10-18T00:33:03.942553+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+        "work_item_mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+        "storage_precision": [
+          "UInt32 keys, counters, scratch"
+        ],
+        "compute_precision": [
+          "UInt32 bitwise/rank/count arithmetic",
+          "Int32 bounded indices"
+        ],
+        "synchronization": [
+          "Local sort: 72 algorithm block barriers versus source approximately 25",
+          "Other stages preserve scan/offset/reorder barrier structure"
+        ],
+        "launch_geometry": {
+          "block_sort_threads": 128,
+          "offset_reorder_threads": 128,
+          "scan_threads": 256,
+          "keys_per_local_block": 512,
+          "bits_per_digit": 4,
+          "digits": 8,
+          "kernel_launches_per_sort": 48,
+          "internal_full_sorts": 3,
+          "sizes": [
+            32768,
+            65536
+          ],
+          "native_shared_bytes_per_stage": [
+            2052,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ],
+          "julia_shared_bytes_per_stage": [
+            2048,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ]
+        },
+        "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "e0017f140b1c5e86e0c36a246372ae5d30958755ebf5b6daa1199388ae2326f7",
+        "reference_repair": {
+          "phase": "reference_algorithm_and_measurement_alignment",
+          "taxonomy_code": "P1",
+          "finding": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+          "original_main_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+          "native_source_sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22",
+          "native_source_unchanged": true
+        },
+        "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 6,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+          "/home/imo/HeCBench_julia/src/radixsort-julia/study_reference_kernels.jl": "cf24822db00dfd12a595e4029a5c81312bebded7299343a51c10279792c1fb83"
+        },
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+        },
+        "distinct_device_candidates": 1,
+        "successful_program_checks": 2,
+        "configuration_experiments": 2,
+        "host_oracle_precision": [
+          "Python arbitrary-precision integer"
+        ],
+        "artifact_encoding": "UInt32 little-endian",
+        "source_review_status": "source_reviewed"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+        "work_item_mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+        "storage_precision": [
+          "UInt32 keys, counters, scratch"
+        ],
+        "compute_precision": [
+          "UInt32 bitwise/rank/count arithmetic",
+          "Int32 bounded indices"
+        ],
+        "synchronization": [
+          "Local sort: 72 algorithm block barriers versus source approximately 25",
+          "Other stages preserve scan/offset/reorder barrier structure"
+        ],
+        "launch_geometry": {
+          "block_sort_threads": 128,
+          "offset_reorder_threads": 128,
+          "scan_threads": 256,
+          "keys_per_local_block": 512,
+          "bits_per_digit": 4,
+          "digits": 8,
+          "kernel_launches_per_sort": 48,
+          "internal_full_sorts": 3,
+          "sizes": [
+            32768,
+            65536
+          ],
+          "native_shared_bytes_per_stage": [
+            2052,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ],
+          "julia_shared_bytes_per_stage": [
+            2048,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ]
+        },
+        "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152].",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "c2426b892a7e3278e4319a2f6910c9376427bb0b714507fb927c9fd328807383",
+        "reference_repair": null,
+        "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 6,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+          "/home/imo/HeCBench_julia/src/radixsort-julia/radixsort-julia-KA/study_kernels.jl": "5262fa21dbe96e22a309cbb30f63977602156fcfc565481e5046d394c13e9a78"
+        },
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+        },
+        "distinct_device_candidates": 1,
+        "successful_program_checks": 1,
+        "configuration_experiments": 1,
+        "host_oracle_precision": [
+          "Python arbitrary-precision integer"
+        ],
+        "artifact_encoding": "UInt32 little-endian",
+        "source_review_status": "source_reviewed"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Eight four-bit least-significant-digit passes of the original SDK unsigned 32-bit radix sort: local 512-key partition, 256-key offsets, hierarchical counter scan, uniform addition, and global reorder.",
+        "work_item_mapping": "Six device kernels per digit; original per-stage launch geometry retained. Full-block Hillis-Steele scan replaces native implicit warp scan only within local sorting.",
+        "storage_precision": [
+          "UInt32 keys, counters, scratch"
+        ],
+        "compute_precision": [
+          "UInt32 bitwise/rank/count arithmetic",
+          "Int32 bounded indices"
+        ],
+        "synchronization": [
+          "Local sort: 72 algorithm block barriers versus source approximately 25",
+          "Other stages preserve scan/offset/reorder barrier structure",
+          "JACC initial template copy/barrier in every stage"
+        ],
+        "launch_geometry": {
+          "block_sort_threads": 128,
+          "offset_reorder_threads": 128,
+          "scan_threads": 256,
+          "keys_per_local_block": 512,
+          "bits_per_digit": 4,
+          "digits": 8,
+          "kernel_launches_per_sort": 48,
+          "internal_full_sorts": 3,
+          "sizes": [
+            32768,
+            65536
+          ],
+          "native_shared_bytes_per_stage": [
+            2052,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ],
+          "julia_shared_bytes_per_stage": [
+            2048,
+            1088,
+            2048,
+            2048,
+            4,
+            1152
+          ]
+        },
+        "resource_policy": "Explicit per-stage shared bytes [2048,1088,2048,2048,4,1152]. JACC copies each complete zero template and adds one initial barrier per block.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "bb2e13fb8975b04403ca70131ddf21fb34e4e53b6a0ea714e0d8ad7f4c5cde21",
+        "reference_repair": null,
+        "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 6,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/radixsort-julia/study_common.jl": "817ed31b7695edbbed6f6e27f431b0d9da47524b018c9d87e44776b66fbdc96a",
+          "/home/imo/HeCBench_julia/src/radixsort-julia/radixsort-julia-JACC/study_kernels.jl": "1e9446af891b3751cd9b0b20d1e56422b7993e461414d6b1c57755d4465bf9ae"
+        },
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Retains all six stage geometries and four-bit stable partition dataflow; replaces native implicit warp scan with explicit full-block scan in local sort."
+        },
+        "distinct_device_candidates": 1,
+        "successful_program_checks": 1,
+        "configuration_experiments": 1,
+        "host_oracle_precision": [
+          "Python arbitrary-precision integer"
+        ],
+        "artifact_encoding": "UInt32 little-endian",
+        "source_review_status": "source_reviewed"
+      }
+    },
+    "prospective_usage_intervals": [
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/radixsort/shared_reference_preparation.jsonl",
+        "end_event": "8fbc893cd2a100c21efa327a",
+        "delta_usage": {
+          "input_tokens": 3752887,
+          "cached_input_tokens": 3732480,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 24250,
+          "reasoning_output_tokens": 14522,
+          "total_tokens": 3777137
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/radixsort/ka_translation.jsonl",
+        "end_event": "8eba6d1e4e0bc701cd0701d3",
+        "delta_usage": {
+          "input_tokens": 925359,
+          "cached_input_tokens": 922752,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4799,
+          "reasoning_output_tokens": 3622,
+          "total_tokens": 930158
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/radixsort/jacc_translation.jsonl",
+        "end_event": "f55c204d813c60ec4cf93d47",
+        "delta_usage": {
+          "input_tokens": 944329,
+          "cached_input_tokens": 940928,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3866,
+          "reasoning_output_tokens": 2417,
+          "total_tokens": 948195
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/radixsort/shared_benchmark_workflow.jsonl",
+        "end_event": "0a88c72099d8b7ce46a3f450",
+        "delta_usage": {
+          "input_tokens": 6381846,
+          "cached_input_tokens": 6286464,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 36199,
+          "reasoning_output_tokens": 21059,
+          "total_tokens": 6418045
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/radixsort-julia/radixsort-julia-cuda.jl/main.jl",
+    "sha256": "e0017f140b1c5e86e0c36a246372ae5d30958755ebf5b6daa1199388ae2326f7",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "radixsort_sdk32bit32768_65536_threepasses_fullkeys_scratch_v1",
+      "run_id": "20261018T002159654395Z_radixsort",
+      "result": ".porting-state/portable_julia/runs/20261018T002159654395Z_radixsort/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "087cab6fc5d11c68f23e8090b6464d66fc34ea9285bbfebbccb5d02c71c843e4",
+      "source_hash": "71c1406fd44940c8212bbda089ed3b3af53963db480521eb0ba57eb564b63590",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T002159654395Z_radixsort/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0003548963333333334,
+        0.0003886836666666667,
+        0.00034893633333333337,
+        0.000343443,
+        0.0003467733333333333
+      ],
+      "mean_last_four_seconds": 0.00035695908333333335,
+      "contract": {
+        "sizes": [
+          32768,
+          65536
+        ],
+        "key_bits": 32,
+        "batch_size": 1,
+        "repeat": 3,
+        "input_prefix_count": 215060,
+        "output_count": 215046,
+        "checked_values": 430106,
+        "fixture": "N32768 bitmix/extremes/duplicates;N65536reversedlow10bitswithcyclinguppernibbles, manyequalkeyandlower28bitties.",
+        "prefix": "Percaseoriginalkeys,zero scratch(tempN/countsN16/blockstartsN16/scanN16/bufferN16384),controlsN32/3/128/256/4/1",
+        "output": "Allfinalkeys,temp512-localnibblesort,counterdigitmajor,blockstartblockmajor,globalexclusivecounterprefix,andtopscanbuffer",
+        "timing": "Sum2meansof3full32bitsorts(48kernels each), innerrepeatdoesnotresetalready-sortedd_keys like source; resetonlyoutsideoutertrial. Scratch/oracles/copies/allocoutside.",
+        "native_support": "OriginalmainrequiresarrayLength=N/16poweroftwo,2048..262144,>1024. BothnamedN valid;512elementblocksort,256elementhist/reorder,1024counterscanchunks.",
+        "scientific_scope": "Integerordering+permutationandfullalgorithmicscratch;key-only,noassociationvalues/stabilitycertificateforvaluepairs,notoriginal4Mdefaultsize."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+      "run_id": "20261018T002733261235Z_radixsort",
+      "result": ".porting-state/portable_julia/runs/20261018T002733261235Z_radixsort/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "92c63e34867824fe3883134460c5a4c2997faebacea52888f4621dfcab39c5e5",
+      "source_hash": "71c1406fd44940c8212bbda089ed3b3af53963db480521eb0ba57eb564b63590",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T002733261235Z_radixsort/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0003457763333333334,
+        0.0003529966666666667,
+        0.0003467263333333334,
+        0.0003401066666666667,
+        0.0003386633333333334
+      ],
+      "mean_last_four_seconds": 0.00034462325000000004,
+      "contract": {
+        "sizes": [
+          32768,
+          65536
+        ],
+        "key_bits": 32,
+        "batch_size": 1,
+        "repeat": 3,
+        "input_prefix_count": 215060,
+        "output_count": 215046,
+        "checked_values": 430106,
+        "fixture": "N32768bitmix/extremes/duplicates;N65536key=((n-1-i)%1024)|(((i/1024)%16)<<28),all16uppernibblesperlower10key,4duplicates/key.",
+        "prefix": "Percaseoriginalkeys,zero scratch(tempN/countsN16/blockstartsN16/scanN16/bufferN16384),controlsN32/3/128/256/4/1",
+        "output": "Allfinalkeys,temp512-localnibblesort,counterdigitmajor,blockstartblockmajor,globalexclusivecounterprefix,andtopscanbuffer",
+        "timing": "Sum2meansof3full32bitsorts(48kernels each), innerrepeatdoesnotresetalready-sortedd_keys like source; resetonlyoutsideoutertrial. Scratch/oracles/copies/allocoutside.",
+        "native_support": "OriginalmainrequiresarrayLength=N/16poweroftwo,2048..262144,>1024. BothnamedN valid;512elementblocksort,256elementhist/reorder,1024counterscanchunks.",
+        "scientific_scope": "Integerordering+permutationandfullalgorithmicscratch;key-only,noassociationvalues/stabilitycertificateforvaluepairs,notoriginal4Mdefaultsize."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "radixsort_cuda_jl_reference_mapping_01",
+        "benchmark_id": "radixsort",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_algorithm_and_measurement_alignment",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/radixsort.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "radixsort_cuda_jl_reference_mapping_01",
+          "benchmark_id": "radixsort",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "radixsort_sdk32bit32768_65536_upper_tiecoverage_threepasses_fullscratch_v2",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_algorithm_and_measurement_alignment",
+          "taxonomy_code": "P1",
+          "symptom": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+          "cause": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "phase": "reference_algorithm_and_measurement_alignment",
+            "taxonomy_code": "P1",
+            "finding": "Historical CUDA.jl substitutes high-level sort! for the native four-stage SDK radix pipeline. This is an algorithm/mapping difference, not evidence of a wrong sorting operator. Its single sort elapsed time is divided by repeat without repeating the sort, a separate historical S2 measurement defect. Original bytes are preserved; the named study authors the native pipeline and aligns actual repeated work.",
+            "original_main_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+            "native_source_sha256": "9819b0f64d1249b7ca244b08a3c3dc088898016880dfbf7ce606cb52b9a22c22",
+            "native_source_unchanged": true
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+          "log_reference": "/home/imo/HeCBench_julia/src/radixsort-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "radixsort_historical_measurement_repeat_divisor",
+        "benchmark_id": "radixsort",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S2",
+        "phase": "historical_measurement_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/radixsort.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "radixsort_historical_measurement_repeat_divisor",
+          "benchmark_id": "radixsort",
+          "implementation_model": "cuda_jl",
+          "phase": "historical_measurement_audit",
+          "taxonomy_code": "S2",
+          "symptom": "Single measured sort divided by repeat without repeated work; statically observed in archived historical source.",
+          "source_sha256": "7e84c8bd2aa91fb521bf58a5f0755bef33585ea8754c6664afb15e3dc7d1388d",
+          "historical_observed_failure_attempt": false,
+          "resolution": "Study times actual repeated complete sorts; original source preserved.",
+          "log_reference": "/home/imo/HeCBench_julia/src/radixsort-julia/study_notes.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 181,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/radixsort-julia/radixsort-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/radixsort-julia-cuda_jl/manifest.json",
+    "selected_sha256": "8c0bdcb51c3aaccfa4a24b2c62f404f5a0c49fb9d3367b5cc24d29aec25edb06",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/radixsort-julia-cuda_jl/manifest.json",
+        "sha256": "8c0bdcb51c3aaccfa4a24b2c62f404f5a0c49fb9d3367b5cc24d29aec25edb06"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/radixsort.json",
+    "annotation_sha256": "3b78f8adb062626ba87c93b246fcb47208b0128a6506743c643fc37ee7d21fa9",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

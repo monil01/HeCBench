@@ -1,0 +1,957 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "winograd",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/winograd.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_audited",
+    "source_revision": {
+      "path": "src/winograd-julia/winograd-julia-cuda.jl/main.jl",
+      "sha256": "d77809898d8f8e3fe1d474dc20eb4a1d699ad20eb9ecbd6b3c5c825b31cdcb6b"
+    },
+    "configuration_id": "winograd_MAP131_twofixtures_full101_CPU_GPU_splits_F2x2_3x3_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "actual_algorithm": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+    "work_item_mapping": "One2x2outputtile/lane, source32x8logicalblock/flattened256; CPUtileprefix/GPUtilesuffix; noGPUlaunch100percent",
+    "data_layout": "Row-majorflatFP32input/output, row-major16transformedfilterelements, contiguoushostprefixtransfer",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "Nointerthreadcommunication insideauthoredGPUkernel",
+      "AsyncGPUlaunch thenserialCPUwork",
+      "BlockingprefixH2D afterCPUwork",
+      "FullpreallocatedD2H completesGPUandhostprefixbeforechecking"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "shared_bytes": 0,
+      "registers": null,
+      "spills": null,
+      "private_state": "4x4input/tmp/transformed/product,2x4tmp,2x2finalStaticArrays.MMatrix"
+    },
+    "implementation_class": "mixed_host_device_pipeline",
+    "components": [
+      {
+        "class": "framework_device_kernel",
+        "definitions": 1,
+        "operation": "WinogradGPUtilesuffix"
+      },
+      {
+        "class": "host_computation",
+        "operation": "ActualserialJuliaCPUWinogradtileprefix, sharedhelper"
+      },
+      {
+        "class": "host_device_transfer",
+        "operation": "ContiguousprefixH2D+fullD2H"
+      }
+    ],
+    "backend_extensions": [
+      "CUDAhostallocation/copies/completion"
+    ],
+    "native_to_model_mapping": {
+      "status": "source_coexecution_algorithm_and_partitions_preserved",
+      "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+    },
+    "host_device_boundary": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+    "support_boundary": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.016564685,
+      0.017089289,
+      0.016480096,
+      0.016689062,
+      0.015826355
+    ],
+    "mean_last_four_seconds": 0.0165212005,
+    "profile_ids": [],
+    "keyconfounds": [
+      "NamedMAP_SIZE131/129x129outputs retainsall101sourceCPUoffsets and32x8logicalGPUgeometry; original1024sizeunmeasured. Percentoffsetsquantize to4actualCPUtilepartitions0/32/64/96; 101settingsarenot101distinctworkpartitions",
+      "Completehost/deviceco-executionregion includesasyncGPUlaunch, realserialCPUWinograd, prefixH2D andfullpreallocatedD2H. Theseare notkernel-onlytimes; per-split timesarenotsaved, onlytwofull-sweepsums, so nooptimal-splitclaim",
+      "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalranking",
+      "Native2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+      "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+      "ActualsourcefiltertransformationandC srand(1)/randfloatgenerator preserved infixture0; independent signed-dyadicfixture1. Float64matrixvsdirectcorrelationdiscrepancy<=1.572e-7 fromstoredtransformedF32filter, separatefromportdrift",
+      "Observationoutputstorage happensaftereachROI inall4; preallocatedactualhostbuffer/fullsourceD2H included. Primarytrialtime is sumtwofull101sweeps, notsourcewholeprograminitialization/oracle runtime",
+      "Sharednewstore/tile/CPUdriver work belongsreferencephaseonce; KAthenJACCmarginalwrappers reuseverifiedmath. Usagewindowsincludeothercases/sourcecommits/paper/audits/teamwork/cache; overlappingnonadditive/nonexclusive/billingunknown"
+    ],
+    "attempt_accounting": {
+      "historical_translation_counts": null,
+      "phase": "reference_restoration",
+      "current_program_candidates": 2,
+      "current_process_evaluations": 2,
+      "current_device_candidates": 1,
+      "actual_device_jit_checks": 1,
+      "device_JIT_check_unit": "Oneprogram/processevaluationreachesGPU, notmeasurednumberofcompilerinternalpasses",
+      "frontend_rejections": 1,
+      "device_compiler_feedback_repairs": 0,
+      "current_numerical_repairs": 0,
+      "shared_host_parser_repairs": 1,
+      "source_kernel_definitions": 1,
+      "numerical_fixtures": 2,
+      "CPUoffset_settings_per_fixture": 101,
+      "trials_per_configuration": 5,
+      "first_verified_run": "20261018T002532011805Z_winograd",
+      "definition": "SharedhostdriverparserB2beforeJIT, secondprogramfirstGPUcandidateallpass; KA/JACCfirstGPUcandidatepasses.101settings/2fixtures/5trials are nottranslationattempts."
+    },
+    "failure_history": {
+      "historical_counts": null,
+      "path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+    "implementation_class": "mixed_host_device_pipeline",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "julia_language_version": "1.12.6",
+    "work_item_mapping": "One2x2outputtile/lane, source32x8logicalblock/flattened256; CPUtileprefix/GPUtilesuffix; noGPUlaunch100percent",
+    "layout": "Row-majorflatFP32input/output, row-major16transformedfilterelements, contiguoushostprefixtransfer",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Nointerthreadcommunication insideauthoredGPUkernel",
+      "AsyncGPUlaunch thenserialCPUwork",
+      "BlockingprefixH2D afterCPUwork",
+      "FullpreallocatedD2H completesGPUandhostprefixbeforechecking"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 256,
+      "shared_bytes": 0,
+      "registers": null,
+      "spills": null,
+      "private_state": "4x4input/tmp/transformed/product,2x4tmp,2x2finalStaticArrays.MMatrix"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": [
+      "CUDAhostallocation/copies/completion"
+    ],
+    "host_control_boundary": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+    "support_boundary": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+    "native_to_model_mapping": {
+      "status": "source_coexecution_algorithm_and_partitions_preserved",
+      "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": {
+      "path": "src/winograd-julia/winograd-julia-cuda.jl/main.jl",
+      "sha256": "d77809898d8f8e3fe1d474dc20eb4a1d699ad20eb9ecbd6b3c5c825b31cdcb6b"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "winograd",
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "primary_domain": "convolution_operator",
+      "scientific_task": "Evaluate valid3x3 image cross-correlation while sweeping CPU/GPU work partition",
+      "mathematical_method": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+      "input_size_regime": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+      "accuracy_requirements": [
+        "Everylogicaloutput atall101CPUoffsets/twofixtures andallfivecaptures",
+        "ExactactualGPUinput/filterreadbackprefix andoriginalsourcepercentchecker",
+        "IndependentFloat64Winogradmatrixexpression andseparatedirect3x3correlation oforiginalF32filter,1e-5+1e-5abs budget"
+      ],
+      "precision_sensitivity": "FP32GPU/CPUarithmetic/sourcefiltertransformation, independentFloat64matrix/directoracles; transformedF32filterrounding creates~1.57e-7mathematicaldiscrepancy fromdirectcorrelation",
+      "community_use_case": "A reproducible convolutionoperator andheterogeneousco-execution example, with explicit CPUwork/transfers. Can motivate larger-image/host-resource/split-scalingexperiments; doesnotestablishscientificapplicationaccuracyoroptimalCPUfraction.",
+      "review_status": "source_audited",
+      "evidence": [
+        {
+          "path": "src/winograd-cuda/main.cu",
+          "sha256": "5d2f3f268ddaee6c93e7c3f654edf91fca73164a3223c02dd2563b96d4acf55e"
+        },
+        {
+          "path": "src/winograd-cuda/utils.cu",
+          "sha256": "ab6909d66b6ce8bc505f8f09354ab26c83fea3a1fc5a5ee526ec0956fc5b7ea1"
+        },
+        {
+          "path": "src/winograd-julia/generate_oracle.py",
+          "sha256": "0a396abb67cc704542364052833ca393a7a8f8f88943f10fb2c679212fe043c1"
+        }
+      ]
+    },
+    "primary_motif": "winograd_transformed_convolution_cpu_gpu_coexecution",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "timed_compute_precision": [
+      "float32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float32"
+    ],
+    "implementation_class": {
+      "cuda_jl": "mixed_host_device_pipeline",
+      "ka": "mixed_host_device_pipeline",
+      "jacc": "mixed_host_device_pipeline"
+    },
+    "native_to_julia_mapping": {
+      "status": "source_coexecution_algorithm_and_partitions_preserved",
+      "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+    },
+    "timing_scope": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+    "verification_contract": "All3361482values =202complete129x129outputs+34354exactactualGPUinputprefix onall20captures, independentFloat64matrix/directoracle andsourcepercentchecker",
+    "numerical_evidence_strength": "complete_recorded_output_arrays",
+    "keyconfounds": [
+      "NamedMAP_SIZE131/129x129outputs retainsall101sourceCPUoffsets and32x8logicalGPUgeometry; original1024sizeunmeasured. Percentoffsetsquantize to4actualCPUtilepartitions0/32/64/96; 101settingsarenot101distinctworkpartitions",
+      "Completehost/deviceco-executionregion includesasyncGPUlaunch, realserialCPUWinograd, prefixH2D andfullpreallocatedD2H. Theseare notkernel-onlytimes; per-split timesarenotsaved, onlytwofull-sweepsums, so nooptimal-splitclaim",
+      "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalranking",
+      "Native2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+      "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+      "ActualsourcefiltertransformationandC srand(1)/randfloatgenerator preserved infixture0; independent signed-dyadicfixture1. Float64matrixvsdirectcorrelationdiscrepancy<=1.572e-7 fromstoredtransformedF32filter, separatefromportdrift",
+      "Observationoutputstorage happensaftereachROI inall4; preallocatedactualhostbuffer/fullsourceD2H included. Primarytrialtime is sumtwofull101sweeps, notsourcewholeprograminitialization/oracle runtime",
+      "Sharednewstore/tile/CPUdriver work belongsreferencephaseonce; KAthenJACCmarginalwrappers reuseverifiedmath. Usagewindowsincludeothercases/sourcecommits/paper/audits/teamwork/cache; overlappingnonadditive/nonexclusive/billingunknown"
+    ],
+    "input_dependent_descriptors": {
+      "MAP_SIZE": 131,
+      "output_size": 129,
+      "CPUoffset_settings": 101,
+      "unique_CPUtile_rows": [
+        0,
+        32,
+        64,
+        96
+      ],
+      "settings_per_partition": [
+        34,
+        33,
+        33,
+        1
+      ],
+      "GPU_launches_per_fixture_sweep": 100,
+      "CPU_compute_calls_per_fixture_sweep": 67,
+      "D2H_copies_per_fixture_sweep": 101,
+      "per_split_timings_recorded": false
+    },
+    "scientific_witness": "src/winograd-julia/independent_artifact_audit.json",
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/winograd-julia/winograd-julia-cuda.jl/main.jl",
+          "sha256": "d77809898d8f8e3fe1d474dc20eb4a1d699ad20eb9ecbd6b3c5c825b31cdcb6b"
+        },
+        "configuration_id": "winograd_MAP131_twofixtures_full101_CPU_GPU_splits_F2x2_3x3_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+        "work_item_mapping": "One2x2outputtile/lane, source32x8logicalblock/flattened256; CPUtileprefix/GPUtilesuffix; noGPUlaunch100percent",
+        "data_layout": "Row-majorflatFP32input/output, row-major16transformedfilterelements, contiguoushostprefixtransfer",
+        "storage_precision": [
+          "float32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "synchronization": [
+          "Nointerthreadcommunication insideauthoredGPUkernel",
+          "AsyncGPUlaunch thenserialCPUwork",
+          "BlockingprefixH2D afterCPUwork",
+          "FullpreallocatedD2H completesGPUandhostprefixbeforechecking"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "registers": null,
+          "spills": null,
+          "private_state": "4x4input/tmp/transformed/product,2x4tmp,2x2finalStaticArrays.MMatrix"
+        },
+        "implementation_class": "mixed_host_device_pipeline",
+        "components": [
+          {
+            "class": "framework_device_kernel",
+            "definitions": 1,
+            "operation": "WinogradGPUtilesuffix"
+          },
+          {
+            "class": "host_computation",
+            "operation": "ActualserialJuliaCPUWinogradtileprefix, sharedhelper"
+          },
+          {
+            "class": "host_device_transfer",
+            "operation": "ContiguousprefixH2D+fullD2H"
+          }
+        ],
+        "backend_extensions": [
+          "CUDAhostallocation/copies/completion"
+        ],
+        "native_to_model_mapping": {
+          "status": "source_coexecution_algorithm_and_partitions_preserved",
+          "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+        },
+        "host_device_boundary": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+        "support_boundary": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.016564685,
+          0.017089289,
+          0.016480096,
+          0.016689062,
+          0.015826355
+        ],
+        "mean_last_four_seconds": 0.0165212005,
+        "profile_ids": [],
+        "keyconfounds": [
+          "NamedMAP_SIZE131/129x129outputs retainsall101sourceCPUoffsets and32x8logicalGPUgeometry; original1024sizeunmeasured. Percentoffsetsquantize to4actualCPUtilepartitions0/32/64/96; 101settingsarenot101distinctworkpartitions",
+          "Completehost/deviceco-executionregion includesasyncGPUlaunch, realserialCPUWinograd, prefixH2D andfullpreallocatedD2H. Theseare notkernel-onlytimes; per-split timesarenotsaved, onlytwofull-sweepsums, so nooptimal-splitclaim",
+          "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalranking",
+          "Native2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+          "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+          "ActualsourcefiltertransformationandC srand(1)/randfloatgenerator preserved infixture0; independent signed-dyadicfixture1. Float64matrixvsdirectcorrelationdiscrepancy<=1.572e-7 fromstoredtransformedF32filter, separatefromportdrift",
+          "Observationoutputstorage happensaftereachROI inall4; preallocatedactualhostbuffer/fullsourceD2H included. Primarytrialtime is sumtwofull101sweeps, notsourcewholeprograminitialization/oracle runtime",
+          "Sharednewstore/tile/CPUdriver work belongsreferencephaseonce; KAthenJACCmarginalwrappers reuseverifiedmath. Usagewindowsincludeothercases/sourcecommits/paper/audits/teamwork/cache; overlappingnonadditive/nonexclusive/billingunknown"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "reference_restoration",
+          "current_program_candidates": 2,
+          "current_process_evaluations": 2,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogram/processevaluationreachesGPU, notmeasurednumberofcompilerinternalpasses",
+          "frontend_rejections": 1,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "shared_host_parser_repairs": 1,
+          "source_kernel_definitions": 1,
+          "numerical_fixtures": 2,
+          "CPUoffset_settings_per_fixture": 101,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T002532011805Z_winograd",
+          "definition": "SharedhostdriverparserB2beforeJIT, secondprogramfirstGPUcandidateallpass; KA/JACCfirstGPUcandidatepasses.101settings/2fixtures/5trials are nottranslationattempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl"
+        }
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/winograd-julia/winograd-julia-KA/main.jl",
+          "sha256": "a061ec47dc7d2c805b028169cc5ca372cbe919164de69a67333815460af85b9f"
+        },
+        "configuration_id": "winograd_MAP131_twofixtures_full101_CPU_GPU_splits_F2x2_3x3_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+        "work_item_mapping": "One2x2outputtile/lane, source32x8logicalblock/flattened256; CPUtileprefix/GPUtilesuffix; noGPUlaunch100percent",
+        "data_layout": "Row-majorflatFP32input/output, row-major16transformedfilterelements, contiguoushostprefixtransfer",
+        "storage_precision": [
+          "float32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "synchronization": [
+          "Nointerthreadcommunication insideauthoredGPUkernel",
+          "AsyncGPUlaunch thenserialCPUwork",
+          "BlockingprefixH2D afterCPUwork",
+          "FullpreallocatedD2H completesGPUandhostprefixbeforechecking"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "registers": null,
+          "spills": null,
+          "private_state": "4x4input/tmp/transformed/product,2x4tmp,2x2finalStaticArrays.MMatrix"
+        },
+        "implementation_class": "mixed_host_device_pipeline",
+        "components": [
+          {
+            "class": "framework_device_kernel",
+            "definitions": 1,
+            "operation": "WinogradGPUtilesuffix"
+          },
+          {
+            "class": "host_computation",
+            "operation": "ActualserialJuliaCPUWinogradtileprefix, sharedhelper"
+          },
+          {
+            "class": "host_device_transfer",
+            "operation": "ContiguousprefixH2D+fullD2H"
+          }
+        ],
+        "backend_extensions": [
+          "CUDAhostallocation/copies/completion"
+        ],
+        "native_to_model_mapping": {
+          "status": "source_coexecution_algorithm_and_partitions_preserved",
+          "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+        },
+        "host_device_boundary": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+        "support_boundary": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.016355203,
+          0.016375847,
+          0.016302203,
+          0.016215156,
+          0.016386425
+        ],
+        "mean_last_four_seconds": 0.01631990775,
+        "profile_ids": [],
+        "keyconfounds": [
+          "NamedMAP_SIZE131/129x129outputs retainsall101sourceCPUoffsets and32x8logicalGPUgeometry; original1024sizeunmeasured. Percentoffsetsquantize to4actualCPUtilepartitions0/32/64/96; 101settingsarenot101distinctworkpartitions",
+          "Completehost/deviceco-executionregion includesasyncGPUlaunch, realserialCPUWinograd, prefixH2D andfullpreallocatedD2H. Theseare notkernel-onlytimes; per-split timesarenotsaved, onlytwofull-sweepsums, so nooptimal-splitclaim",
+          "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalranking",
+          "Native2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+          "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+          "ActualsourcefiltertransformationandC srand(1)/randfloatgenerator preserved infixture0; independent signed-dyadicfixture1. Float64matrixvsdirectcorrelationdiscrepancy<=1.572e-7 fromstoredtransformedF32filter, separatefromportdrift",
+          "Observationoutputstorage happensaftereachROI inall4; preallocatedactualhostbuffer/fullsourceD2H included. Primarytrialtime is sumtwofull101sweeps, notsourcewholeprograminitialization/oracle runtime",
+          "Sharednewstore/tile/CPUdriver work belongsreferencephaseonce; KAthenJACCmarginalwrappers reuseverifiedmath. Usagewindowsincludeothercases/sourcecommits/paper/audits/teamwork/cache; overlappingnonadditive/nonexclusive/billingunknown"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogram/processevaluationreachesGPU, notmeasurednumberofcompilerinternalpasses",
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "shared_host_parser_repairs": 0,
+          "source_kernel_definitions": 1,
+          "numerical_fixtures": 2,
+          "CPUoffset_settings_per_fixture": 101,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T002628639432Z_winograd",
+          "definition": "SharedhostdriverparserB2beforeJIT, secondprogramfirstGPUcandidateallpass; KA/JACCfirstGPUcandidatepasses.101settings/2fixtures/5trials are nottranslationattempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl"
+        }
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/winograd-julia/winograd-julia-JACC/main.jl",
+          "sha256": "1b5eb24e2de33417eabb6ff6f07c7e28dfb2a6cab283753c109a1daa63fcda5d"
+        },
+        "configuration_id": "winograd_MAP131_twofixtures_full101_CPU_GPU_splits_F2x2_3x3_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "WinogradF(2x2,3x3) input/filter/output transforms,16elementproducts/tile versus36directproducts; serialCPU tile prefix overlappedwithGPU tile suffix",
+        "work_item_mapping": "One2x2outputtile/lane, source32x8logicalblock/flattened256; CPUtileprefix/GPUtilesuffix; noGPUlaunch100percent",
+        "data_layout": "Row-majorflatFP32input/output, row-major16transformedfilterelements, contiguoushostprefixtransfer",
+        "storage_precision": [
+          "float32"
+        ],
+        "compute_precision": [
+          "float32"
+        ],
+        "synchronization": [
+          "Nointerthreadcommunication insideauthoredGPUkernel",
+          "AsyncGPUlaunch thenserialCPUwork",
+          "BlockingprefixH2D afterCPUwork",
+          "FullpreallocatedD2H completesGPUandhostprefixbeforechecking"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "registers": null,
+          "spills": null,
+          "private_state": "4x4input/tmp/transformed/product,2x4tmp,2x2finalStaticArrays.MMatrix"
+        },
+        "implementation_class": "mixed_host_device_pipeline",
+        "components": [
+          {
+            "class": "framework_device_kernel",
+            "definitions": 1,
+            "operation": "WinogradGPUtilesuffix"
+          },
+          {
+            "class": "host_computation",
+            "operation": "ActualserialJuliaCPUWinogradtileprefix, sharedhelper"
+          },
+          {
+            "class": "host_device_transfer",
+            "operation": "ContiguousprefixH2D+fullD2H"
+          }
+        ],
+        "backend_extensions": [
+          "CUDAhostallocation/copies/completion"
+        ],
+        "native_to_model_mapping": {
+          "status": "source_coexecution_algorithm_and_partitions_preserved",
+          "reason": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared"
+        },
+        "host_device_boundary": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+        "support_boundary": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.015354244,
+          0.015268902,
+          0.015328027,
+          0.014799737,
+          0.015689756
+        ],
+        "mean_last_four_seconds": 0.0152716055,
+        "profile_ids": [],
+        "keyconfounds": [
+          "NamedMAP_SIZE131/129x129outputs retainsall101sourceCPUoffsets and32x8logicalGPUgeometry; original1024sizeunmeasured. Percentoffsetsquantize to4actualCPUtilepartitions0/32/64/96; 101settingsarenot101distinctworkpartitions",
+          "Completehost/deviceco-executionregion includesasyncGPUlaunch, realserialCPUWinograd, prefixH2D andfullpreallocatedD2H. Theseare notkernel-onlytimes; per-split timesarenotsaved, onlytwofull-sweepsums, so nooptimal-splitclaim",
+          "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalranking",
+          "Native2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+          "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+          "ActualsourcefiltertransformationandC srand(1)/randfloatgenerator preserved infixture0; independent signed-dyadicfixture1. Float64matrixvsdirectcorrelationdiscrepancy<=1.572e-7 fromstoredtransformedF32filter, separatefromportdrift",
+          "Observationoutputstorage happensaftereachROI inall4; preallocatedactualhostbuffer/fullsourceD2H included. Primarytrialtime is sumtwofull101sweeps, notsourcewholeprograminitialization/oracle runtime",
+          "Sharednewstore/tile/CPUdriver work belongsreferencephaseonce; KAthenJACCmarginalwrappers reuseverifiedmath. Usagewindowsincludeothercases/sourcecommits/paper/audits/teamwork/cache; overlappingnonadditive/nonexclusive/billingunknown"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogram/processevaluationreachesGPU, notmeasurednumberofcompilerinternalpasses",
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "shared_host_parser_repairs": 0,
+          "source_kernel_definitions": 1,
+          "numerical_fixtures": 2,
+          "CPUoffset_settings_per_fixture": 101,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T002743640722Z_winograd",
+          "definition": "SharedhostdriverparserB2beforeJIT, secondprogramfirstGPUcandidateallpass; KA/JACCfirstGPUcandidatepasses.101settings/2fixtures/5trials are nottranslationattempts."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl"
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/winograd-julia/winograd-julia-cuda.jl/main.jl",
+    "sha256": "d77809898d8f8e3fe1d474dc20eb4a1d699ad20eb9ecbd6b3c5c825b31cdcb6b",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        11
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "winograd_MAP131_twofixtures_full101_CPU_GPU_splits_F2x2_3x3_v1",
+      "run_id": "20261018T002743640722Z_winograd",
+      "result": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "b0167df6733056e9f3a64d8785af033c6006df77a53952b2dbd839696b5178ab",
+      "source_hash": "cbe531fa14c4c187f53422bc82321284704940443c2fb4c876deb14c091131de",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.016564685,
+        0.017089289,
+        0.016480096,
+        0.016689062,
+        0.015826355
+      ],
+      "mean_last_four_seconds": 0.0165212005,
+      "contract": {
+        "MAP_SIZE": 131,
+        "cases": [
+          "source_rand_seed1",
+          "signed_dyadic"
+        ],
+        "splits": 101,
+        "unique_CPUtile_rows": [
+          0,
+          32,
+          64,
+          96
+        ],
+        "ROI": "Sumtwofull101splitcoexecutiontimes:asyncGPUlaunch,serialCPUtilemath,contiguousprefixH2D,fullpreallocatedD2H. Sourceoriginaltimerpersplit; captures/oracles outside, sourcecheckerretained alongside independentstrongcheck.",
+        "scope": "Full101CPUoffsets0..100,source32x8GPUgeometry andrealCPU/GPUoverlap/prefixH2D/fullD2H. NamedMAP_SIZE131, original1024unmeasured. NativeOpenMPpragmasareinactive underoriginalnvccMakefile(no-fopenmp), matchingdeclaredbuild; JuliaCPUloopserial.",
+        "precision": "GPUandCPUFP32sourceWinograd,Float64independentmatrix/directcorrelationoraclesoutsideROI",
+        "mapping": "Nativephysical32x8blocks/2Dgrid vsJulialinear256lanes/flatgrid samewarp/laneorder, privateCarrays vsMMatrix; actualJuliaCPUloopserial vsnativeC++serial(noOpenMP)",
+        "historical_alignment": "OldJulia genuineWinograd butMatrixcolumnmajorinputaddresses/H2Drowviews/fullCPUfill/Arrayallocation differ source; restoredcommonrowmajorinputs+contiguousprefix+preallocatedD2H, no claimobservedoldGPUwronganswers"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "winograd-historical-timing",
+        "benchmark_id": "winograd",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S2",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "winograd-historical-timing",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "S2",
+          "phase": "reference_audit",
+          "is_failure": true,
+          "cause": "HistoricalJuliausesMatrixcolumnmajorinputaddressing andstridedrowH2D, CPUfull-outputfill andnewArrayreadbackallocation insideROI; originalC++rowmajor/contiguousprefix/preallocatedreadback. ActualoldGPUwronganswernotinferred; aligncommondata/layout/timedprotocol",
+          "resolution": "Aligncanonicalrowmajorinputs/contiguousprefix/CPUwork/preallocatedreadback; genuineWinogradformula preserved, noinventedoldnumericfailure",
+          "evidence": {
+            "path": "src/winograd-julia/reference_history/main.jl",
+            "sha256": "4cf2f4d54849f7f78c5f5e0f80396ae3fbe1f256a0d8cebef17141b1b23aabdd"
+          }
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "winograd-parser",
+        "benchmark_id": "winograd",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B2",
+        "phase": "reference_restoration",
+        "origin_model": "shared_host_harness",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "winograd-parser",
+          "implementation_model": "cuda_jl",
+          "origin_model": "shared_host_harness",
+          "error_tag": "B2",
+          "phase": "reference_restoration",
+          "is_failure": true,
+          "cause": "Missing whitespace beforeforgenerator insharedhostdriver; actualParseErrorbeforedeviceJIT",
+          "resolution": "Whitespacefixonly, nativeexactreuse, firstscientificGPUcandidatepasses",
+          "run_id": "20261018T002456025443Z_winograd",
+          "evidence": {
+            "path": "src/winograd-julia/reference_history/candidate1/diagnosis.json",
+            "sha256": "5d0babb00055d9ef9aa577bb07b1851618be54fe873ff751a7419e50b58df80d"
+          }
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "winograd-mapping-cuda_jl",
+        "benchmark_id": "winograd",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/winograd.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "winograd-mapping-cuda_jl",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "NativeCPUutils OpenMPpragmas inactive withoriginalMakefile/no-fopenmp; originalC++serialCPUvsJuliaCPUsharedMMatrixhelper/dispatch/compiler andpageablecopyAPI arecovariates. NoGPU-onlyframeworkcausalrankingNative2D32x8threadblocks/2Dgrid vsJulialinear256lanes/flattenedgrid, samewarp/laneorder; sourceprivateCarrays vsStaticArrays.MMatrix. Registers/spills/occupancyunprofiled; JACCrequests0shared",
+          "resolution": "ExplicitCPU/launch/storagecovariatesforwholepipeline, notunsupported"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 2,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "status": "prospective_activity_windows_with_unknown_history",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/winograd/cuda_jl_reference_restoration.jsonl",
+          "model": "cuda_jl",
+          "phase": "reference_restoration",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1540901,
+            "cached_input_tokens": 1436416,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 10145,
+            "reasoning_output_tokens": 2881,
+            "total_tokens": 1551046
+          },
+          "scope": "FirstsharedhostdriverparserB2(beforeJIT), secondprogramfirstGPUcandidateall5pass. Full101cooffsets/twofixtures/fulloutputs. Actualsourcefilter/C rand fixturegenerator andindependentmatrix/directoracle. InterleavesPNS/TSAcommits,paperregistryrefresh,teamtransfers; notexclusive."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/winograd/jacc_translation.jsonl",
+          "model": "jacc",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1326731,
+            "cached_input_tokens": 1316096,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2920,
+            "reasoning_output_tokens": 972,
+            "total_tokens": 1329651
+          },
+          "scope": "FirstJACCcandidateall5full101splitoutputs passbothrefs/independentoracles/sourcepercentchecker; exactlyCUDAjl. Interleavespaperrefresh/push andpipelineclassificationaudit,notexclusive."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/winograd/ka_translation.jsonl",
+          "model": "ka",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 732266,
+            "cached_input_tokens": 730368,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2828,
+            "reasoning_output_tokens": 1159,
+            "total_tokens": 735094
+          },
+          "scope": "FirstKA candidateall5passes/full202outputs exactCUDAjl. IncludespaperFSMdiversityparagraph/build, numerical/effort audittasks,queuescopecoordination."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/winograd/shared_annotation.jsonl",
+          "model": "shared",
+          "phase": "annotation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 790194,
+            "cached_input_tokens": 788352,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 6663,
+            "reasoning_output_tokens": 1225,
+            "total_tokens": 796857
+          },
+          "scope": "All20captures/full202outputsCPUaudited, source/modelpipelineontology/manifests/attempt/failure/tokenmetadata/paperobservations andguideswrittenprecedingmodelround; noGPUreruns. SeparateENDround."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/winograd/shared_benchmark_workflow.jsonl",
+          "model": "shared",
+          "phase": "benchmark_workflow",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 4390092,
+            "cached_input_tokens": 4271232,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 22556,
+            "reasoning_output_tokens": 6237,
+            "total_tokens": 4412648
+          },
+          "scope": "Inclusiveaudit/restoration/reference/KA/JACC/annotation includesotherbenchcommits,paperpush/audits/guides/teamcoordinationandcache. InitialMakefile/filelistinspectionbeforeBEGINexplicitunknownsmallcost; overlapnonadditive/nonexclusive/notbilled. ENDseparateroundafterannotation."
+        }
+      ],
+      "estimated_saved_source_tokens": 122,
+      "method": "Sourcechars/4 proxy not consumption; actualper-phasecounters include cache/repeatedcontext/coordination; broadworkflowoverlaps. Makefile/filelistinspectionjustbeforeBEGINunknownsmallcost, historicalgenuineportcostunknown; no additive/exclusive/billedcost.",
+      "receipt_scope": "Counterreceipt/commitworkafterclosedphasesexcluded; ENDseparatelaterroundafterannotation."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "6431820565f1eca34ebdf308",
+        "begin_event_id": "88893bdab77fa27475532f1c",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_restoration",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T00:26:03.812895+00:00",
+        "usage_event_timestamp": "2026-10-18T00:25:51.939Z",
+        "elapsed_usage_event_start": "2026-10-18T00:21:26.910Z",
+        "delta_usage": {
+          "input_tokens": 1540901,
+          "cached_input_tokens": 1436416,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10145,
+          "reasoning_output_tokens": 2881,
+          "total_tokens": 1551046
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 11.873895,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "6a33d4535ea664d34cab81b34486db69df381d25061027c480c4d669a0b94495",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "FirstsharedhostdriverparserB2(beforeJIT), secondprogramfirstGPUcandidateall5pass. Full101cooffsets/twofixtures/fulloutputs. Actualsourcefilter/C rand fixturegenerator andindependentmatrix/directoracle. InterleavesPNS/TSAcommits,paperregistryrefresh,teamtransfers; notexclusive.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 9.485591,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/winograd/cuda_jl_reference_restoration.jsonl",
+        "evidence_sha256": "b77cb28158dc99e13e559068f7558d4a0388e114fdbadb4512bba2f651771a30",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/winograd-julia-cuda/manifest.json",
+    "selected_sha256": "2e591ba9cd1c539c5775973781b121b25c1b979567c51c50af4dd33cef482c73",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/winograd-julia-cuda/manifest.json",
+        "sha256": "2e591ba9cd1c539c5775973781b121b25c1b979567c51c50af4dd33cef482c73"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": {
+    "benchmark": "winograd",
+    "model": "cuda_jl",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd/result.json",
+    "evidence": [
+      {
+        "path": "src/winograd-julia/winograd-julia-cuda.jl/main.jl",
+        "sha256": "d77809898d8f8e3fe1d474dc20eb4a1d699ad20eb9ecbd6b3c5c825b31cdcb6b"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261018T002743640722Z_winograd/result.json",
+        "sha256": "b0167df6733056e9f3a64d8785af033c6006df77a53952b2dbd839696b5178ab"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "mixed_host_device_pipeline",
+    "annotation_path": ".porting-state/portable_julia/traits/winograd.json",
+    "annotation_sha256": "99bc5dfa9d88856f129fddfc39493ecb174b458168863aaecf4452e59cf3f8ca",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

@@ -1,0 +1,503 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "moe-sum",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/moe-sum.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Independent short expert-axis sum.",
+    "mapping": "512 groups1024 lanes in Julia; vec4 handles four scalar components but only256 lanes active; nativevec4 uses256 threads.",
+    "layout": "Contiguous Float32[token,expert,feature] and[token,feature].",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 accumulation"
+    },
+    "implementation_detail": "Group/local indices with same1024-thread scalarizedvec4 mapping.",
+    "memory": "Global buffers only.",
+    "synchronization": [],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/moe-sum-julia/moe-sum-julia-KA/main.jl",
+        "sha256": "864b7d1a0311cc91bd68e281888acda400f63acd11ab2e23a80e4204e63a3573",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Independent short expert-axis sum.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "512 groups1024 lanes in Julia; vec4 handles four scalar components but only256 lanes active; nativevec4 uses256 threads.",
+    "layout": "Contiguous Float32[token,expert,feature] and[token,feature].",
+    "storage_precision": "float32",
+    "compute_precision": "float32 accumulation",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global buffers only.",
+    "synchronization": [],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/moe-sum-julia/moe-sum-julia-KA/main.jl",
+        "sha256": "864b7d1a0311cc91bd68e281888acda400f63acd11ab2e23a80e4204e63a3573",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "moe-sum",
+    "primary_motif": "short_expert_dimension_reduction",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "none_within_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Nativecompile-time topK vs inheritedruntime parameter; nativevec4 float4/256threads vs Juliascalarcomponents/1024threads"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Nativevec4 vectorization and256threads vs inherited1024thread scalarizedport",
+      "Compile-time vsruntime topK specialization",
+      "Only topK3 namedshape, topK2/4 unmeasured"
+    ],
+    "jacc_shared_memory_policy": "explicit_zero",
+    "observation": "research/observations/moe-sum.md",
+    "ontology_sha256": "cf1df546d61b063b417eef6c7264f0399e50b0f935b35b75f4ca954d0f9b9771",
+    "configuration_overrides": {
+      "fp32_tokens512_hidden1024_topk3_scalar_repeat10_v1": {
+        "threads_per_block": 1024,
+        "logical_bytes_per_output": 16
+      },
+      "fp32_tokens512_hidden1024_topk3_vec4_repeat10_v1": {
+        "native_threads_per_block": 256,
+        "julia_threads_per_block": 1024,
+        "logical_bytes_per_output": 16
+      }
+    },
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "mixture_of_experts_output_aggregation",
+      "scientific_task": "Sum selected expert outputs for each token feature.",
+      "mathematical_operation": "output[token,feature]=sum(expert=1..3) input[token,expert,feature]; no routing weights in this kernel.",
+      "discretization_or_topology": "512 tokens,3 experts,1024 hidden features; scalar andvec4 cases.",
+      "invariants": [
+        "Each output contains exactly three expert terms."
+      ],
+      "accuracy_requirements": [
+        "All524288 Float32 values absolute1e-4 dual-reference/CPU verified."
+      ],
+      "precision_sensitivity": "Float32 short reduction order; packed vectorization affects code shape not mathematical formula.",
+      "input_size_regimes": "topK3 only; topK2/4 original cases unmeasured.",
+      "community_use_case": "Mixture-of-experts tensor aggregation; source names num_tokens/topk/hidden_size, not a particular scientific model.",
+      "uncertainty": "No gating, weighted routing, expert computation or end-to-end neural inference included.",
+      "provenance": [
+        {
+          "path": "src/moe-sum-cuda/main.cu",
+          "sha256": "cc809942d3e63f593d615cf582e87e5fe0407dbbf945186f421b7a26c82032cb",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/moe-sum-julia/study_common.jl",
+          "sha256": "db93c05a8b3340c7832564688804b850ad6ffe6d26ca1e72584ffec48ca7b1b6",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:18:45.330115+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent short expert-axis sum.",
+        "mapping": "512 groups1024 lanes in Julia; vec4 handles four scalar components but only256 lanes active; nativevec4 uses256 threads.",
+        "layout": "Contiguous Float32[token,expert,feature] and[token,feature].",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 accumulation"
+        },
+        "implementation_detail": "Runtime topK and scalar pair/component loops, includingvec4.",
+        "memory": "Global buffers only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/moe-sum-julia/moe-sum-julia-cuda.jl/main.jl",
+            "sha256": "2408209025728f7c470904fb29127abb015a318bf990c96365db74ccbb2647e7",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent short expert-axis sum.",
+        "mapping": "512 groups1024 lanes in Julia; vec4 handles four scalar components but only256 lanes active; nativevec4 uses256 threads.",
+        "layout": "Contiguous Float32[token,expert,feature] and[token,feature].",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 accumulation"
+        },
+        "implementation_detail": "Group/local indices with same1024-thread scalarizedvec4 mapping.",
+        "memory": "Global buffers only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/moe-sum-julia/moe-sum-julia-KA/main.jl",
+            "sha256": "864b7d1a0311cc91bd68e281888acda400f63acd11ab2e23a80e4204e63a3573",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent short expert-axis sum.",
+        "mapping": "512 groups1024 lanes in Julia; vec4 handles four scalar components but only256 lanes active; nativevec4 uses256 threads.",
+        "layout": "Contiguous Float32[token,expert,feature] and[token,feature].",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 accumulation"
+        },
+        "implementation_detail": "Linear callback recovers1024-lane token group; scalarizedvec4; explicitshmem0.",
+        "memory": "Global buffers only; current explicitshmem0.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/moe-sum-julia/moe-sum-julia-JACC/main.jl",
+            "sha256": "4d0c0bab95c596828f8ae096b75e0b4d744c55d1ddbac756fe6d8affb90cfc07",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/moe-sum-julia/moe-sum-julia-KA/main.jl",
+    "sha256": "864b7d1a0311cc91bd68e281888acda400f63acd11ab2e23a80e4204e63a3573",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        19
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_tokens512_hidden1024_topk3_scalar_repeat10_v1",
+      "run_id": "20261017T000436936122Z_moe-sum",
+      "result": ".porting-state/portable_julia/runs/20261017T000436936122Z_moe-sum/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "43a00a8ed234e5d0fcf75364b8fe2ec87624d4634a696e04f4aaa586b1e775e3",
+      "source_hash": "d534d6ec57658ba313b6c494a12119d1c88c6490acf5864eeb93780ebc3b3390",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T000436936122Z_moe-sum/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.38512e-05,
+        2.16722e-05,
+        1.91042e-05,
+        1.89691e-05,
+        1.82182e-05
+      ],
+      "mean_last_four_seconds": 1.9490925000000002e-05,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          512,
+          3,
+          1024
+        ],
+        "fixture": "Float32((17*i)%257-128)/128 zero-basedi",
+        "internal_repeats": 10,
+        "kernel": "scalar",
+        "coverage": "topk3 scalar/vec4; topk2/4 originalcasesunmeasured",
+        "mapping": "nativecompile-timetopk vs Julia runtime loop; nativevec4 uses256threads while inheritedJulia/KA/JACC vec4 uses1024threads"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "threads_per_block": 1024,
+        "logical_bytes_per_output": 16
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_tokens512_hidden1024_topk3_vec4_repeat10_v1",
+      "run_id": "20261017T000447217581Z_moe-sum",
+      "result": ".porting-state/portable_julia/runs/20261017T000447217581Z_moe-sum/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "fe95ea00075e8bd0227dafc5a89d70b63c539e4b3401f0749d8af009773cd783",
+      "source_hash": "d534d6ec57658ba313b6c494a12119d1c88c6490acf5864eeb93780ebc3b3390",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T000447217581Z_moe-sum/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.64442e-05,
+        2.48912e-05,
+        2.21962e-05,
+        2.24502e-05,
+        2.15322e-05
+      ],
+      "mean_last_four_seconds": 2.276745e-05,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          512,
+          3,
+          1024
+        ],
+        "fixture": "Float32((17*i)%257-128)/128 zero-basedi",
+        "internal_repeats": 10,
+        "kernel": "vec4",
+        "coverage": "topk3 scalar/vec4; topk2/4 originalcasesunmeasured",
+        "mapping": "nativecompile-timetopk vs Julia runtime loop; nativevec4 uses256threads while inheritedJulia/KA/JACC vec4 uses1024threads"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "native_threads_per_block": 256,
+        "julia_threads_per_block": 1024,
+        "logical_bytes_per_output": 16
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "moe-sum-ka-P1-retrospective-implementation",
+        "benchmark_id": "moe-sum",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/moe-sum.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "moe-sum-ka-P1-retrospective-implementation",
+          "benchmark": "moe-sum",
+          "model": "ka",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native compile-time topK and packedfloat4/256-threadvec4 versus inherited runtime topK and1024-thread scalar components.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/moe-sum-cuda/main.cu",
+              "sha256": "cc809942d3e63f593d615cf582e87e5fe0407dbbf945186f421b7a26c82032cb",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/moe-sum-julia/moe-sum-julia-KA/main.jl",
+              "sha256": "864b7d1a0311cc91bd68e281888acda400f63acd11ab2e23a80e4204e63a3573",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 3052,
+      "output_tokens": 397,
+      "cached_tokens": null,
+      "total_tokens": 3449,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/moe-sum-cuda/main.cu",
+        "src/moe-sum-cuda/reference.h",
+        "src/moe-sum-cuda/kernels.h",
+        "src/moe-sum-julia/moe-sum-julia-cuda.jl/main.jl",
+        "src/moe-sum-julia/moe-sum-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/moe-sum-julia-ka/manifest.json",
+    "selected_sha256": "b9c7461ff3cd36ddd4a0764932226432248e821e37d7e3342cd8bd8d9023a547",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/moe-sum-julia-ka/manifest.json",
+        "sha256": "b9c7461ff3cd36ddd4a0764932226432248e821e37d7e3342cd8bd8d9023a547"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "761816b036591ea9dca047b43d9ed9ddb29c2026",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/moe-sum.json",
+    "annotation_sha256": "939b53d7dbbf8035e8b0b0862dbfa30d18a1d93342f698f34848ef9fe538c155",
+    "field": "implementation_class.julia-ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

@@ -1,0 +1,765 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "gaussian",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/gaussian.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Nonpivoted Gaussian forward elimination with precomputed column multipliers and rank1 trailing updates; host backward substitution excluded from timing.",
+    "mapping": "127 ordered pivots,fan1 grid1 block256;fan2 grid8x8 block16x16 with column=x,row=y;full grid maintained everypivot and activebounds shrink.",
+    "layout": "Flat row-major A and M, contiguous b and host x; no transpose or library factorization.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 divide/multiply/subtract",
+      "CPU independent solve": "float64 pivoted LAPACK/BLAS outside timer, not GPU implementation"
+    },
+    "implementation_detail": "Fresh real kernels replace archived touch loop; explicit CUDA grid axes match native.",
+    "memory": "Two128x128Float32 arrays plus128Float32 RHS, no shared scratch. Actual registers/spills unknown.",
+    "synchronization": [
+      "ordered same-stream fan1/fan2 kernels eachpivot",
+      "synchronized clock endpoints"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "fan1_blocks": 1,
+      "fan1_threads": 256,
+      "fan2_blocks": [
+        8,
+        8
+      ],
+      "fan2_threads": [
+        16,
+        16
+      ],
+      "kernels_per_forward": 254,
+      "shared_bytes": 0,
+      "registers": null
+    },
+    "resource_policy": "Explicit fixed source-matching grid/group geometry, JACC dynamicshared0.",
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend only for timed forward elimination; CPU Float64 pivoted validation invokes host linear algebra outside timer.",
+    "host_control_boundary": "Pivot-loop kernel launches timed; resets/H2D,D2H,Float32 BackSub,Float64 solve, residual and artifacts excluded.",
+    "fidelity_status": "Full source-mapped two-kernel forwardphase, original hostbacksolve and finite solution checks, named fixture only.",
+    "provenance": [
+      {
+        "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+        "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+        "source_locations": "actual kernel arithmetic, axes, launch policy and precision"
+      },
+      {
+        "path": "src/gaussian-julia/study_common.jl",
+        "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+        "source_locations": "scope/independent numerical criteria"
+      }
+    ],
+    "attempt_count_policy": "Current reference repair1candidate/check separate from historical unknown cost; targets each1candidate/check.",
+    "configuration_id": "gaussian_float32_toeplitz_exp_n128_forward_plus_outside_hostsolve_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Nonpivoted Gaussian forward elimination with precomputed column multipliers and rank1 trailing updates; host backward substitution excluded from timing.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "127 ordered pivots,fan1 grid1 block256;fan2 grid8x8 block16x16 with column=x,row=y;full grid maintained everypivot and activebounds shrink.",
+    "layout": "Flat row-major A and M, contiguous b and host x; no transpose or library factorization.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 divide/multiply/subtract",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Two128x128Float32 arrays plus128Float32 RHS, no shared scratch. Actual registers/spills unknown.",
+    "synchronization": [
+      "ordered same-stream fan1/fan2 kernels eachpivot",
+      "synchronized clock endpoints"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": "Explicit fixed source-matching grid/group geometry, JACC dynamicshared0.",
+    "launch_geometry": {
+      "fan1_blocks": 1,
+      "fan1_threads": 256,
+      "fan2_blocks": [
+        8,
+        8
+      ],
+      "fan2_threads": [
+        16,
+        16
+      ],
+      "kernels_per_forward": 254,
+      "shared_bytes": 0,
+      "registers": null
+    },
+    "library_backend_boundary": "Framework CUDA backend only for timed forward elimination; CPU Float64 pivoted validation invokes host linear algebra outside timer.",
+    "host_control_boundary": "Pivot-loop kernel launches timed; resets/H2D,D2H,Float32 BackSub,Float64 solve, residual and artifacts excluded.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Full source-mapped two-kernel forwardphase, original hostbacksolve and finite solution checks, named fixture only.",
+    "source_review_evidence": [
+      {
+        "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+        "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+        "source_locations": "actual kernel arithmetic, axes, launch policy and precision"
+      },
+      {
+        "path": "src/gaussian-julia/study_common.jl",
+        "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+        "source_locations": "scope/independent numerical criteria"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "gaussian",
+    "primary_motif": "dense_nonpivoted_elimination_pivot_stages",
+    "storage_precision": [
+      "float32_rowmajor_matrix",
+      "float32_rhs",
+      "float32_multipliers"
+    ],
+    "compute_precision": [
+      "float32_divide_multiply_subtract"
+    ],
+    "synchronization": [
+      "ordered_fan1_fan2_per_pivot",
+      "ordered_pivot_stages"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same nonpivoted fan1/fan2 arithmetic, flat row-major layout,256-thread multiplier kernel and16x16 update kernel; all254 kernels and host backsolve boundary match."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Named128x128 exponential Toeplitz matrix only; source4096 size and arbitrary file-input matrices unmeasured.",
+      "No pivoting is performed by original kernels; singular, zero-pivot and ill-conditioned arbitrary matrices are outside certified fixture.",
+      "Timed scope is complete GPU forward elimination only; host backsolve, allocation/transfers and all independent solve/residual checks are outside.",
+      "Canonical binary fixture evaluates10*exp(-.01*distance) with Python Float64 then roundsFloat32, avoiding generator/library rounding differences; not a byte-identical claim about native init_matrix for every size.",
+      "Full device state is about128.5KiB and fits V100 L2;254 host-ordered launches perforward pass, no profiled bottleneck attribution.",
+      "Native fused contraction versus Julia multiply/subtract lowering is not audited at ISA level; observed differences are tolerated, cause not established.",
+      "JACC first draft uses separate launch specs learned from FWT and successful KA mapping; effort is sequential, consumed usage includes cached context and coordination."
+    ],
+    "jacc_shared_memory_policy": "explicit_zero_bytes_separate_1D_2D_specs",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "linear_algebra",
+      "primary_domain": "dense_nonpivoted_gaussian_elimination_linear_system",
+      "scientific_task": "Solve Ax=b by GPU forward Gaussian elimination followed by host backward substitution.",
+      "mathematical_operation": "m_it=a_it/a_tt; a_ij-=m_it*a_tj; b_i-=m_it*b_t for i>t,j>=t; host back substitution of resulting upper triangular system.",
+      "discretization_or_topology": "Dense row-major128x128 Float32 matrix with exponential Toeplitz a_ij=10exp(-.01|i-j|), rhs1 and separate full multiplier array.",
+      "invariants": [
+        "Pivot row remains unchanged within each fan2 launch.",
+        "Exactly one column-zero lane updates each lower-row rhs per pivot.",
+        "Original Ax-b scaled infinity residual <1e-5 on named fixture."
+      ],
+      "accuracy_requirements": [
+        "All33024 A,b,m,x scalar values checked; full intermediateatol1e-4 and source solutionatol1e-3.",
+        "Independent pivoted Float64 solve requires solution maxerror<=1e-3; all finite and scaledresidual<1e-5."
+      ],
+      "precision_sensitivity": "Float32 elimination without pivoting can amplify rounding and depends on nonzero pivots/conditioning; general input stability is not established.",
+      "input_size_regimes": "NamedN128 with254 kernel launches, one complete forward pass pertrial; native4096 and input-file workloads unmeasured.",
+      "community_use_case": "Dense linear-system algorithm primitive; source has no particular PDE, physical model or application dataset.",
+      "uncertainty": "Toeplitz source generator is a synthetic solver test, not evidence of domain-science validation.",
+      "provenance": [
+        {
+          "path": "src/gaussian-cuda/gaussianElim.cu",
+          "sha256": "6b9d7e87fcfd04e0ff996f40c5bb7ab201938439abdfc5f1144d413f4233bd6f",
+          "source_locations": "actual generator, CPU reference, fan1/fan2, host backsolve/timing and verifier"
+        },
+        {
+          "path": "src/gaussian-julia/study_common.jl",
+          "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+          "source_locations": "independent solve, full-state and residual checks"
+        },
+        {
+          "path": "src/gaussian-julia/study_input_f32.bin",
+          "sha256": "51e06b3713d15f5e3956ec4c8a84d1104880822be092489dfe6d664513f495de",
+          "source_locations": "canonical common Float32 input bytes"
+        }
+      ],
+      "review_phase": "prospective post-verification annotation",
+      "reviewed_at": "2026-10-17T18:43:06.637762+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Nonpivoted Gaussian forward elimination with precomputed column multipliers and rank1 trailing updates; host backward substitution excluded from timing.",
+        "mapping": "127 ordered pivots,fan1 grid1 block256;fan2 grid8x8 block16x16 with column=x,row=y;full grid maintained everypivot and activebounds shrink.",
+        "layout": "Flat row-major A and M, contiguous b and host x; no transpose or library factorization.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 divide/multiply/subtract",
+          "CPU independent solve": "float64 pivoted LAPACK/BLAS outside timer, not GPU implementation"
+        },
+        "implementation_detail": "Fresh real kernels replace archived touch loop; explicit CUDA grid axes match native.",
+        "memory": "Two128x128Float32 arrays plus128Float32 RHS, no shared scratch. Actual registers/spills unknown.",
+        "synchronization": [
+          "ordered same-stream fan1/fan2 kernels eachpivot",
+          "synchronized clock endpoints"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "fan1_blocks": 1,
+          "fan1_threads": 256,
+          "fan2_blocks": [
+            8,
+            8
+          ],
+          "fan2_threads": [
+            16,
+            16
+          ],
+          "kernels_per_forward": 254,
+          "shared_bytes": 0,
+          "registers": null
+        },
+        "resource_policy": "Explicit fixed source-matching grid/group geometry, JACC dynamicshared0.",
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend only for timed forward elimination; CPU Float64 pivoted validation invokes host linear algebra outside timer.",
+        "host_control_boundary": "Pivot-loop kernel launches timed; resets/H2D,D2H,Float32 BackSub,Float64 solve, residual and artifacts excluded.",
+        "fidelity_status": "Full source-mapped two-kernel forwardphase, original hostbacksolve and finite solution checks, named fixture only.",
+        "provenance": [
+          {
+            "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+            "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+            "source_locations": "actual kernel arithmetic, axes, launch policy and precision"
+          },
+          {
+            "path": "src/gaussian-julia/study_common.jl",
+            "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+            "source_locations": "scope/independent numerical criteria"
+          }
+        ],
+        "attempt_count_policy": "Current reference repair1candidate/check separate from historical unknown cost; targets each1candidate/check.",
+        "configuration_id": "gaussian_float32_toeplitz_exp_n128_forward_plus_outside_hostsolve_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Nonpivoted Gaussian forward elimination with precomputed column multipliers and rank1 trailing updates; host backward substitution excluded from timing.",
+        "mapping": "127 ordered pivots,fan1 grid1 block256;fan2 grid8x8 block16x16 with column=x,row=y;full grid maintained everypivot and activebounds shrink.",
+        "layout": "Flat row-major A and M, contiguous b and host x; no transpose or library factorization.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 divide/multiply/subtract",
+          "CPU independent solve": "float64 pivoted LAPACK/BLAS outside timer, not GPU implementation"
+        },
+        "implementation_detail": "Global linear index for fan1 and NTuple col/row for fan2;same256-lane/16x16 groups.",
+        "memory": "Two128x128Float32 arrays plus128Float32 RHS, no shared scratch. Actual registers/spills unknown.",
+        "synchronization": [
+          "ordered same-stream fan1/fan2 kernels eachpivot",
+          "synchronized clock endpoints"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "fan1_blocks": 1,
+          "fan1_threads": 256,
+          "fan2_blocks": [
+            8,
+            8
+          ],
+          "fan2_threads": [
+            16,
+            16
+          ],
+          "kernels_per_forward": 254,
+          "shared_bytes": 0,
+          "registers": null
+        },
+        "resource_policy": "Explicit fixed source-matching grid/group geometry, JACC dynamicshared0.",
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend only for timed forward elimination; CPU Float64 pivoted validation invokes host linear algebra outside timer.",
+        "host_control_boundary": "Pivot-loop kernel launches timed; resets/H2D,D2H,Float32 BackSub,Float64 solve, residual and artifacts excluded.",
+        "fidelity_status": "Full source-mapped two-kernel forwardphase, original hostbacksolve and finite solution checks, named fixture only.",
+        "provenance": [
+          {
+            "path": "src/gaussian-julia/gaussian-julia-KA/main.jl",
+            "sha256": "1725073df138ca206db752068c33e156599f36651aaa22507cdbd49558cf9f93",
+            "source_locations": "actual kernel arithmetic, axes, launch policy and precision"
+          },
+          {
+            "path": "src/gaussian-julia/study_common.jl",
+            "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+            "source_locations": "scope/independent numerical criteria"
+          }
+        ],
+        "attempt_count_policy": "Current reference repair1candidate/check separate from historical unknown cost; targets each1candidate/check.",
+        "configuration_id": "gaussian_float32_toeplitz_exp_n128_forward_plus_outside_hostsolve_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Nonpivoted Gaussian forward elimination with precomputed column multipliers and rank1 trailing updates; host backward substitution excluded from timing.",
+        "mapping": "127 ordered pivots,fan1 grid1 block256;fan2 grid8x8 block16x16 with column=x,row=y;full grid maintained everypivot and activebounds shrink.",
+        "layout": "Flat row-major A and M, contiguous b and host x; no transpose or library factorization.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 divide/multiply/subtract",
+          "CPU independent solve": "float64 pivoted LAPACK/BLAS outside timer, not GPU implementation"
+        },
+        "implementation_detail": "1D and2D callbacks retainnative axes with separate explicit extent/grid LaunchSpecs,shmem0.",
+        "memory": "Two128x128Float32 arrays plus128Float32 RHS, no shared scratch. Actual registers/spills unknown.",
+        "synchronization": [
+          "ordered same-stream fan1/fan2 kernels eachpivot",
+          "synchronized clock endpoints"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "fan1_blocks": 1,
+          "fan1_threads": 256,
+          "fan2_blocks": [
+            8,
+            8
+          ],
+          "fan2_threads": [
+            16,
+            16
+          ],
+          "kernels_per_forward": 254,
+          "shared_bytes": 0,
+          "registers": null
+        },
+        "resource_policy": "Explicit fixed source-matching grid/group geometry, JACC dynamicshared0.",
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend only for timed forward elimination; CPU Float64 pivoted validation invokes host linear algebra outside timer.",
+        "host_control_boundary": "Pivot-loop kernel launches timed; resets/H2D,D2H,Float32 BackSub,Float64 solve, residual and artifacts excluded.",
+        "fidelity_status": "Full source-mapped two-kernel forwardphase, original hostbacksolve and finite solution checks, named fixture only.",
+        "provenance": [
+          {
+            "path": "src/gaussian-julia/gaussian-julia-JACC/main.jl",
+            "sha256": "142096316262e5092d8c57f8129cb773b278161dbf74222fcc0e9790c8e14b53",
+            "source_locations": "actual kernel arithmetic, axes, launch policy and precision"
+          },
+          {
+            "path": "src/gaussian-julia/study_common.jl",
+            "sha256": "4203633bddc681e933187736888067749c8d8ac373812469cd7a8634bb2fdfc4",
+            "source_locations": "scope/independent numerical criteria"
+          }
+        ],
+        "attempt_count_policy": "Current reference repair1candidate/check separate from historical unknown cost; targets each1candidate/check.",
+        "feedback_reuse": [
+          "Successful KA arithmetic/mapping",
+          "FWT LaunchSpec cached-grid lesson used before firstdraft; no new failure here."
+        ],
+        "configuration_id": "gaussian_float32_toeplitz_exp_n128_forward_plus_outside_hostsolve_v1"
+      }
+    },
+    "observation": "research/observations/gaussian.md",
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          0.000892629,
+          0.000875558,
+          0.000881998,
+          0.000893799
+        ],
+        "minimum": 0.000875558,
+        "maximum": 0.000893799,
+        "sample_standard_deviation": 8.752510992090594e-06,
+        "coefficient_of_variation": 0.009878725177191086,
+        "max_to_min_ratio": 1.0208335712768315,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          0.000789487,
+          0.000765307,
+          0.000760107,
+          0.000759067
+        ],
+        "minimum": 0.000759067,
+        "maximum": 0.000789487,
+        "sample_standard_deviation": 1.4260354133050115e-05,
+        "coefficient_of_variation": 0.01855628182603087,
+        "max_to_min_ratio": 1.0400755137557027,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.003093238,
+          0.002344702,
+          0.002265851,
+          0.00221402
+        ],
+        "minimum": 0.00221402,
+        "maximum": 0.003093238,
+        "sample_standard_deviation": 0.00041270261695267117,
+        "coefficient_of_variation": 0.16644907508427864,
+        "max_to_min_ratio": 1.3971138472100522,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.004622733,
+          0.003901846,
+          0.003951036,
+          0.003875216
+        ],
+        "minimum": 0.003875216,
+        "maximum": 0.004622733,
+        "sample_standard_deviation": 0.00035806355083827906,
+        "coefficient_of_variation": 0.08759519337904699,
+        "max_to_min_ratio": 1.1928968604588752,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+    "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        26,
+        27
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "gaussian_float32_toeplitz_exp_n128_forward_plus_outside_hostsolve_v1",
+      "run_id": "20261017T184042527629Z_gaussian",
+      "result": ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "c9b329ea22d1daa78f95309a8d8fb3140d144b85e0ba5b67690fb7564eabc0f4",
+      "source_hash": "6b897ad3c84ef2ed2455388565e56bf4bfda9c1fe3405c6121d2506dfe5e3091",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000819118,
+        0.000789487,
+        0.000765307,
+        0.000760107,
+        0.000759067
+      ],
+      "mean_last_four_seconds": 0.000768492,
+      "contract": "Shared checked-in canonicalFloat32 exponentialToeplitz128x128 fixture and b=1; zero multipliers; nonpivoted forward elimination254kernels timed, hostbacksolve/checks outside. NativeoriginalFan1/Fan2unchanged. Fulla,b,m,x outputs33024. Original4096size and file-input pivot/singularity cases unmeasured.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "gaussian-cuda_jl-S1-touch-alias",
+        "benchmark_id": "gaussian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "current_reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/gaussian.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "gaussian-cuda_jl-S1-touch-alias",
+          "benchmark": "gaussian",
+          "model": "cuda_jl",
+          "phase": "current_reference_repair",
+          "code": "S1",
+          "is_failure": true,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": 1,
+          "symptom": "Historical gaussian_touch! only increments boundedzeroarray then prints unconditionalPASS; no matrix/RHS/multipliers/elimination/backsolve.",
+          "resolution": "Archive original andreplace genuine source-mapped Fan1/Fan2 withfulloutput andindependentsolverchecks; currentcandidate1verified.",
+          "evidence": [
+            {
+              "path": "src/gaussian-julia/gaussian-julia-cuda.jl/original_main.jl",
+              "sha256": "d3f2590ced115ef46ceb1f09110cc5978a50c7082931b3eb50e1b48ef1a47a21",
+              "source_locations": "historicaltouch+PASS"
+            },
+            {
+              "path": "src/gaussian-cuda/gaussianElim.cu",
+              "sha256": "6b9d7e87fcfd04e0ff996f40c5bb7ab201938439abdfc5f1144d413f4233bd6f",
+              "source_locations": "actualtargetalgorithm"
+            },
+            {
+              "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+              "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+              "source_locations": "actualrepair"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "gaussian-cuda_jl-N3-tolerated-roundoff",
+        "benchmark_id": "gaussian",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_validation",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/gaussian.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "gaussian-cuda_jl-N3-tolerated-roundoff",
+          "benchmark": "gaussian",
+          "model": "cuda_jl",
+          "phase": "numerical_validation",
+          "code": "N3",
+          "is_failure": false,
+          "symptom": "Observednative/Juliafullstate maxdifference6.21676445e-5; independentFloat64solutionerror~4.54e-6 forJulia,scaledresidual~8.55e-9.",
+          "resolution": "Acceptunderstrictfullintermediate1e-4 andoriginalsolution1e-3 criteria; finiteandindependentchecksrequired. Arithmetic-lowering causeunprofiled.",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "d9378b636513d7cd81d642ea",
+        "begin_event_id": "b3b192927c5b2800aded191c",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_audit",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T18:39:09.018819+00:00",
+        "usage_event_timestamp": "2026-10-17T18:38:57.614Z",
+        "elapsed_usage_event_start": "2026-10-17T18:35:41.906Z",
+        "delta_usage": {
+          "input_tokens": 974973,
+          "cached_input_tokens": 861952,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5873,
+          "reasoning_output_tokens": 1783,
+          "total_tokens": 980846
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 11.404819,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "a548badc6076f18846c8d463b9827a4f8e2bb54a92637a3a7c78a9cbd08bc751",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Genuine reference candidate1 verified native and independentCPU complete outputs; historical touch alias repaired, no further GPU checks. Phase metadata saved prior round.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 7.390632,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/gaussian/cuda_jl_reference_audit.jsonl",
+        "evidence_sha256": "5faba0456b0a1984676c9f1a962d951e1e611c9314389bbc13226ec29e3803a1",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/gaussian-julia-cuda/manifest.json",
+    "selected_sha256": null,
+    "candidate_alias_records": [],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": {
+    "benchmark": "gaussian",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/result.json"
+    ],
+    "contract": "Shared checked-in canonicalFloat32 exponentialToeplitz128x128 fixture and b=1; zero multipliers; nonpivoted forward elimination254kernels timed, hostbacksolve/checks outside. NativeoriginalFan1/Fan2unchanged. Fulla,b,m,x outputs33024. Original4096size and file-input pivot/singularity cases unmeasured.",
+    "limitations": [
+      "Named128x128 exponential Toeplitz matrix only; source4096 size and arbitrary file-input matrices unmeasured.",
+      "No pivoting is performed by original kernels; singular, zero-pivot and ill-conditioned arbitrary matrices are outside certified fixture.",
+      "Timed scope is complete GPU forward elimination only; host backsolve, allocation/transfers and all independent solve/residual checks are outside.",
+      "Canonical binary fixture evaluates10*exp(-.01*distance) with Python Float64 then roundsFloat32, avoiding generator/library rounding differences; not a byte-identical claim about native init_matrix for every size.",
+      "Full device state is about128.5KiB and fits V100 L2;254 host-ordered launches perforward pass, no profiled bottleneck attribution.",
+      "Native fused contraction versus Julia multiply/subtract lowering is not audited at ISA level; observed differences are tolerated, cause not established.",
+      "JACC first draft uses separate launch specs learned from FWT and successful KA mapping; effort is sequential, consumed usage includes cached context and coordination."
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/gaussian.json",
+    "annotation_sha256": "51add2a24103242cdb020ec01e7146260e738da09f119b1a74f9bc2b2f9e7b8e",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/gaussian-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "75a2e4e0a11022aea0daf0dc1f938338752cf17ade499ffb2babf08a25ae4fe1",
+      "record": {
+        "benchmark_id": "gaussian",
+        "implementation_model": "cuda_jl",
+        "phase": "current_semantic_reference_repair",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 1,
+        "kernel_semantic_repair_rounds": 1,
+        "device_kernel_definitions": 2,
+        "guard_or_adapter_only": false,
+        "historical_translation_attempts": null,
+        "historical_total_tokens": null,
+        "current_input_tokens": null,
+        "current_output_tokens_proxy": 278,
+        "current_total_tokens": null,
+        "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+        "observed_consumed_usage": {
+          "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/gaussian/cuda_jl_reference_audit.jsonl",
+          "delta_usage": {
+            "input_tokens": 974973,
+            "cached_input_tokens": 861952,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 5873,
+            "reasoning_output_tokens": 1783,
+            "total_tokens": 980846
+          },
+          "scope": "RealCUDAjlreference/native/sharedfixture andindependentsolveraudit pluscache/context/coordination."
+        },
+        "source_files": [
+          {
+            "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+            "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+            "source_locations": "actual repaired reference"
+          },
+          {
+            "path": "src/gaussian-julia/gaussian-julia-cuda.jl/study.jl",
+            "sha256": "46d5d07b881090b19efd9849517ce40faf5af8e7dfcaed832bbe906d5263aa3f",
+            "source_locations": "actual repaired reference"
+          }
+        ],
+        "evidence": [
+          ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/result.json"
+        ]
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/gaussian-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "75a2e4e0a11022aea0daf0dc1f938338752cf17ade499ffb2babf08a25ae4fe1",
+    "record": {
+      "benchmark_id": "gaussian",
+      "implementation_model": "cuda_jl",
+      "phase": "current_semantic_reference_repair",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 1,
+      "kernel_semantic_repair_rounds": 1,
+      "device_kernel_definitions": 2,
+      "guard_or_adapter_only": false,
+      "historical_translation_attempts": null,
+      "historical_total_tokens": null,
+      "current_input_tokens": null,
+      "current_output_tokens_proxy": 278,
+      "current_total_tokens": null,
+      "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+      "observed_consumed_usage": {
+        "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/gaussian/cuda_jl_reference_audit.jsonl",
+        "delta_usage": {
+          "input_tokens": 974973,
+          "cached_input_tokens": 861952,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5873,
+          "reasoning_output_tokens": 1783,
+          "total_tokens": 980846
+        },
+        "scope": "RealCUDAjlreference/native/sharedfixture andindependentsolveraudit pluscache/context/coordination."
+      },
+      "source_files": [
+        {
+          "path": "src/gaussian-julia/gaussian-julia-cuda.jl/main.jl",
+          "sha256": "2a7da128912359931cf00a9340cb31a7b4e5aafc98d38f4e1f99daedbef4a680",
+          "source_locations": "actual repaired reference"
+        },
+        {
+          "path": "src/gaussian-julia/gaussian-julia-cuda.jl/study.jl",
+          "sha256": "46d5d07b881090b19efd9849517ce40faf5af8e7dfcaed832bbe906d5263aa3f",
+          "source_locations": "actual repaired reference"
+        }
+      ],
+      "evidence": [
+        ".porting-state/portable_julia/runs/20261017T184042527629Z_gaussian/result.json"
+      ]
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

@@ -1,0 +1,1078 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "marchingCubes",
+  "implementation_model": "jacc",
+  "status": "verified_native_behavior_known_scientific_defect",
+  "scientific_intent_record": "../../domains/marchingCubes.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "All five stages: coarse min/max, coarse scan compaction, fine min/max, fine scan compaction, triangle lookup/count/interpolation with atomic scalar summaries.",
+    "mapping": "Flattened256/128/400/1024/128 lanes per stage; same linear source warp/order/index reconstruction and actual active block counts. Generation240380 blocks; no host supplied active list.",
+    "layout": "Global minmax pairs, UInt32 compacted block IDs, source U16/I32/U8 tables; mixed shared arena retains U16 vertexIndices[128], F32values[225], U32warp sums[64].",
+    "precision": {
+      "storage": [
+        "float32",
+        "uint16",
+        "uint32",
+        "uint64",
+        "int32",
+        "uint8"
+      ],
+      "compute": "Float32 source field/interpolation/atomiccoords; exact UInt32 counts/offsets, UInt16localvertexencoding, UInt64checksum",
+      "independent_oracle": "Float64 field/minmax/coordinate accumulation and exact integer/table cube enumeration; oracle exploits source y invariance only"
+    },
+    "implementation_detail": "JACC.parallel_for, launch_spec, shared zero-template vector; explicit0stage3 and required bytesothers, CUDA shuffles/atomics/sync/deviceviews inside helper.",
+    "memory": "Dynamic shared plus immutable zero-template reads; sharedvector supports exact mixed-type reinterpretation.",
+    "synchronization": [
+      "warp_shuffle_scans",
+      "block_barriers",
+      "atomic_global_offsets",
+      "host_count_readback_between_levels",
+      "kernel_completion_before_timing/readback"
+    ],
+    "atomic_operations": [
+      "UInt32 global add returning baseoffset",
+      "UInt64 global triangleindexchecksum add",
+      "Float32 global coordinate sums"
+    ],
+    "implementation_class": "hybrid_device_intrinsics",
+    "cuda_specific_features": [
+      "CUDA.shfl_up_sync",
+      "CUDA.shfl_down_sync",
+      "CUDA.atomic_add!",
+      "CUDA.sync_threads",
+      "CUDA device pointers/shared typed views"
+    ],
+    "library_boundary": "No vendor whole-operator library; CUDA device intrinsics explicitly declared.",
+    "host_control_boundary": "Four untimed GPU preprocessing stages and count transfers; generation-only launch/sync timer. All allocations, CPU array verification, sorted-ID canonicalization, prefix/property serialization outsideclock.",
+    "resource_policy": {
+      "stage_threads": [
+        256,
+        128,
+        400,
+        1024,
+        128
+      ],
+      "logical_scratch_bytes": [
+        256,
+        128,
+        0,
+        128,
+        1412
+      ],
+      "jacc_extra_zero_template_load_barrier": true,
+      "registers_spills_occupancy": "unknown"
+    },
+    "fidelity_status": "Original observable contract verified; original field and topology defects preserved, validmesh/scientificgeometry fidelity excluded.",
+    "source_dependencies_shared_cost": "study_device.jl source helpers drafted/repaired in current_reference phase, not recharged as independent target first-program generation.",
+    "provenance": [
+      {
+        "path": "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl",
+        "sha256": "d5e2946e3ed4269da54a263dc46ae6bcd71164fb9945cdc603810bfdcb06f8ea",
+        "source_locations": "five target wrappers/index/shared/launchmapping"
+      },
+      {
+        "path": "src/marchingCubes-julia/study_device.jl",
+        "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+        "source_locations": "allfive actual device algorithm helpers"
+      }
+    ],
+    "attempt_count_policy": "Actual target candidates/checks separate from reference/native/annotation; no hidden compiler-pass inference, historicalstubcostunknown.",
+    "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "All five stages: coarse min/max, coarse scan compaction, fine min/max, fine scan compaction, triangle lookup/count/interpolation with atomic scalar summaries.",
+    "implementation_class": "hybrid_device_intrinsics",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Flattened256/128/400/1024/128 lanes per stage; same linear source warp/order/index reconstruction and actual active block counts. Generation240380 blocks; no host supplied active list.",
+    "layout": "Global minmax pairs, UInt32 compacted block IDs, source U16/I32/U8 tables; mixed shared arena retains U16 vertexIndices[128], F32values[225], U32warp sums[64].",
+    "storage_precision": [
+      "float32",
+      "uint16",
+      "uint32",
+      "uint64",
+      "int32",
+      "uint8"
+    ],
+    "compute_precision": "Float32 source field/interpolation/atomiccoords; exact UInt32 counts/offsets, UInt16localvertexencoding, UInt64checksum",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Dynamic shared plus immutable zero-template reads; sharedvector supports exact mixed-type reinterpretation.",
+    "synchronization": [
+      "warp_shuffle_scans",
+      "block_barriers",
+      "atomic_global_offsets",
+      "host_count_readback_between_levels",
+      "kernel_completion_before_timing/readback"
+    ],
+    "atomics_and_reductions": [
+      "UInt32 global add returning baseoffset",
+      "UInt64 global triangleindexchecksum add",
+      "Float32 global coordinate sums"
+    ],
+    "resource_policy": {
+      "stage_threads": [
+        256,
+        128,
+        400,
+        1024,
+        128
+      ],
+      "logical_scratch_bytes": [
+        256,
+        128,
+        0,
+        128,
+        1412
+      ],
+      "jacc_extra_zero_template_load_barrier": true,
+      "registers_spills_occupancy": "unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "No vendor whole-operator library; CUDA device intrinsics explicitly declared.",
+    "host_control_boundary": "Four untimed GPU preprocessing stages and count transfers; generation-only launch/sync timer. All allocations, CPU array verification, sorted-ID canonicalization, prefix/property serialization outsideclock.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Original observable contract verified; original field and topology defects preserved, validmesh/scientificgeometry fidelity excluded.",
+    "source_review_evidence": [
+      {
+        "path": "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl",
+        "sha256": "d5e2946e3ed4269da54a263dc46ae6bcd71164fb9945cdc603810bfdcb06f8ea",
+        "source_locations": "five target wrappers/index/shared/launchmapping"
+      },
+      {
+        "path": "src/marchingCubes-julia/study_device.jl",
+        "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+        "source_locations": "allfive actual device algorithm helpers"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "marchingCubes",
+    "primary_motif": "hierarchical_minmax_pruning_compaction_marching_blocks_atomic_geometry_summaries",
+    "storage_precision": [
+      "float32",
+      "uint16",
+      "uint32",
+      "uint64",
+      "int32",
+      "uint8"
+    ],
+    "compute_precision": [
+      "float32",
+      "uint16",
+      "uint32",
+      "uint64"
+    ],
+    "synchronization": [
+      "warp_shuffle_scans",
+      "block_barriers",
+      "atomic_global_offsets",
+      "host_count_readback_between_levels",
+      "kernel_completion_before_timing/readback"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "All five stages source-faithful linear-lane semantics; physical flattening, mixed scratch arena and neutralized unconsumed undefined reads disclosed. Original field/masks/observable summaries unchanged."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "hybrid_device_intrinsics",
+      "julia-jacc": "hybrid_device_intrinsics"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat: generatingTriangles only",
+    "verification_contract": "native_property_scores",
+    "keyconfounds": [
+      "The original program emits counts, a scheduling-dependent vertex-index checksum and four partial-coordinate sums; no vertex/triangle mesh arrays exist. Numeric observable equivalence does not certify a valid mesh.",
+      "Source-derived topology counterexample finds995 out-of-range local triangle-index references per y-replica. Original boundary edge masks are preserved, not repaired; exclude valid-mesh/scientific-fidelity aggregates. This is a logical source witness, not an observed GPU array-access failure.",
+      "Actual field uses x,z,z and ignores y. Nominal N1024 fixes coordinates; source floor block grids cover x/y through1020 and z through1008 at preprocessing level, not a complete1024\u00b3 sampled volume. No application surface dataset or geometric accuracy study.",
+      "Timer includes only generatingTriangles launch plus synchronization. All four preceding GPU stages, compaction count transfers, allocation, CPU checks, canonical sorting/serialization and normalization are outside the timed region. Untimed preprocessing durations are diagnostic, not part of primary runtime.",
+      "Source global Float32 coordinate atomics are order dependent. A predefined1e-3 absolute tolerance is applied to normalized partial sums (divide by exact vertexcount), not full geometric coordinates. Integer IDs and counts separately audited exact. Global vertex-index checksum also changes with atomic block ordering and is retained raw, excluded from deterministic acceptance.",
+      "CUDA.jl/KA/JACC flatten physical blocks while preserving original linear lane/warp order and reconstructed source coordinates. Native retains16x16,16x25 and4x4x8 physical shapes. Scratch is packed UInt32 arena1412B with UInt16/Float32 aliases; unconsumed scratch/corner reads are neutralized. Compiler alignment, generated registers/spills and occupancy are unknown.",
+      "JACC shared templates add zero-source loads and one barrier per shared kernel. Explicit shared bytes256/128/0/128/1412 for stages1..5; no default49152B policy. Actual dynamic/static allocation and source split-array padding may differ.",
+      "KA/JACC use source CUDA shuffles, atomic_add!, sync_threads and typed device-pointer views: hybrid CUDA backend device extensions. CUDA.jl uses its own native APIs and is framework_device_kernel. This does not establish another backend or CPU portability.",
+      "Current reference restores a five-kernel historical touch/PASS stub and owns shared semantic-helper drafting; two reference B4 constructor repairs and early missing-fixture T1 kept separate. Each target first candidate/check reuses those audited helpers. No global first-program-success claim or exclusive billed-token ranking.",
+      "Raw custom Julia max_rel_error labels a scaled absolute residual; hash-bound saved-output recomputation in study_adjudications.json supplies true CPU relative-with-atol-floor metrics. No raw source/run/acceptance/time changes."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "signal_image",
+      "primary_domain": "implicit_isosurface_visualization_benchmark",
+      "scientific_task": "Intended parallel marching-block isosurface construction; actual source reports topology counts and scalar properties of an extruded implicit polynomial instead of emitting a mesh.",
+      "mathematical_operation": "f(x,y,z)=1-16*X*Z\u00b2-4*(X\u00b2+2Z\u00b2), X=(x-512)/512,Z=(z-512)/512; iso=Float32(-0.9). Hierarchical min/max pruning, prefix-scan compaction, lookup-table cube cases, edge interpolation and atomic summary accumulation.",
+      "discretization_or_topology": "Nominal1024 lattice,68x68x16 coarseblocks of16x16x64 and340x340x144 fineblocks of4x4x8 with overlapping strides15/15/63 and3/3/7. Source masks disagree with X/Z edge ownership; full mesh connectivity is not certified.",
+      "invariants": [
+        "All four independently reproduced counts exact:8296/240380/4856560/6101640.",
+        "Both full sorted active-ID arrays and all preprocessing min/max values verified against independent CPU scans.",
+        "All outputs finite; normalized partial-coordinate sums within fixed1e-3.",
+        "Source-derived local-index witness explicitly retained rather than masked by native PASS."
+      ],
+      "accuracy_requirements": [
+        "All401053 serialized values per model/trial include4401 exact input-prefix values, full147968 Lv1 min/max values,8296 Lv1 IDs,240380 Lv2 IDs,4counts,4normalized partial-coordinate sums.",
+        "All3733200 Lv2 min/max entries additionally CPU checked each trial outsideclock; observedmaxerror2.3841858e-7.",
+        "CPU oracle independently reduces y-invariant field but GPU primary pipeline executes all original five stages.",
+        "No full vertex/triangle coordinates or mesh-array evidence exists; source integer checksum is nondeterministic across atomic scheduling."
+      ],
+      "precision_sensitivity": "Float32 field classification/interpolation near iso; warp Float32 extrema and large global atomic sums. IDs, localindices andcounts use UInt32/UInt16; checksumUInt64. Fullgeometry/surface-error metric absent.",
+      "input_size_regimes": "Original N1024 andiso-0.9, all original activecounts; one generated frame per trial, five inprocess trials with explicit complete-pipeline warmup. Other isovalues/sizes and corrected ownership unmeasured.",
+      "community_use_case": "Hierarchical implicit-surface visualization/extraction motif, source-defined extruded polynomial only; no independently valid mesh/application dataset claim.",
+      "uncertainty": "Actual emitted observables weak for scientific geometry; topology defect is known, source field differs from its nominal x/y/z intent, generated spatial coverage is cropped by source floor grids.",
+      "provenance": [
+        {
+          "path": "src/marchingCubes-cuda/main.cu",
+          "sha256": "4ff9767b03d58286ae91acbb8b29b29f53cb41fe0ebbd882c76ceaba7c5b50aa",
+          "source_locations": "entire5stageoperator, field, ownership and timer"
+        },
+        {
+          "path": "src/marchingCubes-julia/generate_study_fixture.py",
+          "sha256": "48bb6acefa5355fbd16e033795d4ec084f38f593e224dc9a00a876c061825927",
+          "source_locations": "independentFloat64minmax/tablecounts/topologywitness"
+        },
+        {
+          "path": "src/marchingCubes-julia/audit_pipeline_outputs.py",
+          "sha256": "6e148e3084799ff13e02b8e35f5fe7c1dc5d040564a605d608a3f732d3065f97",
+          "source_locations": "exact input bindings/IDs/counts and savedproperty audit"
+        }
+      ],
+      "reviewed_at": "2026-10-17T21:15:44.103097+00:00",
+      "review_phase": "prospective postverification annotation"
+    },
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": true,
+    "exclude_from_scientific_fidelity_aggregates": true,
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "All five stages: coarse min/max, coarse scan compaction, fine min/max, fine scan compaction, triangle lookup/count/interpolation with atomic scalar summaries.",
+        "mapping": "Flattened256/128/400/1024/128 lanes per stage; same linear source warp/order/index reconstruction and actual active block counts. Generation240380 blocks; no host supplied active list.",
+        "layout": "Global minmax pairs, UInt32 compacted block IDs, source U16/I32/U8 tables; mixed shared arena retains U16 vertexIndices[128], F32values[225], U32warp sums[64].",
+        "precision": {
+          "storage": [
+            "float32",
+            "uint16",
+            "uint32",
+            "uint64",
+            "int32",
+            "uint8"
+          ],
+          "compute": "Float32 source field/interpolation/atomiccoords; exact UInt32 counts/offsets, UInt16localvertexencoding, UInt64checksum",
+          "independent_oracle": "Float64 field/minmax/coordinate accumulation and exact integer/table cube enumeration; oracle exploits source y invariance only"
+        },
+        "implementation_detail": "CUDA.@cuda launches all5 restored kernels; CUDA own shuffles/atomics/sync/deviceviews, static scratch.",
+        "memory": "Static local/shared",
+        "synchronization": [
+          "warp_shuffle_scans",
+          "block_barriers",
+          "atomic_global_offsets",
+          "host_count_readback_between_levels",
+          "kernel_completion_before_timing/readback"
+        ],
+        "atomic_operations": [
+          "UInt32 global add returning baseoffset",
+          "UInt64 global triangleindexchecksum add",
+          "Float32 global coordinate sums"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "cuda_specific_features": [
+          "CUDA.shfl_up_sync",
+          "CUDA.shfl_down_sync",
+          "CUDA.atomic_add!",
+          "CUDA.sync_threads",
+          "CUDA device pointers/shared typed views"
+        ],
+        "library_boundary": "No vendor whole-operator library; CUDA device intrinsics explicitly declared.",
+        "host_control_boundary": "Four untimed GPU preprocessing stages and count transfers; generation-only launch/sync timer. All allocations, CPU array verification, sorted-ID canonicalization, prefix/property serialization outsideclock.",
+        "resource_policy": {
+          "stage_threads": [
+            256,
+            128,
+            400,
+            1024,
+            128
+          ],
+          "logical_scratch_bytes": [
+            256,
+            128,
+            0,
+            128,
+            1412
+          ],
+          "jacc_extra_zero_template_load_barrier": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Original observable contract verified; original field and topology defects preserved, validmesh/scientificgeometry fidelity excluded.",
+        "source_dependencies_shared_cost": "study_device.jl source helpers drafted/repaired in current_reference phase, not recharged as independent target first-program generation.",
+        "provenance": [
+          {
+            "path": "src/marchingCubes-julia/marchingCubes-julia-cuda.jl/main.jl",
+            "sha256": "74e2d8cbeaf41c92caa47fdf0e37769e26fa88c46e65056c8bb65c697316b200",
+            "source_locations": "five target wrappers/index/shared/launchmapping"
+          },
+          {
+            "path": "src/marchingCubes-julia/study_device.jl",
+            "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+            "source_locations": "allfive actual device algorithm helpers"
+          }
+        ],
+        "attempt_count_policy": "Actual target candidates/checks separate from reference/native/annotation; no hidden compiler-pass inference, historicalstubcostunknown.",
+        "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "All five stages: coarse min/max, coarse scan compaction, fine min/max, fine scan compaction, triangle lookup/count/interpolation with atomic scalar summaries.",
+        "mapping": "Flattened256/128/400/1024/128 lanes per stage; same linear source warp/order/index reconstruction and actual active block counts. Generation240380 blocks; no host supplied active list.",
+        "layout": "Global minmax pairs, UInt32 compacted block IDs, source U16/I32/U8 tables; mixed shared arena retains U16 vertexIndices[128], F32values[225], U32warp sums[64].",
+        "precision": {
+          "storage": [
+            "float32",
+            "uint16",
+            "uint32",
+            "uint64",
+            "int32",
+            "uint8"
+          ],
+          "compute": "Float32 source field/interpolation/atomiccoords; exact UInt32 counts/offsets, UInt16localvertexencoding, UInt64checksum",
+          "independent_oracle": "Float64 field/minmax/coordinate accumulation and exact integer/table cube enumeration; oracle exploits source y invariance only"
+        },
+        "implementation_detail": "KernelAbstractions group/local index, @localmem and launches; CUDA shuffles/atomics/sync/deviceviews inside shared helpers, CUDA backend only.",
+        "memory": "Static local/shared",
+        "synchronization": [
+          "warp_shuffle_scans",
+          "block_barriers",
+          "atomic_global_offsets",
+          "host_count_readback_between_levels",
+          "kernel_completion_before_timing/readback"
+        ],
+        "atomic_operations": [
+          "UInt32 global add returning baseoffset",
+          "UInt64 global triangleindexchecksum add",
+          "Float32 global coordinate sums"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "cuda_specific_features": [
+          "CUDA.shfl_up_sync",
+          "CUDA.shfl_down_sync",
+          "CUDA.atomic_add!",
+          "CUDA.sync_threads",
+          "CUDA device pointers/shared typed views"
+        ],
+        "library_boundary": "No vendor whole-operator library; CUDA device intrinsics explicitly declared.",
+        "host_control_boundary": "Four untimed GPU preprocessing stages and count transfers; generation-only launch/sync timer. All allocations, CPU array verification, sorted-ID canonicalization, prefix/property serialization outsideclock.",
+        "resource_policy": {
+          "stage_threads": [
+            256,
+            128,
+            400,
+            1024,
+            128
+          ],
+          "logical_scratch_bytes": [
+            256,
+            128,
+            0,
+            128,
+            1412
+          ],
+          "jacc_extra_zero_template_load_barrier": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Original observable contract verified; original field and topology defects preserved, validmesh/scientificgeometry fidelity excluded.",
+        "source_dependencies_shared_cost": "study_device.jl source helpers drafted/repaired in current_reference phase, not recharged as independent target first-program generation.",
+        "provenance": [
+          {
+            "path": "src/marchingCubes-julia/marchingCubes-julia-KA/main.jl",
+            "sha256": "d98648d8ff87759f190fe1054216ba67641f495a5ff2991a3281987bcb86f01e",
+            "source_locations": "five target wrappers/index/shared/launchmapping"
+          },
+          {
+            "path": "src/marchingCubes-julia/study_device.jl",
+            "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+            "source_locations": "allfive actual device algorithm helpers"
+          }
+        ],
+        "attempt_count_policy": "Actual target candidates/checks separate from reference/native/annotation; no hidden compiler-pass inference, historicalstubcostunknown.",
+        "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "All five stages: coarse min/max, coarse scan compaction, fine min/max, fine scan compaction, triangle lookup/count/interpolation with atomic scalar summaries.",
+        "mapping": "Flattened256/128/400/1024/128 lanes per stage; same linear source warp/order/index reconstruction and actual active block counts. Generation240380 blocks; no host supplied active list.",
+        "layout": "Global minmax pairs, UInt32 compacted block IDs, source U16/I32/U8 tables; mixed shared arena retains U16 vertexIndices[128], F32values[225], U32warp sums[64].",
+        "precision": {
+          "storage": [
+            "float32",
+            "uint16",
+            "uint32",
+            "uint64",
+            "int32",
+            "uint8"
+          ],
+          "compute": "Float32 source field/interpolation/atomiccoords; exact UInt32 counts/offsets, UInt16localvertexencoding, UInt64checksum",
+          "independent_oracle": "Float64 field/minmax/coordinate accumulation and exact integer/table cube enumeration; oracle exploits source y invariance only"
+        },
+        "implementation_detail": "JACC.parallel_for, launch_spec, shared zero-template vector; explicit0stage3 and required bytesothers, CUDA shuffles/atomics/sync/deviceviews inside helper.",
+        "memory": "Dynamic shared plus immutable zero-template reads; sharedvector supports exact mixed-type reinterpretation.",
+        "synchronization": [
+          "warp_shuffle_scans",
+          "block_barriers",
+          "atomic_global_offsets",
+          "host_count_readback_between_levels",
+          "kernel_completion_before_timing/readback"
+        ],
+        "atomic_operations": [
+          "UInt32 global add returning baseoffset",
+          "UInt64 global triangleindexchecksum add",
+          "Float32 global coordinate sums"
+        ],
+        "implementation_class": "hybrid_device_intrinsics",
+        "cuda_specific_features": [
+          "CUDA.shfl_up_sync",
+          "CUDA.shfl_down_sync",
+          "CUDA.atomic_add!",
+          "CUDA.sync_threads",
+          "CUDA device pointers/shared typed views"
+        ],
+        "library_boundary": "No vendor whole-operator library; CUDA device intrinsics explicitly declared.",
+        "host_control_boundary": "Four untimed GPU preprocessing stages and count transfers; generation-only launch/sync timer. All allocations, CPU array verification, sorted-ID canonicalization, prefix/property serialization outsideclock.",
+        "resource_policy": {
+          "stage_threads": [
+            256,
+            128,
+            400,
+            1024,
+            128
+          ],
+          "logical_scratch_bytes": [
+            256,
+            128,
+            0,
+            128,
+            1412
+          ],
+          "jacc_extra_zero_template_load_barrier": true,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Original observable contract verified; original field and topology defects preserved, validmesh/scientificgeometry fidelity excluded.",
+        "source_dependencies_shared_cost": "study_device.jl source helpers drafted/repaired in current_reference phase, not recharged as independent target first-program generation.",
+        "provenance": [
+          {
+            "path": "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl",
+            "sha256": "d5e2946e3ed4269da54a263dc46ae6bcd71164fb9945cdc603810bfdcb06f8ea",
+            "source_locations": "five target wrappers/index/shared/launchmapping"
+          },
+          {
+            "path": "src/marchingCubes-julia/study_device.jl",
+            "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+            "source_locations": "allfive actual device algorithm helpers"
+          }
+        ],
+        "attempt_count_policy": "Actual target candidates/checks separate from reference/native/annotation; no hidden compiler-pass inference, historicalstubcostunknown.",
+        "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1"
+      }
+    },
+    "configuration_results": {
+      "source_generation": {
+        "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/result.json",
+        "mean_seconds": {
+          "cuda": 0.28132701075,
+          "cuda_jl": 0.3012936035,
+          "ka": 0.2953910595,
+          "jacc": 0.29542694399999997
+        },
+        "checked_artifact_values_each_trial": 401053,
+        "input_prefix_count": 4401,
+        "additional_full_Lv2_minmax_values_checked_each_trial": 3733200,
+        "counts_exact": [
+          8296,
+          240380,
+          4856560,
+          6101640
+        ],
+        "internal_repeats": 1,
+        "valid_mesh_certified": false
+      }
+    },
+    "topology_witness": {
+      "source_derived_not_GPU_mesh_access_failure": true,
+      "invalid_local_index_references_per_yreplica": 995,
+      "first": [
+        98,
+        1,
+        98,
+        102,
+        2,
+        4,
+        [
+          0,
+          0,
+          1,
+          0
+        ],
+        36,
+        36,
+        36,
+        54
+      ],
+      "witness_path": "src/marchingCubes-julia/study_fixture_provenance.json"
+    },
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          0.281336216,
+          0.281326436,
+          0.281323736,
+          0.281321655
+        ],
+        "minimum": 0.281321655,
+        "maximum": 0.281336216,
+        "sample_standard_deviation": 6.4414028169205e-06,
+        "coefficient_of_variation": 2.289649614428465e-05,
+        "max_to_min_ratio": 1.0000517592575657,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          0.295441933,
+          0.318877615,
+          0.295422943,
+          0.295431923
+        ],
+        "minimum": 0.295422943,
+        "maximum": 0.318877615,
+        "sample_standard_deviation": 0.011722676899398071,
+        "coefficient_of_variation": 0.03890781869651631,
+        "max_to_min_ratio": 1.079393535795898,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.295455267,
+          0.295361517,
+          0.295369057,
+          0.295378397
+        ],
+        "minimum": 0.295361517,
+        "maximum": 0.295455267,
+        "sample_standard_deviation": 4.3358241335036266e-05,
+        "coefficient_of_variation": 0.00014678251064344168,
+        "max_to_min_ratio": 1.000317407633033,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.295443009,
+          0.29550156,
+          0.295374608,
+          0.295388599
+        ],
+        "minimum": 0.295374608,
+        "maximum": 0.29550156,
+        "sample_standard_deviation": 5.783605450467315e-05,
+        "coefficient_of_variation": 0.00019577108885732899,
+        "max_to_min_ratio": 1.0004297999779317,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    },
+    "reported_metric_definition_erratum": "src/marchingCubes-julia/study_adjudications.json"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl",
+    "sha256": "d5e2946e3ed4269da54a263dc46ae6bcd71164fb9945cdc603810bfdcb06f8ea",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        32,
+        33,
+        34,
+        35,
+        38
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        34
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1",
+      "run_id": "20261017T211206803388Z_marchingCubes",
+      "result": ".porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": true,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": {
+        "field": "models[cuda_jl|ka|jacc].trials[*].max_rel_error",
+        "raw_definition": "max_abs_error / atol, scaled absolute residual; not per-element mathematical relative error.",
+        "native_raw_definition": "maximum abs(got-expected)/max(abs(expected),atol,1e-300).",
+        "central_dual_metric_definition": "Independently computed by verifier; unaffected.",
+        "corrected_CPU_definition": "Maximum abs(got-expected)/max(abs(expected),0.001), excluding exact input-prefix. Mixed preprocessing/property artifact; not a full-mesh geometric error.",
+        "acceptance_and_execution": "Unchanged absolute-only tolerance0.001 and exact prefix checks. No timing/source/input/output/acceptance mutation or retiming.",
+        "independent_recomputed_metrics": [
+          {
+            "model": "cuda",
+            "trial": 1,
+            "true_CPU_max_abs_error": 5.519815949900364e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.02007935949499416,
+            "raw_reported_max_rel_error": 0.020079359495,
+            "artifact_sha256": "6fb18d6dabe2fb9a2cf6df983b9fdce4686a9b715ae6894235466a53d29314e5",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210552180454Z_marchingCubes/cuda_trial1_output_trial1.bin"
+          },
+          {
+            "model": "cuda",
+            "trial": 2,
+            "true_CPU_max_abs_error": 0.00016623354256850575,
+            "true_CPU_max_relative_error_with_atol_floor": 0.02455043021993494,
+            "raw_reported_max_rel_error": 0.0245504302199,
+            "artifact_sha256": "0ad5172f210f173755ee54a1955daa8093eeac27e4549f3c87c4e3b68546fbe4",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210552180454Z_marchingCubes/cuda_trial2_output_trial2.bin"
+          },
+          {
+            "model": "cuda",
+            "trial": 3,
+            "true_CPU_max_abs_error": 0.00010264686804992151,
+            "true_CPU_max_relative_error_with_atol_floor": 0.02284286920509834,
+            "raw_reported_max_rel_error": 0.0228428692051,
+            "artifact_sha256": "036f86ed1dd7beb12a85ad1103950ced1a0364f613dbe68004cdc0d04ba3aefc",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210552180454Z_marchingCubes/cuda_trial3_output_trial3.bin"
+          },
+          {
+            "model": "cuda",
+            "trial": 4,
+            "true_CPU_max_abs_error": 9.971269241942915e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.02317432954042867,
+            "raw_reported_max_rel_error": 0.0231743295404,
+            "artifact_sha256": "23954d9ee64a880fe0db93830a248548b1dfc93dda9bff07326f83a02610f6e1",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210552180454Z_marchingCubes/cuda_trial4_output_trial4.bin"
+          },
+          {
+            "model": "cuda",
+            "trial": 5,
+            "true_CPU_max_abs_error": 0.00013466541615804462,
+            "true_CPU_max_relative_error_with_atol_floor": 0.025718959832736907,
+            "raw_reported_max_rel_error": 0.0257189598327,
+            "artifact_sha256": "b5f7df58fcd5482aeada1cded9474c3b26fd568023d52a27815d71b6708dd86d",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210552180454Z_marchingCubes/cuda_trial5_output_trial5.bin"
+          },
+          {
+            "model": "cuda_jl",
+            "trial": 1,
+            "true_CPU_max_abs_error": 0.00020190254552676645,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0018013089031685533,
+            "raw_reported_max_rel_error": 0.201902545527,
+            "artifact_sha256": "af451ee4ab48a6fcb1c6c61f7ca57205b695ea30e0408f838205996470460082",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210743064671Z_marchingCubes/cuda_jl_trial1_output_trial1.bin"
+          },
+          {
+            "model": "cuda_jl",
+            "trial": 2,
+            "true_CPU_max_abs_error": 0.00012000740719696201,
+            "true_CPU_max_relative_error_with_atol_floor": 0.025452585340356274,
+            "raw_reported_max_rel_error": 0.120007407197,
+            "artifact_sha256": "0c15226a5d9fcdf4e6341a2b1fec3c2c29abbf9f3d442c69f405ce2e0ded8093",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210743064671Z_marchingCubes/cuda_jl_trial2_output_trial2.bin"
+          },
+          {
+            "model": "cuda_jl",
+            "trial": 3,
+            "true_CPU_max_abs_error": 8.999645294127667e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.028636011820996336,
+            "raw_reported_max_rel_error": 0.0899964529413,
+            "artifact_sha256": "df2da485efaf6519de244485fd38cd84a26f13c6e8cb29da84e3a9df58d82a8d",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210743064671Z_marchingCubes/cuda_jl_trial3_output_trial3.bin"
+          },
+          {
+            "model": "cuda_jl",
+            "trial": 4,
+            "true_CPU_max_abs_error": 9.097451148477875e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.025929797756423192,
+            "raw_reported_max_rel_error": 0.0909745114848,
+            "artifact_sha256": "d4331d8ea17547d54e8846dda5d478631d5b5d0a4aca2ac8edb1a0d4f37f3b47",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210743064671Z_marchingCubes/cuda_jl_trial4_output_trial4.bin"
+          },
+          {
+            "model": "cuda_jl",
+            "trial": 5,
+            "true_CPU_max_abs_error": 7.529983640612581e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.022507136826022324,
+            "raw_reported_max_rel_error": 0.0752998364061,
+            "artifact_sha256": "bc01be6990c6b6adfe0cb2d4eca3238675013d005f1ac3f72fcbe9bf48bfb612",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T210743064671Z_marchingCubes/cuda_jl_trial5_output_trial5.bin"
+          },
+          {
+            "model": "ka",
+            "trial": 1,
+            "true_CPU_max_abs_error": 6.624839938217109e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.010159925214104769,
+            "raw_reported_max_rel_error": 0.0662483993822,
+            "artifact_sha256": "6fe0754eefe93c637f8e42727ece829f5d05c737a4bcdae494c29dba96598754",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211009481424Z_marchingCubes/ka_trial1_output_trial1.bin"
+          },
+          {
+            "model": "ka",
+            "trial": 2,
+            "true_CPU_max_abs_error": 8.434687793346107e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.026779431868441166,
+            "raw_reported_max_rel_error": 0.0843468779335,
+            "artifact_sha256": "2d2129b7632b8d04cb303b89f4f54c011d6dea56397352780c08d2b99bf76467",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211009481424Z_marchingCubes/ka_trial2_output_trial2.bin"
+          },
+          {
+            "model": "ka",
+            "trial": 3,
+            "true_CPU_max_abs_error": 6.959878463284885e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.029666328253789516,
+            "raw_reported_max_rel_error": 0.0695987846328,
+            "artifact_sha256": "19b717189e8b062e3f9d557c9cae208c9ec386fda91963c4f31041c379f5ca0d",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211009481424Z_marchingCubes/ka_trial3_output_trial3.bin"
+          },
+          {
+            "model": "ka",
+            "trial": 4,
+            "true_CPU_max_abs_error": 5.083550362736111e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.02886745607333848,
+            "raw_reported_max_rel_error": 0.0508355036274,
+            "artifact_sha256": "365d99116026464e2c979f33d48633f3e8b07282c08d7dea36436a8c8f523370",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211009481424Z_marchingCubes/ka_trial4_output_trial4.bin"
+          },
+          {
+            "model": "ka",
+            "trial": 5,
+            "true_CPU_max_abs_error": 0.00010549095934087038,
+            "true_CPU_max_relative_error_with_atol_floor": 0.027318714567166662,
+            "raw_reported_max_rel_error": 0.105490959341,
+            "artifact_sha256": "0e972b291f3c036c53f5297eba7ddb0db1f8b47719c2729a68b3d109a804e59b",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211009481424Z_marchingCubes/ka_trial5_output_trial5.bin"
+          },
+          {
+            "model": "jacc",
+            "trial": 1,
+            "true_CPU_max_abs_error": 5.822241946902562e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0013936914478710103,
+            "raw_reported_max_rel_error": 0.058222419469,
+            "artifact_sha256": "d5bb77998dbe0436fd9f291923a46cd45678be79ac90fc5bf00fcc693b751775",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/jacc_trial1_output_trial1.bin"
+          },
+          {
+            "model": "jacc",
+            "trial": 2,
+            "true_CPU_max_abs_error": 1.2640763215117368e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0028630231997105087,
+            "raw_reported_max_rel_error": 0.0126407632151,
+            "artifact_sha256": "ec38abc3fa41c6090a8a4aaf78089cb15ec0c802dfb8f73058bff347b50d8b03",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/jacc_trial2_output_trial2.bin"
+          },
+          {
+            "model": "jacc",
+            "trial": 3,
+            "true_CPU_max_abs_error": 1.260215564102829e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0026257991234771134,
+            "raw_reported_max_rel_error": 0.012602155641,
+            "artifact_sha256": "ff7c585c2c210a48d14b50a24a6dc96d17da98a28dab3501827c7a6d22b4ec2c",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/jacc_trial3_output_trial3.bin"
+          },
+          {
+            "model": "jacc",
+            "trial": 4,
+            "true_CPU_max_abs_error": 3.0124579229642845e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0013213180008845025,
+            "raw_reported_max_rel_error": 0.0301245792296,
+            "artifact_sha256": "b40654c0389e4e64a147cdb917db7ac29fc7b007433a2e1cae32c3057de53b5a",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/jacc_trial4_output_trial4.bin"
+          },
+          {
+            "model": "jacc",
+            "trial": 5,
+            "true_CPU_max_abs_error": 6.328001167421604e-05,
+            "true_CPU_max_relative_error_with_atol_floor": 0.0019301727972063087,
+            "raw_reported_max_rel_error": 0.0632800116742,
+            "artifact_sha256": "f0fb19077994a9dd29a6d3ed9a5ebff1185c9a14159870fc60606e08e6c4d77c",
+            "saved_artifact": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/jacc_trial5_output_trial5.bin"
+          }
+        ],
+        "oracle_file_sha256": "30f5de895c63588104d4fc4876df6885c905d78851e449540010fb0aaa5107aa",
+        "auditor_source_sha256": "c95bf7a0356cada53d7cc7dd4f585f7880f4e89a9da3e4080406585cb963972e"
+      },
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "source_unchanged": true,
+        "original_observable_contract_preserved": true,
+        "valid_mesh_not_certified": true,
+        "audit": "src/marchingCubes-julia/REFERENCE_AUDIT.md"
+      },
+      "configuration_classification_adjudication": {
+        "path": "src/marchingCubes-julia/study_adjudications.json",
+        "sha256": "b962b1fa4a4258452f94dbf3fb22f4070ac224e58a5eca3c9de67b1c5c019285",
+        "run_id": "20261017T211206803388Z_marchingCubes",
+        "reason": "Clarify raw customJulia metric label and provide independently recomputed CPU error metrics from saved outputs; no source/run/acceptance/timing changes.",
+        "recorded_at": "2026-10-17T21:32:51.800654+00:00",
+        "updated_fields": [
+          "reported_metric_definition_erratum"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "86f3b368358807ce8ffb77ab334650f949b6c390db61133c18a0fb6ef8753b4c",
+      "source_hash": "8ec5bcf35649516458842879993b5ebdb8c9e11172e431bd2dc885828893c7bf",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.296316437,
+        0.295443009,
+        0.29550156,
+        0.295374608,
+        0.295388599
+      ],
+      "mean_last_four_seconds": 0.29542694399999997,
+      "contract": "Original N1024 source extruded x,z,z polynomial, iso Float32(-.9), all5 GPU stages; timer generation only. Exact iso/tables prefix. Full Lv1 minmax/sorted active IDs bothlevels plus counts and normalized partialcoordinate sums, full Lv2 minmax CPU checks outsideclock; no mesh arrays emitted. Scheduling-dependent globalindexchecksum rawdiagnostic only.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "native_property_scores_full_preprocessing_arrays_with_source_topology_defect"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "marchingCubes-jacc-P1-source-mapping",
+        "benchmark_id": "marchingCubes",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "prospective_source_mapping_annotation",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/marchingCubes.jsonl",
+        "evidence_line": 8,
+        "raw_event": {
+          "event_id": "marchingCubes-jacc-P1-source-mapping",
+          "benchmark": "marchingCubes",
+          "model": "jacc",
+          "phase": "prospective_source_mapping_annotation",
+          "code": "P1",
+          "is_failure": false,
+          "reason": "JACC.parallel_for, launch_spec, shared zero-template vector; explicit0stage3 and required bytesothers, CUDA shuffles/atomics/sync/deviceviews inside helper.",
+          "scientific_scope": "Native observable equivalence with known source-derived geometry defect; no mesh certification.",
+          "evidence": [
+            {
+              "path": "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl",
+              "sha256": "d5e2946e3ed4269da54a263dc46ae6bcd71164fb9945cdc603810bfdcb06f8ea",
+              "source_locations": "five target wrappers/index/shared/launchmapping"
+            },
+            {
+              "path": "src/marchingCubes-julia/study_device.jl",
+              "sha256": "b91c95026900c32f6f2002080b5b95c2e12c6434a2f48ae05262bbf4189ea540",
+              "source_locations": "allfive actual device algorithm helpers"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 10630,
+      "output_tokens": 505,
+      "cached_tokens": null,
+      "total_tokens": 11135,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/marchingCubes-cuda/main.cu",
+        "src/marchingCubes-cuda/tables.h",
+        "src/marchingCubes-julia/marchingCubes-julia-cuda.jl/main.jl",
+        "src/marchingCubes-julia/marchingCubes-julia-KA/main.jl",
+        "src/marchingCubes-julia/marchingCubes-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/marchingCubes/jacc_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "37f74978509f9050525c532b",
+        "begin_event_id": "e4677c62e965182f62cc29b1",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T21:13:01.831051+00:00",
+        "usage_event_timestamp": "2026-10-17T21:12:54.656Z",
+        "elapsed_usage_event_start": "2026-10-17T21:11:08.818Z",
+        "delta_usage": {
+          "input_tokens": 996048,
+          "cached_input_tokens": 990720,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3173,
+          "reasoning_output_tokens": 1146,
+          "total_tokens": 999221
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 7.175051,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "1ba0907387b8870e9152342666c6544265c0706b1e6bcc5be25cf84d2ac92c50",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "All five GPU stages first-candidate/check verified with exact prefix, full preprocessing CPU checks and all5 dual artifact/property checks. Explicit sharedbytes and zero stage3 scratch; mixed UInt16/Float32/UInt32 arena uses concrete device views. No compiler/runtime/numerical target repairs; inherited helper/reference effort separately metered.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 6.227812,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/marchingCubes/jacc_translation.jsonl",
+        "evidence_sha256": "ae02a97db74d8514a4aa0ad4e9b4dc8c2d5b1df831fb8a68eade5526975afcdd",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/marchingCubes-julia-jacc/manifest.json",
+    "selected_sha256": "fe42ecd82b0a1f48773401c8e80e569eb5e1f4f28c63cd380a22afaa422f03d7",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/marchingCubes-julia-jacc/manifest.json",
+        "sha256": "fe42ecd82b0a1f48773401c8e80e569eb5e1f4f28c63cd380a22afaa422f03d7"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "3b2a3c3a0a5611dc348b0c071036c1a378a4affb",
+  "explicit_outcome_evidence": {
+    "benchmark": "marchingCubes",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/result.json"
+    ],
+    "contract": "Original N1024 source extruded x,z,z polynomial, iso Float32(-.9), all5 GPU stages; timer generation only. Exact iso/tables prefix. Full Lv1 minmax/sorted active IDs bothlevels plus counts and normalized partialcoordinate sums, full Lv2 minmax CPU checks outsideclock; no mesh arrays emitted. Scheduling-dependent globalindexchecksum rawdiagnostic only.",
+    "limitations": [
+      "The original program emits counts, a scheduling-dependent vertex-index checksum and four partial-coordinate sums; no vertex/triangle mesh arrays exist. Numeric observable equivalence does not certify a valid mesh.",
+      "Source-derived topology counterexample finds995 out-of-range local triangle-index references per y-replica. Original boundary edge masks are preserved, not repaired; exclude valid-mesh/scientific-fidelity aggregates. This is a logical source witness, not an observed GPU array-access failure.",
+      "Actual field uses x,z,z and ignores y. Nominal N1024 fixes coordinates; source floor block grids cover x/y through1020 and z through1008 at preprocessing level, not a complete1024\u00b3 sampled volume. No application surface dataset or geometric accuracy study.",
+      "Timer includes only generatingTriangles launch plus synchronization. All four preceding GPU stages, compaction count transfers, allocation, CPU checks, canonical sorting/serialization and normalization are outside the timed region. Untimed preprocessing durations are diagnostic, not part of primary runtime.",
+      "Source global Float32 coordinate atomics are order dependent. A predefined1e-3 absolute tolerance is applied to normalized partial sums (divide by exact vertexcount), not full geometric coordinates. Integer IDs and counts separately audited exact. Global vertex-index checksum also changes with atomic block ordering and is retained raw, excluded from deterministic acceptance.",
+      "CUDA.jl/KA/JACC flatten physical blocks while preserving original linear lane/warp order and reconstructed source coordinates. Native retains16x16,16x25 and4x4x8 physical shapes. Scratch is packed UInt32 arena1412B with UInt16/Float32 aliases; unconsumed scratch/corner reads are neutralized. Compiler alignment, generated registers/spills and occupancy are unknown.",
+      "JACC shared templates add zero-source loads and one barrier per shared kernel. Explicit shared bytes256/128/0/128/1412 for stages1..5; no default49152B policy. Actual dynamic/static allocation and source split-array padding may differ.",
+      "KA/JACC use source CUDA shuffles, atomic_add!, sync_threads and typed device-pointer views: hybrid CUDA backend device extensions. CUDA.jl uses its own native APIs and is framework_device_kernel. This does not establish another backend or CPU portability.",
+      "Current reference restores a five-kernel historical touch/PASS stub and owns shared semantic-helper drafting; two reference B4 constructor repairs and early missing-fixture T1 kept separate. Each target first candidate/check reuses those audited helpers. No global first-program-success claim or exclusive billed-token ranking."
+    ],
+    "configuration_results": {
+      "source_generation": {
+        "configuration_id": "marchingCubes_N1024_iso_m0p9_full5stages_generationonly_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T211206803388Z_marchingCubes/result.json",
+        "mean_seconds": {
+          "cuda": 0.28132701075,
+          "cuda_jl": 0.3012936035,
+          "ka": 0.2953910595,
+          "jacc": 0.29542694399999997
+        },
+        "checked_artifact_values_each_trial": 401053,
+        "input_prefix_count": 4401,
+        "additional_full_Lv2_minmax_values_checked_each_trial": 3733200,
+        "counts_exact": [
+          8296,
+          240380,
+          4856560,
+          6101640
+        ],
+        "internal_repeats": 1,
+        "valid_mesh_certified": false
+      }
+    },
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": true,
+    "exclude_from_scientific_fidelity_aggregates": true,
+    "verification_contract": "native_property_scores"
+  },
+  "declared_model_implementation_class": {
+    "value": "hybrid_device_intrinsics",
+    "annotation_path": ".porting-state/portable_julia/traits/marchingCubes.json",
+    "annotation_sha256": "3ed47b47904b507889bb2b27b35fcc4c866b53f91ec806aa034fbb2a89a654fe",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

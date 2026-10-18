@@ -1,0 +1,671 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "particles",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/particles.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Complete source particle step including21launch bitonic sort, exact tie swaps and27-cell soft-sphere collisions",
+    "mapping": "Source64-thread particle/cell kernels,128-thread globalmerge,256-thread sharedsort;26ordered launches",
+    "layout": "AoS NTuple4Float32 pos/vel16B; UInt32 hash/index/cell buffers; packed4KBsharedsort scratch and260Bcellboundaryscratch",
+    "precision": {
+      "storage": "Float32 pos/vel/params,UInt32 hash/index/cells,Int32 indexing",
+      "compute": "Float32 physical math/sqrt/division and accumulations; exact32bit metadata/control",
+      "oracle": "IndependentFloat64allpairscollision and integration; independent Float32 hashproperty checker"
+    },
+    "implementation_detail": "Own CUDA.jl indices/CuStaticSharedArray/sync_threads and exact source host stage sequence; shared pure Julia physics helper restored from source.",
+    "memory": "Particle arrays/metadata onGPU; 262144cellStart/cellEnd dense tables; no vendor operator library",
+    "synchronization": [
+      "Per-sort comparator-stride workgroup barriers",
+      "Cell-boundary workgroup barrier",
+      "Ordered26launches/taskstream; blocking device-wide completion"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Own CUDA.jl indices/CuStaticSharedArray/sync_threads and exact source host stage sequence; shared pure Julia physics helper restored from source. CUDA host allocation/completion is hostglue, onlyNVIDIA tested.",
+    "host_control_boundary": "Full source-equivalent stage/merge dispatch loop timed, staging/reset/oracle/outputoutside",
+    "resource_policy": {
+      "particle_threads": 64,
+      "sort_threads": 256,
+      "globalmerge_threads": 128,
+      "sort_shared_bytes": 4096,
+      "reorder_shared_bytes": 260,
+      "no_shared_kernel_bytes": 0,
+      "jacc_template_staging": false,
+      "registers_spills_occupancy": "unknown"
+    },
+    "fidelity_status": "One full source-sized physicalstep verified; strict8stepFloat64 trajectory fails,source10000unverified; no originalfulltrajectoryclaim.",
+    "provenance": [
+      {
+        "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+        "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e",
+        "source_locations": "actualframeworkmapping"
+      },
+      {
+        "path": "src/particles-julia/study_device.jl",
+        "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+        "source_locations": "shared originalphysics/sort helpers authoredinreferencephase"
+      }
+    ],
+    "attempt_count_policy": "One program candidate/one actual device-JIT process check/8definitions permodel; sharedreference restoration andnative/CPUdiagnostics separate; compilerinternalsunknown.",
+    "configuration_id": "particles_full16384_grid64_steps1_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Complete source particle step including21launch bitonic sort, exact tie swaps and27-cell soft-sphere collisions",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Source64-thread particle/cell kernels,128-thread globalmerge,256-thread sharedsort;26ordered launches",
+    "layout": "AoS NTuple4Float32 pos/vel16B; UInt32 hash/index/cell buffers; packed4KBsharedsort scratch and260Bcellboundaryscratch",
+    "storage_precision": "Float32 pos/vel/params,UInt32 hash/index/cells,Int32 indexing",
+    "compute_precision": "Float32 physical math/sqrt/division and accumulations; exact32bit metadata/control",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Particle arrays/metadata onGPU; 262144cellStart/cellEnd dense tables; no vendor operator library",
+    "synchronization": [
+      "Per-sort comparator-stride workgroup barriers",
+      "Cell-boundary workgroup barrier",
+      "Ordered26launches/taskstream; blocking device-wide completion"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "particle_threads": 64,
+      "sort_threads": 256,
+      "globalmerge_threads": 128,
+      "sort_shared_bytes": 4096,
+      "reorder_shared_bytes": 260,
+      "no_shared_kernel_bytes": 0,
+      "jacc_template_staging": false,
+      "registers_spills_occupancy": "unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Own CUDA.jl indices/CuStaticSharedArray/sync_threads and exact source host stage sequence; shared pure Julia physics helper restored from source. CUDA host allocation/completion is hostglue, onlyNVIDIA tested.",
+    "host_control_boundary": "Full source-equivalent stage/merge dispatch loop timed, staging/reset/oracle/outputoutside",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "One full source-sized physicalstep verified; strict8stepFloat64 trajectory fails,source10000unverified; no originalfulltrajectoryclaim.",
+    "source_review_evidence": [
+      {
+        "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+        "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e",
+        "source_locations": "actualframeworkmapping"
+      },
+      {
+        "path": "src/particles-julia/study_device.jl",
+        "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+        "source_locations": "shared originalphysics/sort helpers authoredinreferencephase"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "particles",
+    "primary_motif": "particle_integration_spatial_hash_bitonic_sort_reorder_neighbor_contact_pipeline",
+    "storage_precision": [
+      "float32",
+      "uint32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32physics",
+      "uint32/int32control",
+      "float64independentoracle"
+    ],
+    "synchronization": [
+      "sharedbitonicbarriers",
+      "reorderboundarybarrier",
+      "orderedkernels",
+      "deviceglobalcompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Full8activekernel/26launch source pipeline,original16384/64cubed/parameters/fixture preserved;1stepnamed temporal scope. KA foreignblocksizeintrinsic/JACCsharedtemplate staging explicit."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "hybrid_device_intrinsics",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "One complete physicalstep inclall26hostdispatches+globalcompletion;1warmup+5trialsmeanlast4",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Primary named scope is the original16384 particles/64cubed grid/seed1973 jittered initialization and source parameters, but ONE full physical update. Source Makefile10000 updates and long-time stability/convergence are unverified; strict eight-step Float64 trajectory oracle fails1e-5 and is not promoted.",
+      "Full device integration,hash,descending bitonic sort with source equal-key swaps,clear/cell bounds/reorder,27-cell collision update retained:8 active generic definitions/26 launches per physical step. No CPU neighbor list, host sorting, all-pairs GPU replacement or skipped preprocessing.",
+      "Independent CPU oracle is Float64 all-pairs soft-sphere interaction, not shared hash/sort code. It preserves source gravity-before-position update, cubical clipping/reflection and collision force added directly to velocity without dt/mass; not a validated physical material/energy-conservation model.",
+      "Actual historical CUDA.jl gravity-only kernel omits boundary and contact stages. Same-fixture GPU witness yields maxstateerror.000303924>1e-5,1031 particles outside source cube and missing horizontal collision velocity. Archived source and raw diagnostic retained, restoration separately costed.",
+      "All950300 serialized Double values checked per trial, including131100 actual input-prefix values byteexact, full pos/vel/hash/index/cellStart/canonicalcellEnd/reorderedpos/precollisionvel. Integer metadata remains actualUInt32 onGPU and is exactly representable in artifactDouble metadata only.",
+      "Every hash matches independent Float32 coordinate-floor/wrap computation on actual output positions; permutation,descending key order,occupied cell bounds,reordered positions and homogeneous w are independently checked. Empty cellEnd is UNUSED in source and canonicalized sentinel only for serialization, not claimed raw-unused-byte equivalence.",
+      "Source has unread uninitialized maxParticlesPerCell and initial reorder buffers overwritten before use. Named harness initializes unused field/staging outside ROI without altering any read physics/kernel arithmetic. This is a defined fixture boundary, not a native algorithm repair.",
+      "Source worldOrigin.x=+1 (not -1) and wrapped64cell hash are preserved. Cursor contact helper retained but fixed source collider.x=1.2, radius.17 plusparticle.023 gives unreachable branch under clippedx<=.977; no cursor-contact numerical coverage claim.",
+      "OriginalFloat32 gravity/sphere sqrt/normal/tangent and accumulation order retained; independentFloat64 maximum one-step error1.80334e-8 is tolerated belowpredeclared1e-5. No zero-distance guard or precision target silently added; canonical fixture finite, general coincident-center robustness unverified.",
+      "Strict8step native failure2.62650125704e-5 retained. Distinct untimed diagnostic savesall8states; exact metadata/reordering passall8. On actualGPU integratedpos/prevel, independent all-pairs force residual <=6.46e-6; Double integration from precedingGPUstate differspos~3e-8 yetvelocityup3.23e-5. Evidence supports near-contact precision sensitivity, not proof of sole cause or trajectory certification.",
+      "Original8step failed process lost binary artifacts under old runner; full5stdoutrecords/config/source remain. Root retention fix then one untimed excluded diagnostic preserves1rejectedrecord/one8stateartifact with nulltime; no second5trial timing series, no acceptance promotion, nonfinite-scalar path not exercised.",
+      "KA reorder kernel retains one CUDA.blockDim().x workgroup-size intrinsic, so KA implementation is explicitly hybrid_device_intrinsics despite own KA indexing/localmemory/barriers elsewhere. JACC uses own flatindex/group arithmetic/shared/sync; no KA unsupported-feature claim.",
+      "Native bitonic shared keys/values4KB; Julia packs1024UInt32 same4KB. Native reorder dynamic260B versusCUDAjl/KA static260B. JACC shared(template) adds template copy/barrier before source loading, explicit4096/260B allocations and0B nons hared kernels; own mutableLaunchSpec separate per stage avoids cached grid mismatch.",
+      "Warm full one-step case precedesfive inprocess trials, meanruns2\u20135 no selection. All26 source-equivalent host dispatches and global device completion inside ROI; buffer reset/copies/CPU checks/serialization outside. One-step launch latency matters; no profiled bandwidth/occupancy or causal explanation for observed gaps.",
+      "One currentreference,oneKA,oneJACC program candidate/device-JIT process check each,8 active definitions. Shared math/fixture/oracle restoration belongs currentreference effort; prior portable-kernel knowledge used, internal compiler passes/specializations unknown. Historical reference consumption/attempts unknown.",
+      "Prospective usage windows includecontext/cache/reasoning/coordination and overlapworkflow/children, not additiveexclusivebilledtranslation. Sourcechars/4proxies remainpartialseparate. Two failed shell path invocations are tool/control errors beforecompiler, not targetcandidate feedback."
+    ],
+    "native_reference_repaired": false,
+    "exclude_untouched_native_aggregates": false,
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "particle_molecular",
+      "primary_domain": "interactive_soft_sphere_particle_contact_simulation",
+      "secondary_domains": [
+        "computer_graphics_physics",
+        "spatial_particle_neighbor_search"
+      ],
+      "scientific_task": "Advance a bounded soft-sphere particle demo under gravity, dissipative pair contact and an external spherical cursor; preserve original spatial hash and bitonic-sort neighbor pipeline.",
+      "mathematical_operation": "Velocity-before-position gravity update and box reflection, then finite-radius spring/damping/tangential-shear contact velocity kick over27 neighboring wrapped grid cells. Source kick has no dt/mass multiplier.",
+      "discretization_or_topology": "16384 particles seeded on jittered26cubed partial lattice; Float32 radius.023, grid64cubed cells width.046; descending hash sort; worldOrigin(1,-1,-1) and modulo64 wrapping.",
+      "invariants": [
+        "All coordinates finite and inside source box after integration.",
+        "position.w=1,velocity.w=0; sorted indices are exact permutation, hashes descending, alloccupiedcellintervals exact.",
+        "Full state and pre-collision reordered state agree with independent all-pairs CPU oracle at one step."
+      ],
+      "accuracy_requirements": [
+        "Predeclared1e-5 absolute physical-state tolerance, exactinteger/control metadata and actual input prefix, all5 direct dual-reference checks.",
+        "Eight-step native strictoracle fails and remains diagnostic/unverified; no tolerance relaxation."
+      ],
+      "precision_sensitivity": "Near-contact normalization is sensitive to tiny integration rounding; retained per-step actual-state audit distinguishes exact neighbor metadata from continuous-force/trajectory errors. No full zero-distance or long-time physical stability certificate.",
+      "input_size_regimes": "Original16384 andgrid64 source size retained; primary1step vs source10000, strictdiagnostic8. Allsourceparameterbranches notexercised, cursor unreachablefixedcase.",
+      "provenance": [
+        {
+          "path": "src/particles-cuda/main.cu",
+          "sha256": "08dc636aa2e7512d28e7bd4b04ad3e17a40c46df253571097b7dfa1067674e62",
+          "source_locations": "source initialization/parameters/host loop"
+        },
+        {
+          "path": "src/particles-cuda/particles_kernels.cu",
+          "sha256": "695378d9b6b72aba73700d61b08bc44923e7726e9c02dd523f53ffb97cc365bd",
+          "source_locations": "integrator/hash/reorder/contact math"
+        },
+        {
+          "path": "src/particles-cuda/bitonicSort_kernels.cu",
+          "sha256": "6bac09e2bd0228a8c57d0bed62eb39728a11ec967008283f082819db82065b0d",
+          "source_locations": "source comparator ties/shared/global bitonic stages"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Complete source particle step including21launch bitonic sort, exact tie swaps and27-cell soft-sphere collisions",
+        "mapping": "Source64-thread particle/cell kernels,128-thread globalmerge,256-thread sharedsort;26ordered launches",
+        "layout": "AoS NTuple4Float32 pos/vel16B; UInt32 hash/index/cell buffers; packed4KBsharedsort scratch and260Bcellboundaryscratch",
+        "precision": {
+          "storage": "Float32 pos/vel/params,UInt32 hash/index/cells,Int32 indexing",
+          "compute": "Float32 physical math/sqrt/division and accumulations; exact32bit metadata/control",
+          "oracle": "IndependentFloat64allpairscollision and integration; independent Float32 hashproperty checker"
+        },
+        "implementation_detail": "Own CUDA.jl indices/CuStaticSharedArray/sync_threads and exact source host stage sequence; shared pure Julia physics helper restored from source.",
+        "memory": "Particle arrays/metadata onGPU; 262144cellStart/cellEnd dense tables; no vendor operator library",
+        "synchronization": [
+          "Per-sort comparator-stride workgroup barriers",
+          "Cell-boundary workgroup barrier",
+          "Ordered26launches/taskstream; blocking device-wide completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own CUDA.jl indices/CuStaticSharedArray/sync_threads and exact source host stage sequence; shared pure Julia physics helper restored from source. CUDA host allocation/completion is hostglue, onlyNVIDIA tested.",
+        "host_control_boundary": "Full source-equivalent stage/merge dispatch loop timed, staging/reset/oracle/outputoutside",
+        "resource_policy": {
+          "particle_threads": 64,
+          "sort_threads": 256,
+          "globalmerge_threads": 128,
+          "sort_shared_bytes": 4096,
+          "reorder_shared_bytes": 260,
+          "no_shared_kernel_bytes": 0,
+          "jacc_template_staging": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "One full source-sized physicalstep verified; strict8stepFloat64 trajectory fails,source10000unverified; no originalfulltrajectoryclaim.",
+        "provenance": [
+          {
+            "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+            "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e",
+            "source_locations": "actualframeworkmapping"
+          },
+          {
+            "path": "src/particles-julia/study_device.jl",
+            "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+            "source_locations": "shared originalphysics/sort helpers authoredinreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/one actual device-JIT process check/8definitions permodel; sharedreference restoration andnative/CPUdiagnostics separate; compilerinternalsunknown.",
+        "configuration_id": "particles_full16384_grid64_steps1_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Complete source particle step including21launch bitonic sort, exact tie swaps and27-cell soft-sphere collisions",
+        "mapping": "Source64-thread particle/cell kernels,128-thread globalmerge,256-thread sharedsort;26ordered launches",
+        "layout": "AoS NTuple4Float32 pos/vel16B; UInt32 hash/index/cell buffers; packed4KBsharedsort scratch and260Bcellboundaryscratch",
+        "precision": {
+          "storage": "Float32 pos/vel/params,UInt32 hash/index/cells,Int32 indexing",
+          "compute": "Float32 physical math/sqrt/division and accumulations; exact32bit metadata/control",
+          "oracle": "IndependentFloat64allpairscollision and integration; independent Float32 hashproperty checker"
+        },
+        "implementation_detail": "Own KA @kernel indices/@localmem/@synchronize, except reorder retains CUDA.blockDim().x actualgroupwidth; classify hybrid explicitly.",
+        "memory": "Particle arrays/metadata onGPU; 262144cellStart/cellEnd dense tables; no vendor operator library",
+        "synchronization": [
+          "Per-sort comparator-stride workgroup barriers",
+          "Cell-boundary workgroup barrier",
+          "Ordered26launches/taskstream; blocking device-wide completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "hybrid_device_intrinsics",
+        "library_boundary": "Own KA @kernel indices/@localmem/@synchronize, except reorder retains CUDA.blockDim().x actualgroupwidth; classify hybrid explicitly. CUDA host allocation/completion is hostglue, onlyNVIDIA tested.",
+        "host_control_boundary": "Full source-equivalent stage/merge dispatch loop timed, staging/reset/oracle/outputoutside",
+        "resource_policy": {
+          "particle_threads": 64,
+          "sort_threads": 256,
+          "globalmerge_threads": 128,
+          "sort_shared_bytes": 4096,
+          "reorder_shared_bytes": 260,
+          "no_shared_kernel_bytes": 0,
+          "jacc_template_staging": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "One full source-sized physicalstep verified; strict8stepFloat64 trajectory fails,source10000unverified; no originalfulltrajectoryclaim.",
+        "provenance": [
+          {
+            "path": "src/particles-julia/particles-julia-KA/main.jl",
+            "sha256": "6124c9d4954011385a0564d0318bf91b99eaeff5a9b54429fc19650c39110d87",
+            "source_locations": "actualframeworkmapping"
+          },
+          {
+            "path": "src/particles-julia/study_device.jl",
+            "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+            "source_locations": "shared originalphysics/sort helpers authoredinreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/one actual device-JIT process check/8definitions permodel; sharedreference restoration andnative/CPUdiagnostics separate; compilerinternalsunknown.",
+        "configuration_id": "particles_full16384_grid64_steps1_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Complete source particle step including21launch bitonic sort, exact tie swaps and27-cell soft-sphere collisions",
+        "mapping": "Source64-thread particle/cell kernels,128-thread globalmerge,256-thread sharedsort;26ordered launches",
+        "layout": "AoS NTuple4Float32 pos/vel16B; UInt32 hash/index/cell buffers; packed4KBsharedsort scratch and260Bcellboundaryscratch",
+        "precision": {
+          "storage": "Float32 pos/vel/params,UInt32 hash/index/cells,Int32 indexing",
+          "compute": "Float32 physical math/sqrt/division and accumulations; exact32bit metadata/control",
+          "oracle": "IndependentFloat64allpairscollision and integration; independent Float32 hashproperty checker"
+        },
+        "implementation_detail": "Own JACC flat indices/shared(template)/sync_workgroup; separate explicit fixedLaunchSpecs per stage; template copy/barrier additional implementation work.",
+        "memory": "Particle arrays/metadata onGPU; 262144cellStart/cellEnd dense tables; no vendor operator library",
+        "synchronization": [
+          "Per-sort comparator-stride workgroup barriers",
+          "Cell-boundary workgroup barrier",
+          "Ordered26launches/taskstream; blocking device-wide completion"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own JACC flat indices/shared(template)/sync_workgroup; separate explicit fixedLaunchSpecs per stage; template copy/barrier additional implementation work. CUDA host allocation/completion is hostglue, onlyNVIDIA tested.",
+        "host_control_boundary": "Full source-equivalent stage/merge dispatch loop timed, staging/reset/oracle/outputoutside",
+        "resource_policy": {
+          "particle_threads": 64,
+          "sort_threads": 256,
+          "globalmerge_threads": 128,
+          "sort_shared_bytes": 4096,
+          "reorder_shared_bytes": 260,
+          "no_shared_kernel_bytes": 0,
+          "jacc_template_staging": true,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "One full source-sized physicalstep verified; strict8stepFloat64 trajectory fails,source10000unverified; no originalfulltrajectoryclaim.",
+        "provenance": [
+          {
+            "path": "src/particles-julia/particles-julia-JACC/main.jl",
+            "sha256": "39f4ee5d6a4c0b7cd6c275dc477e6f113abf9aa6c14a21aa7da6a963fe7133e4",
+            "source_locations": "actualframeworkmapping"
+          },
+          {
+            "path": "src/particles-julia/study_device.jl",
+            "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+            "source_locations": "shared originalphysics/sort helpers authoredinreferencephase"
+          }
+        ],
+        "attempt_count_policy": "One program candidate/one actual device-JIT process check/8definitions permodel; sharedreference restoration andnative/CPUdiagnostics separate; compilerinternalsunknown.",
+        "configuration_id": "particles_full16384_grid64_steps1_v1"
+      }
+    },
+    "logical_work": {
+      "particles": 16384,
+      "cells": 262144,
+      "active_kernel_definitions": 8,
+      "kernel_launches_per_physical_step": 26,
+      "bitonic_sort_launches": 21,
+      "measured_steps": 1,
+      "source_makefile_steps": 10000,
+      "cursor_collision_branch_exercised": false
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+    "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        38,
+        39,
+        40,
+        45,
+        46,
+        51,
+        52,
+        53
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [
+        16,
+        19,
+        20,
+        27,
+        28,
+        31
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "particles_full16384_grid64_steps1_v1",
+      "run_id": "20261017T235957743435Z_particles",
+      "result": ".porting-state/portable_julia/runs/20261017T235957743435Z_particles/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_source_unchanged": true,
+        "historical_julia_missing_pipeline_stages": true,
+        "source_N_and_physical_parameters_retained": true,
+        "source_10000_step_trajectory_certified": false,
+        "empty_cell_end_unused_marker_canonicalization": true,
+        "unused_parameter_maxParticlesPerCell_zero": true,
+        "independent_CPU_allpairs_physics": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "de4c401290156dec412f03b89de902c38a1f0a195bf64de30711d0e5a4b78d71",
+      "source_hash": "3fc8bf187e9e63e72fd2e47be61139e7e8b1bf70c98b1a81d03ee2e03e143a55",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T235957743435Z_particles/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000130611,
+        0.000138061,
+        0.000128591,
+        0.000128562,
+        0.000129161
+      ],
+      "mean_last_four_seconds": 0.00013109375,
+      "contract": "OriginalN16384/64cubedcells/seed1973jitteredgrid/Float32sourceparameters. Full integration\u2192hash\u2192sourcebitonicsort(dir0descending,tieswaps)\u2192sourceclear/cellbounds/reorder\u219227cellcollisions pipeline,26launches/physicalstep. Study1or8updates, full10000trajectoryunverified. IndependentFloat64allpairs physics, sourceFloat32hash/permutation/occupiedcellbounds/reorderedstates. Fullstate outputs/actual131100Doubleinputprefix; onlyunusedemptycellEnds canonicalizedsentinel forserialization. Nativekernelsunchanged, unusedparams fieldzero/nonreadstagingdefinedoutsideROI. Floatstatesabsolute1e-5; allintegermetadataexact, metricsmax_abs/max_rel domainscontinuousstates only. Fiveinprocesstrialsafterfullcasewarmup, meanlast4secondsperphysicalstep.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "a45f05dcd10a28ce95cebeba",
+        "begin_event_id": "9a92b29ccc74e003fb576c54",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_audit",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T23:57:14.796112+00:00",
+        "usage_event_timestamp": "2026-10-17T23:57:08.448Z",
+        "elapsed_usage_event_start": "2026-10-17T23:32:49.937Z",
+        "delta_usage": {
+          "input_tokens": 8582391,
+          "cached_input_tokens": 8312320,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 43339,
+          "reasoning_output_tokens": 23852,
+          "total_tokens": 8625730
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 6.348112,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "d57e3a96c81e08efd346050661b6d386de45f123d7510bb5bfb834311de6ef44",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Full eight-kernel CUDA.jl restoration first candidate/check passes five one-step trials. Original integration-only GPU witness and strict eight-step native failure retained; CPU-only local residual diagnostic complete. No eight-step certification.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "begin_marker_lag_seconds": 6.628982,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/particles/cuda_jl_reference_audit.jsonl",
+        "evidence_sha256": "ab91a2fb0db3604a2b3ed8c51fe5c51b28e31a175c7cf82bd0baa11a9870ffa5",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/particles-julia-cuda/manifest.json",
+    "selected_sha256": null,
+    "candidate_alias_records": [],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": {
+    "benchmark": "particles",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T235957743435Z_particles/result.json"
+    ],
+    "contract": "OriginalN16384/64cubedcells/seed1973jitteredgrid/Float32sourceparameters. Full integration\u2192hash\u2192sourcebitonicsort(dir0descending,tieswaps)\u2192sourceclear/cellbounds/reorder\u219227cellcollisions pipeline,26launches/physicalstep. Study1or8updates, full10000trajectoryunverified. IndependentFloat64allpairs physics, sourceFloat32hash/permutation/occupiedcellbounds/reorderedstates. Fullstate outputs/actual131100Doubleinputprefix; onlyunusedemptycellEnds canonicalizedsentinel forserialization. Nativekernelsunchanged, unusedparams fieldzero/nonreadstagingdefinedoutsideROI. Floatstatesabsolute1e-5; allintegermetadataexact, metricsmax_abs/max_rel domainscontinuousstates only. Fiveinprocesstrialsafterfullcasewarmup, meanlast4secondsperphysicalstep.",
+    "limitations": [
+      "Primary named scope is the original16384 particles/64cubed grid/seed1973 jittered initialization and source parameters, but ONE full physical update. Source Makefile10000 updates and long-time stability/convergence are unverified; strict eight-step Float64 trajectory oracle fails1e-5 and is not promoted.",
+      "Full device integration,hash,descending bitonic sort with source equal-key swaps,clear/cell bounds/reorder,27-cell collision update retained:8 active generic definitions/26 launches per physical step. No CPU neighbor list, host sorting, all-pairs GPU replacement or skipped preprocessing.",
+      "Independent CPU oracle is Float64 all-pairs soft-sphere interaction, not shared hash/sort code. It preserves source gravity-before-position update, cubical clipping/reflection and collision force added directly to velocity without dt/mass; not a validated physical material/energy-conservation model.",
+      "Actual historical CUDA.jl gravity-only kernel omits boundary and contact stages. Same-fixture GPU witness yields maxstateerror.000303924>1e-5,1031 particles outside source cube and missing horizontal collision velocity. Archived source and raw diagnostic retained, restoration separately costed.",
+      "All950300 serialized Double values checked per trial, including131100 actual input-prefix values byteexact, full pos/vel/hash/index/cellStart/canonicalcellEnd/reorderedpos/precollisionvel. Integer metadata remains actualUInt32 onGPU and is exactly representable in artifactDouble metadata only.",
+      "Every hash matches independent Float32 coordinate-floor/wrap computation on actual output positions; permutation,descending key order,occupied cell bounds,reordered positions and homogeneous w are independently checked. Empty cellEnd is UNUSED in source and canonicalized sentinel only for serialization, not claimed raw-unused-byte equivalence.",
+      "Source has unread uninitialized maxParticlesPerCell and initial reorder buffers overwritten before use. Named harness initializes unused field/staging outside ROI without altering any read physics/kernel arithmetic. This is a defined fixture boundary, not a native algorithm repair.",
+      "Source worldOrigin.x=+1 (not -1) and wrapped64cell hash are preserved. Cursor contact helper retained but fixed source collider.x=1.2, radius.17 plusparticle.023 gives unreachable branch under clippedx<=.977; no cursor-contact numerical coverage claim.",
+      "OriginalFloat32 gravity/sphere sqrt/normal/tangent and accumulation order retained; independentFloat64 maximum one-step error1.80334e-8 is tolerated belowpredeclared1e-5. No zero-distance guard or precision target silently added; canonical fixture finite, general coincident-center robustness unverified.",
+      "Strict8step native failure2.62650125704e-5 retained. Distinct untimed diagnostic savesall8states; exact metadata/reordering passall8. On actualGPU integratedpos/prevel, independent all-pairs force residual <=6.46e-6; Double integration from precedingGPUstate differspos~3e-8 yetvelocityup3.23e-5. Evidence supports near-contact precision sensitivity, not proof of sole cause or trajectory certification.",
+      "Original8step failed process lost binary artifacts under old runner; full5stdoutrecords/config/source remain. Root retention fix then one untimed excluded diagnostic preserves1rejectedrecord/one8stateartifact with nulltime; no second5trial timing series, no acceptance promotion, nonfinite-scalar path not exercised.",
+      "KA reorder kernel retains one CUDA.blockDim().x workgroup-size intrinsic, so KA implementation is explicitly hybrid_device_intrinsics despite own KA indexing/localmemory/barriers elsewhere. JACC uses own flatindex/group arithmetic/shared/sync; no KA unsupported-feature claim.",
+      "Native bitonic shared keys/values4KB; Julia packs1024UInt32 same4KB. Native reorder dynamic260B versusCUDAjl/KA static260B. JACC shared(template) adds template copy/barrier before source loading, explicit4096/260B allocations and0B nons hared kernels; own mutableLaunchSpec separate per stage avoids cached grid mismatch.",
+      "Warm full one-step case precedesfive inprocess trials, meanruns2\u20135 no selection. All26 source-equivalent host dispatches and global device completion inside ROI; buffer reset/copies/CPU checks/serialization outside. One-step launch latency matters; no profiled bandwidth/occupancy or causal explanation for observed gaps.",
+      "One currentreference,oneKA,oneJACC program candidate/device-JIT process check each,8 active definitions. Shared math/fixture/oracle restoration belongs currentreference effort; prior portable-kernel knowledge used, internal compiler passes/specializations unknown. Historical reference consumption/attempts unknown.",
+      "Prospective usage windows includecontext/cache/reasoning/coordination and overlapworkflow/children, not additiveexclusivebilledtranslation. Sourcechars/4proxies remainpartialseparate. Two failed shell path invocations are tool/control errors beforecompiler, not targetcandidate feedback."
+    ],
+    "configuration_results": null
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/particles.json",
+    "annotation_sha256": "b3533d38f625cb42c6a6e07833a4bcccbbfb33070c834a83ec61962f77465130",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/particles-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "0f9a1ab445e31aa6e84f3f62e4d95fccfefcc72f72b219da05f6eab1f6434b9a",
+      "record": {
+        "benchmark_id": "particles",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_semantic_repair_and_independent_validation",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 1,
+        "device_kernel_definitions": 8,
+        "kernel_semantic_repair_rounds": 0,
+        "guard_or_adapter_only": false,
+        "historical_translation_attempts": null,
+        "historical_total_tokens": null,
+        "current_input_tokens": null,
+        "current_output_tokens_proxy": 2845,
+        "current_total_tokens": null,
+        "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+        "observed_consumed_usage": {
+          "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/particles/cuda_jl_reference_audit.jsonl",
+          "delta_usage": {
+            "input_tokens": 8582391,
+            "cached_input_tokens": 8312320,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 43339,
+            "reasoning_output_tokens": 23852,
+            "total_tokens": 8625730
+          },
+          "scope": [
+            "Restore full gravity/boundary integration, hashing, descending bitonic sort with source tie swaps, full cell bounds/reorder and 27-cell collision update.",
+            "Original historical integration-only body preserved; actual same-fixture witness fails physical full-pipeline contract."
+          ]
+        },
+        "source_files": [
+          {
+            "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+            "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e"
+          },
+          {
+            "path": "src/particles-julia/study_common.jl",
+            "sha256": "6a2ee15db7e40218033b9f177df362938aaeedac6fafdfbd031bdab26bfd1dd5"
+          },
+          {
+            "path": "src/particles-julia/study_device.jl",
+            "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+            "source_locations": "originalsourcephysicsrestore"
+          }
+        ],
+        "historical_diagnostic_device_jit_checks": 1,
+        "primary_current_reference_device_jit_checks": 1
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/particles-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "0f9a1ab445e31aa6e84f3f62e4d95fccfefcc72f72b219da05f6eab1f6434b9a",
+    "record": {
+      "benchmark_id": "particles",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_semantic_repair_and_independent_validation",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 1,
+      "device_kernel_definitions": 8,
+      "kernel_semantic_repair_rounds": 0,
+      "guard_or_adapter_only": false,
+      "historical_translation_attempts": null,
+      "historical_total_tokens": null,
+      "current_input_tokens": null,
+      "current_output_tokens_proxy": 2845,
+      "current_total_tokens": null,
+      "token_status": "partial_saved_source_proxy_and_separate_observed_consumed_window",
+      "observed_consumed_usage": {
+        "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/particles/cuda_jl_reference_audit.jsonl",
+        "delta_usage": {
+          "input_tokens": 8582391,
+          "cached_input_tokens": 8312320,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 43339,
+          "reasoning_output_tokens": 23852,
+          "total_tokens": 8625730
+        },
+        "scope": [
+          "Restore full gravity/boundary integration, hashing, descending bitonic sort with source tie swaps, full cell bounds/reorder and 27-cell collision update.",
+          "Original historical integration-only body preserved; actual same-fixture witness fails physical full-pipeline contract."
+        ]
+      },
+      "source_files": [
+        {
+          "path": "src/particles-julia/particles-julia-cuda.jl/main.jl",
+          "sha256": "400501a357ef493508b46e065af30ca6acd3c3cd5ce6c5d1dafcdd03b1106d5e"
+        },
+        {
+          "path": "src/particles-julia/study_common.jl",
+          "sha256": "6a2ee15db7e40218033b9f177df362938aaeedac6fafdfbd031bdab26bfd1dd5"
+        },
+        {
+          "path": "src/particles-julia/study_device.jl",
+          "sha256": "f9a45e6dc8ca5b188bda97a364e0180ba8d858d4b2f4393d521723ee38bf8708",
+          "source_locations": "originalsourcephysicsrestore"
+        }
+      ],
+      "historical_diagnostic_device_jit_checks": 1,
+      "primary_current_reference_device_jit_checks": 1
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

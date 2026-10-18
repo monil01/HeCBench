@@ -1,0 +1,1277 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "zoom",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/zoom.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+    "work_item_mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+    "storage_precision": [
+      "Float32 image/shared tile/output"
+    ],
+    "compute_precision": [
+      "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+      "Float32 ordered addition and division",
+      "Int32 local coordinates",
+      "Int64 image pitch/plane offset"
+    ],
+    "synchronization": [
+      "one algorithm tileload barrier",
+      "same-stream stage order",
+      "context-wide measured completion"
+    ],
+    "launch_geometry": {
+      "threads": [
+        16,
+        16,
+        1
+      ],
+      "shapes": [
+        [
+          2,
+          3,
+          17,
+          19
+        ],
+        [
+          1,
+          2,
+          32,
+          33
+        ]
+      ],
+      "factors": [
+        [
+          1.5,
+          2.5
+        ],
+        [
+          0.6,
+          0.9
+        ]
+      ],
+      "fields": [
+        "signeddyadic",
+        "constantone"
+      ],
+      "timed_components": 8,
+      "shared_bytes_zoom": [
+        384,
+        2204,
+        2240
+      ],
+      "shared_bytes_edge": 0,
+      "algorithm_block_barriers_zoom": 1,
+      "internal_repeats": 3
+    },
+    "resource_policy": "Dynamic shared exact384/2204/2240bytes; edge0bytes.",
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "b380b56b8536bfd2b2c8626e219854a49f1b2e76ef2a95e6159ac981cfb66e69",
+    "reference_repair": {
+      "phase": "reference_mapping_and_oracle_precision_alignment",
+      "taxonomy_code": "P1",
+      "finding": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+      "original_main_sha256": "8fd1d9838510177449ceeb6e3f26a6879a65e8310fb7a448ad4bf58d004e2c0d",
+      "native_source_sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8",
+      "native_kernel_header_sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5",
+      "native_source_unchanged": true,
+      "native_fallback_scope": "get_sm_size repeats blocks[0] in its fallback loop; smaller listed blocks are never selected. Measured capacities all<48KiB and use original16x16. Huge-shrink fallback remains unmeasured source-host limitation, not framework unsupported."
+    },
+    "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "authored_device_kernel_definitions": 3,
+    "host_oracle_precision": [
+      "Aligned Float32 coordinate endpoints",
+      "Independent Python rational boxmean and Float32 rounding"
+    ],
+    "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+    },
+    "source_dependencies_sha256": {
+      "/home/imo/HeCBench_julia/src/zoom-julia/study_reference_kernels.jl": "cba9360457effa1f25eb89e338dd7327c90bcb88bf6e1ca0fbcd0d216e6faffd",
+      "/home/imo/HeCBench_julia/src/zoom-julia/study_arithmetic.jl": "6ee33a431034ac2c4481ea9c0ab4f9d6fbc99bf892ac1f41ae2281e26bbe4c81",
+      "/home/imo/HeCBench_julia/src/zoom-julia/study_cpu_reference.jl": "49cfa5805bbe06aabe9090a35868788790cc52d294b88fdf199aa9a2d05baa59",
+      "/home/imo/HeCBench_julia/src/zoom-julia/study_common.jl": "d9d230989c8ac744cb386b218e6e750dff25a11f5c3b3b1a51e050821826f808"
+    },
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+    "layout": null,
+    "storage_precision": [
+      "Float32 image/shared tile/output"
+    ],
+    "compute_precision": [
+      "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+      "Float32 ordered addition and division",
+      "Int32 local coordinates",
+      "Int64 image pitch/plane offset"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Aligned Float32 coordinate endpoints",
+      "Independent Python rational boxmean and Float32 rounding"
+    ],
+    "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "one algorithm tileload barrier",
+      "same-stream stage order",
+      "context-wide measured completion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "Dynamic shared exact384/2204/2240bytes; edge0bytes.",
+    "launch_geometry": {
+      "threads": [
+        16,
+        16,
+        1
+      ],
+      "shapes": [
+        [
+          2,
+          3,
+          17,
+          19
+        ],
+        [
+          1,
+          2,
+          32,
+          33
+        ]
+      ],
+      "factors": [
+        [
+          1.5,
+          2.5
+        ],
+        [
+          0.6,
+          0.9
+        ]
+      ],
+      "fields": [
+        "signeddyadic",
+        "constantone"
+      ],
+      "timed_components": 8,
+      "shared_bytes_zoom": [
+        384,
+        2204,
+        2240
+      ],
+      "shared_bytes_edge": 0,
+      "algorithm_block_barriers_zoom": 1,
+      "internal_repeats": 3
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "b380b56b8536bfd2b2c8626e219854a49f1b2e76ef2a95e6159ac981cfb66e69",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "shared_tile_whole_pixel_rectangle_mean_center_crop_edge_padding",
+    "storage_precision": [
+      "Float32 image/shared tile/output"
+    ],
+    "compute_precision": [
+      "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+      "Float32 ordered addition and division",
+      "Int32 local coordinates",
+      "Int64 image pitch/plane offset"
+    ],
+    "synchronization": [
+      "one algorithm block barrier after tile load",
+      "separate zoom/edge launches when shrinking",
+      "context-wide pre/post pipeline timing"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum8 means of3 reset+zoom pipelines; shrinking addsedgekernel; all allocations/copies/oracles outside",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "application_domain": "Image/tensor zoom augmentation with fixed output dimensions",
+      "operator": "Unweighted mean of whole source cells intersecting native Float32 coordinate intervals, followed by centered crop or nearest-edge padded shrinking",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/zoom-cuda/main.cu",
+          "sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8"
+        },
+        {
+          "path": "src/zoom-cuda/kernels.h",
+          "sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5"
+        }
+      ],
+      "scientific_scope": "Not bilinear interpolation, exact fractional-area resampling, arbitrary factor support or image-quality study. Both original CLI factor pairs and constant-field invariance checked for named shapes."
+    },
+    "keyconfounds": [
+      "Shared staging restored from historicallyglobal-onlyreference, separate P1alignmentcost",
+      "JACC copiesentire template and adds initialbarrier before source tileload",
+      "KA sharedcapacityVal specialization vsdynamicshared native/CUDAjl/JACC",
+      "Shrinkmode includesextraedgekernel andlarger sharedcapacity thanexpand; cannotattributeperformance solelytoresourceuse withoutcounters",
+      "Two named smallshapes, no fullCLI size/resourcefallback certification",
+      "Float32 coordinateendpoint precision is part of actualoperator, notFloat64idealresize"
+    ],
+    "benchmark": "zoom",
+    "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T012019744608Z_zoom/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/zoom-cuda/main.cu",
+      "native_source_sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8",
+      "reviewed_at": "2026-10-18T01:21:42.838866+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+        "work_item_mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+        "storage_precision": [
+          "Float32 image/shared tile/output"
+        ],
+        "compute_precision": [
+          "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+          "Float32 ordered addition and division",
+          "Int32 local coordinates",
+          "Int64 image pitch/plane offset"
+        ],
+        "synchronization": [
+          "one algorithm tileload barrier",
+          "same-stream stage order",
+          "context-wide measured completion"
+        ],
+        "launch_geometry": {
+          "threads": [
+            16,
+            16,
+            1
+          ],
+          "shapes": [
+            [
+              2,
+              3,
+              17,
+              19
+            ],
+            [
+              1,
+              2,
+              32,
+              33
+            ]
+          ],
+          "factors": [
+            [
+              1.5,
+              2.5
+            ],
+            [
+              0.6,
+              0.9
+            ]
+          ],
+          "fields": [
+            "signeddyadic",
+            "constantone"
+          ],
+          "timed_components": 8,
+          "shared_bytes_zoom": [
+            384,
+            2204,
+            2240
+          ],
+          "shared_bytes_edge": 0,
+          "algorithm_block_barriers_zoom": 1,
+          "internal_repeats": 3
+        },
+        "resource_policy": "Dynamic shared exact384/2204/2240bytes; edge0bytes.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "b380b56b8536bfd2b2c8626e219854a49f1b2e76ef2a95e6159ac981cfb66e69",
+        "reference_repair": {
+          "phase": "reference_mapping_and_oracle_precision_alignment",
+          "taxonomy_code": "P1",
+          "finding": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+          "original_main_sha256": "8fd1d9838510177449ceeb6e3f26a6879a65e8310fb7a448ad4bf58d004e2c0d",
+          "native_source_sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8",
+          "native_kernel_header_sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5",
+          "native_source_unchanged": true,
+          "native_fallback_scope": "get_sm_size repeats blocks[0] in its fallback loop; smaller listed blocks are never selected. Measured capacities all<48KiB and use original16x16. Huge-shrink fallback remains unmeasured source-host limitation, not framework unsupported."
+        },
+        "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 3,
+        "host_oracle_precision": [
+          "Aligned Float32 coordinate endpoints",
+          "Independent Python rational boxmean and Float32 rounding"
+        ],
+        "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+        },
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_reference_kernels.jl": "cba9360457effa1f25eb89e338dd7327c90bcb88bf6e1ca0fbcd0d216e6faffd",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_arithmetic.jl": "6ee33a431034ac2c4481ea9c0ab4f9d6fbc99bf892ac1f41ae2281e26bbe4c81",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_cpu_reference.jl": "49cfa5805bbe06aabe9090a35868788790cc52d294b88fdf199aa9a2d05baa59",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_common.jl": "d9d230989c8ac744cb386b218e6e750dff25a11f5c3b3b1a51e050821826f808"
+        },
+        "source_review_status": "source_reviewed"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+        "work_item_mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+        "storage_precision": [
+          "Float32 image/shared tile/output"
+        ],
+        "compute_precision": [
+          "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+          "Float32 ordered addition and division",
+          "Int32 local coordinates",
+          "Int64 image pitch/plane offset"
+        ],
+        "synchronization": [
+          "one algorithm tileload barrier",
+          "same-stream stage order",
+          "context-wide measured completion"
+        ],
+        "launch_geometry": {
+          "threads": [
+            16,
+            16,
+            1
+          ],
+          "shapes": [
+            [
+              2,
+              3,
+              17,
+              19
+            ],
+            [
+              1,
+              2,
+              32,
+              33
+            ]
+          ],
+          "factors": [
+            [
+              1.5,
+              2.5
+            ],
+            [
+              0.6,
+              0.9
+            ]
+          ],
+          "fields": [
+            "signeddyadic",
+            "constantone"
+          ],
+          "timed_components": 8,
+          "shared_bytes_zoom": [
+            384,
+            2204,
+            2240
+          ],
+          "shared_bytes_edge": 0,
+          "algorithm_block_barriers_zoom": 1,
+          "internal_repeats": 3
+        },
+        "resource_policy": "KA static @localmem exactcapacityviaVal96/551/560; edge0bytes.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "a127d1627463519ffd5043b0003f70991ba8814da096ef566abd5ad1422f200b",
+        "reference_repair": null,
+        "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 3,
+        "host_oracle_precision": [
+          "Aligned Float32 coordinate endpoints",
+          "Independent Python rational boxmean and Float32 rounding"
+        ],
+        "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+        },
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/zoom-julia/zoom-julia-KA/study_kernels.jl": "1b69043ea1bc71abda6c291bfe267696029d8beb0b4144895aa59b9ceca785ab",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_arithmetic.jl": "6ee33a431034ac2c4481ea9c0ab4f9d6fbc99bf892ac1f41ae2281e26bbe4c81",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_cpu_reference.jl": "49cfa5805bbe06aabe9090a35868788790cc52d294b88fdf199aa9a2d05baa59",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_common.jl": "d9d230989c8ac744cb386b218e6e750dff25a11f5c3b3b1a51e050821826f808"
+        },
+        "source_review_status": "source_reviewed"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Native fixed-shape zoom: shared-tile unweighted floor/ceil source-box means; expanding result is center-cropped, shrinking result center-placed with edge replication back to original dimensions.",
+        "work_item_mapping": "Three authored kernels/model, original16x16x1blocks and3D batch/channel grid. Tileload loops stridedby16 with explicitzero outside source; one barrier before averages. Exactshared capacities384/2204/2240bytes.",
+        "storage_precision": [
+          "Float32 image/shared tile/output"
+        ],
+        "compute_precision": [
+          "Float32 factor/dimension-product/ratio/coordinate endpoint arithmetic",
+          "Float32 ordered addition and division",
+          "Int32 local coordinates",
+          "Int64 image pitch/plane offset"
+        ],
+        "synchronization": [
+          "one algorithm tileload barrier",
+          "same-stream stage order",
+          "context-wide measured completion",
+          "JACC initialtemplate barrier"
+        ],
+        "launch_geometry": {
+          "threads": [
+            16,
+            16,
+            1
+          ],
+          "shapes": [
+            [
+              2,
+              3,
+              17,
+              19
+            ],
+            [
+              1,
+              2,
+              32,
+              33
+            ]
+          ],
+          "factors": [
+            [
+              1.5,
+              2.5
+            ],
+            [
+              0.6,
+              0.9
+            ]
+          ],
+          "fields": [
+            "signeddyadic",
+            "constantone"
+          ],
+          "timed_components": 8,
+          "shared_bytes_zoom": [
+            384,
+            2204,
+            2240
+          ],
+          "shared_bytes_edge": 0,
+          "algorithm_block_barriers_zoom": 1,
+          "internal_repeats": 3
+        },
+        "resource_policy": "Dynamic shared exact384/2204/2240bytes; JACC complete template copy and additionalinitialbarrier; edge explicit0bytes.",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "19ea9f6bfdf88112984799d488a2ef45bd8a017ff19e79dab2cda3e87f875ce9",
+        "reference_repair": null,
+        "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 3,
+        "host_oracle_precision": [
+          "Aligned Float32 coordinate endpoints",
+          "Independent Python rational boxmean and Float32 rounding"
+        ],
+        "artifact_encoding": "Float32 image plus exactly representedintegercontrols and actualFloat32factors",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Restored native16x16tileload/dataflow and exactcapacities; separate source zoom-in/out and edge stages. Edge eight branches collapsed to equivalent clamp outside activecenter. KA uses staticcapacity Val specialization while native/CUDAjl/JACC use dynamicshared allocation."
+        },
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/zoom-julia/zoom-julia-JACC/study_kernels.jl": "f82692905b3b9d2648c9ed5d8cb7c5e775cec7d39a1db0fcb01f8c58eb3950a3",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_arithmetic.jl": "6ee33a431034ac2c4481ea9c0ab4f9d6fbc99bf892ac1f41ae2281e26bbe4c81",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_cpu_reference.jl": "49cfa5805bbe06aabe9090a35868788790cc52d294b88fdf199aa9a2d05baa59",
+          "/home/imo/HeCBench_julia/src/zoom-julia/study_common.jl": "d9d230989c8ac744cb386b218e6e750dff25a11f5c3b3b1a51e050821826f808"
+        },
+        "source_review_status": "source_reviewed"
+      }
+    },
+    "scientific_witness": {
+      "captures_checked": 20,
+      "path": ".porting-state/portable_julia/scientific_witnesses_300/zoom.json",
+      "all_image_pixels": 16200,
+      "input_control_prefix": 16328,
+      "constant_cases_preserved": true
+    },
+    "shared_footprint_evidence": [
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "signeddyadic",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          25,
+          47
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": null,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "signeddyadic",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          10,
+          17
+        ],
+        "shared_slots": 551,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": null,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "constantone",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          25,
+          47
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": true,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          2,
+          3,
+          17,
+          19
+        ],
+        "fixture": "constantone",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          10,
+          17
+        ],
+        "shared_slots": 551,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": true,
+        "output_values": 1938
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "signeddyadic",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          48,
+          82
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": null,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "signeddyadic",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          19,
+          29
+        ],
+        "shared_slots": 560,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": null,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "constantone",
+        "mode": "in",
+        "intermediate_zoom_shape": [
+          48,
+          82
+        ],
+        "shared_slots": 96,
+        "max_source_tile_footprint": 96,
+        "box_pixel_counts": [
+          1,
+          2,
+          4
+        ],
+        "constant_field_preserved": true,
+        "output_values": 2112
+      },
+      {
+        "shape": [
+          1,
+          2,
+          32,
+          33
+        ],
+        "fixture": "constantone",
+        "mode": "out",
+        "intermediate_zoom_shape": [
+          19,
+          29
+        ],
+        "shared_slots": 560,
+        "max_source_tile_footprint": 532,
+        "box_pixel_counts": [
+          4,
+          6,
+          9
+        ],
+        "constant_field_preserved": true,
+        "output_values": 2112
+      }
+    ],
+    "per_component_performance": {
+      "cuda": {
+        "five_trial_seconds": [
+          [
+            7.536666666666666e-06,
+            1.2923333333333334e-05,
+            7.253333333333333e-06,
+            1.0246666666666666e-05,
+            7.283333333333333e-06,
+            1.0403333333333334e-05,
+            7.37e-06,
+            1.0160333333333333e-05
+          ],
+          [
+            8.913333333333333e-06,
+            1.0413333333333332e-05,
+            7.027e-06,
+            1.0216666666666667e-05,
+            7.287e-06,
+            1.034e-05,
+            7.223333333333333e-06,
+            1.012e-05
+          ],
+          [
+            8.817e-06,
+            1.0346666666666667e-05,
+            7.16e-06,
+            1.0320000000000001e-05,
+            7.176666666666666e-06,
+            1.0477e-05,
+            7.176666666666666e-06,
+            1.0330333333333333e-05
+          ],
+          [
+            8.716666666666666e-06,
+            1.0443666666666668e-05,
+            6.993333333333333e-06,
+            1.0350333333333333e-05,
+            7.23e-06,
+            1.0286666666666666e-05,
+            7.146666666666667e-06,
+            1.0376666666666667e-05
+          ],
+          [
+            8.66e-06,
+            1.0453666666666666e-05,
+            7.073333333333333e-06,
+            1.029e-05,
+            7.27e-06,
+            1.036e-05,
+            7.1436666666666665e-06,
+            1.0216666666666667e-05
+          ]
+        ],
+        "mean_last_four_seconds": [
+          8.77675e-06,
+          1.0414333333333333e-05,
+          7.063416666666667e-06,
+          1.029425e-05,
+          7.240916666666666e-06,
+          1.0365916666666667e-05,
+          7.172583333333333e-06,
+          1.0260916666666667e-05
+        ],
+        "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+      },
+      "cuda_jl": {
+        "five_trial_seconds": [
+          [
+            9.803666666666667e-06,
+            2.9573333333333334e-05,
+            1.0763333333333334e-05,
+            1.3040333333333333e-05,
+            9.72e-06,
+            1.3260333333333334e-05,
+            9.516666666666668e-06,
+            1.2653333333333335e-05
+          ],
+          [
+            3.109366666666667e-05,
+            1.5817e-05,
+            9.88e-06,
+            1.3057e-05,
+            9.506666666666667e-06,
+            1.2867000000000002e-05,
+            9.67e-06,
+            1.2570333333333336e-05
+          ],
+          [
+            1.3720000000000002e-05,
+            1.4220000000000001e-05,
+            9.797e-06,
+            1.2683333333333334e-05,
+            9.510333333333334e-06,
+            1.324e-05,
+            9.613666666666667e-06,
+            1.269e-05
+          ],
+          [
+            1.275e-05,
+            3.3587e-05,
+            1.1186666666666667e-05,
+            1.3283666666666668e-05,
+            9.706666666666668e-06,
+            1.2613666666666666e-05,
+            9.686666666666668e-06,
+            1.2603333333333335e-05
+          ],
+          [
+            1.2576666666666666e-05,
+            1.2930333333333334e-05,
+            9.260000000000001e-06,
+            1.2353666666666668e-05,
+            9.426666666666667e-06,
+            1.2643333333333335e-05,
+            9.146666666666667e-06,
+            1.2506666666666667e-05
+          ]
+        ],
+        "mean_last_four_seconds": [
+          1.7535083333333334e-05,
+          1.9138583333333333e-05,
+          1.0030916666666668e-05,
+          1.2844416666666669e-05,
+          9.537583333333335e-06,
+          1.2841000000000001e-05,
+          9.52925e-06,
+          1.2592583333333335e-05
+        ],
+        "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+      },
+      "ka": {
+        "five_trial_seconds": [
+          [
+            2.2323666666666668e-05,
+            6.833066666666667e-05,
+            2.9907e-05,
+            3.241e-05,
+            2.2343333333333333e-05,
+            3.600366666666667e-05,
+            2.157366666666667e-05,
+            3.223366666666667e-05
+          ],
+          [
+            5.565033333333334e-05,
+            4.605366666666667e-05,
+            2.4063333333333334e-05,
+            3.419666666666667e-05,
+            2.1973333333333335e-05,
+            3.5960333333333335e-05,
+            2.2210333333333337e-05,
+            3.167366666666667e-05
+          ],
+          [
+            2.6547000000000002e-05,
+            3.4090333333333335e-05,
+            2.080366666666667e-05,
+            3.1103666666666665e-05,
+            2.2463333333333336e-05,
+            3.227e-05,
+            2.201666666666667e-05,
+            3.1080333333333335e-05
+          ],
+          [
+            2.9187000000000004e-05,
+            3.376366666666667e-05,
+            2.1567000000000002e-05,
+            3.0807e-05,
+            2.1320333333333337e-05,
+            3.3420333333333336e-05,
+            2.1513333333333333e-05,
+            3.1153666666666666e-05
+          ],
+          [
+            2.5327e-05,
+            3.323033333333333e-05,
+            2.074366666666667e-05,
+            3.420366666666667e-05,
+            2.2007000000000005e-05,
+            3.154366666666667e-05,
+            2.1497e-05,
+            3.2307e-05
+          ]
+        ],
+        "mean_last_four_seconds": [
+          3.417783333333334e-05,
+          3.67845e-05,
+          2.179441666666667e-05,
+          3.257775e-05,
+          2.1941000000000002e-05,
+          3.329858333333334e-05,
+          2.1809333333333335e-05,
+          3.155366666666667e-05
+        ],
+        "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+      },
+      "jacc": {
+        "five_trial_seconds": [
+          [
+            1.8760333333333334e-05,
+            4.5647000000000005e-05,
+            2.2237e-05,
+            2.8287e-05,
+            2.3550333333333334e-05,
+            2.8047e-05,
+            1.835666666666667e-05,
+            2.718366666666667e-05
+          ],
+          [
+            4.3413666666666674e-05,
+            3.7877000000000003e-05,
+            1.9423333333333334e-05,
+            3.159366666666667e-05,
+            1.8580333333333332e-05,
+            2.7887000000000003e-05,
+            1.8073666666666666e-05,
+            2.7543333333333334e-05
+          ],
+          [
+            2.6347e-05,
+            3.1707e-05,
+            1.8130333333333335e-05,
+            2.9127000000000004e-05,
+            1.8357e-05,
+            2.744366666666667e-05,
+            1.9226666666666667e-05,
+            2.866366666666667e-05
+          ],
+          [
+            2.7776666666666668e-05,
+            2.8103333333333336e-05,
+            2.0263333333333336e-05,
+            2.7453666666666668e-05,
+            2.0147000000000002e-05,
+            2.8343666666666668e-05,
+            1.8523666666666667e-05,
+            2.9180333333333336e-05
+          ],
+          [
+            2.898e-05,
+            2.9060333333333334e-05,
+            1.8560000000000002e-05,
+            2.765366666666667e-05,
+            1.8657e-05,
+            2.712366666666667e-05,
+            1.7417000000000003e-05,
+            2.6866666666666668e-05
+          ]
+        ],
+        "mean_last_four_seconds": [
+          3.162933333333334e-05,
+          3.1686916666666667e-05,
+          1.909425e-05,
+          2.8957e-05,
+          1.8935333333333335e-05,
+          2.76995e-05,
+          1.831025e-05,
+          2.8063500000000003e-05
+        ],
+        "component_order": "shape17x19then32x33; signedfieldthenconstantone; expandthenshrink"
+      }
+    },
+    "prospective_usage_intervals": [
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/zoom/shared_benchmark_workflow.jsonl",
+        "end_event": "877e19958f6ec6cd070e4af9",
+        "delta_usage": {
+          "input_tokens": 3871300,
+          "cached_input_tokens": 3853568,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 19828,
+          "reasoning_output_tokens": 7478,
+          "total_tokens": 3891128
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/zoom/jacc_translation.jsonl",
+        "end_event": "356e3c301e9d113da489f4c5",
+        "delta_usage": {
+          "input_tokens": 705750,
+          "cached_input_tokens": 704768,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4282,
+          "reasoning_output_tokens": 1552,
+          "total_tokens": 710032
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/zoom/shared_reference_preparation.jsonl",
+        "end_event": "3ca68cb3b0a091360fba181a",
+        "delta_usage": {
+          "input_tokens": 894516,
+          "cached_input_tokens": 889856,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10529,
+          "reasoning_output_tokens": 4275,
+          "total_tokens": 905045
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/zoom/ka_translation.jsonl",
+        "end_event": "13d8e592998bef3bae635f3d",
+        "delta_usage": {
+          "input_tokens": 693797,
+          "cached_input_tokens": 692864,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2280,
+          "reasoning_output_tokens": 1034,
+          "total_tokens": 696077
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/zoom-julia/zoom-julia-cuda.jl/main.jl",
+    "sha256": "b380b56b8536bfd2b2c8626e219854a49f1b2e76ef2a95e6159ac981cfb66e69",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        7,
+        8
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+      "run_id": "20261018T012019744608Z_zoom",
+      "result": ".porting-state/portable_julia/runs/20261018T012019744608Z_zoom/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "ba7fe623941e915480cf08ec0ac5c91c96e5eafc155add44379fb57f6beceaff",
+      "source_hash": "e2c01ae0ebe94e0d2e6ac5e74608cf546cb4f08ed5eeef77d8e8b947915d6cdc",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012019744608Z_zoom/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000108331,
+        0.00011446166666666666,
+        9.547433333333335e-05,
+        0.00011541766666666668,
+        9.0844e-05
+      ],
+      "mean_last_four_seconds": 0.00010404941666666667,
+      "contract": {
+        "shapes": [
+          [
+            2,
+            3,
+            17,
+            19
+          ],
+          [
+            1,
+            2,
+            32,
+            33
+          ]
+        ],
+        "factors": [
+          [
+            1.5,
+            2.5
+          ],
+          [
+            0.6,
+            0.9
+          ]
+        ],
+        "factor_precision": "ActualFloat32 native factors and Float32 dimension multiplication/floor",
+        "fixtures": [
+          "signeddyadic",
+          "constantone"
+        ],
+        "output_shape": "Preserves original inputH\u00d7W: expandedimagecentercrop orshrunkenimagecenterpad with edgereplication",
+        "timing": "Source outputzero reset +sharedzoom +edgepadwhenout;3actualpipeline repeats;alloc/copies/checkoutside",
+        "geometry": [
+          16,
+          16,
+          1
+        ],
+        "scope": "Wholepixelunweighted boxmeans using native floor/ceilFloat32source spans, notbilinear/exactfractionalarea interpolation. Sourcebothdimensionsstrictsimultaneous factors retained."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "zoom_cuda_jl_reference_mapping_01",
+        "benchmark_id": "zoom",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_mapping_and_oracle_precision_alignment",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/zoom.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "zoom_cuda_jl_reference_mapping_01",
+          "benchmark_id": "zoom",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "zoom_original_bothfactors_sharedtiles_two_shapes_twofields_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_mapping_and_oracle_precision_alignment",
+          "taxonomy_code": "P1",
+          "symptom": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+          "cause": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "phase": "reference_mapping_and_oracle_precision_alignment",
+            "taxonomy_code": "P1",
+            "finding": "Historical CUDA.jl genuinely computes native box-span means/crop/pad, but omits the native shared staging tiles and block barrier, reading input directly for each output. Its CPU oracle uses Float64 ratio while device/native use Float32; edge kernel redundantly rewrites interior values. Study preserves original bytes, restores shared staging and original16x16mapping, aligns Float32 host coordinate arithmetic, and uses an algebraically equivalent outside-only clamp for native edge copies. These are mapping/oracle-precision changes, not an established historical wrong operator.",
+            "original_main_sha256": "8fd1d9838510177449ceeb6e3f26a6879a65e8310fb7a448ad4bf58d004e2c0d",
+            "native_source_sha256": "bf371d410598559b943157c211aeedd33718f96e271a7569519a53e3396751f8",
+            "native_kernel_header_sha256": "5dee0f021128ebe8470a9fa022ad2f02c0c2cd6e8847704c10b34fec38c77fc5",
+            "native_source_unchanged": true,
+            "native_fallback_scope": "get_sm_size repeats blocks[0] in its fallback loop; smaller listed blocks are never selected. Measured capacities all<48KiB and use original16x16. Huge-shrink fallback remains unmeasured source-host limitation, not framework unsupported."
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "8fd1d9838510177449ceeb6e3f26a6879a65e8310fb7a448ad4bf58d004e2c0d",
+          "log_reference": "/home/imo/HeCBench_julia/src/zoom-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 162,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/zoom-julia/zoom-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/zoom-julia-cuda_jl/manifest.json",
+    "selected_sha256": "33d68704f11553555aaf55c881bb51e21be3240b11f1639e5c6d5f5ff951e0aa",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/zoom-julia-cuda_jl/manifest.json",
+        "sha256": "33d68704f11553555aaf55c881bb51e21be3240b11f1639e5c6d5f5ff951e0aa"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/zoom.json",
+    "annotation_sha256": "9452786adf923fa7052b49c0919d19a58d9dda59f99ee1610ae4ee757e2181ad",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

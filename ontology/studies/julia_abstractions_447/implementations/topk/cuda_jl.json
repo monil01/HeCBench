@@ -1,0 +1,460 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_447_v2",
+  "benchmark_id": "topk",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/topk.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Scan actual input and scatter selected integer-valued permutation entries by known rank.",
+    "mapping": "2048 blocks256, one input value perlane.",
+    "layout": "Contiguous Float32 rows, Float32 selected values andInt32 IDs.",
+    "precision": {
+      "storage": [
+        "float32",
+        "int32"
+      ],
+      "compute": "float32 comparison and integer rank"
+    },
+    "implementation_detail": "Repaired source now loads actual input and emits actual column IDs.",
+    "memory": "Global buffers only.",
+    "synchronization": [],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+        "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Scan actual input and scatter selected integer-valued permutation entries by known rank.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "2048 blocks256, one input value perlane.",
+    "layout": "Contiguous Float32 rows, Float32 selected values andInt32 IDs.",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": "float32 comparison and integer rank",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global buffers only.",
+    "synchronization": [],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+        "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "topk",
+    "primary_motif": "permutation_scan_rank_scatter",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "int32",
+      "float32_comparisons"
+    ],
+    "synchronization": [
+      "none_within_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "OriginalJulia shortcut corrected to native realinputscan/rank/actualIDs beforetranslation"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Permutation-of-arange contract only, not generalFloat32 topK",
+      "Reference correction separate phase; original shortcut timing not used"
+    ],
+    "jacc_shared_memory_policy": "explicit_zero",
+    "observation": "research/observations/topk.md",
+    "ontology_sha256": "8cd12442d60aa6f6270e59d6b2c512567149981096b6053230f5b37e5bc52167",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "permutation_topk_selection_primitive",
+      "scientific_task": "Select largest1024 values and actual column IDs from each integer-valued permutation row.",
+      "mathematical_operation": "For valuev in permutation0..4095, ifv>=3072 scatter to rank4095-v.",
+      "discretization_or_topology": "128 rows4096 features,1024 selected perrow.",
+      "invariants": [
+        "Permutation uniqueness makes rank scatter collision-free.",
+        "IDs refer to actual input columns."
+      ],
+      "accuracy_requirements": [
+        "All131072 values and131072 IDs exact against CPU sort and both references."
+      ],
+      "precision_sensitivity": "Float32 values must represent integral unique permutation entries; arbitrary real topK not supported by this contract.",
+      "input_size_regimes": "128x4096,k1024,10 repeats; generic values/ties unmeasured.",
+      "community_use_case": "TopK selection benchmark for token/feature-like rows; no specific scientific model identified.",
+      "uncertainty": "Permutation-specific rank scatter, not a general comparison-sort/select algorithm.",
+      "provenance": [
+        {
+          "path": "src/topk-cuda/main.cu",
+          "sha256": "1008790777462cf0a795900cedb56d6e60e698eee11be81ec3f6fdaa42ca4bee",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/topk-julia/study_common.jl",
+          "sha256": "21f6a57f97db67683c2d5bef564dfb1f3f42452f253c139cf848980cbe04cacd",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:18:45.330115+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Scan actual input and scatter selected integer-valued permutation entries by known rank.",
+        "mapping": "2048 blocks256, one input value perlane.",
+        "layout": "Contiguous Float32 rows, Float32 selected values andInt32 IDs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 comparison and integer rank"
+        },
+        "implementation_detail": "Repaired source now loads actual input and emits actual column IDs.",
+        "memory": "Global buffers only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+            "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Scan actual input and scatter selected integer-valued permutation entries by known rank.",
+        "mapping": "2048 blocks256, one input value perlane.",
+        "layout": "Contiguous Float32 rows, Float32 selected values andInt32 IDs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 comparison and integer rank"
+        },
+        "implementation_detail": "Same scan under global indexing, no shared collectives.",
+        "memory": "Global buffers only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/topk-julia/topk-julia-KA/main.jl",
+            "sha256": "ceafb63e45361af043ba6f962c9a1a5f6be78562cef36fbf7c203899946b7364",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Scan actual input and scatter selected integer-valued permutation entries by known rank.",
+        "mapping": "2048 blocks256, one input value perlane.",
+        "layout": "Contiguous Float32 rows, Float32 selected values andInt32 IDs.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 comparison and integer rank"
+        },
+        "implementation_detail": "Same linear callback, explicitshmem0.",
+        "memory": "Global buffers only; current explicitshmem0.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/topk-julia/topk-julia-JACC/main.jl",
+            "sha256": "f85d130d7085a6b3bed3cc198502adc2ad9bff91e178a37412c24564d8317d05",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+    "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        20
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "permutation_fp32_batch128_hidden4096_top1024_fullvalues_ids_repeat10_v1",
+      "run_id": "20261017T000418346545Z_topk",
+      "result": ".porting-state/portable_julia/runs/20261017T000418346545Z_topk/result.json",
+      "configuration_role": "primary",
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "8d4d4643946ae7a129421f939a01783cc14edabbbe4a22a2c6dc9b84484d6c0a",
+      "source_hash": "b5883f154d48529f36ea3c55ea54109210b055ce5f4d1a5810ba47925af0dc75",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T000418346545Z_topk/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.30401e-05,
+        1.40981e-05,
+        1.09691e-05,
+        1.06231e-05,
+        1.07781e-05
+      ],
+      "mean_last_four_seconds": 1.16171e-05,
+      "contract": {
+        "precision": "Float32values/Int32IDs; IDs losslesslywidenedFloat32outsideclock",
+        "shape": [
+          128,
+          4096,
+          1024
+        ],
+        "fixture": "Eachrowinput[col]=(5*col+17*row)%4096, full permutation, not sorted",
+        "internal_repeats": 10,
+        "coverage": "Permutation-of-arange contract from nativecurrentkernel, notgeneral arbitraryFloat32 topK; hidden4096/k1024 only",
+        "reference_correction": "OriginalJulia fabricated outputs from dimensions without input loads; preservedoriginal_main.jl, correctedrealinputscan/rank/IDs"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "topk-cuda_jl-P1-retrospective-implementation",
+        "benchmark_id": "topk",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/topk.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "topk-cuda_jl-P1-retrospective-implementation",
+          "benchmark": "topk",
+          "model": "cuda_jl",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Permutation-specific input contract is essential and does not establish general topK.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/topk-cuda/main.cu",
+              "sha256": "1008790777462cf0a795900cedb56d6e60e698eee11be81ec3f6fdaa42ca4bee",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+              "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "topk-cuda_jl-S1-retrospective-reference",
+        "benchmark_id": "topk",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/topk.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "topk-cuda_jl-S1-retrospective-reference",
+          "benchmark": "topk",
+          "model": "cuda_jl",
+          "phase": "reference_repair",
+          "code": "S1",
+          "retrospective": true,
+          "is_failure": true,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Archived Julia shortcut generated outputs without scanning actual input/returning actual shuffled column IDs.",
+          "root_cause": "Historical implementation changed or omitted the native algorithm/precision contract.",
+          "resolution": "Preserved original source, repaired reference before portable validation; old attempt counts not inferred.",
+          "final_outcome": "reference_repaired_existing_evidence",
+          "evidence": [
+            {
+              "path": "src/topk-cuda/main.cu",
+              "sha256": "1008790777462cf0a795900cedb56d6e60e698eee11be81ec3f6fdaa42ca4bee",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/topk-julia/topk-julia-cuda.jl/original_main.jl",
+              "sha256": "785aeaab4a8402532180b3836f84d9e62a444b6a7cb6630ef78d55ae8526e3f1",
+              "source_locations": "archived historical reference"
+            },
+            {
+              "path": "src/topk-julia/topk-julia-cuda.jl/main.jl",
+              "sha256": "e164fe0e7e59279577dc6e72ed8f2cbb45e70ebe1d5fb9f262a954b2b8f9b5dd",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/topk-julia-cuda/manifest.json",
+    "selected_sha256": null,
+    "candidate_alias_records": [],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/topk.json",
+    "annotation_sha256": "0f838bd27a7dc585fe98cf17f8daeb63235af0f3b4f52bc195609ed09fe4b539",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "quantVLLM",
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "per_token_activation_quantization",
+    "secondary_domains": [
+      "low_precision_numerics",
+      "block_reductions"
+    ],
+    "review_status": "source_reviewed",
+    "scientific_task": "Encode typed FP16, BF16 and FP32 activation rows as Int8 codes, with static or per-token dynamic scaling and optional asymmetric zero points.",
+    "mathematical_operation": "Round to nearest even and clamp to Int8. Symmetric dynamic scale is max(abs(x))/127; asymmetric scale is (max(x)-min(x))/255 with an Int32 zero point. The source uses Float32 arithmetic after loading each typed input.",
+    "discretization": "17 rows for each hidden size 513 and 5137, each in actual FP16, BF16 and FP32 storage; four quantization modes give 24 timed paths. Every primary row has true extrema -128 and127, mixed signs and nonzero range. Static rounding boundaries and a final-lane extremum exercise dtype rounding and non-power-of-two workgroups.",
+    "accuracy_requirements": "All Int8 codes, Float32 scale arrays, Int32 zero-point arrays and every guard are exact against independent Float32 operation-sequence and native CPU oracles. Encoding correctness is separate from lossy reconstruction error and clipping, which are also recorded.",
+    "input_size_regime": "Named small token batch17, hidden513 or5137, actual513 or1024 threads per block. Twenty launches per path, five outer trials, mean only trials2\u20135. This is not the original4096-token default throughput regime.",
+    "precision_sensitivity": "Input storage is genuinely16/16/32bits; arithmetic/reductions/scales are Float32 and codes Int8. Integer rounding/index operations are Int32 in Julia; native token offsets use Int64. Float64 is lossless artifact serialization only. BFloat16s0.6.2 is already pinned through CUDA, with no environment change.",
+    "community_use_case": "Quantization is relevant to activation storage/compression for inference. No trained LLM, downstream task accuracy, calibration generalization or end-to-end inference speed is measured.",
+    "description": "Original native GPU kernels and launch wrappers are byte-identical. A named harness bypasses a CUDA12.0 host-generator BF16 assignment compile error. The genuine Julia reference was repaired for a demonstrated513-thread reduction omission and for true BF16 storage. KA and JACC implement the same manual1024-slot trees, while native CUDA uses CUB block reductions.",
+    "provenance": "Actual native/old Julia witnesses and typed GPU storage checks are preserved. An all-negative native min/max initialization limitation is diagnosed outside the primary mixed-row contract. Full output and source-prefix byte audits distinguish scientific assumptions from framework support.",
+    "source_evidence": [
+      {
+        "path": "src/quantVLLM-cuda/main.cu",
+        "sha256": "4565ceb8ebe3cebc0a0c1dff5bc8c6e3e293ea2d58c228492f7d045bffd0d291"
+      },
+      {
+        "path": "src/quantVLLM-cuda/reference.h",
+        "sha256": "476bdc00788381a80a625a5985e01145e8bd4ad6e697588e9bcabd9e3125b72a"
+      },
+      {
+        "path": "src/quantVLLM-cuda/utils.h",
+        "sha256": "2f5f46cec997650c70064c1ef602bf0b9462c468d689aaa0afe5fd3fc0599a9d"
+      },
+      {
+        "path": "src/quantVLLM-julia/quantVLLM-julia-cuda.jl/legacy_main.jl",
+        "sha256": "d24d21a896393ae02a928a27c3196b1334ab91a9d660060641f86d72f40e27ae"
+      },
+      {
+        "path": "src/quantVLLM-julia/study_native_kernels.cuh",
+        "sha256": "284913ff8244bd9ce3d1f45c1db1da242e72c5d6b877962e50e7b2785f130d9a"
+      },
+      {
+        "path": "src/quantVLLM-julia/source_and_numerical_witnesses.json",
+        "sha256": "0580b365a79c9888e3f4cb9a575c40c2112cb44a69e6c0aa709d205fd7d36a68"
+      },
+      {
+        "path": "src/quantVLLM-julia/independent_artifact_audit.json",
+        "sha256": "0e60c56da64e57e105ff190f10da612dda9c889e6ca912ee9685144ca466a344"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/quantVLLM.yaml",
+    "frozen_sha256": "51eb0ec9afc18200e9364135f1207edad1242d28894864a9c723c34b1619f9d1",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "native_pass_trusted",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "9b418ec621d82806fe4da0e6",
+      "begin_event_id": "9eb87e50ba0a7c0059e8f6d5",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T00:08:02.253542+00:00",
+      "usage_event_timestamp": "2026-10-18T00:07:52.869Z",
+      "elapsed_usage_event_start": "2026-10-17T23:58:36.117Z",
+      "delta_usage": {
+        "input_tokens": 2686115,
+        "cached_input_tokens": 2676480,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 25699,
+        "reasoning_output_tokens": 16034,
+        "total_tokens": 2711814
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 9.384542,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "d0100732a5b659a1f57e8008a3403c916983642a5fda188c22eecc100b34a22c",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "All20 bit-identical full artifacts independently reconstructed; real typed precision, code/scales/AZP/guards, reconstruction/clipping descriptors, native host/negative-domain and oldreference/storage/JACC resource witnesses, phase-specific attempts/effort/ontology and readable paper observation complete. CUB2.0.1 observed header snapshot explicitly post-run, no invented pre-run hash.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 7.340304,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/quantVLLM/shared_annotation.jsonl",
+      "evidence_sha256": "36cec36ba917aa4ac075eeca93a2a1397b48cc9a81348521d22753bcebfb6f49",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "65f2cd20f2d0adc58ec4798e",
+      "begin_event_id": "9c0edac855d352a9e9a3816b",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T00:08:12.024216+00:00",
+      "usage_event_timestamp": "2026-10-18T00:08:02.299Z",
+      "elapsed_usage_event_start": "2026-10-17T23:38:47.562Z",
+      "delta_usage": {
+        "input_tokens": 14181250,
+        "cached_input_tokens": 14119168,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 74572,
+        "reasoning_output_tokens": 50021,
+        "total_tokens": 14255822
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 9.725216,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "0c78976ac7c71f7d6a086bd82c8e0cd8176216f8966200f65711db9cfa69a129",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "All4 models verified named mixed nondegenerate operator contract, five trials/meanlast4 and all24 paths/wholetypedoutput audits recorded. Actual reference and JACC runtime repairs separated, original native GPU code intact, fullCLI/domain restrictions explicit, paper/ontology/checkpoint complete. Continue remaining8 assigned cases.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 10.776446,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/quantVLLM/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "4bd21a5a311d6fd7003ea315b56e0f04289ade3955c0b7fca7d6cf2531b07bc6",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}

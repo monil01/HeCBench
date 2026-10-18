@@ -1,0 +1,169 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "lud",
+  "scientific_intent": {
+    "primary_family": "linear_algebra",
+    "primary_domain": "dense_matrix_factorization",
+    "secondary_domains": [
+      "direct_linear_solvers",
+      "numerical_linear_algebra"
+    ],
+    "review_status": "source_reviewed",
+    "scientific_task": "Factor dense matrices into unit-lower and upper triangular factors without pivoting",
+    "mathematical_operation": "Blocked16x16DoolittleLU: diagonal tilefactorization, perimetertriangular updates, trailingSchur complement; packedL(strictlower)/U(diagonal+upper).",
+    "discretization": "No physical mesh. Three full16-tile matrices:32\u00b2sourceexponentialToeplitz;48\u00b2strictnonsymmetricdiagonaldominance;64\u00b2knownexactdyadicA=L*U.",
+    "accuracy_requirements": "7424completepackedfactorsvsindependentFloat64no-pivotLU,1e-3absolute+1e-5relative; everymatrixreconstructionresidual<=1e-4sourceoriginalthreshold andnormalizedinfinitybackwarderror<=1e-6. Known64\u00b2factorsrecoverexactly. Forwardlinearsolveerrorandconditionnumberreportedseparately, notinferredfromresidual.",
+    "input_size_regime": "Three32/48/64full-tile matrices, onecompletefactorizationeachpertrial withH2Dresetoutside;21kernelcallsperthreecasebatch. Not source8192\u00b2size or general singular/pivotedsolver.",
+    "precision_sensitivity": "ActualGPUFloat32operations andcancellation, independentFloat64factors/residual/triangularsolve. SourceToeplitzcondition\u221e~63549.84 vsdominantmatrix1.28; smallbackwarderror neednot imply equallysmallsolutionerror. DyadiccaseexactFloat32inputandfactorsprovideaseparatewitness.",
+    "community_use_case": "LUis a building block of scientificdirectlinearsolvers. No complete application solve is timed, and no-pivotfactorizationrequiresmatrix/pivotsafetyconditions rather than providinggeneral pivotedLUrobustness.",
+    "description": "Complete GPUblockednopivotfactorization, not a diagonal-only kernel orCPUfallback. Fullfactors, independentreconstructionandknown-factorwitness confirmtheoperator. Conditioning andforward/backwardaccuracy are distinguished.",
+    "provenance": "OriginalCUDAthreeblockedkernels unchanged. HistoricalJulia had validscalarCPUmathematics but ranLUonCPUbetweenGPUcopies and mislabeledCPUtime asGPUkernel execution; preserved and replacedwithactualthree-stageGPUtranslation. Firstreferencefixture usedwrongdoubleexp rather than sourceC++Float32expf; byteauditingcaughtandcorrectedbeforeKAtranslation, originalseriesretained.",
+    "source_evidence": [
+      {
+        "path": "src/lud-cuda/lud_kernels.cu",
+        "sha256": "a8bf74c96325b000d4face6ec3042a5839ce56148dc76c8207c6e74498676a5f"
+      },
+      {
+        "path": "src/lud-cuda/common/common.cpp",
+        "sha256": "177067c9d9b01b81f7ad95814bf7af5326bd24ad2de3370bc363c48d256c9e67"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/lud.yaml",
+    "frozen_sha256": "20c8aafebf2a85ec7571c00d49ffbb075b12273010aa7bfb69737c1884fb2a7b",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "numeric_stdout",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "34624dd23ff2ddfebe16a6e4",
+      "begin_event_id": "e904caca630ea1d7314cc56e",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T20:53:58.057002+00:00",
+      "usage_event_timestamp": "2026-10-17T20:53:47.015Z",
+      "elapsed_usage_event_start": "2026-10-17T20:49:49.867Z",
+      "delta_usage": {
+        "input_tokens": 1322103,
+        "cached_input_tokens": 1303040,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9549,
+        "reasoning_output_tokens": 2253,
+        "total_tokens": 1331652
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 11.042002,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "9d6821478742d0d68f506aa6db0eb613d9980a3d70af66a8edef59a6efd88b34",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Savedfactor/residual/backward/forward/conditioningmetrics, fullsource/mappingresources/events, CPUfallbackrepair andexpffixtureT1history/prematureENDcorrection/emptyKAabandonment, rawtimings/proofs/checkpoint.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 19.503702,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lud/shared_annotation.jsonl",
+      "evidence_sha256": "fba1277b599625a7bb0096ef7f957d57215285aded38a0d2eecbc92ae45b33f0",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "5a53a20a67bd29502c40edc5",
+      "begin_event_id": "a95097bad916cfc457be6d71",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation_completion",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T21:21:35.020392+00:00",
+      "usage_event_timestamp": "2026-10-17T21:21:26.082Z",
+      "elapsed_usage_event_start": "2026-10-17T21:20:43.569Z",
+      "delta_usage": {
+        "input_tokens": 667040,
+        "cached_input_tokens": 666496,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1568,
+        "reasoning_output_tokens": 861,
+        "total_tokens": 668608
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 8.938392,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "0e80a126ff4b32688ecbcbd41ac73a5680b21344cd0aecd2004187cefd8bb003",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "SavedlateT1localanalysisdependencyrepairseparatefromGPUtranslation; primarysource/arrays/timingsunchanged, failedscripthashunknownexplicit, nootherbenchmarktranslationinterleaved.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 25.625578,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lud/shared_annotation_completion.jsonl",
+      "evidence_sha256": "891d0aa15816b402219cba7971b265f2d928a9623b4ed230a6c078267702db1e",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "8f03fed2a9ad4164fb2fd2b7",
+      "begin_event_id": "6a0b6a4ca52a429c75cc9c46",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T20:53:58.118897+00:00",
+      "usage_event_timestamp": "2026-10-17T20:53:47.015Z",
+      "elapsed_usage_event_start": "2026-10-17T20:41:13.857Z",
+      "delta_usage": {
+        "input_tokens": 5321718,
+        "cached_input_tokens": 4912768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 28263,
+        "reasoning_output_tokens": 11172,
+        "total_tokens": 5349981
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 11.103897,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "9d6821478742d0d68f506aa6db0eb613d9980a3d70af66a8edef59a6efd88b34",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "CompleteLUactualGPUoperatorverifiedall4, all20byteprefixexact via independentaudit+savedrevalidation. Nativefirstseriesretained, wrongJuliafixturesupersededforinputaccuracyonly. No extraGPUmeasurementseries forprefixgate.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 12.338799,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lud/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "b5abe22aeedb8ac9792150296ec1b743a1db6cd689e3b3fb0c19e496b420f1f9",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "c49d67d3b13848738c306b1c",
+      "begin_event_id": "dcf0bd505eedf63f5fb10e77",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "instrumentation_revalidation",
+      "boundary": "end",
+      "recorded_at": "2026-10-17T20:53:57.991702+00:00",
+      "usage_event_timestamp": "2026-10-17T20:53:47.015Z",
+      "elapsed_usage_event_start": "2026-10-17T20:52:46.979Z",
+      "delta_usage": {
+        "input_tokens": 673511,
+        "cached_input_tokens": 667392,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2216,
+        "reasoning_output_tokens": 1248,
+        "total_tokens": 675727
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 10.976702,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "9d6821478742d0d68f506aa6db0eb613d9980a3d70af66a8edef59a6efd88b34",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Savedcaptureexactprefix7427valuespassesbothrefsalltargettrials,reusedall4modelsnonewGPUcompile/run. Linkedproof/sources/buffer-audit; overlappingannotation/workflowcountsnotadditive.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "begin_marker_lag_seconds": 15.673867,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lud/shared_instrumentation_revalidation.jsonl",
+      "evidence_sha256": "dcea0ec8f809cfd6c49bd71ea322dda0d45f535d129cd94087bd5fd6f4fbb398",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}
