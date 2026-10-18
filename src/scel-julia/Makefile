@@ -1,12 +1,11 @@
 JULIA ?= julia
-PROJECT ?= --project=/home/imo/HeCBench/src/_julia_env
-LAUNCHER ?=
-
+PROJECT ?= --project=../_julia_ka_env
+LAUNCHER ?= flock -x /tmp/hecbench-julia-study-gpu.lock env CUDA_VISIBLE_DEVICES=6
+REPEATS ?= 20
+.PHONY: main run clean
 main:
-	@true
-
+	@echo "Named fifteen-path loss study; original dummy archived."
+run:
+	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl $(REPEATS)
 clean:
-	rm -rf __pycache__
-
-run: main
-	$(LAUNCHER) $(JULIA) $(PROJECT) main.jl 2048 50176 100
+	@echo "Study fixtures retained."
