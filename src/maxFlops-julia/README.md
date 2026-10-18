@@ -1,0 +1,21 @@
+# maxFlops named finite arithmetic networks
+
+All16 original arithmetic variants are restored for FP32 and FP64. The old generic Julia kernel repeated120 updates for every variant, changed grouped final reductions and converted some source Float32 initial literals differently for FP64. Original Julia, Makefile and native sources remain preserved. Native kernels.h bodies are unchanged.
+
+## Scope and numerical contract
+
+The named study runs192 paths: two precisions, sizes256/512, outer repeats0/1/2 and all four recurrences with1/2/4/8 accumulators. Actual source per-accumulator counts are Add/MAdd240/120/60/30, Mul200/100/50/25 and MulMAdd160/80/40/20 per outer repeat. Julia generates the full expanded network, retains the runtime outer loop and source grouped reduction, and promotes initial0.999f/0.0001f... literals from Float32 even inside FP64 kernels.
+
+Runtime arguments are explicitly finite controls: Mul v=.5, MulMAdd v1=1/v2=.125, source Add v10 and MAdd10/.9899. Dense input3.25..6.75 keeps every initialized independent lane positive. The original Mul v1.01 overflows its Float32 recurrence before15 updates, whereas Mul1 performs200 per repeat. A CPU scalar witness preserves that behavior; it is an arithmetic-stress domain finding, not a claim of native scientific defect or framework failure. No known nonfinite GPU trial was run. Original unstable/chaotic arguments, repeat5000 and2m-element CLI remain unverified. This parameter scope must accompany performance results.
+
+An independent scalar oracle rounds after each operation and uses libm fmaf/fma for source default-fusion intent. Fixed budgets declared before GPU work are FP32 absolute1e-4+relative1e-5 and FP64 absolute1e-11+relative1e-12. Add/Mul and every zero-repeat result require exact equality. Full input and guard bytes are exact. Global dual-comparison tolerance uses the FP32 budget, supplemented by strict field-specific FP64 independent checks, so FP64 cannot pass a weaker oracle threshold. Actual errors are preserved in output_audit.json.
+
+Each of20 captures contains228673 Float64 words losslessly encoding the actual FP32/FP64 fields:75073 exact prefix words,73728 complete outputs,73728 actual preexecution GPU input echoes and6144 guard checks. Data is in-place: the same3072 physical guards are read before and after kernels; there are not two separate input/output buffers. Each inputecho is copied from the actual GPU buffer after reset and before the timed launch. All20 full saved arrays are checked against the oracle and both references. No sampled checksum or canonicalization is used.
+
+## Mapping and timing
+
+Each lane runs the same unrolled dependency network with its independent scalar accumulators, with256threads/block and one/two blocks. Device arithmetic is ordinary Julia and muladd through framework-owned indexing/dispatch; there are no backend device intrinsics, shared memory or atomics. Actual register/local placement, eliminated instructions, dynamic executed FLOPs and occupancy are unprofiled. Numeric invariance of Add or underflow of Mul does not establish executed operation counts. Source-expanded nominal counts are not measured FLOPs, arithmetic intensity, peak performance or roofline evidence.
+
+Each trial sums192 full launch+completion intervals. Reset, exact input readback, allocation, warmup, oracle/readback and serialization are outside the intervals. All five checked trial times are retained, and only trials2–5 enter the mean. Per-path times remain for every variant/precision/size/repeat. Small grids, host dispatch and generated code are explicit performance covariates, with no inference of a universal abstraction cost or peak arithmetic capacity.
+
+All current GPU candidates pass their first compiler/check invocation. Historical generic-network mismatch is a source/reference S1 finding rather than a current compiler rejection. Shared algorithm/oracle work is attributed to the reference phase and reused KA then JACC. Prospective windows include repeated/cached context, annotation and coordination and overlap the outer workflow; they are not additive or exclusive billed costs. Historical creation cost is unknown. Root alone commits shared work and each portable version separately.
