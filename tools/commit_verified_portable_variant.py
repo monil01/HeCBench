@@ -74,8 +74,8 @@ else:
 archives=[]
 for name in a.variant_archive:
  f=(name if name.is_absolute() else root/name).resolve()
- if not f.is_relative_to((parent/'reference_history').resolve()) or not f.name.lower().startswith(a.variant.lower()) or not allowed(f):
-  raise SystemExit('Variant archive must be a model-prefixed source under this benchmark reference_history: '+str(f))
+ if not any(f.is_relative_to((parent/folder).resolve()) for folder in ['reference_history','candidate_history']) or not f.name.lower().startswith(a.variant.lower()) or not allowed(f):
+  raise SystemExit('Variant archive must be a model-prefixed source under this benchmark reference_history/candidate_history: '+str(f))
  archives.append({'path':str(f.relative_to(root)),'sha256':verifier.hashlib.sha256(f.read_bytes()).hexdigest(),'scope':'Retained rejected variant source; not executed source or passing candidate.'});paths.append(f)
 if archives:
  for owned_child in scoped_children:
