@@ -1,0 +1,105 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "S1",
+    "phase": "reference_algorithm_restoration",
+    "finding": "Historical CUDA.jl smoke computes no neuronal update and prints a fake zero RSME. Restore actual native coefficient/state update, not calibrated HH physics. Original native source retained; zero gate-rate coefficients cause a separately witnessed native scientific defect. An initial restored Float64-literal arithmetic candidate passed arrays but violated requested Float32 computation: retained as P1 precision alignment, then corrected and independently rechecked.",
+    "original_source_sha256": "7e55d9047f7be004bae5aef3a4086e7773e9ef4d90d7620f70d1b3f531ec3cb5",
+    "native_source": {
+      "path": "src/cobahh-cuda/neuron_update.h",
+      "sha256": "ce23b407e57be8408f11ef6879d545d35feff3721b25fa5b32b3cd82060a6b88"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "Actual-source truncated-coefficient frozen-clock membrane state update",
+  "mapping": "Native256thread flat kernel, padded tail guarded; identical order7Float32 state arrays plusInt8 flag",
+  "launch_geometry": {
+    "threads": 256,
+    "blocks": [
+      1,
+      2,
+      1
+    ],
+    "case_iterations": [
+      1,
+      1,
+      3
+    ],
+    "timed_kernel_calls_per_trial": 5
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "application_domain": "Neuroscience / biophysical membrane ODE",
+      "scientific_operator": "Local conductance-based Hodgkin\u2013Huxley-like exponential state update with gating variables, voltage, excitatory/inhibitory conductance decay and refractory flag",
+      "spatial_dimension": 0,
+      "numerical_method": "Frozen-coefficient affine exponential Euler update; source holds clock fixed and does not apply refractory flag to voltage",
+      "community_use": "Local continuous-state neuron-update translation case, not network simulation or calibrated neuronal physiology",
+      "accuracy_requirements": "Complete actual-source state and flag outputs; independent affine-rate oracle plus separately failed probability-invariance witness",
+      "source_evidence": [
+        {
+          "path": "src/cobahh-cuda/neuron_update.h",
+          "sha256": "ce23b407e57be8408f11ef6879d545d35feff3721b25fa5b32b3cd82060a6b88"
+        },
+        {
+          "path": "src/cobahh-cuda/main.cu",
+          "sha256": "c7e72e5bec83a9c423e4447f1c1b1bdce9ac7b963d427674b4eb64375c5b2d17"
+        }
+      ],
+      "limitations": [
+        "Literal zero source rate coefficients produce negative m for valid initial gate probabilities; scientifically defective source behavior, not numerical agreement failure",
+        "Native host leaves index0 uninitialized; named fixtures fully initialize all neurons",
+        "No network connectivity/spike/reset simulation, physical calibration or ODE convergence established"
+      ]
+    },
+    "primary_motif": "Local continuous-state update / membrane ODE",
+    "storage_precision": [
+      "Float32",
+      "Int8 flags"
+    ],
+    "compute_precision": [
+      "Float32",
+      "Int32 time-bin/index"
+    ],
+    "synchronization": [
+      "Ordered repeated kernel launches",
+      "Full context completion at timing boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Native256thread mapping and actual coefficient expressions/clock policy retained; fullyinitialized named fixtures avoid undefined index0 host data"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum3_source_frozenclock_iteration_means_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native scientific gating defect: agreement does not establish faithful HH physiology",
+      "Short1/1/3iteration cases are launch dominated",
+      "Original initialization/largeCLI not certified",
+      "Native contraction/expf versus Julia arithmetic retained"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 2,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0
+    },
+    "ka": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "observation": "Source comments retain tiny representable nonzero rate coefficients, but actual compiled literals are zero. The original native GPU produces negative activation probability m=-0.32084724 from a physiological initial state. Independent regrouped affine-rate algebra confirms this source behavior and its violation of the positive-rate gate-probability contract. Four-way agreement is therefore a native-behavior result, explicitly excluded from faithful-scientific-operator aggregates. This is a zero-dimensional biophysical membrane ODE case within the continuum/constitutive family, not a machine-learning operator or spatial PDE.",
+  "effort_observation": "Current CUDA.jl restoration has two saved source candidates and two whole-program GPU checks: the first passed outputs but accidentally used mixed Float64 literals, corrected under P1 precision alignment. No compiler failure or numerical tolerance repair. KA and JACC first candidate/check passes. Historical smoke effort unknown; native scientific defect is independently attributed to CUDA source, not target frameworks."
+}
