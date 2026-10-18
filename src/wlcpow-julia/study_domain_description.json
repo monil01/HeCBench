@@ -1,0 +1,128 @@
+{
+  "scientific_intent": {
+    "primary_family": "particle_molecular",
+    "review_status": "source_reviewed",
+    "scientific_task": "Worm-like-chain/power-law bonded force with viscous and stochastic terms",
+    "description": "Sourcebond_wlcpowallvisc evaluates directedbondforces: finite-extensionWLC-shapedelasticterm/powerlawterm, longitudinal/transverseviscousdamping andnineTEA/BoxMuller-derivednoisematrixentries. Particlepositions/velocities/bondtypes/restlengths maptonumericalforces. No suppliedREADME/paperjustifiesanamedbiologicalmaterial, integrator, thermostatcalibration or fullmolecularapplicationclaim.",
+    "mathematical_operation": "For eachlocalparticle/directedbond, minimum-imagerelativeposition andvelocity, materialcoefficientformula, extension/powerdenominatorclamps, deterministic4roundTEAmatrixnoise, summedFP32forceincrements intoFP64forcearrays.",
+    "accuracy_requirements": "FullcomponentwiseFP32operator vsindependentF64analyticforceandBoxMuller, exactwrappedTEAseedbits/randominputconversion;allreadonlyinputs/F64initialforces/guards/untouchedparticlesexact. Fixedengineering1e-4+2e-4relative notformalphysical/numericalglobalbound.",
+    "community_use_case": "Particle/molecular-force developers mayreuse bondedcoefficient/sharedparamtables, periodicdisplacements, viscous/noiseforce andprecisionboundaries; no entirematerial/trajectory/energy modelvalidated.",
+    "provenance": [
+      {
+        "path": "src/wlcpow-cuda/main.cu",
+        "sha256": "5ac9b651f1ede8873d26a752e152e782fdaf31138cea4aa10a8f674fff8e9c9f",
+        "evidence": "Actualbond_wlcpowallviscformulas/8paramtables/force+=FP32increments, commentsmudescribedpapersbutnopaperidentity"
+      },
+      {
+        "path": "src/wlcpow-cuda/utils.h",
+        "sha256": "ed98cedde857a596098c0473d2a9155c952a9763d9d2adde0106effb23c00975",
+        "evidence": "minimum_image,4roundUInt32TEA,log2/sinpiBoxMuller and\u00b14clamp"
+      },
+      {
+        "path": "src/wlcpow-julia/legacy_semantics_witness.json",
+        "sha256": "36172bb4a9b7e4f4c0b8c55fa9dae213930a0ad812cd167b805906f12d0e6d04",
+        "evidence": "ActualoldJuliai0skip/ghostprocessingandscalednumericseedinsteadofreinterpretedbits, retrospectiveCPU/sourcefindingnotoldGPUrun"
+      }
+    ]
+  },
+  "primary_motif": "Perparticlebondadjacencyforceaccumulation/sharedmaterialtables",
+  "storage_precision": [
+    "Float4AoSFloat32coordinate/velocity",
+    "Int2AoSInt32neighbor/type/Int32nbond",
+    "Float64bondr0andforce/initialforce",
+    "8Float32materialtables",
+    "Float64artifactencoding"
+  ],
+  "compute_precision": [
+    "Float32coefficient/sqrt/powf/log2/sinpi/TEAforce/neighboraccumulation",
+    "UInt32wrappedTEA andInt32bitreinterpretseed",
+    "FP32incrementconvertedFloat64 thenFP64forceaccumulation acrossrepeats",
+    "IndependentFloat64analyticforce/ln/sinBoxMuller withsourceF32seed/l0cast"
+  ],
+  "synchronization": [
+    "Cooperativeeightparamtableloads thenblockbarrier",
+    "Independentlocalparticleforcewrites,noatomics",
+    "Kernelrepeatsorderedwithoutresetforces,devicecompletionROIboundaries"
+  ],
+  "native_to_julia_mapping": {
+    "status": "matched",
+    "reason": "Restoreactualnativei0..N-1/AoSrecords/actualbonds/padding1/bitreinterpretvelocity.w seeds/BaseFloat32pow mappednv_powf/nogaussepsclamp, nativebodyunchanged. OriginalJuliai0skip/ghost/seedsemanticswrong; sharednumerichelperauthoredonce thenownframeworktableload/dispatch."
+  },
+  "reference_class": "cuda_jl_device_kernel",
+  "ka_class": "pure_ka_device_kernel_cuda_harness",
+  "jacc_class": "pure_jacc_device_kernel_cuda_harness",
+  "algorithm": "Each128threadblockcooperativelyloads8tables ofnt+1 values intoshared; eachvalidparticleiteratesactualflatbondindexi+p*padding (padding1), computesminimumimage/materialcoefficients/TEAsymnoise/dampingandforce, accumF32locallythenF64+=;sourcegridstridepreserved.",
+  "work_item_mapping": "128threadsceilN/128blocks,N2/127/128/129/513,validi0..N-1,ghostNreadonly/unwritten; perparticle0..3neighbors,padding1actualoverlappingflatadjacency asnativeCLI,2N+1allocatedbondslots.",
+  "layout": "AoS4Float32coords/velocity stride16, AoS2Int32bonds stride8, scalarF64restlength/forces andF32tables. Nativefloat4align16/int2align8,JuliaWVec4/WInt2structfieldalign4 butsameoffsets/strides/allpayload256Baligned; actualvectorloadinstructionsunprofiled.",
+  "resource_policy": {
+    "cuda_jl": {
+      "shared_bytes_by_nt": {
+        "0": 32,
+        "1": 64,
+        "4": 160,
+        "32": 1056,
+        "3": 128
+      },
+      "policy": "Native/CUDAjl dynamic8*(nt+1)F32;KAstaticValCAPsamecapacity;JACCdynamicCAP+fulltemplatecopy/extraentrybarrier",
+      "global_atomics": 0
+    },
+    "ka": {
+      "shared_bytes_by_nt": {
+        "0": 32,
+        "1": 64,
+        "4": 160,
+        "32": 1056,
+        "3": 128
+      },
+      "policy": "Native/CUDAjl dynamic8*(nt+1)F32;KAstaticValCAPsamecapacity;JACCdynamicCAP+fulltemplatecopy/extraentrybarrier",
+      "global_atomics": 0
+    },
+    "jacc": {
+      "shared_bytes_by_nt": {
+        "0": 32,
+        "1": 64,
+        "4": 160,
+        "32": 1056,
+        "3": 128
+      },
+      "policy": "Native/CUDAjl dynamic8*(nt+1)F32;KAstaticValCAPsamecapacity;JACCdynamicCAP+fulltemplatecopy/extraentrybarrier",
+      "global_atomics": 0
+    }
+  },
+  "launch_geometry": "N2/127/128/129/513,128threads,blocks1/1/1/2/5,repeats1/2/3/4/2=12timedlaunches/trial;oneauthoredkernelentrypoint, KA5Valcapacities/compilerspecializationsnot5translationcandidates.",
+  "backend_extensions": {
+    "cuda_jl": [
+      "CUDAhostallocation/transfer/sync/readback; noCUDAdeviceregister/warp/atomicintrinsicextensions",
+      "BaseFloat32pow/log2/sinpi backendmath loweredlibdevice normally"
+    ],
+    "ka": [
+      "CUDAhostallocation/transfer/sync/readback; noCUDAdeviceregister/warp/atomicintrinsicextensions",
+      "BaseFloat32pow/log2/sinpi backendmath loweredlibdevice normally"
+    ],
+    "jacc": [
+      "CUDAhostallocation/transfer/sync/readback; noCUDAdeviceregister/warp/atomicintrinsicextensions",
+      "BaseFloat32pow/log2/sinpi backendmath loweredlibdevice normally"
+    ]
+  },
+  "supported_features": [
+    "MixedFP32compute/FP64state",
+    "IsbitsAoSdeviceaccess",
+    "UInt32TEA/bitreinterpret",
+    "Ownframeworksharedtables/barrier",
+    "Float32transcendentals/powers"
+  ],
+  "verification_contract": "All20complete52617Float64words:16648inputprefix+35969fullstates, actualinitial3forcearrays andfinal3forces, full13readonlyGPUbuffers andall64elementprefix/suffixguards, exactghost/zero-neighborforcepreservation. IndependentF64WLC/power/viscous/BoxMuller;1e-4+2e-4relative fixedengineering, exactmaskallinputs/guards/initial/untouched. No checksum-onlyacceptance. Fivecheckedtrialsmean2-5/perpathclocks.",
+  "keyconfounds": [
+    "FinitecontrolledsmallN/paramsr0>1/distance>0/positiveTEAu,not1e6randomCLI/fullintegration/materialvalidation",
+    "Inputpaircase0hasreciprocalindicesbutdifferentrestlengths, therefore noequal-oppositeforce/conservationclaim; noiseofftransverse-dampingprojection independentcontrol instead",
+    "Twoextensionclips/688powerfloorbranches; stochastic\u00b14clipnottriggered, noGaussian-distribution/thermostatvalidation",
+    "JuliaAoSstructdeclaredalignment4vsnativefloat4/int2alignment16/8, sameactual256Balignedpayload/strides, compilerloadmappingunprofiled",
+    "JACCextraCAPtemplatecopy/barrier andKAstaticvsnativedynamicshared mayaffectresources",
+    "SourceF64storagedoesnotmeanF64forcephysics; actualperbond/neighboraccumF32",
+    "Sharednumerichelper/referenceoracleauthoronce,marginalportabletranslationcostnotcoldindependentframeworkcost",
+    "Sourceiterations/repeatedforceaddition noactualworkrate/counter/rooflineclaim"
+  ],
+  "boundary_rounding_policy": "Nativeone-wrapminimum-image withstrict-halfcomparisons, forceextensionrrcap.99 andpowerdenominatorfloor.01 retained;distance>0/l0>0/r0>1/lambdanonzero/TEAu>0 explicitfinitecontract. N+1ghostforceuntouched,zeroneighboruntouchedexact. Nativevelocity.w IEEEbitsseed notscalednumericround.",
+  "support_boundary": "Fivecontrolledfinitebondoperatorfixtures,CUDAbbackendonly;nofullrandom1e6CLI,collision/singularity/TEAu0/r01/lambda0validation,stochasticclip4branch/distribution/applicationmaterial/trajectoryaccuracyclaim. Nativebodyunmodified, no native_reference_repaired.",
+  "interpretation": "DomainusersshouldtrackFP32coefficient/noisecompute separatelyfromFP64forcebuffers andverifyactualrandomseedsemantics. Completearray/invariantchecksmakeindexingandseederrorsvisible. Sharedtablepolicy/AoSlayout/alignment/transcendentalsarepotentialmappingcovariates, notcausalbottleneckclaimswithoutprofiling."
+}
