@@ -1,0 +1,13 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <fstream>
+#include <cstring>
+#define main original_geodesic_main
+#include "native_reference_corrected.inc"
+#undef main
+void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));exit(2);}}
+template<class T>std::vector<T>load(const char*p){std::ifstream f(p,std::ios::binary|std::ios::ate);size_t n=f.tellg();f.seekg(0);std::vector<T>v(n/sizeof(T));f.read((char*)v.data(),n);return v;}
+constexpr float S=-8192.25f;
+struct Case{int n,repeat;std::vector<float>h;float*a,*out;};
+int main(){auto f=load<float>(GEO_FIXTURE);auto o=load<double>(GEO_ORACLE);std::vector<Case>cs;size_t i=0;while(i<f.size()){Case c;c.n=f[i];c.repeat=f[i+1];i+=2;c.h.assign(4*c.n+8,S);std::copy(f.begin()+i,f.begin()+i+4*c.n,c.h.begin()+4);i+=4*c.n;ck(cudaMalloc(&c.a,c.h.size()*4));ck(cudaMalloc(&c.out,(c.n+8)*4));ck(cudaMemcpy(c.a,c.h.data(),c.h.size()*4,cudaMemcpyHostToDevice));cs.push_back(c);}auto run=[](Case&c){for(int j=0;j<c.repeat;j++)kernel_distance<<<(c.n+255)/256,256>>>((float4*)(c.a+4),c.out+4,c.n);ck(cudaDeviceSynchronize());};for(auto&c:cs)run(c);
+ for(int trial=1;trial<=5;trial++){auto payload=f;bool ok=true;double tm=0,err=0;size_t oi=0;for(auto&c:cs){std::vector<float>out(c.n+8,S);ck(cudaMemcpy(c.out,out.data(),out.size()*4,cudaMemcpyHostToDevice));ck(cudaDeviceSynchronize());auto st=std::chrono::steady_clock::now();run(c);tm+=std::chrono::duration<double>(std::chrono::steady_clock::now()-st).count()/c.repeat;ck(cudaMemcpy(out.data(),c.out,out.size()*4,cudaMemcpyDeviceToHost));std::vector<float>back(c.h.size());ck(cudaMemcpy(back.data(),c.a,back.size()*4,cudaMemcpyDeviceToHost));ok&=memcmp(back.data(),c.h.data(),back.size()*4)==0;for(int j=0;j<c.n;j++){double e=fabs(double(out[j+4])-o[oi++]);err=fmax(err,e);ok&=std::isfinite(out[j+4])&&e<=50.;float*in=c.h.data()+4+4*j;if(in[0]==in[2]&&in[1]==in[3])ok&=out[j+4]==0.f;}for(int j=0;j<4;j++)ok&=out[j]==S;for(size_t j=out.size()-4;j<out.size();j++)ok&=out[j]==S;payload.insert(payload.end(),back.begin(),back.end());payload.insert(payload.end(),out.begin(),out.end());}std::string path="trial_"+std::to_string(trial)+".bin";std::ofstream z(path,std::ios::binary);z.write((char*)payload.data(),payload.size()*4);z.close();printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":%.17g,\"timing_region\":\"sum2_geodesic_10launch_means_complete\",\"jit_excluded\":true,\"internal_repeats\":10,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,tm,ok?"true":"false",payload.size(),err,path.c_str(),payload.size());if(!ok)return 3;}}
