@@ -105,6 +105,9 @@ For nonunique scientific outputs such as graph colorings, preserve complete raw 
 
 **Scoped P2P two-GPU exception:** `p2p` may also use physical devices5 and6 with `gpu: "5,6"`, under the same global GPU6 lock and device5 external-use guard. Recheck device5 before execution and around trials, and defer if an external workload appears. Require runtime peer-access capability in both directions, actual peer enablement, both UUIDs/visibility order, initialized full buffers, and full checks of both copy-phase and remote-kernel outputs. Preserve its authored remote-read device kernel and distinguish that framework-kernel component from CUDA host peer/copy orchestration; ring's zero-device-kernel classification does not apply to P2P. Record the source copy-only timed region, all synchronization and named iteration/buffer-size scope. A named 10-alternating-copy configuration does not certify the original 2,000-copy CLI workload. Keep P2P in the separate two-GPU stratum, excluded from single-V100 rankings; no one-device self-copy substitution or general relaxation for other benchmarks.
 
+**Scoped simpleMultiDevice two-GPU exception:** `simpleMultiDevice` may use otherwise idle physical devices5 and6 with `gpu: "5,6"`, under the same global study lock and external-use guard before and around every trial. Record both UUIDs/visibility order, pinned buffers, asynchronous per-device streams, copy/kernel/readback and completion boundaries, full per-device partial vectors and host reduction. Preserve the source-supported one-device case as its own configuration when measured; it cannot establish two-device coverage. No peer access is required where the original uses independent devices. Keep two-device timings in a separate stratum excluded from single-V100 rankings; defer on device5 external use and never use device0. This narrow extension does not authorize other devices or general concurrent GPU timing.
+
+
 
 ### Measured pipelines and component classes
 
