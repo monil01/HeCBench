@@ -1,0 +1,131 @@
+{
+  "reference_audit": {
+    "taxonomy_code": "P1",
+    "phase": "reference_measurement_alignment",
+    "finding": "Historical CUDA.jl faithfully implements source 2048-step segmented tree with 128 threads, 16 private values per thread and 129-value shared exchange. Study preserves device body, adds exact serialized preprocessed inputs, full per-option expectation oracle, guards and five checked trials. Native AoS and historical Julia SoA layouts remain distinct; native __expf versus Julia exp is retained under predeclared Float32 tolerance. Original 1024-option/offload-inclusive CLI is unmeasured.",
+    "original_source_sha256": "3095c4351b9693678be1a2e072f18112b5bc743ffb54e327ea9603650f257862",
+    "native_source": {
+      "path": "src/binomial-cuda/kernel.cu",
+      "sha256": "4994b1b3753d1e5a16441fee9a163dc6439260eb8c66f6b6a9fc75679e8dc1e8"
+    },
+    "original_native_unchanged": true
+  },
+  "algorithm": "Source segmented backward binomial recurrence, 2048 steps with 128 cooperative threads and 16 private values each",
+  "mapping": "One option per128-thread workgroup; 129 shared Float32 exchange elements; private MVector17",
+  "launch_geometry": {
+    "threads": 128,
+    "blocks": [
+      16,
+      129
+    ],
+    "internal_repeats": 1000
+  },
+  "traits": {
+    "scientific_intent": {
+      "primary_family": "stochastic_statistics",
+      "review_status": "source_reviewed",
+      "application_domain": "Computational finance: European call pricing",
+      "scientific_operator": "Discounted risk-neutral expectation of positive terminal stock-strike payoff",
+      "numerical_method": "2048-step recombining Cox\u2013Ross\u2013Rubinstein-style binomial tree; no early exercise",
+      "community_use": "Compare backward-tree parallelization and Float32 discrete pricing against an independently evaluated terminal expectation",
+      "accuracy_requirements": "All 145 prices checked individually against Float64 direct binomial expectation for exact serialized Float32 coefficients; continuous Black\u2013Scholes error reported separately",
+      "source_evidence": [
+        {
+          "path": "src/binomial-cuda/kernel.cu",
+          "sha256": "4994b1b3753d1e5a16441fee9a163dc6439260eb8c66f6b6a9fc75679e8dc1e8"
+        },
+        {
+          "path": "src/binomial-cuda/reference.cu",
+          "sha256": "e5826bcaa73de553c67c077da7d68c9f3083a4d4f93f2c782d5801fdaaed059a"
+        }
+      ],
+      "limitations": [
+        "Named 16/129 option batches; original1024-option CLI not measured",
+        "Rounded coefficients and finite2048-step discretization differ from continuous Black\u2013Scholes; no calibrated financial-market accuracy claim"
+      ]
+    },
+    "primary_motif": "Cooperative backward dynamic-programming tree",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "Two workgroup barriers per tree iteration",
+      "Context completion at timing boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same thread/work partition, original native AoS versus Julia SoA and fast native __expf versus Julia exp retained"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum2_preallocated_1000kernel_launch_means_complete",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native AoS versus Julia SoA inputs",
+      "Native __expf versus Julia exp and recurrence contraction choices",
+      "JACC shared arena template initialization adds work",
+      "Host-inclusive thousand-launch mean; not isolated replay kernel time"
+    ]
+  },
+  "counts": {
+    "cuda_jl": {
+      "candidate_attempts": 2,
+      "compiler_checks": 2,
+      "compiler_feedback_repairs": 0,
+      "measurement_adapter_repairs": 1
+    },
+    "ka": {
+      "candidate_attempts": 3,
+      "compiler_checks": 3,
+      "compiler_feedback_repairs": 1,
+      "measurement_adapter_repairs": 0,
+      "runtime_feedback_repairs": 1
+    },
+    "jacc": {
+      "candidate_attempts": 1,
+      "compiler_checks": 1,
+      "compiler_feedback_repairs": 0
+    }
+  },
+  "prior_attempts": {
+    "cuda_jl": [
+      {
+        "phase": "shared_reference_host_harness",
+        "origin_model": "shared_infrastructure",
+        "candidate_id": 1,
+        "check_id": 1,
+        "taxonomy_code": "B2",
+        "outcome": "parse_rejection_before_device_JIT",
+        "run_id": "20261018T033151492200Z_binomial"
+      }
+    ],
+    "ka": [
+      {
+        "phase": "translation_frontend",
+        "origin_model": "ka",
+        "candidate_id": 1,
+        "check_id": 1,
+        "taxonomy_code": "B2",
+        "outcome": "KA_macro_explicit_return_rejection_before_device_JIT",
+        "run_id": "20261018T033340051393Z_binomial"
+      },
+      {
+        "phase": "translation_runtime",
+        "origin_model": "ka",
+        "candidate_id": 2,
+        "check_id": 2,
+        "taxonomy_code": "R1",
+        "outcome": "DeviceOOM68byteescapingprivateMVector",
+        "run_id": "20261018T033414238098Z_binomial"
+      }
+    ]
+  },
+  "observation": "A financial tree operator permits an independent terminal-probability witness instead of another backward recursion. All145 individual prices are checked against exact serialized coefficients; up to0.00396 difference from continuous Black\u2013Scholes remains a separate discretization/coefficient observation, not a language mismatch. Native AoS, Julia SoA and JACC shared-template initialization are explicit performance covariates.",
+  "effort_observation": "Reference one authored device body, two whole-program checks after a shared parser repair. KA two frontend candidates, first explicit return rejected by @kernel before device JIT; no device-compiler rejection. Successful reference/math/fixture work is reused by KA then JACC. KA candidate2 reached GPU warmup but its escaping MVector exhausted dynamic GPU memory; candidate3 uses documented @private per-item storage across barriers and passes. KA one frontend feedback repair is included in compiler_feedback_repairs; device_compiler_feedback_repairs remains0. JACC first candidate/check passes with its public shared-template API."
+}
