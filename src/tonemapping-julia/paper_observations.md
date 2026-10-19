@@ -1,0 +1,9 @@
+# Tone mapping prospective observations
+
+Allfourmodels/fivecheckedtrials pass1093708Float32values/capture with546868exactactualinput/initialoutput/scalar/guardprefix. PositiveRGBA16x16/32x16/64x32/256x256images; Float64physicalformula, uniformgrayclosedform, alphaexact andfinitepositivecontrols. Zero-luminance/blackdomain outsidecontract, no arbitraryHDRqualitycertificate.
+
+Meansus native57.18825/CUDAjl72.523/KA113.929/JACC148.13875 forfourkernel+completionregions; allocation/transfers/checks outside, not10,000originalrepeats/wholeCLI. Native16x16geometry retained underflatKA/JACCmapping; index/codegen/mathcovariates unprofiled.
+
+Allthreefirstcandidates/checks pass, norepairs. Focusedprospectivewindows contain onlythisbenchmarkwork, withpriorcontext/cache/APIknowledge and incomingworkerstatusnotifications disclosed. Sharednative/annotation/paper spans separate/overlapping, noadditiveclaim. Fullactualcounters andeligibleworkflowstrata inpaper_observations.json.
+
+AdditionalpostmeasurementCPUaudit replays exactsourceCPUreference+originalsignednormalizedsum1e-6threshold onall20savedartifacts, allpass. Thisweakaggregatecouldcancelerrors; primaryfinite/pointwisephysicaloracle remainedunchanged. No acceptedsource/tolerance/timing changed toaddthisaudit.
