@@ -1,0 +1,6 @@
+#include <cuda_runtime.h>
+#include <mpi.h>
+#include <cstdio>
+#include <unistd.h>
+#include "../allreduce-cuda/collectives.cu"
+int main(){try{char*e=getenv("OMPI_COMM_WORLD_LOCAL_RANK");if(!e)throw std::runtime_error("missinglocalrank");int local=atoi(e);InitCollectives(local);int rank,size;MPI_Comm_rank(MPI_COMM_WORLD,&rank);MPI_Comm_size(MPI_COMM_WORLD,&size);if(size!=2)throw std::runtime_error("requires2ranks");for(size_t n:{size_t(1),size_t(33),size_t(256),size_t(4099)}){std::vector<float>h(n);for(size_t i=0;i<n;i++)h[i]=(rank+1)*.5f+float(int(i%17)-8)/32.f;float*d,*out;auto error=cudaMalloc(&d,n*4);if(error!=cudaSuccess)throw std::runtime_error(cudaGetErrorString(error));cudaMemcpy(d,h.data(),n*4,cudaMemcpyHostToDevice);RingAllreduce(d,n,&out);cudaDeviceSynchronize();cudaMemcpy(h.data(),out,n*4,cudaMemcpyDeviceToHost);for(size_t i=0;i<n;i++){float expected=1.5f+float(int(i%17)-8)/16.f;if(h[i]!=expected)throw std::runtime_error("fullallreducecheck");}printf("MPI_GPU_READINESS rank=%d n=%zu full_values_pass=%zu pid=%d\n",rank,n,n,getpid());cudaFree(d);cudaFree(out);}MPI_Finalize();return 0;}catch(std::exception&e){fprintf(stderr,"READINESS_FAIL %s\n",e.what());MPI_Abort(MPI_COMM_WORLD,1);return 1;}}
