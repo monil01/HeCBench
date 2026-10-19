@@ -1,0 +1,23 @@
+--- original/main.cu
++++ defined_reference/main.cu
+@@ -482,7 +482,9 @@
+     all_gray_frames[task_id]    = (unsigned char *)malloc(in_size);
+     for(int i = 0; i < rows; i++) {
+       for(int j = 0; j < cols; j++) {
+-        fscanf(fp, "%u ", (unsigned int *)&all_gray_frames[task_id][i * cols + j]);
++        unsigned pixel;
++        if(fscanf(fp, "%u ", &pixel)!=1 || pixel>255) { fprintf(stderr,"Invalid pixel\n"); exit(EXIT_FAILURE); }
++        all_gray_frames[task_id][i * cols + j] = (unsigned char)pixel;
+       }
+     }
+     fclose(fp);
+@@ -527,6 +529,9 @@
+ 
+   unsigned char* d_theta_gpu_proxy;
+   cudaMalloc((void**)&d_theta_gpu_proxy, sizeof(unsigned char)*in_size);
++  // Defined named full-output boundary policy; source kernels leave this ring unwritten.
++  cudaMemset(d_interm_gpu_proxy,0,in_size);
++  cudaMemset(d_theta_gpu_proxy,0,in_size);
+ 
+   CoarseGrainPartitioner partitioner = partitioner_create(n_frames, p.alpha, worklist);
+   std::vector<std::thread> proxy_threads;
