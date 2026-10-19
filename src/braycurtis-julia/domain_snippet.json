@@ -1,0 +1,310 @@
+{
+  "benchmark": "braycurtis",
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "machine_learning",
+    "primary_domain": "differentiable_pairwise_feature_dissimilarity",
+    "secondary_domains": [
+      "domain_neutral_statistical_vector_comparison"
+    ],
+    "scientific_task": "Compute all batched pairwise Bray-Curtis dissimilarities and input gradients weighted by an incoming output gradient.",
+    "mathematical_operation": "D=sum_k|x_k-y_k|; S=sum_k|x_k+y_k|; d=D/S; gradients of sum_ij grad_output_ij*d_ij by signed quotient rule.",
+    "discretization_or_topology": "Dense row-major featurevectors, unbatched or batched allpairs; no physicalmesh/PDE.",
+    "invariants": [
+      "Finite S>0, distancesnonnegative; [0,1]bound assertedonlyfornonnegativeinputcase.",
+      "Allactualdeviceinputbuffers unchanged and allguards exact.",
+      "Gradient equals derivative of weighted dissimilarity on smoothnonzeroabsarguments; independent central differences for all56positivecase and1848signedcase scalarinputs."
+    ],
+    "accuracy_requirements": [
+      "Fullfiniteoutputs: F32atol1e-5 rtol1e-4, F64atol1e-12 rtol1e-10; exact actualdevice inputprefix andguards.",
+      "Global dualbudget F32; per-field independentCPUchecks retain stricter F64budget. Relativeerror nearzero is interpreted together with absolutebudget."
+    ],
+    "precision_sensitivity": "Sequential sums/quotient gradient may round differently; nearzero derivatives amplify relativeerror, small denominators create illconditioning.",
+    "input_size_regimes": "Bothprecisions: (B,M,N,K)=(1,3,5,7),(2,17,11,33),(1,65,67,129); sourceFloat16dispatch andoriginalbigshapes unmeasured.",
+    "community_use_case": "SourcePyTorchpairwisefeaturecomparison/autograd API; no actualtrainingapplication or ecologicaldataset attribution established.",
+    "provenance": [
+      {
+        "path": "src/braycurtis-cuda/torchpairwise/csrc/ops/cuda/braycurtis_kernel.cu",
+        "sha256": "04b61d23a5ff2fadfb67aee3efd29ec23ebebe511d3ea78fedddc79d1545dcd0"
+      },
+      {
+        "path": "src/braycurtis-julia/extraction_manifest.json",
+        "sha256": "7bfce6d91a3efe2217701fcd279f1fce568e2cdf508bfb696065506f61fa2451"
+      },
+      {
+        "path": "src/braycurtis-julia/accessor_shim.h",
+        "sha256": "950f47f9ffb780c97eadaeecb0c27bf770169a710aaf725a0a4722244c283ff3"
+      },
+      {
+        "path": "src/braycurtis-julia/device_components.jl",
+        "sha256": "f46e86dc407ce7d77d84e2cf17441be9ef42f6a1c0199a02637a2c8197eba618"
+      },
+      {
+        "path": "src/braycurtis-julia/study_common.jl",
+        "sha256": "d6c7687e288853d62a80b71c40eddd0417d48c413e843617ac70797a73e7f732"
+      },
+      {
+        "path": "src/braycurtis-cuda/tests/main.py",
+        "sha256": "2fa5772645ffc741b6a3daa67ec412649b90fa3f0e9be32542cc5fb159f43d1e"
+      }
+    ],
+    "uncertainty": "Genericrandom/syntheticfeaturevectors; source doesnotidentifyanapplication-specific scientificdataset."
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_native_integration_adapted",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Allfour sourcekernel stages: pairwiseforward, absdifference/abssum components, gradx1,gradx2.",
+      "mapping": "CUDA.@cuda explicitglobalgridstride,256threads; scalarpuremathdevicehelpers",
+      "layout": "FlattenedrowmajorFloat32/F64vectors withexplicitB/M/N/K indexing; no columnmajortranspose; guardedviews",
+      "precision": {
+        "storage": [
+          "float32",
+          "float64"
+        ],
+        "compute": [
+          "float32",
+          "float64"
+        ],
+        "artifact_encoding": "float64; losslessF32inputvaluepromotion, nativeF64values",
+        "independent_oracle": "Float64mathfsum+vectorizedNumPyquotientderivatives/finite-differenceoutsideROI",
+        "unmeasured_source_precision": [
+          "float16"
+        ]
+      },
+      "memory": "Globalinput/output,serialfeature/gradientloops, no sharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletion_betweenforward/backward"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": "ceil(stage_element_count/256)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CUDA runtime/backendonly; no vendor mathkernel/library orforeignCUDAdeviceintrinsic",
+      "fidelity_status": "source4kernel_F32F64_named_scope_integration_adapted",
+      "configuration_id": "braycurtis_exact4sourcekernels_rowmajor_adapter_F32F64_6shapes_forward_grad_R10_v1",
+      "source_evidence": [
+        {
+          "path": "src/braycurtis-julia/braycurtis-julia-cuda.jl/main.jl",
+          "sha256": "ce3fe88de717cf09acd1bebc3047c5119735fafe757e8964e409b310fcf4f941"
+        },
+        {
+          "path": "src/braycurtis-cuda/torchpairwise/csrc/ops/cuda/braycurtis_kernel.cu",
+          "sha256": "04b61d23a5ff2fadfb67aee3efd29ec23ebebe511d3ea78fedddc79d1545dcd0"
+        },
+        {
+          "path": "src/braycurtis-julia/extraction_manifest.json",
+          "sha256": "7bfce6d91a3efe2217701fcd279f1fce568e2cdf508bfb696065506f61fa2451"
+        },
+        {
+          "path": "src/braycurtis-julia/accessor_shim.h",
+          "sha256": "950f47f9ffb780c97eadaeecb0c27bf770169a710aaf725a0a4722244c283ff3"
+        },
+        {
+          "path": "src/braycurtis-julia/device_components.jl",
+          "sha256": "f46e86dc407ce7d77d84e2cf17441be9ef42f6a1c0199a02637a2c8197eba618"
+        },
+        {
+          "path": "src/braycurtis-julia/study_common.jl",
+          "sha256": "d6c7687e288853d62a80b71c40eddd0417d48c413e843617ac70797a73e7f732"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum6_source_forward_plus3kernel_backward_means_R10",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "dtype_cases": 2,
+      "shape_cases_per_dtype": 3,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, inheritedKAthenJACC; ownframeworkkernelentrypoints separatelycompiled.",
+      "limitations": [
+        "Native kernel-only integration adapter: exact sourcefourdevicebodies plusownedrowmajoraccessorshim, not originalPyTorch/autogradregistration/hostdispatch/contiguous-copy certification.",
+        "exclude_untouched_native_aggregates true; integration adaptation is not a mathematical/native algorithm correction.",
+        "Float32/Float64 sixnamedshapes, not original huge PyTorch test shapes; Float16 source dispatch remains unmeasured, not unsupported.",
+        "Zero denominator mathematicallyundefined; abs-cusp gradient policy not certified; primarysignedfixtures avoid eachfeature sum/difference zero.",
+        "Forward/components/gradx1/gradx2 finalsurvivingarrays captured; not allR10 overwrittenintermediates.",
+        "Time is sum6 forwardR10mean+3kernelbackwardR10mean withcompletionbetweenregions; no precision/size-isolated performance row or original wholewrapper throughput claim.",
+        "Nativebyvaluepackedaccessors vsJuliaflattenedrowmajorviews andframeworklaunchwrappers differ; nativelegacydefaultstream vsJuliataskstream withwholedevicecompletion, resourcecounters unmeasured.",
+        "Observedcached/session/context-inclusive counters include orderedsharedhelperreuse; not exclusive targetbilling or historicaltoken recovery.",
+        "No application dataset, trainingrun, crossvendorbackend or independenthumanreview validation."
+      ]
+    },
+    "ka": {
+      "status": "verified_native_integration_adapted",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Allfour sourcekernel stages: pairwiseforward, absdifference/abssum components, gradx1,gradx2.",
+      "mapping": "KA.@kernel globalindex,256group/roundedglobalrange; scalarpuremathdevicehelpers",
+      "layout": "FlattenedrowmajorFloat32/F64vectors withexplicitB/M/N/K indexing; no columnmajortranspose; guardedviews",
+      "precision": {
+        "storage": [
+          "float32",
+          "float64"
+        ],
+        "compute": [
+          "float32",
+          "float64"
+        ],
+        "artifact_encoding": "float64; losslessF32inputvaluepromotion, nativeF64values",
+        "independent_oracle": "Float64mathfsum+vectorizedNumPyquotientderivatives/finite-differenceoutsideROI",
+        "unmeasured_source_precision": [
+          "float16"
+        ]
+      },
+      "memory": "Globalinput/output,serialfeature/gradientloops, no sharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletion_betweenforward/backward"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": "ceil(stage_element_count/256)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CUDA runtime/backendonly; no vendor mathkernel/library orforeignCUDAdeviceintrinsic",
+      "fidelity_status": "source4kernel_F32F64_named_scope_integration_adapted",
+      "configuration_id": "braycurtis_exact4sourcekernels_rowmajor_adapter_F32F64_6shapes_forward_grad_R10_v1",
+      "source_evidence": [
+        {
+          "path": "src/braycurtis-julia/braycurtis-julia-KA/main.jl",
+          "sha256": "fe00a79498a7f32728f7ca34a19cd69aba4b0025cca10a2e41a68aa5d0025c10"
+        },
+        {
+          "path": "src/braycurtis-cuda/torchpairwise/csrc/ops/cuda/braycurtis_kernel.cu",
+          "sha256": "04b61d23a5ff2fadfb67aee3efd29ec23ebebe511d3ea78fedddc79d1545dcd0"
+        },
+        {
+          "path": "src/braycurtis-julia/extraction_manifest.json",
+          "sha256": "7bfce6d91a3efe2217701fcd279f1fce568e2cdf508bfb696065506f61fa2451"
+        },
+        {
+          "path": "src/braycurtis-julia/accessor_shim.h",
+          "sha256": "950f47f9ffb780c97eadaeecb0c27bf770169a710aaf725a0a4722244c283ff3"
+        },
+        {
+          "path": "src/braycurtis-julia/device_components.jl",
+          "sha256": "f46e86dc407ce7d77d84e2cf17441be9ef42f6a1c0199a02637a2c8197eba618"
+        },
+        {
+          "path": "src/braycurtis-julia/study_common.jl",
+          "sha256": "d6c7687e288853d62a80b71c40eddd0417d48c413e843617ac70797a73e7f732"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum6_source_forward_plus3kernel_backward_means_R10",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "dtype_cases": 2,
+      "shape_cases_per_dtype": 3,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, inheritedKAthenJACC; ownframeworkkernelentrypoints separatelycompiled.",
+      "limitations": [
+        "Native kernel-only integration adapter: exact sourcefourdevicebodies plusownedrowmajoraccessorshim, not originalPyTorch/autogradregistration/hostdispatch/contiguous-copy certification.",
+        "exclude_untouched_native_aggregates true; integration adaptation is not a mathematical/native algorithm correction.",
+        "Float32/Float64 sixnamedshapes, not original huge PyTorch test shapes; Float16 source dispatch remains unmeasured, not unsupported.",
+        "Zero denominator mathematicallyundefined; abs-cusp gradient policy not certified; primarysignedfixtures avoid eachfeature sum/difference zero.",
+        "Forward/components/gradx1/gradx2 finalsurvivingarrays captured; not allR10 overwrittenintermediates.",
+        "Time is sum6 forwardR10mean+3kernelbackwardR10mean withcompletionbetweenregions; no precision/size-isolated performance row or original wholewrapper throughput claim.",
+        "Nativebyvaluepackedaccessors vsJuliaflattenedrowmajorviews andframeworklaunchwrappers differ; nativelegacydefaultstream vsJuliataskstream withwholedevicecompletion, resourcecounters unmeasured.",
+        "Observedcached/session/context-inclusive counters include orderedsharedhelperreuse; not exclusive targetbilling or historicaltoken recovery.",
+        "No application dataset, trainingrun, crossvendorbackend or independenthumanreview validation."
+      ]
+    },
+    "jacc": {
+      "status": "verified_native_integration_adapted",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Allfour sourcekernel stages: pairwiseforward, absdifference/abssum components, gradx1,gradx2.",
+      "mapping": "JACC.parallel_for globalindex,explicit256threadLaunchSpecs/dynamicshmem0; scalarpuremathdevicehelpers",
+      "layout": "FlattenedrowmajorFloat32/F64vectors withexplicitB/M/N/K indexing; no columnmajortranspose; guardedviews",
+      "precision": {
+        "storage": [
+          "float32",
+          "float64"
+        ],
+        "compute": [
+          "float32",
+          "float64"
+        ],
+        "artifact_encoding": "float64; losslessF32inputvaluepromotion, nativeF64values",
+        "independent_oracle": "Float64mathfsum+vectorizedNumPyquotientderivatives/finite-differenceoutsideROI",
+        "unmeasured_source_precision": [
+          "float16"
+        ]
+      },
+      "memory": "Globalinput/output,serialfeature/gradientloops, no sharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletion_betweenforward/backward"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": "ceil(stage_element_count/256)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CUDA runtime/backendonly; no vendor mathkernel/library orforeignCUDAdeviceintrinsic",
+      "fidelity_status": "source4kernel_F32F64_named_scope_integration_adapted",
+      "configuration_id": "braycurtis_exact4sourcekernels_rowmajor_adapter_F32F64_6shapes_forward_grad_R10_v1",
+      "source_evidence": [
+        {
+          "path": "src/braycurtis-julia/braycurtis-julia-JACC/main.jl",
+          "sha256": "1adff7b16376c44bb4b81e64fc0230c40b382033ac87507194241d34567586d8"
+        },
+        {
+          "path": "src/braycurtis-cuda/torchpairwise/csrc/ops/cuda/braycurtis_kernel.cu",
+          "sha256": "04b61d23a5ff2fadfb67aee3efd29ec23ebebe511d3ea78fedddc79d1545dcd0"
+        },
+        {
+          "path": "src/braycurtis-julia/extraction_manifest.json",
+          "sha256": "7bfce6d91a3efe2217701fcd279f1fce568e2cdf508bfb696065506f61fa2451"
+        },
+        {
+          "path": "src/braycurtis-julia/accessor_shim.h",
+          "sha256": "950f47f9ffb780c97eadaeecb0c27bf770169a710aaf725a0a4722244c283ff3"
+        },
+        {
+          "path": "src/braycurtis-julia/device_components.jl",
+          "sha256": "f46e86dc407ce7d77d84e2cf17441be9ef42f6a1c0199a02637a2c8197eba618"
+        },
+        {
+          "path": "src/braycurtis-julia/study_common.jl",
+          "sha256": "d6c7687e288853d62a80b71c40eddd0417d48c413e843617ac70797a73e7f732"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum6_source_forward_plus3kernel_backward_means_R10",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "dtype_cases": 2,
+      "shape_cases_per_dtype": 3,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, inheritedKAthenJACC; ownframeworkkernelentrypoints separatelycompiled.",
+      "limitations": [
+        "Native kernel-only integration adapter: exact sourcefourdevicebodies plusownedrowmajoraccessorshim, not originalPyTorch/autogradregistration/hostdispatch/contiguous-copy certification.",
+        "exclude_untouched_native_aggregates true; integration adaptation is not a mathematical/native algorithm correction.",
+        "Float32/Float64 sixnamedshapes, not original huge PyTorch test shapes; Float16 source dispatch remains unmeasured, not unsupported.",
+        "Zero denominator mathematicallyundefined; abs-cusp gradient policy not certified; primarysignedfixtures avoid eachfeature sum/difference zero.",
+        "Forward/components/gradx1/gradx2 finalsurvivingarrays captured; not allR10 overwrittenintermediates.",
+        "Time is sum6 forwardR10mean+3kernelbackwardR10mean withcompletionbetweenregions; no precision/size-isolated performance row or original wholewrapper throughput claim.",
+        "Nativebyvaluepackedaccessors vsJuliaflattenedrowmajorviews andframeworklaunchwrappers differ; nativelegacydefaultstream vsJuliataskstream withwholedevicecompletion, resourcecounters unmeasured.",
+        "Observedcached/session/context-inclusive counters include orderedsharedhelperreuse; not exclusive targetbilling or historicaltoken recovery.",
+        "No application dataset, trainingrun, crossvendorbackend or independenthumanreview validation."
+      ]
+    }
+  }
+}
