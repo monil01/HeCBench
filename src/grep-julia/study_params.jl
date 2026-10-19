@@ -1,0 +1,4 @@
+const PREFIX=1523696
+const COUNT=2391596
+const PATTERNS=10
+const CASES=3

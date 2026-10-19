@@ -1,0 +1,4 @@
+#define PREFIX 1523696
+#define COUNT 2391596
+#define PATTERNS 10
+#define CASES 3
