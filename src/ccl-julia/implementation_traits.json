@@ -1,0 +1,222 @@
+{
+  "benchmark": "ccl",
+  "scientific_intent": {
+    "benchmark_id": "ccl",
+    "primary_family": "hardware_data_movement",
+    "review_status": "source_reviewed",
+    "application_domain": "Domain-neutral distributed vector reduction and scientific-workflow collective aggregation",
+    "scientific_operator": "Two-rank pointwise Float32 sum implemented by actual NCCL ncclAllReduce; MPI host bootstrap",
+    "community_use": "Reusable communication component for distributed numerical workflows; no particular simulation, training convergence or multinode application validated.",
+    "accuracy_requirements": "Exact complete two-rank dyadic sums, actual device input/initial receive/read-only readbacks and guards; independent Float64 sum from saved actual inputs.",
+    "source_evidence": [
+      {
+        "path": "src/ccl-cuda/main.cu",
+        "sha256": "2e7d18de27c61c398abef56a0d654bdddc67ffe41184efac2553beec7d489e94"
+      },
+      {
+        "path": "src/ccl-julia/study_nccl.cpp",
+        "sha256": "6b85392eda9b9ba6dfe76f5e9dbc6a549a3987c5b4dbdda00366ebef4589e9db"
+      }
+    ],
+    "limitations": [
+      "Two same-host V100 devices5,6 and NCCL2.18.5 only; no single-device aggregate.",
+      "Primary up-to10M counts and50 repeats; original100M/1B R1 diagnostic is separate, not accepted full capture or performance.",
+      "Vendor collective has zero authored source device kernels; KA/JACC allocation and host orchestration do not establish portable collectives.",
+      "Default-pool KA stalled and pool-none diagnostic passed; specific allocator failure cause not proved.",
+      "Guard offset changes buffer alignment equally across four versions."
+    ]
+  },
+  "primary_motif": "vendor collective vector reduction",
+  "storage_precision": [
+    "Float32"
+  ],
+  "compute_precision": [
+    "Float32"
+  ],
+  "synchronization": [
+    "explicit native NCCL stream completion",
+    "whole-context setup completion outside timing",
+    "MPI barriers and maximum reductions outside timing"
+  ],
+  "verification_contract": "raw_numeric_outputs",
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+  },
+  "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+  "implementation_class": {
+    "cuda_jl": "vendor_library_interop",
+    "ka": "vendor_library_interop",
+    "jacc": "vendor_library_interop"
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "review_status": "source_reviewed",
+      "implementation_class": "vendor_library_interop",
+      "implementation_components": {
+        "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+        "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+      },
+      "authored_kernel_definitions": 0,
+      "storage_precision": [
+        "Float32"
+      ],
+      "compute_precision": [
+        "Float32"
+      ],
+      "vendor_dependencies": [
+        "CUDA on V100 sm70",
+        "NCCL2.18.5+CUDA12.0",
+        "OpenMPI host bootstrap"
+      ],
+      "backend_extensions": [
+        "CUDA array pointer/device/context setup required"
+      ],
+      "unsupported_features": [],
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+      },
+      "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+      "verification_contract": "raw_numeric_outputs",
+      "source_evidence": [
+        {
+          "path": "src/ccl-julia/ccl-julia-cuda.jl/main.jl",
+          "sha256": "d0baa2fd8773cf3ed234f2fd3339011e6d2cbac2f29036af2f566167aa23f528"
+        },
+        {
+          "path": "src/ccl-julia/study_common.jl",
+          "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+        }
+      ],
+      "resources": {
+        "authored_threads": null,
+        "authored_shared_memory_bytes": null,
+        "library_internal_launch_geometry": "not measured; no invented geometry"
+      },
+      "MPI_ranks": 2,
+      "physical_devices": [
+        5,
+        6
+      ],
+      "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+      "pure_backend_portable_collective_claim": false,
+      "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+      "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+    },
+    "ka": {
+      "review_status": "source_reviewed",
+      "implementation_class": "vendor_library_interop",
+      "implementation_components": {
+        "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+        "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+      },
+      "authored_kernel_definitions": 0,
+      "storage_precision": [
+        "Float32"
+      ],
+      "compute_precision": [
+        "Float32"
+      ],
+      "vendor_dependencies": [
+        "CUDA on V100 sm70",
+        "NCCL2.18.5+CUDA12.0",
+        "OpenMPI host bootstrap"
+      ],
+      "backend_extensions": [
+        "CUDA array pointer/device/context setup required"
+      ],
+      "unsupported_features": [],
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+      },
+      "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+      "verification_contract": "raw_numeric_outputs",
+      "source_evidence": [
+        {
+          "path": "src/ccl-julia/ccl-julia-KA/main.jl",
+          "sha256": "5fab37d586962e3949066bfefca6c72b5ca1ca06ed86c86ef6e4b78c8896ab9c"
+        },
+        {
+          "path": "src/ccl-julia/study_common.jl",
+          "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+        }
+      ],
+      "resources": {
+        "authored_threads": null,
+        "authored_shared_memory_bytes": null,
+        "library_internal_launch_geometry": "not measured; no invented geometry"
+      },
+      "MPI_ranks": 2,
+      "physical_devices": [
+        5,
+        6
+      ],
+      "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+      "pure_backend_portable_collective_claim": false,
+      "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+      "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+    },
+    "jacc": {
+      "review_status": "source_reviewed",
+      "implementation_class": "vendor_library_interop",
+      "implementation_components": {
+        "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+        "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+      },
+      "authored_kernel_definitions": 0,
+      "storage_precision": [
+        "Float32"
+      ],
+      "compute_precision": [
+        "Float32"
+      ],
+      "vendor_dependencies": [
+        "CUDA on V100 sm70",
+        "NCCL2.18.5+CUDA12.0",
+        "OpenMPI host bootstrap"
+      ],
+      "backend_extensions": [
+        "CUDA array pointer/device/context setup required"
+      ],
+      "unsupported_features": [],
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+      },
+      "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+      "verification_contract": "raw_numeric_outputs",
+      "source_evidence": [
+        {
+          "path": "src/ccl-julia/ccl-julia-JACC/main.jl",
+          "sha256": "ace271f047f5e64b4dfc62f60a820a9d21028c81b1c345a74a1e934d8a122966"
+        },
+        {
+          "path": "src/ccl-julia/study_common.jl",
+          "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+        }
+      ],
+      "resources": {
+        "authored_threads": null,
+        "authored_shared_memory_bytes": null,
+        "library_internal_launch_geometry": "not measured; no invented geometry"
+      },
+      "MPI_ranks": 2,
+      "physical_devices": [
+        5,
+        6
+      ],
+      "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+      "pure_backend_portable_collective_claim": false,
+      "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+      "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+    }
+  },
+  "keyconfounds": [
+    "Two devices and communication pipeline, not pure Julia kernel lowering.",
+    "Common NCCL library executes collective GPU kernels; none authored in any benchmark version.",
+    "Julia host/C ABI call overhead, allocation policy, buffer alignment, topology and library versions are covariates.",
+    "Single five-trial block per model; no causal allocator or framework speed ranking."
+  ]
+}
