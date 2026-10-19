@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Join prospective full-suite records without altering the frozen447 study."""
+"""Join prospective full-suite records without altering the frozen 447 study."""
 from pathlib import Path
 import csv,datetime,hashlib,json,subprocess
 from study_evidence import effective_config
@@ -47,14 +47,15 @@ def main():
   r['models']={m:{k:v for k,v in v.items() if k not in ('adapter_file_hashes','implementation_traits')} for m,v in r['models'].items()}
  write(PAPER/'data/prospective_extension.json',compact)
  out=PAPER/'sections/generated/full_suite_extension.tex';out.parent.mkdir(parents=True,exist_ok=True)
- lines=[r'\begin{table}[t]',r'\centering\small',r'\caption{Prospective extension: named kernel-region means in milliseconds (five checked trials, mean of last four). C: corrected native reference; D: known native defect; A: integration/scope adapter; 2G: two devices (separate stratum). At most eight alphabetical accepted names are shown; compact data contain all. These cases are outside the frozen447 analysis.}',r'\label{tab:prospective-extension}',r'\begin{tabular}{lrrrrl}',r'\toprule Case & CUDA & CUDA.jl & KA & JACC & Ref.\\',r'\midrule']
+ lines=[r'\begin{table}[t]',r'\centering\small',r'\caption{Prospective named-region means (ms; last four of five checked trials). C: corrected reference; D: known defect; A: adapter; P: property contract; 2G: two devices. First eight alphabetical accepted names; all cases in compact data. Outside the frozen 447 analysis.}',r'\label{tab:prospective-extension}',r'\begin{tabular}{lrrrrl}',r'\toprule Case & CUDA & CUDA.jl & KA & JACC & Ref.\\',r'\midrule']
  for r in accepted[:8]:
   tag={'corrected_native_reference':'C','known_native_scientific_defect':'D','ordinary_named_contract':'ordinary','revised_contract':'R','integration_or_scope_adapted':'A','multiple_device_named_contract':'2G'}[r['reference_qualification']]
+  if r.get('is_property'):tag+=' P'
   times=['{:.3f}'.format(1000*r['models'][m]['mean_last_four_seconds']) for m in ('cuda','cuda_jl','ka','jacc')]
   lines.append(tex(r['benchmark'])+' & '+' & '.join(times)+' & '+tag+r' \\')
  outcome_parts=[str(sum(r.get(flag,False) for r in accepted))+' '+label for flag,label in [('is_numerical','numerical'),('is_property','property'),('is_execution_only','execution-only')] if any(r.get(flag,False) for r in accepted)]
- lines.append(r'\newcommand{\extensionOutcomeSummary}{'+' and '.join(outcome_parts)+'}')
- lines.extend([r'\bottomrule',r'\end{tabular}',r'\end{table}',r'\newcommand{\extensionAccepted}{'+str(len(accepted))+'}',r'\newcommand{\extensionPending}{'+str(90-len(accepted))+'}'])
+ outcome_macro=r'\newcommand{\extensionOutcomeSummary}{'+' and '.join(outcome_parts)+'}'
+ lines.extend([r'\bottomrule',r'\end{tabular}',r'\end{table}',outcome_macro,r'\newcommand{\extensionAccepted}{'+str(len(accepted))+'}',r'\newcommand{\extensionPending}{'+str(90-len(accepted))+'}'])
  out.write_text('\n'.join(lines)+'\n')
 
  fitted=[]
@@ -70,7 +71,7 @@ def main():
  (PAPER/'sections/generated/full_suite_calibration.tex').write_text(paragraph+'\n')
 
  details=PAPER/'companion/11_prospective_extension_details.tex'
- detail=[r'\section{Prospective Extension: Per-Case Effort}',r'\label{sec:extension-details}',r'These records concern the new frontier, outside the frozen447 primary study. Tokens are context-inclusive input plus output (millions), with cached input and reasoning output retained as subsets in compact data. Cumulative process checks include valid reruns; they are distinct from authored candidates. Target order and shared-helper reuse prevent independent cost comparisons. Missing fields remain unknown.',r'\begin{table*}[t]',r'\centering\small',r'\caption{All accepted extension cases at this snapshot. Triplets are CUDA.jl/KA/JACC. Tokens are observed activity-window totals, not exclusive billing. Reference qualifications and complete five-trial arrays remain in the compact snapshot.}',r'\begin{tabular}{llllll}',r'\toprule Case & Candidates & Program evaluations & GPU-JIT processes & Tokens (M) & Reference \\',r'\midrule']
+ detail=[r'\section{Prospective Extension: Per-Case Effort}',r'\label{sec:extension-details}',r'These records concern the new frontier, outside the frozen 447 primary study. Tokens are context-inclusive input plus output (millions), with cached input and reasoning output retained as subsets in compact data. Cumulative process checks include valid reruns; they are distinct from authored candidates. Target order and shared-helper reuse prevent independent cost comparisons. Missing fields remain unknown.',r'\begin{table*}[t]',r'\centering\small',r'\caption{All accepted extension cases at this snapshot. Triplets are CUDA.jl/KA/JACC. Tokens are observed activity-window totals, not exclusive billing. Reference qualifications and complete five-trial arrays remain in the compact snapshot.}',r'\begin{tabular}{llllll}',r'\toprule Case & Candidates & Program evaluations & GPU-JIT processes & Tokens (M) & Reference \\',r'\midrule']
  for row in accepted:
   trip=lambda key: '/'.join('--' if row['models'][m].get(key) is None else str(row['models'][m][key]) for m in ('cuda_jl','ka','jacc'))
   costs='/'.join('--' if not row['models'][m].get('translation_tokens') or row['models'][m]['translation_tokens'].get('total_tokens') is None else '{:.3f}'.format(row['models'][m]['translation_tokens']['total_tokens']/1e6) for m in ('cuda_jl','ka','jacc'))

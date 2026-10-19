@@ -1,0 +1,7 @@
+#include <cuda_runtime.h>
+#include <cstdio>
+#include <vector>
+#include <fstream>
+#include <type_traits>
+template<bool V>__global__ void handoff(const int*__restrict__ table,typename std::conditional<V,volatile long,long>::type*cur,typename std::conditional<V,volatile long,long>::type*off,int*out){int tid=threadIdx.x;for(int level=0;level<1;level++){if(table[cur[0]*256+tid]==tid){if(tid==1)off[0]=1;}__syncthreads();if(tid==0)cur[0]=off[0];__syncthreads();}out[tid]=table[cur[0]*256+tid];}
+int main(){int *table,*out;long*cur,*off;cudaMalloc(&table,512*4);cudaMalloc(&out,256*4);cudaMalloc(&cur,8);cudaMalloc(&off,8);std::vector<int>t(512),h(256),capture;for(int i=0;i<256;i++){t[i]=i;t[i+256]=1000+i;}cudaMemcpy(table,t.data(),512*4,cudaMemcpyHostToDevice);int bad[2];for(int mode=0;mode<2;mode++){cudaMemset(cur,0,8);cudaMemset(off,0,8);if(mode==0)handoff<false><<<1,256>>>(table,cur,off,out);else handoff<true><<<1,256>>>(table,cur,off,out);auto e=cudaDeviceSynchronize();if(e!=cudaSuccess){fprintf(stderr,"GPUERROR %s\n",cudaGetErrorString(e));return 1;}cudaMemcpy(h.data(),out,256*4,cudaMemcpyDeviceToHost);bad[mode]=0;for(int i=0;i<256;i++)if(h[i]!=1000+i)bad[mode]++;capture.insert(capture.end(),h.begin(),h.end());printf("GLOBAL_PATH_WITNESS volatile=%d wrong_lanes=%d expected_all256read_updatednode\n",mode,bad[mode]);}std::ofstream f("global_path_witness.bin",std::ios::binary);f.write((char*)capture.data(),capture.size()*4);f.close();cudaFree(table);cudaFree(out);cudaFree(cur);cudaFree(off);if(bad[1])return 1;return bad[0]?2:0;}
