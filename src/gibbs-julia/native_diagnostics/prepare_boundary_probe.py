@@ -1,0 +1,3 @@
+from pathlib import Path
+import array,struct,json
+R=Path(__file__).resolve().parents[3];F=R/'.porting-state/portable_julia/runs/20261019T202614351377Z_gibbs/cuda_trial1_gibbs_trial1.bin';a=array.array('d');a.frombytes(F.read_bytes());step=21;i=145;st=7900+step*6812;prev=7900+(step-1)*6812+9+615;words=[int(x)for x in a[prev+16+i*12:prev+16+(i+1)*12]];D=R/'.porting-state/diagnostics/gibbs/rejection_boundary';(D/'input.bin').write_bytes(struct.pack('<12I2f',*words,a[st+1]+i%7,a[st+2]+.5+(i%13)*.125));print('BoundaryprobeCPUextractedactualbeforestate shape/rate:',a[st+1]+i%7,a[st+2]+.5+(i%13)*.125)
