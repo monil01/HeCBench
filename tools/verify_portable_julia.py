@@ -19,6 +19,33 @@ TOOL_SOURCE = Path(__file__).read_bytes()
 TOOL_SHA256 = hashlib.sha256(TOOL_SOURCE).hexdigest()
 EXPORT_MODEL_IDS = {'cuda':'cuda','cuda_jl':'julia','ka':'julia-ka','jacc':'julia-jacc'}
 
+
+def preserve_nonfinite_diagnostics(result):
+    """Encode reported nonfinite diagnostics strictly without changing verdicts.
+
+    Raw logs and saved artifacts remain authoritative. JSON null carries no
+    zero-error or success claim; paths and original tokens are retained below.
+    """
+    fields=[]
+    def encode(value,path):
+        if isinstance(value,float) and not math.isfinite(value):
+            token='NaN' if math.isnan(value) else ('Infinity' if value>0 else '-Infinity')
+            fields.append({'path':path,'reported_token':token})
+            return None
+        if isinstance(value,dict):
+            return {k:encode(v,path+'.'+str(k)) for k,v in value.items()}
+        if isinstance(value,list):
+            return [encode(v,path+'['+str(i)+']') for i,v in enumerate(value)]
+        if isinstance(value,tuple):
+            return [encode(v,path+'['+str(i)+']') for i,v in enumerate(value)]
+        return value
+    encoded=encode(result,'$')
+    if fields:
+        encoded['json_nonfinite_diagnostics']={
+            'fields':fields,
+            'meaning':'Reported nonfinite diagnostic encoded as JSON null; original tokens, raw logs and artifact bytes retained. No zero-error claim. Computed correctness, completeness, comparisons, timing inclusion and verdicts unchanged.'}
+    return encoded
+
 def discover(bench):
     base = ROOT / 'src' / f'{bench}-julia'
     return {'cuda': str(ROOT/'src'/f'{bench}-cuda'),
@@ -688,6 +715,7 @@ def verify(config):
             'contract_attestation_metadata_adjudication':contract_attestation_review,'numerical_agreement_kind':config.get('numerical_agreement_kind','declared_numeric_artifact_contract'),'numerical_agreement_claim':config.get('numerical_agreement_kind') not in ('no_numerical_outputs_execution_only','property_equivalence_not_identical_raw_values'),'raw_output_identity_claim':False if config.get('raw_output_identity_claim') is False or config.get('numerical_agreement_kind') in ('no_numerical_outputs_execution_only','property_equivalence_not_identical_raw_values') else None,'input_prefix_count':config.get('input_prefix_count',0),'model_id_mapping':EXPORT_MODEL_IDS,'models':results,'comparisons':comparisons,'variant_verified':variant_verified,'reference_agreement':reference_agreement,'reference_disagreement':reference_disagreement,'reference_checks':reference_checks,'matched_performance_valid':matched,'input_contract':config.get('input_contract'),
             'ontology':config.get('ontology'), 'token_accounting':config.get('token_accounting',{'status':'unknown','input_tokens':None,'output_tokens':None}),
             'attempt_accounting':config.get('attempt_accounting'),'timing_region_metadata_adjudication':timing_metadata_adjudication,'prefix_validation_transition':prefix_validation_transition,'reuse_configuration_transition':reuse_configuration_transition,'events':events}
+    result=preserve_nonfinite_diagnostics(result)
     (out/'result.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     db=sqlite3.connect(STATE/'results.db',timeout=60)
     db.execute('PRAGMA journal_mode=WAL')
@@ -698,7 +726,7 @@ def verify(config):
         for model,v in results.items():
             for row in v.get('trials',[]): w.writerow([run_id,bench,config.get('configuration_id'),EXPORT_MODEL_IDS[model],row.get('trial'),row.get('time_seconds'),row.get('correct'),row.get('jit_excluded')])
     export_global_csv()
-    print(json.dumps({'result':str(out/'result.json'),'matched_performance_valid':matched,'comparisons':comparisons}))
+    print(json.dumps({'result':str(out/'result.json'),'matched_performance_valid':matched,'comparisons':result['comparisons']},allow_nan=False))
     requested=[m for m in ('ka','jacc') if m in config.get('models',{})]
     return 0 if requested and all(variant_verified[m] for m in requested) else 2
 

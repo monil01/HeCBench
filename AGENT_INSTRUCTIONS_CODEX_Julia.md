@@ -1,5 +1,11 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
+## Failure reporting and effort units
+
+After computing verdicts, the verifier serializes nonfinite reported diagnostics as JSON null with separate original-token/path records. Preserve raw logs/artifact bytes; null is neither zero error nor success. This reporting step cannot change correctness, completeness, comparisons, tolerance or timing inclusion. Historical runs that failed before writing a receipt retain that explicit gap; never reconstruct accepted evidence from their diagnostics. Count a numerical rejection and a subsequent reporting-tool failure separately by origin.
+
+Record the unit behind every candidate count: submitted source bundles, mathematical bodies, whole-program evaluations, actual device-JIT processes, source-generator invocations and measurement-only reruns can differ. Preserve known units in compact paper data and keep missing units unknown. Do not pool heterogeneous candidate counts into success rates or infer backend compiler invocation totals from process counts. Keep shared reporting/tooling effort separate from target translation windows, and never sum overlapping windows.
+
 Usage metadata: `tools/translation_usage_metadata.py` searches the registered stream backward within a fixed byte snapshot for the latest model-context record no later than the usage event. An older short-tail lookup could miss that record. Preserve original null markers and counters; resolve metadata only through same-stream, timestamp-bound SHA-reviewed supplements under `usage_model_metadata_reviews_537`. Never infer another stream’s model or recover historical consumption. Native/vendor-library benchmarks may contain zero authored device kernels; record genuine framework allocation/orchestration plus actual library execution, and do not fabricate a kernel or claim portable library support.
 The forecast CSV distinguishes frozen447 missing historical actuals from new90 slots without a closed observed translation window. Preserve empty actual fields, explicit population/applicability columns, sample counts and held-out errors; a shared median scenario is not a benchmark-specific validated prediction. Library and multi-device mechanisms need their own applicability review.
 
