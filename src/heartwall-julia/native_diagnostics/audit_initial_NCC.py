@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Independent Float64 FFT/rectangular-window NCC control for actual native frame1."""
+from pathlib import Path
+import json,struct,numpy as np,hashlib
+R=Path(__file__).resolve().parents[3];P=R/'src/heartwall-julia';D=R/'.porting-state/diagnostics/heartwall/raw_capture';schema=json.load(open(P/'params_schema.json'))['fields'];fmt='<'+''.join('i'if f['type']=='int32'else'f'for f in schema);vals=struct.unpack(fmt,(P/'common.bin').read_bytes());c={f['name']:v for f,v in zip(schema,vals)}
+load=lambda n:np.fromfile(D/f'frame1_{n}.bin',dtype='<f4').astype(np.float64)
+f0=np.fromfile(P/'frame0_f32.bin',dtype='<f4').reshape((c['frame_rows'],c['frame_cols']),order='F').astype(np.float64);f1=np.fromfile(P/'frame1_f32.bin',dtype='<f4').reshape(f0.shape,order='F').astype(np.float64)
+rows=np.r_[np.fromfile(P/'endoRow_i32.bin',dtype='<i4'),np.fromfile(P/'epiRow_i32.bin',dtype='<i4')];cols=np.r_[np.fromfile(P/'endoCol_i32.bin',dtype='<i4'),np.fromfile(P/'epiCol_i32.bin',dtype='<i4')]
+T=np.r_[load('endoT'),load('epiT')].reshape((51,51,51),order='F');search=load('in2').reshape((81,81,51),order='F');gpuCov=load('conv').reshape((131,131,51),order='F');gpuSum=load('in2_sub2').reshape((131,131,51),order='F');gpuNCC=load('in2_sqr_sub2').reshape((131,131,51),order='F');gpuMask=load('mask_conv').reshape((131,131,51),order='F');gpuDen=load('denomT');stats=[]
+def convolve(a,b):return np.fft.irfftn(np.fft.rfftn(a,s=(131,131),axes=(0,1))*np.fft.rfftn(b,s=(131,131),axes=(0,1)),s=(131,131),axes=(0,1))
+def box(a):
+ p=np.pad(a,((50,50),(50,50)));cs=np.pad(p,((1,0),(1,0))).cumsum(axis=0).cumsum(axis=1)
+ return cs[51:,51:]-cs[:-51,51:]-cs[51:,:-51]+cs[:-51,:-51]
+# Actualformattedcoords sourcewrite_data after2framecapture.
+text=(R/'.porting-state/diagnostics/heartwall/source/heartwall-cuda/result.txt').read_text().splitlines();index=text.index('---Frame 1---');er=np.fromstring(text[index+2],sep=' ');ec=np.fromstring(text[index+3],sep=' ');pr=np.fromstring(text[index+5],sep=' ');pc=np.fromstring(text[index+6],sep=' ');actualRows=np.r_[er,pr];actualCols=np.r_[ec,pc]
+for p,(row,col)in enumerate(zip(rows,cols)):
+ t=f0[row-26:row+25,col-26:col+25];x=f1[row-41:row+40,col-41:col+40];assert np.array_equal(t,T[:,:,p])and np.array_equal(x,search[:,:,p]);sm=box(x);ss=box(x*x);n=t.size;st=t.sum();st2=(t*t).sum();den=np.sqrt((n-1)*(st2/n-(st/n)**2));cov=convolve(x,t[::-1,::-1])-sm*st/n;normal=cov/(np.sqrt(np.maximum(0,ss-sm*sm/n))*den);mask=np.zeros((131,131));mask[60:70,60:70]=1;masked=normal*mask
+ pos=int(np.argmax(np.abs(masked).ravel(order='F')));rr=pos%131;cc=pos//131;predrow=int(row+rr-65);predcol=int(col+cc-65)
+ stats.append({'point':p,'boxsum_error':float(np.max(np.abs(sm-gpuSum[:,:,p]))),'covariance_error':float(np.max(np.abs(cov-gpuCov[:,:,p]))),'NCC_error':float(np.max(np.abs(normal-gpuNCC[:,:,p]))),'mask_error':float(np.max(np.abs(masked-gpuMask[:,:,p]))),'denomT_error':float(abs(den-gpuDen[p])),'independent_row':predrow,'independent_col':predcol,'actual_row':int(actualRows[p]),'actual_col':int(actualCols[p]),'categorical_exact':bool(predrow==actualRows[p]and predcol==actualCols[p]),'best_abs_score':float(np.max(np.abs(masked)))})
+report={'benchmark':'heartwall','independent_oracle':'Float64 FFT convolution + direct2Drectwindowintegrals andCauchyNCC algebra; sourceGPUdirectnestedconvolution/cumsumtranscription notused.','source_template_scaling':'denomT=sqrt((n-1)*population_varianceT), sourceNCC scaledsqrt(n/(n-1)) vsordinarynormalizedNCC; preserve asmethodpolicy,no inferredtrackingerror.','all51_input_crops_exact':True,'all51_frame1_coordinates_exact':all(x['categorical_exact']for x in stats),'max_NCC_error':max(x['NCC_error']for x in stats),'max_covariance_error':max(x['covariance_error']for x in stats),'max_boxsum_error':max(x['boxsum_error']for x in stats),'points':stats,'numpy':np.__version__,'fullclinical_accuracy_claim':False};(P/'native_diagnostics/initial_NCC_audit.json').write_text(json.dumps(report,indent=2)+'\n');print({k:v for k,v in report.items()if k!='points'})
