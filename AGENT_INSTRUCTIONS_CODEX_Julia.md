@@ -9,6 +9,14 @@ Capture prospective usage boundaries for every benchmark and every target/phase 
 All five trials must be checked; discard only the first timing and average the last four. Require identical declared actual inputs, dual GPU references and independent checks; retain exact device-input readbacks, complete outputs, compiler diagnostics, reference qualifications and source/environment hashes. GPU6 only under the established shared lock. Update per-model scientific/implementation ontology, failure events, effort logs, research observations, RQ links and paper tables together. Keep new537 extension observations separate from the frozen447 analyses until verified and explicitly included. Raw research remains outside Overleaf; preserve the published immutable release.
 
 
+## Prospective expansion evidence and paper integration
+
+The current expansion dataset is regenerated with `tools/export_full_suite_expansion.py`; its compact publication snapshot is `2026-PASC-Hecbench-Julia-paper/data/prospective_extension.json`, with a separate manuscript section `sections/11_prospective_extension.tex`. Run token calibration before that export. Keep the frozen 447-name primary tables and release unchanged. The live 537-name ontology export and joint checkpoint retain pending outcomes. Update `active_work_537.json` with exact next actions and open meters, then use the newest joint checkpoint to resume.
+
+Record complete-program candidates, frontend evaluations and actual device-JIT processes as distinct units. Preserve failed source and diagnostics even when no successful trial row exists. New verifier versions additionally retain generated `.bin` files on process or evidence-parse failure, excluding unchanged runtime input assets; these are untyped diagnostic files, never accepted numerical evidence or timing samples. Missing historical failure artifacts stay explicitly missing.
+
+Map observations to the manuscript's actual questions: RQ1 fidelity and scientific guarantees; RQ2 feedback and observable effort/tokens; RQ3 execution times and size/class variation; RQ4 mechanisms supported by controls; RQ5 target selection and backend requirements. Actual roofline positioning requires measured counters; source properties or a launch-bound hypothesis alone do not establish it. Preserve build/environment barriers, host-wrapper mistakes, native scientific defects and target-language limitations as separate diagnoses.
+
 ## Paper revision and artifact checkpoint — 19 October 2026
 
 The six review actions are complete: the 447-name study is primary; performance is stratified by reviewed implementation classes and available timing/size evidence; RQ5 has a capability/selection matrix; new timing, acceptance-gate and opposite-order translation controls are preserved separately; a public reproducibility release accompanies the compact paper repository; and the manuscript is organized around quantitative RQ answers and scientific cases.

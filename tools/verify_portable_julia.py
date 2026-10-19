@@ -346,6 +346,31 @@ def preserve_rejected_records(text, cwd, out, model, events, returncode, reason)
         rejected.append(diagnostic_json(row))
     return rejected
 
+def preserve_unreported_failure_artifacts(cwd, out, model, events, initial_binaries):
+    """Retain generated .bin diagnostics even if a checker throws before a trial row.
+
+    No dtype/shape/correctness is inferred. Unchanged runtime inputs are excluded.
+    These files never participate in accepted trials, comparisons or timings.
+    """
+    folder=out/(model+'_unreported_failure_artifacts')
+    for source in sorted(cwd.rglob('*.bin')):
+        if not source.is_file() or source.is_symlink():continue
+        relative=source.relative_to(cwd)
+        try:
+            sha=file_sha256(source)
+            if initial_binaries.get(str(relative))==sha:continue
+            destination=folder/relative
+            destination.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(source,destination)
+            events.append({'model':model,'phase':'unreported_failure_artifact_capture',
+                'relative_path':str(relative),'saved_path':str(destination),
+                'sha256':sha,'size_bytes':destination.stat().st_size,
+                'acceptance_eligible':False,'dtype':None,'shape':None,
+                'scope':'Generated binary retained after failed execution/evidence parse; no structured trial claim. Historical missing captures are not recovered.'})
+        except OSError as error:
+            events.append({'model':model,'phase':'unreported_failure_artifact_capture_error',
+                'relative_path':str(relative),'error':str(error),'acceptance_eligible':False})
+
 def compare(ref, got, atol, rtol):
     if not finite_values(ref) or not finite_values(got) or len(ref)!=len(got):
         return {'status':'unverified','reason':'missing/nonfinite/mismatched numerical values'}
@@ -547,6 +572,7 @@ def verify(config):
             dst.parent.mkdir(parents=True,exist_ok=True)
             if src.is_dir(): shutil.copytree(src,dst)
             else: shutil.copy2(src,dst)
+        initial_binaries={str(f.relative_to(cwd)):file_sha256(f) for f in cwd.rglob('*.bin') if f.is_file() and not f.is_symlink()}
         model_env=env.copy()
         model_env['STUDY_OUTPUT_DIR']=str(cwd)
         def resolve_args(args, building=False):
@@ -599,6 +625,7 @@ def verify(config):
                     if code or not stable_after_execution:
                         reason='execution_nonzero_exit' if code else 'source_provenance_invalid'
                         rejected_trials.extend(preserve_rejected_records(text,cwd,out,model,events,code,reason))
+                        preserve_unreported_failure_artifacts(cwd,out,model,events,initial_binaries)
                         break
                     try:
                         rows=parse_records(text,spec,None if count==1 else n)
@@ -607,6 +634,7 @@ def verify(config):
                     except (ValueError, OSError, KeyError) as error:
                         events.append({'model':model,'phase':'evidence_parse','error':str(error)})
                         rejected_trials.extend(preserve_rejected_records(text,cwd,out,model,events,code,'accepted_evidence_parse_failed'))
+                        preserve_unreported_failure_artifacts(cwd,out,model,events,initial_binaries)
                         break
         if temp: temp.cleanup()
         indices=[r.get('trial') for r in trials]

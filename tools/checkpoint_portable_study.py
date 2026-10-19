@@ -10,7 +10,7 @@ from study_evidence import effective_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--complete', action='store_true')
-parser.add_argument('--population',type=int,choices=[300,447,537],default=447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
+parser.add_argument('--population',type=int,choices=[300,447,537],default=537 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_537.json').exists() else 447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 state = root / '.porting-state'
@@ -147,7 +147,7 @@ payload = {
     'open_prospective_usage_segments': usage_segments,
     'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',
     'dirty_files': {k: git(p, 'status', '--short') for k,p in [('source',root),('paper',paper)]},
-    'next_translation': ('Completed frozen cohort assessment: preserve matched/conditional/known-defect/unavailable outcomes; no automatic reruns.' if args.complete else 'Continue remaining150 disjoint queues KA then JACC within447-name union, repairing references where needed. Root commits verified variants separately.'),
+    'next_translation': ('Completed frozen cohort assessment: preserve matched/conditional/known-defect/unavailable outcomes; no automatic reruns.' if args.complete else f'Continue active{target}-name ownerqueues: native readiness, CUDAjl then KA/JACC for newnames; preserve frozen447. Root commits eachverifiedversion separately.'),
     'next_paper': ('Review-ready draft: supply author/publication metadata and perform final venue submission checks; consult active_work for the current artifact release and reproduction receipts.' if args.complete else 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.'),
     'local_only_research': True,
     'paper_build_artifact': {'path':str((paper/'build/main.pdf').relative_to(root)),
