@@ -1,6 +1,8 @@
 # PASC27 Julia translation paper — writing instructions
 
 Usage metadata: `tools/translation_usage_metadata.py` searches the registered stream backward within a fixed byte snapshot for the latest model-context record no later than the usage event. An older short-tail lookup could miss that record. Preserve original null markers and counters; resolve metadata only through same-stream, timestamp-bound SHA-reviewed supplements under `usage_model_metadata_reviews_537`. Never infer another stream’s model or recover historical consumption. Native/vendor-library benchmarks may contain zero authored device kernels; record genuine framework allocation/orchestration plus actual library execution, and do not fabricate a kernel or claim portable library support.
+The forecast CSV distinguishes frozen447 missing historical actuals from new90 slots without a closed observed translation window. Preserve empty actual fields, explicit population/applicability columns, sample counts and held-out errors; a shared median scenario is not a benchmark-specific validated prediction. Library and multi-device mechanisms need their own applicability review.
+
 
 ## Active full-CUDA-suite expansion — 19 October 2026
 
