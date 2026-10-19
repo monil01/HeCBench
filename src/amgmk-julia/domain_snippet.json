@@ -1,0 +1,345 @@
+{
+  "benchmark": "amgmk",
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "pde_continuum",
+    "primary_domain": "elliptic_sparse_operator_microkernels",
+    "secondary_domains": [
+      "numerical_linear_algebra",
+      "algebraic_multigrid_components"
+    ],
+    "scientific_task": "Exercise sparse Laplacian matvec, parallel in-place relaxation and vector axpy microoperators associated with AMG workloads; not a full multigrid solver.",
+    "mathematical_operation": "A=6I-grid_adjacency on50^3 unitgrid withtruncatedzeroexterior; CPU y=A*x, GPU u_i=(f_i+sum_neighboru_j)/6 inplace/asynchronous, CPU y+=.5*x. Relaxation f=A*1 hasdiscretesolutionu*=1.",
+    "discretization_or_topology": "Sevenpoint3Dfinite-differenceoperator, CSRdiagonalfirst; x-fast rowmajor50\u00d750\u00d750 grid, absentneighbors treatedaszeroexterior.",
+    "invariants": [
+      "NonconstantCPUaffinefield matvec matchesindependentcoordinate7pointstencil exactly; repeateddyadicAXPY matchesclosedform exactly.",
+      "GPUfinite[0,2], maximum-principlestability andpositive-sineweighted\u221eerror afterR500\u2264q^500*M0+analyticFP64allowance; no-opfailsbound.",
+      "Fullcoordinateoperatorresidual boundedfromcompleteactualGPUstates; allread-onlyinputs unchanged andguards exact."
+    ],
+    "accuracy_requirements": [
+      "Exactshared69,044,016-byte actualinputprefix andfullCPUoutputs/guards acrossall4versions.",
+      "GPUstatepropertycontract: weightederror\u22640.09675914356696982 withderivedFP64weightedroundoff2.609014405e-9, fullfinite/range/residualchecks; no raw equalityclaim."
+    ],
+    "precision_sensitivity": "FP64perupdate\u03b4\u22642^-50+2^-52; positiveweightsmin0.0002333 amplifylocalerror inweightednorm; analytic\u03b7/(1-q)+1e-10 allowance declaredbeforenativeprimary.",
+    "input_size_regimes": "OriginalN125000,E860000,R500,256threads/489blocks; onegeometry, no scalingsweep.",
+    "community_use_case": "SourceCORAL AMGmk sparse operator microbenchmark/HYPRE routines; no fullVcycle/coarsening hierarchy or applicationdataset validation.",
+    "provenance": [
+      {
+        "path": "src/amgmk-cuda/main.cu",
+        "sha256": "ec4e9f25c1d874fc19fa963287f3c2455e79649bb098a33d4e91d7a3a790e563"
+      },
+      {
+        "path": "src/amgmk-cuda/csr_matvec.cu",
+        "sha256": "4056e81c0e7b6d732d2efeecfabd7160d420dcbadc0d2c21011e1f278179a8aa"
+      },
+      {
+        "path": "src/amgmk-cuda/vector.cu",
+        "sha256": "935d4ceb6ed37898c175f211afe98c8a68582116c5a5a4afa710181d0ea9cd5b"
+      },
+      {
+        "path": "src/amgmk-cuda/laplace.cu",
+        "sha256": "1bd606d46407fe3b7deb626f117d33a91ffe80cc898c5efec20f3596b23af50d"
+      },
+      {
+        "path": "src/amgmk-julia/device_components.jl",
+        "sha256": "4710acb4965c496263b831c9008c349ee4308bb3cf8123b57179ba83ade62c99"
+      },
+      {
+        "path": "src/amgmk-julia/study_common.jl",
+        "sha256": "e0407e5503af0fd9a79db85dca5281f0b7a7f372339957870342a8dd451f11b7"
+      },
+      {
+        "path": "src/amgmk-julia/study_plan.json",
+        "sha256": "83d461b7d71a429c24a101fb5887b2bfc1d246a115f8f2e8f6a1455b2de3ae74"
+      }
+    ],
+    "uncertainty": "Unsynchronizedsourceinplace semantics leaveformalracevalidityunproven; acceptedoutput properties donotproveuniqueexecutiontrajectory."
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_property_contract",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "class_reason": "MeasuredROIcontainsgenuineCPUmatvec andAXPY numericalcomputation aswellasGPurelax; thisisnotordinaryhostlaunch/completionalone.",
+      "algorithm": "Sourcefull3activeoperators; asynchronousinplacerelax preserved",
+      "mapping": "CUDA.@cuda onepoint/thread,paddedglobalrange/explicitInt32index",
+      "host_operator_mapping": "SharedserialJuliaCPUCSRMatvec alpha1/beta0/singlevector andCPUAXPYalpha.5, authoredCUDAjlphase,inheritedKA/JACC",
+      "layout": "Int32CSR0basedvalues through1basedJuliaindexing, FP64values/vectors, guardeddevicearrays; CPUvectors remainhost",
+      "precision": {
+        "storage": [
+          "float64",
+          "int32_indices"
+        ],
+        "compute": [
+          "float64"
+        ]
+      },
+      "memory": "IrregularglobalCSRreads andinplaceneighborread/write; noauthoredsharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletionafter500launches"
+      ],
+      "atomic_operations": [],
+      "backend_specific_device_components": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 489,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "BackendCUDAallocation/copy/completion; no solver/vendor-math kernel. NativeCPUreference isoriginalHYPREfunctions, targetCPUoperators explicitJulia.",
+      "fidelity_status": "propertyequivalence_under_source_asyncschedule",
+      "configuration_id": "amgmk_original3operators_50cube_R500_perturbed_sinemode_weighted_property_v1",
+      "source_evidence": [
+        {
+          "path": "src/amgmk-julia/amgmk-julia-cuda.jl/main.jl",
+          "sha256": "469f36331b4c7dbc2c195b6ebdc31cba42c507975115645ef0fedabcfba1f438"
+        },
+        {
+          "path": "src/amgmk-cuda/main.cu",
+          "sha256": "ec4e9f25c1d874fc19fa963287f3c2455e79649bb098a33d4e91d7a3a790e563"
+        },
+        {
+          "path": "src/amgmk-cuda/csr_matvec.cu",
+          "sha256": "4056e81c0e7b6d732d2efeecfabd7160d420dcbadc0d2c21011e1f278179a8aa"
+        },
+        {
+          "path": "src/amgmk-cuda/vector.cu",
+          "sha256": "935d4ceb6ed37898c175f211afe98c8a68582116c5a5a4afa710181d0ea9cd5b"
+        },
+        {
+          "path": "src/amgmk-cuda/laplace.cu",
+          "sha256": "1bd606d46407fe3b7deb626f117d33a91ffe80cc898c5efec20f3596b23af50d"
+        },
+        {
+          "path": "src/amgmk-julia/device_components.jl",
+          "sha256": "4710acb4965c496263b831c9008c349ee4308bb3cf8123b57179ba83ade62c99"
+        },
+        {
+          "path": "src/amgmk-julia/study_common.jl",
+          "sha256": "e0407e5503af0fd9a79db85dca5281f0b7a7f372339957870342a8dd451f11b7"
+        },
+        {
+          "path": "src/amgmk-julia/study_plan.json",
+          "sha256": "83d461b7d71a429c24a101fb5887b2bfc1d246a115f8f2e8f6a1455b2de3ae74"
+        }
+      ],
+      "source_commit": null,
+      "numerical_agreement_kind": "property_equivalence_not_identical_raw_values",
+      "raw_output_identity_claim": false,
+      "authored_GPU_algorithm_definitions": 1,
+      "authored_CPU_operator_definitions": 2,
+      "untimed_observer_definitions": 1,
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "source_CPUmatvec_GPUasyncRelax_CPUaxpy_R500_elapsed_sum",
+      "component_boundaries": [
+        "CPU_matvec500calls",
+        "GPU_asyncRelax500launches_devicecomplete",
+        "CPU_axpy500calls"
+      ],
+      "limitations": [
+        "Property equivalence, not identical rawGPUvalues or a unique500-sweep trajectory; all20actualGPUstates differ and remainretained.",
+        "Originalinplaceglobalnonatomicneighborread/write races retained; formalCUDAmemorymodelvalidity/coherentreadassumptions notproved. NoJacobi/redblack/atomicreplacement.",
+        "SourceCPUmatvec/Axpy remainCPU; totalmixedpipelinewalltime isnotGPU-only abstractionperformance.",
+        "NativegenericHYPRECPUfunctions versusJuliaspecializeddefaultsinglevector alpha1/beta0 Matvec andalpha.5Axpy; sharedJuliaCPUcode identicalacrossfrontends, performancevariationnotattributabletoKA/JACC.",
+        "Namednonconstantinputs atoriginal50^3/R500; sourceallones exactequilibrium isonlysupplementalcontrol, notproofnontrivialconvergence.",
+        "Empiricalfinitefullstatecontract plusconditionalroundoffanalysis doesnotcertifyallschedules/allinputs or a productionAMGsolver.",
+        "Finalsurvivingstates after500launches captured, notalloverwrittenintermediatestates; separate16one-sweep diagnostics confirm schedulevariation.",
+        "No CPUaffinity/exclusiveCPUreservation orCPU/GPUresourcecounters measured; sourceOpenMPdisabled/serialCPUloops; no rooflinecoordinate inferred.",
+        "Observedtokencounters includecached/inheritedcontext andorderedsharedhelperreuse, notexclusivebilling or historicalactualrecovery."
+      ]
+    },
+    "ka": {
+      "status": "verified_property_contract",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "class_reason": "MeasuredROIcontainsgenuineCPUmatvec andAXPY numericalcomputation aswellasGPurelax; thisisnotordinaryhostlaunch/completionalone.",
+      "algorithm": "Sourcefull3activeoperators; asynchronousinplacerelax preserved",
+      "mapping": "KA.@kernel globalindexonepoint/thread,padded256group; noforeignCUDAdeviceintrinsics",
+      "host_operator_mapping": "SharedserialJuliaCPUCSRMatvec alpha1/beta0/singlevector andCPUAXPYalpha.5, authoredCUDAjlphase,inheritedKA/JACC",
+      "layout": "Int32CSR0basedvalues through1basedJuliaindexing, FP64values/vectors, guardeddevicearrays; CPUvectors remainhost",
+      "precision": {
+        "storage": [
+          "float64",
+          "int32_indices"
+        ],
+        "compute": [
+          "float64"
+        ]
+      },
+      "memory": "IrregularglobalCSRreads andinplaceneighborread/write; noauthoredsharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletionafter500launches"
+      ],
+      "atomic_operations": [],
+      "backend_specific_device_components": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 489,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "BackendCUDAallocation/copy/completion; no solver/vendor-math kernel. NativeCPUreference isoriginalHYPREfunctions, targetCPUoperators explicitJulia.",
+      "fidelity_status": "propertyequivalence_under_source_asyncschedule",
+      "configuration_id": "amgmk_original3operators_50cube_R500_perturbed_sinemode_weighted_property_v1",
+      "source_evidence": [
+        {
+          "path": "src/amgmk-julia/amgmk-julia-KA/main.jl",
+          "sha256": "4134c16e4198bca921a282e79f673f3bd3e65714d468095b167730db544da1bc"
+        },
+        {
+          "path": "src/amgmk-cuda/main.cu",
+          "sha256": "ec4e9f25c1d874fc19fa963287f3c2455e79649bb098a33d4e91d7a3a790e563"
+        },
+        {
+          "path": "src/amgmk-cuda/csr_matvec.cu",
+          "sha256": "4056e81c0e7b6d732d2efeecfabd7160d420dcbadc0d2c21011e1f278179a8aa"
+        },
+        {
+          "path": "src/amgmk-cuda/vector.cu",
+          "sha256": "935d4ceb6ed37898c175f211afe98c8a68582116c5a5a4afa710181d0ea9cd5b"
+        },
+        {
+          "path": "src/amgmk-cuda/laplace.cu",
+          "sha256": "1bd606d46407fe3b7deb626f117d33a91ffe80cc898c5efec20f3596b23af50d"
+        },
+        {
+          "path": "src/amgmk-julia/device_components.jl",
+          "sha256": "4710acb4965c496263b831c9008c349ee4308bb3cf8123b57179ba83ade62c99"
+        },
+        {
+          "path": "src/amgmk-julia/study_common.jl",
+          "sha256": "e0407e5503af0fd9a79db85dca5281f0b7a7f372339957870342a8dd451f11b7"
+        },
+        {
+          "path": "src/amgmk-julia/study_plan.json",
+          "sha256": "83d461b7d71a429c24a101fb5887b2bfc1d246a115f8f2e8f6a1455b2de3ae74"
+        }
+      ],
+      "source_commit": null,
+      "numerical_agreement_kind": "property_equivalence_not_identical_raw_values",
+      "raw_output_identity_claim": false,
+      "authored_GPU_algorithm_definitions": 1,
+      "authored_CPU_operator_definitions": 2,
+      "untimed_observer_definitions": 1,
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "source_CPUmatvec_GPUasyncRelax_CPUaxpy_R500_elapsed_sum",
+      "component_boundaries": [
+        "CPU_matvec500calls",
+        "GPU_asyncRelax500launches_devicecomplete",
+        "CPU_axpy500calls"
+      ],
+      "limitations": [
+        "Property equivalence, not identical rawGPUvalues or a unique500-sweep trajectory; all20actualGPUstates differ and remainretained.",
+        "Originalinplaceglobalnonatomicneighborread/write races retained; formalCUDAmemorymodelvalidity/coherentreadassumptions notproved. NoJacobi/redblack/atomicreplacement.",
+        "SourceCPUmatvec/Axpy remainCPU; totalmixedpipelinewalltime isnotGPU-only abstractionperformance.",
+        "NativegenericHYPRECPUfunctions versusJuliaspecializeddefaultsinglevector alpha1/beta0 Matvec andalpha.5Axpy; sharedJuliaCPUcode identicalacrossfrontends, performancevariationnotattributabletoKA/JACC.",
+        "Namednonconstantinputs atoriginal50^3/R500; sourceallones exactequilibrium isonlysupplementalcontrol, notproofnontrivialconvergence.",
+        "Empiricalfinitefullstatecontract plusconditionalroundoffanalysis doesnotcertifyallschedules/allinputs or a productionAMGsolver.",
+        "Finalsurvivingstates after500launches captured, notalloverwrittenintermediatestates; separate16one-sweep diagnostics confirm schedulevariation.",
+        "No CPUaffinity/exclusiveCPUreservation orCPU/GPUresourcecounters measured; sourceOpenMPdisabled/serialCPUloops; no rooflinecoordinate inferred.",
+        "Observedtokencounters includecached/inheritedcontext andorderedsharedhelperreuse, notexclusivebilling or historicalactualrecovery."
+      ]
+    },
+    "jacc": {
+      "status": "verified_property_contract",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "class_reason": "MeasuredROIcontainsgenuineCPUmatvec andAXPY numericalcomputation aswellasGPurelax; thisisnotordinaryhostlaunch/completionalone.",
+      "algorithm": "Sourcefull3activeoperators; asynchronousinplacerelax preserved",
+      "mapping": "JACC.parallel_for globalindexonepoint/thread,explicit489blocks\u00d7256threads/shmem0; noforeignCUDAdeviceintrinsics",
+      "host_operator_mapping": "SharedserialJuliaCPUCSRMatvec alpha1/beta0/singlevector andCPUAXPYalpha.5, authoredCUDAjlphase,inheritedKA/JACC",
+      "layout": "Int32CSR0basedvalues through1basedJuliaindexing, FP64values/vectors, guardeddevicearrays; CPUvectors remainhost",
+      "precision": {
+        "storage": [
+          "float64",
+          "int32_indices"
+        ],
+        "compute": [
+          "float64"
+        ]
+      },
+      "memory": "IrregularglobalCSRreads andinplaceneighborread/write; noauthoredsharedtile/atomics",
+      "synchronization": [
+        "kernel_boundary",
+        "wholedevicecompletionafter500launches"
+      ],
+      "atomic_operations": [],
+      "backend_specific_device_components": [],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 489,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "BackendCUDAallocation/copy/completion; no solver/vendor-math kernel. NativeCPUreference isoriginalHYPREfunctions, targetCPUoperators explicitJulia.",
+      "fidelity_status": "propertyequivalence_under_source_asyncschedule",
+      "configuration_id": "amgmk_original3operators_50cube_R500_perturbed_sinemode_weighted_property_v1",
+      "source_evidence": [
+        {
+          "path": "src/amgmk-julia/amgmk-julia-JACC/main.jl",
+          "sha256": "fd97bc834f86299931aba985696c81d186b22617ebe882b3f8432fa6bd55ef06"
+        },
+        {
+          "path": "src/amgmk-cuda/main.cu",
+          "sha256": "ec4e9f25c1d874fc19fa963287f3c2455e79649bb098a33d4e91d7a3a790e563"
+        },
+        {
+          "path": "src/amgmk-cuda/csr_matvec.cu",
+          "sha256": "4056e81c0e7b6d732d2efeecfabd7160d420dcbadc0d2c21011e1f278179a8aa"
+        },
+        {
+          "path": "src/amgmk-cuda/vector.cu",
+          "sha256": "935d4ceb6ed37898c175f211afe98c8a68582116c5a5a4afa710181d0ea9cd5b"
+        },
+        {
+          "path": "src/amgmk-cuda/laplace.cu",
+          "sha256": "1bd606d46407fe3b7deb626f117d33a91ffe80cc898c5efec20f3596b23af50d"
+        },
+        {
+          "path": "src/amgmk-julia/device_components.jl",
+          "sha256": "4710acb4965c496263b831c9008c349ee4308bb3cf8123b57179ba83ade62c99"
+        },
+        {
+          "path": "src/amgmk-julia/study_common.jl",
+          "sha256": "e0407e5503af0fd9a79db85dca5281f0b7a7f372339957870342a8dd451f11b7"
+        },
+        {
+          "path": "src/amgmk-julia/study_plan.json",
+          "sha256": "83d461b7d71a429c24a101fb5887b2bfc1d246a115f8f2e8f6a1455b2de3ae74"
+        }
+      ],
+      "source_commit": null,
+      "numerical_agreement_kind": "property_equivalence_not_identical_raw_values",
+      "raw_output_identity_claim": false,
+      "authored_GPU_algorithm_definitions": 1,
+      "authored_CPU_operator_definitions": 2,
+      "untimed_observer_definitions": 1,
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "source_CPUmatvec_GPUasyncRelax_CPUaxpy_R500_elapsed_sum",
+      "component_boundaries": [
+        "CPU_matvec500calls",
+        "GPU_asyncRelax500launches_devicecomplete",
+        "CPU_axpy500calls"
+      ],
+      "limitations": [
+        "Property equivalence, not identical rawGPUvalues or a unique500-sweep trajectory; all20actualGPUstates differ and remainretained.",
+        "Originalinplaceglobalnonatomicneighborread/write races retained; formalCUDAmemorymodelvalidity/coherentreadassumptions notproved. NoJacobi/redblack/atomicreplacement.",
+        "SourceCPUmatvec/Axpy remainCPU; totalmixedpipelinewalltime isnotGPU-only abstractionperformance.",
+        "NativegenericHYPRECPUfunctions versusJuliaspecializeddefaultsinglevector alpha1/beta0 Matvec andalpha.5Axpy; sharedJuliaCPUcode identicalacrossfrontends, performancevariationnotattributabletoKA/JACC.",
+        "Namednonconstantinputs atoriginal50^3/R500; sourceallones exactequilibrium isonlysupplementalcontrol, notproofnontrivialconvergence.",
+        "Empiricalfinitefullstatecontract plusconditionalroundoffanalysis doesnotcertifyallschedules/allinputs or a productionAMGsolver.",
+        "Finalsurvivingstates after500launches captured, notalloverwrittenintermediatestates; separate16one-sweep diagnostics confirm schedulevariation.",
+        "No CPUaffinity/exclusiveCPUreservation orCPU/GPUresourcecounters measured; sourceOpenMPdisabled/serialCPUloops; no rooflinecoordinate inferred.",
+        "Observedtokencounters includecached/inheritedcontext andorderedsharedhelperreuse, notexclusivebilling or historicalactualrecovery."
+      ]
+    }
+  }
+}

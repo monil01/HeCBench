@@ -1,0 +1,11 @@
+# AMGmk: CPU/GPU mixed operators and nonunique relaxation
+
+RQ1: All20 fullraw125000-pointGPUstates pass sharedpredeclaredfinite/range/stability, sineweightedcontraction andfullcoordinate7pointresidualchecks. All20rawstates aredifferent andretained; identicalpropertyscoreartifacts do notimplyidenticalnumericalstates. Native16same-inputone-sweep executions alreadyshow16differentstates. Sourceinplaceglobalnonatomic read/write ordering isretained andformalCUDAmemorymodelvalidityunproved. Originalallones fixedpoint isonlysupplemental; noJacobi/redblacksubstitution or mathematicalnativecorrection. AllnonconstantCPUmatvec/Axpy outputs areexact.
+
+RQ2: EachCUDAjl/KA/JACCtargetpassesfirstcandidate/JITprocesscheck;1GPUalgorithm+2CPUoperators+1untimedGPUobserver. SharedJuliaCPU/device/harnesscreationoccursinCUDAjl, laterfrontendsinherit. NativepreparationincludesactualoriginalCLI,16one-stepdiagnostics andpredeclaredFP64roundinganalysis. OneCPUauditNumPyboolJSONserializationerror issharedverificationtoolingeffort, nottargetrepair. Actualinput/cached/output/reasoningwindows preservecontextreuse andsharedphases, notexclusivebilling/historicalrecovery.
+
+RQ3: Composite mean2–5seconds CUDA.34123510325, CUDAjl.44097298025, KA.42830874425,JACC.4325373615. PeroperatorCPUmatvec/GPUrelax/CPUaxpy timesareinJSON. CPUmatvecdominates; allthreeJuliaversions usethesameCPUcode, soCPUdifferences arenotKA/JACCeffects. SeparateGPU500launch times ~.0285s vsnative~.0207s mustretainnonuniqueoutputpropertyqualification. No causalabstractionclaim.
+
+RQ4: Wholeimplementation hybrid_host_control becauseactualCPUmatvec/Axpy numericalworkisinROI; GPUcomponentisframework_device_kernel inallthree, noforeigndeviceintrinsics/sharedtile/atomics. FP64localδ≤2^-50+2^-52; storedpositivesinemode minweight~.0002333, q~.9981033 yieldsweightedroundoffallowance2.609e-9 and500sweepbound.09675914. Thisbound isdeclaredbeforenativeprimary, rejectsno-op andassumescoherentfiniteIEEEreads. Resourcecounters/rooflineposition unmeasured.
+
+RQ5: RetainCPU/GPUcomponentcostsandconvergencepropertieswhenchoosingtarget; neitherCPUdominatedtotal nor propertyagreement establishesGPUfrontendcausality orrawstateidentity. ThisisAMGmicrooperators, notafullmultigrid/applicationaccuracy study.
