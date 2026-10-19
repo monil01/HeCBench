@@ -10,6 +10,14 @@ Static readiness inventory: `paper/research/expansion_537/readiness_inventory.js
 
 Every accepted configuration needs all five checked trials; the first timing is discarded and trials2–5 averaged. Require exact actual device inputs, full outputs/guards, both native/CUDA.jl references, independent scientific checks, predeclared tolerances/timing scope and bound source/runtime dependencies. A scoped named configuration does not establish all sizes or full-application accuracy. Known native defects, corrected references, property contracts, execution-only cases and hardware barriers remain distinct.
 
+## Active integration: forty frontier contracts
+
+The current forty accepted frontier names expand the frozen study to 474 numerical and four property contracts, with five execution-only cases and four native hardware barriers separate. Fifty frontier names remain without four-model acceptance. Live counts and all source/token joins are generated in the compact prospective snapshot; this is a dated checkpoint rather than a claim of full537 completion.
+
+GREP preserves complete GPU regex construction/matching and a failed private-storage lowering; EGS records conditional histogram preparation and physical transport checks; SVD retains all U/S/V states under a property contract, original fixed-sweep accuracy failures and a documented eight-sweep intervention. All three source versions are separately committed. Calibration now discovers both actual translation and translation_feedback window filenames with identity/event/path validation; 128 observed windows and94 reviewed eligible windows currently support three exploratory strata. Historical actuals stay unknown. Root next owns untouched minibude after finishing compact paper40 and joint checkpoint; workers continue HBC, FRNA and HEARTWALL.
+
+### Historical integration snapshot below
+
 ## Current integration and regeneration
 
 The latest accepted counts, per-model source commits, scoped checks, five timings and actual/estimated tokens are generated in `2026-PASC-Hecbench-Julia-paper/data/prospective_extension.json`; consult its timestamp rather than treating this checkpoint prose as a live census. At the 33-name frontier snapshot there are 468 numerical and 3 property contracts including the frozen cohort, with five execution-only cases and four native hardware barriers separate. A named accepted array/operator contract is not a full original CLI or external-dataset certificate. Root has separately committed CFD, Face, deformable convolution, CMP and D2Q9 since the earlier checkpoint; Gerbil source accounting/commit integration is in progress. Root next owns untouched `sad`, transferred from stencil; workers continue graph/genomics, scientific imaging/transport and original-library pipelines. ColumnarSolver remains unfinished after a safety-system interruption, not a demonstrated framework limitation.
