@@ -1,0 +1,8 @@
+#include <cmath>
+#include <cstdio>
+#include <cassert>
+#include "fixture_definition.h"
+struct ID {int x=0,y=0,z=0;};ID blockIdx,blockDim,threadIdx;
+#define __global__
+#include "../stsg-cuda/Filter.cu"
+int main(){STSGFixture f;int X=f.nx,Y=f.ny,B=f.nb,Z=f.years,N=X*Y,W=(2*f.win+1)*(2*f.win+1);std::vector<float>nd(N*B*Z),qa(N*B*Z),ref(N*B),res(N*W*4),r3(N*W*3),out(N*B*Z),vin(N*B);std::vector<int>res1(N*B),index(N*W*3);auto each=[&](auto call){for(int j=0;j<Y;j++)for(int i=0;i<X;i++){blockIdx.x=i;blockIdx.y=j;blockDim.x=blockDim.y=1;call();}};each([&](){Short_to_Float(f.raw.data(),f.qa.data(),X,Y,B,Z,nd.data(),qa.data());});each([&](){Generate_NDVI_reference(f.cosyear,2,nd.data(),qa.data(),X,Y,B,Z,ref.data(),r3.data(),res1.data());});std::fill(r3.begin(),r3.end(),0);each([&](){Compute_d_res(nd.data(),qa.data(),ref.data(),0,Y,0,0,X,Y,B,Z,f.win,res.data());});each([&](){STSG_filter(nd.data(),qa.data(),ref.data(),0,Y,0,0,X,Y,B,Z,f.win,f.sampcorr,f.snow,out.data(),vin.data(),res.data(),r3.data(),index.data());});FILE* fp=fopen(".porting-state/porting_logs/stsg-julia-shared/cpu_readiness_output.bin","wb");assert(fp);assert(fwrite(out.data(),sizeof(float),out.size(),fp)==out.size());fclose(fp);int nonfinite=0;double lo=1e30,hi=-1e30;for(float x:out){nonfinite+=!std::isfinite(x);lo=std::min(lo,double(x));hi=std::max(hi,double(x));}printf("STSG_CPU_READINESS full4stages output_count=%zu nonfinite=%d range=[%.12g,%.12g]\n",out.size(),nonfinite,lo,hi);for(auto&v:{nd,qa,ref,res,r3,vin}){int bad=0;for(float x:v)bad+=!std::isfinite(x);printf("STSG_CPU_INTERMEDIATE count=%zu nonfinite=%d\n",v.size(),bad);}return nonfinite!=0;}
