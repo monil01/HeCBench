@@ -52,7 +52,7 @@ def main():
  for r in accepted[:8]:
   tag={'corrected_native_reference':'C','known_native_scientific_defect':'D','ordinary_named_contract':'ordinary','revised_contract':'R','integration_or_scope_adapted':'A','multiple_device_named_contract':'2G'}[r['reference_qualification']]
   if r.get('is_property'):tag+=' P'
-  times=['{:.3f}'.format(1000*r['models'][m]['mean_last_four_seconds']) for m in ('cuda','cuda_jl','ka','jacc')]
+  times=[format(1000*r['models'][m]['mean_last_four_seconds'],'.1f' if r['models'][m]['mean_last_four_seconds']>=1 else '.3f') for m in ('cuda','cuda_jl','ka','jacc')]
   lines.append(tex(r['benchmark'])+' & '+' & '.join(times)+' & '+tag+r' \\')
  outcome_parts=[str(sum(r.get(flag,False) for r in accepted))+' '+label for flag,label in [('is_numerical','numerical'),('is_property','property'),('is_execution_only','execution-only')] if any(r.get(flag,False) for r in accepted)]
  outcome_macro=r'\newcommand{\extensionOutcomeSummary}{'+' and '.join(outcome_parts)+'}'
