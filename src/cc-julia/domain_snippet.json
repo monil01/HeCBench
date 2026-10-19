@@ -1,0 +1,259 @@
+{
+  "benchmark": "cc",
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "graph_irregular",
+    "primary_domain": "undirected_graph_connectivity",
+    "scientific_task": "Partition an undirected CSR graph into connected components with each vertex labeled by the minimum vertex ID in its component.",
+    "mathematical_operation": "Connected-component equivalence closure of undirected adjacency; concurrent decreasing-root linking with CAS and pointer compression, followed by root flattening.",
+    "discretization_or_topology": "Unweighted undirected sparse CSR adjacency; 0-based source vertex IDs retained.",
+    "invariants": [
+      "All parent IDs stay in same independent BFS component and do not exceed own vertex ID.",
+      "Final label equals component minimum; labels agree across every edge and isolated vertices retain own ID.",
+      "CSR input remains byte-exact and all array guard regions remain unchanged."
+    ],
+    "accuracy_requirements": [
+      "Exact Int32 labels/input/guards; zero numerical tolerance; no floating computation."
+    ],
+    "precision_sensitivity": "Integer indexing/CAS correctness, not floating roundoff; counter/index bounds must remain valid.",
+    "input_size_regimes": "N1,65,4099; largest12284 directed adjacency entries; threads256/sourceoccupancygrid640/R100; sourcepaths low<=16,medium17\u2013352,high>352 degrees.",
+    "community_use_case": "Graph connectivity and preprocessing for sparse networks; source ECL-CC attribution/paper header, no named application dataset supplied.",
+    "provenance": [
+      {
+        "path": "src/cc-cuda/main.cu",
+        "sha256": "3bb279c93f07c32500f7b5b45269257c228876c580e6ade2f7d2b70ae0740e64"
+      },
+      {
+        "path": "src/mis-cuda/graph.h",
+        "sha256": "550a8cb11c796d8a4b63fc93cf63599c7c6a6628ed6fd9435654b2704ebb71f5"
+      },
+      {
+        "path": "src/cc-julia/device_components.jl",
+        "sha256": "66f466701c2869762c17c00426067df49b1fc2d4462336ce804d8f45c5638d20"
+      },
+      {
+        "path": "src/cc-julia/study_common.jl",
+        "sha256": "bb7e5c9765359403fe942c0920d558d83fb3d46cc4a697b2223f067caa24efc1"
+      }
+    ],
+    "uncertainty": "Synthetic coverage of algorithm paths does not establish graph-family scaling or original external dataset behavior."
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Complete init/low-degree CAS/medium warp queue/high block queue/flatten source pipeline",
+      "mapping": "OwnCUDA.@cuda global thread IDs with ownCUDA atomic/shuffle/shared/barrier APIs",
+      "layout": "Int32 CSR index+adjacency, separate parent/worklist arrays and4counterarray;16element guards",
+      "precision": {
+        "storage": [
+          "int32"
+        ],
+        "compute": [
+          "int32"
+        ],
+        "floating_compute": "not_applicable"
+      },
+      "memory": "Irregular globalCSR/parent/worklist,4byte staticshared highdegreequeue slot",
+      "synchronization": [
+        "kernel_boundaries",
+        "fullwarpindexedshuffle",
+        "blockbarriers",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [
+        "Int32 CAS parentlink",
+        "Int32add queuecounters"
+      ],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 640,
+        "dynamic_shared_bytes": 0,
+        "high_stage_static_shared_bytes": 4,
+        "native_launch_bounds": "256 threads,min8blocks/SM",
+        "Julia_occupancy_hint": null,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "CUDA backend/runtime; no external solver/library algorithm",
+      "backend_specific_device_components": [],
+      "fidelity_status": "complete_native5stage_algorithm_named_CSR_scope",
+      "configuration_id": "cc_ECL5stage_3CSR_all_degree_paths_exact_BFS_R100_v1",
+      "source_evidence": [
+        {
+          "path": "src/cc-julia/cc-julia-cuda.jl/main.jl",
+          "sha256": "af72a8d6706088411f232209a6c8d52db22639ffc283208b50be3ee532748a2a"
+        },
+        {
+          "path": "src/cc-cuda/main.cu",
+          "sha256": "3bb279c93f07c32500f7b5b45269257c228876c580e6ade2f7d2b70ae0740e64"
+        },
+        {
+          "path": "src/mis-cuda/graph.h",
+          "sha256": "550a8cb11c796d8a4b63fc93cf63599c7c6a6628ed6fd9435654b2704ebb71f5"
+        },
+        {
+          "path": "src/cc-julia/device_components.jl",
+          "sha256": "66f466701c2869762c17c00426067df49b1fc2d4462336ce804d8f45c5638d20"
+        },
+        {
+          "path": "src/cc-julia/study_common.jl",
+          "sha256": "bb7e5c9765359403fe942c0920d558d83fb3d46cc4a697b2223f067caa24efc1"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum3_source5stage_pipeline_batch_means_R100",
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, reusedKAandJACC; per-target framework kernels separately compiled.",
+      "program_candidates": 2,
+      "actual_device_jit_process_checks": 2
+    },
+    "ka": {
+      "status": "verified",
+      "implementation_class": "hybrid_device_intrinsics",
+      "algorithm": "Complete init/low-degree CAS/medium warp queue/high block queue/flatten source pipeline",
+      "mapping": "KA.@kernel global index wrapping sharedsourcehelpers and foreignCUDA device intrinsics",
+      "layout": "Int32 CSR index+adjacency, separate parent/worklist arrays and4counterarray;16element guards",
+      "precision": {
+        "storage": [
+          "int32"
+        ],
+        "compute": [
+          "int32"
+        ],
+        "floating_compute": "not_applicable"
+      },
+      "memory": "Irregular globalCSR/parent/worklist,4byte staticshared highdegreequeue slot",
+      "synchronization": [
+        "kernel_boundaries",
+        "fullwarpindexedshuffle",
+        "blockbarriers",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [
+        "Int32 CAS parentlink",
+        "Int32add queuecounters"
+      ],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 640,
+        "dynamic_shared_bytes": 0,
+        "high_stage_static_shared_bytes": 4,
+        "native_launch_bounds": "256 threads,min8blocks/SM",
+        "Julia_occupancy_hint": null,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "CUDA backend/runtime; no external solver/library algorithm",
+      "backend_specific_device_components": [
+        "CUDA.atomic_cas!",
+        "CUDA.atomic_add!",
+        "CUDA.shfl_sync",
+        "CUDA.CuStaticSharedArray",
+        "CUDA.sync_threads"
+      ],
+      "fidelity_status": "complete_native5stage_algorithm_named_CSR_scope",
+      "configuration_id": "cc_ECL5stage_3CSR_all_degree_paths_exact_BFS_R100_v1",
+      "source_evidence": [
+        {
+          "path": "src/cc-julia/cc-julia-KA/main.jl",
+          "sha256": "6ea2a0eab3ed95204c135c87bdfc2ea639dec2f16d19901bb0db927ae45068f7"
+        },
+        {
+          "path": "src/cc-cuda/main.cu",
+          "sha256": "3bb279c93f07c32500f7b5b45269257c228876c580e6ade2f7d2b70ae0740e64"
+        },
+        {
+          "path": "src/mis-cuda/graph.h",
+          "sha256": "550a8cb11c796d8a4b63fc93cf63599c7c6a6628ed6fd9435654b2704ebb71f5"
+        },
+        {
+          "path": "src/cc-julia/device_components.jl",
+          "sha256": "66f466701c2869762c17c00426067df49b1fc2d4462336ce804d8f45c5638d20"
+        },
+        {
+          "path": "src/cc-julia/study_common.jl",
+          "sha256": "bb7e5c9765359403fe942c0920d558d83fb3d46cc4a697b2223f067caa24efc1"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum3_source5stage_pipeline_batch_means_R100",
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, reusedKAandJACC; per-target framework kernels separately compiled.",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1
+    },
+    "jacc": {
+      "status": "verified",
+      "implementation_class": "hybrid_device_intrinsics",
+      "algorithm": "Complete init/low-degree CAS/medium warp queue/high block queue/flatten source pipeline",
+      "mapping": "JACC.parallel_for global index wrapping sharedsourcehelpers and foreignCUDA device intrinsics",
+      "layout": "Int32 CSR index+adjacency, separate parent/worklist arrays and4counterarray;16element guards",
+      "precision": {
+        "storage": [
+          "int32"
+        ],
+        "compute": [
+          "int32"
+        ],
+        "floating_compute": "not_applicable"
+      },
+      "memory": "Irregular globalCSR/parent/worklist,4byte staticshared highdegreequeue slot",
+      "synchronization": [
+        "kernel_boundaries",
+        "fullwarpindexedshuffle",
+        "blockbarriers",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [
+        "Int32 CAS parentlink",
+        "Int32add queuecounters"
+      ],
+      "resource_geometry": {
+        "threads": 256,
+        "blocks": 640,
+        "dynamic_shared_bytes": 0,
+        "high_stage_static_shared_bytes": 4,
+        "native_launch_bounds": "256 threads,min8blocks/SM",
+        "Julia_occupancy_hint": null,
+        "register_count": null,
+        "occupancy": null
+      },
+      "library_boundary": "CUDA backend/runtime; no external solver/library algorithm",
+      "backend_specific_device_components": [
+        "CUDA.atomic_cas!",
+        "CUDA.atomic_add!",
+        "CUDA.shfl_sync",
+        "CUDA.CuStaticSharedArray",
+        "CUDA.sync_threads"
+      ],
+      "fidelity_status": "complete_native5stage_algorithm_named_CSR_scope",
+      "configuration_id": "cc_ECL5stage_3CSR_all_degree_paths_exact_BFS_R100_v1",
+      "source_evidence": [
+        {
+          "path": "src/cc-julia/cc-julia-JACC/main.jl",
+          "sha256": "256b7e5da883933c22e4fa37fecb6f3dea1afaf28bb042317169e42e3527be9c"
+        },
+        {
+          "path": "src/cc-cuda/main.cu",
+          "sha256": "3bb279c93f07c32500f7b5b45269257c228876c580e6ade2f7d2b70ae0740e64"
+        },
+        {
+          "path": "src/mis-cuda/graph.h",
+          "sha256": "550a8cb11c796d8a4b63fc93cf63599c7c6a6628ed6fd9435654b2704ebb71f5"
+        },
+        {
+          "path": "src/cc-julia/device_components.jl",
+          "sha256": "66f466701c2869762c17c00426067df49b1fc2d4462336ce804d8f45c5638d20"
+        },
+        {
+          "path": "src/cc-julia/study_common.jl",
+          "sha256": "bb7e5c9765359403fe942c0920d558d83fb3d46cc4a697b2223f067caa24efc1"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum3_source5stage_pipeline_batch_means_R100",
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase, reusedKAandJACC; per-target framework kernels separately compiled.",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1
+    }
+  }
+}
