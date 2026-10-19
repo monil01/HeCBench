@@ -1,0 +1,11 @@
+# CCS observations
+
+**RQ1 — fidelity.** Original CUDA writes mask planes with stride 3 but reads them with stride 200, then copies the last temporary memberships with selected-best counts/scores. The unchanged original GPU/CPU-output pipeline fails full independent output checking while input bytes and guards pass. A conditional secondary corrects nine mask write indices and two host copy pointers. All four versions then match all 20,226 recorded values per trial, including 12,606 exact actual-input values, complete selected/temporary masks, counts/scores, merged states, and printed indices. Independent Float64 Pearson and complete selection/merge replay has threshold margins above 0.064. This confirms the named synthetic operator; it does not certify real gene-expression discoveries or intermediate correlation accuracy globally.
+
+**RQ2 — feedback and effort.** Each Julia target passes its first complete source candidate and first GPU/JIT process check. Original-reference failure/repair preparation is separate from target feedback and token windows. Actual context-inclusive target usage and cached/reasoning subsets are in JSON; not billing/exclusive coding cost. CUDAjl creates the shared translation/harness, KA/JACC inherit it.
+
+**RQ3 — runtime.** Means of retained trials 2–5: native 0.029174414 s, CUDAjl 0.058579049 s, KA 0.058140419 s, JACC 0.057198253 s. Each trial sums three source kernel-repeat means, with three launches per case; original one-thread-per-block mapping and 4/5/7 base seeds retained. Full source CPU merge/printed results are checked outside this kernel ROI. One block/model, no causal framework ranking or end-to-end CLI claim.
+
+**RQ4 — mechanisms.** The branch-heavy scalar Pearson/greedy-augmentation kernel has only a few one-thread blocks and 2,200 bytes of typed shared scratch. CUDAjl uses its own API; KA uses its own local-memory arrays; JACC uses explicit CUDA static-shared reservation through its own dispatch. No counters establish a bottleneck.
+
+**RQ5 — selection.** The named life-science analysis component is expressible in all three frontends with documented source corrections and backend boundaries. The missing original dataset, input reader/variance ordering, concurrent or large-scale use, real-data biological quality, and full CLI timing remain unmeasured. No cross-backend or clinical recommendation.

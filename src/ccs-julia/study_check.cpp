@@ -1,0 +1,2 @@
+#include "study_support.h"
+extern "C" int study_check(const char*path,double*metrics){try{auto cs=cases();std::ifstream f(path,std::ios::binary);std::vector<double>v(output_count(cs));f.read((char*)v.data(),v.size()*8);if(!f||f.peek()!=EOF)throw std::runtime_error("artifactsize");check(v,cs);metrics[0]=0;metrics[1]=0;return 0;}catch(std::exception&e){fprintf(stderr,"CCS_CHECK_FAIL %s\n",e.what());return 1;}}

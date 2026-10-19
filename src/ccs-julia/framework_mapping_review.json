@@ -1,0 +1,10 @@
+{
+  "framework": "JACC1.4.0 CUDA backend",
+  "installed_source_path": "/home/imo/.julia/packages/JACC/NLI8A/ext/CUDAExt/CUDAExt.jl",
+  "installed_source_sha256": "b81f94bae782acaf458228a69810a67af19c64bff4836b0f733b6f077918bcec",
+  "lines_598_to_610": "function JACC.shared(::CUDABackend, x::AbstractVector)\n    len = length(x)\n    shmem = CuDynamicSharedArray(eltype(x), len)\n    # 1D kernel or 2D kernel at y == 1 (to avoid concurrent writes)\n    if blockDim().y == 1 || threadIdx().y == 1\n        for i in (threadIdx().x):(blockDim().x):len\n            @inbounds shmem[i] = x[i]\n        end\n    end\n    sync_threads()\n    return shmem\nend\n",
+  "source_observation": "JACC.shared(vector) allocates dynamic shared array, copies the entire vector, and synchronizes. This is supported but introduces reads/copies relative to three source uninitialized static scratch arrays.",
+  "selected_mapping": "JACC owns dispatch/indexing, CUDA.CuStaticSharedArray reserves the three faithful typed scratch arrays without global staging reads: explicit hybrid_device_intrinsics.",
+  "unsupported_algorithm_claim": false,
+  "KA_mapping": "Own @localmem Float32(200), Float32(200), UInt8(600), no CUDA device extension."
+}
