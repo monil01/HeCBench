@@ -1,0 +1,11 @@
+# Gerbil observations
+
+**RQ1 — fidelity.** All four versions agree exactly on complete keyed counts for canonical DNA k8/28/60/92/135 bundles, all512 frequency bins, threshold rows and source statistics. Every trial retains1,176,755UInt64values including756,039actualinputvalues. Independent replay checks41,347,180raw words across100case files, all physical slots/buffers/guards and a complete invertible canonical permutation. This is full keyed numerical equivalence; raw slot identity is false. The active GPU counting stage is covered; full CLI preprocessing, distributor, overflow paths and dormant compaction remain unverified.
+
+**RQ2 — feedback and effort.** Each target passes its first complete device candidate and first GPU/JIT process, exercising five width specializations. Native GPU checks also pass. Two shared evidence-tooling problems (lost temporary probe binary; inline CPU audit typo) remain separate from target/native mathematical failures. Actual context-inclusive target tokens and separate7,786,997native-preparation tokens are recorded, not billed or exclusive coding cost. KA/JACC inherit the validated algorithm and BH volatile helper experience.
+
+**RQ3 — runtime.** Mean trials2–5: native 0.001106285s, CUDAjl 0.003363172s, KA 0.003058826s, JACC 0.003155548s. The audited preallocated active-stage ROI includes actual bundle uploads, DtoD input echoes, cooperative insertion, whole-context completion, complete table transfer and source-policy host extraction. No full CLI or bare-kernel timing claim.
+
+**RQ4 — mechanisms.** Variable-width shared keys, coalesced table probes, global CAS/add, volatile polling and32-lane synchronization expose irregular coordination. Targets add explicit warp barriers; native source passes without these added operations. All three use custom LLVM volatile helpers and disclosed CUDA features; KA owns local-memory allocation, JACC uses CUDA static reservation. No profiler counters establish which mechanism causes runtime differences.
+
+**RQ5 — selection.** All frontends can target this exact component through explicit backend extensions. Cross-backend portability, whole genome-processing throughput, assembly accuracy and universal abstraction rankings are not demonstrated.

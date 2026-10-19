@@ -1,0 +1,17 @@
+# Gerbil: bounded active GPU-counting stage
+
+This configuration implements the source's active phase-two GPU hash insertion, complete table extraction, 512-bin count histogram, and threshold selection. It uses canonical DNA-derived packed kmer bundles at k=8,28,60,92,135 (source widths1,2,4,6,10 UInt32 words), 33/257/4099/4099/30000 keys, and source32-thread cooperative blocks. All key words and counts are checked independently. The k135 case uses five source256KiB bundle calls and stream rotation0,1,2,3,0. Counts below/above source threshold and the >=512 histogram bin0 are exercised.
+
+The full CLI's compressed file reader, minimizer/temporary-file phase one, mixed CPU/GPU workload distributor, external failure-buffer evacuation, and output-writer threads are not represented by this bounded stage. The active source disables compressEntries, so that dormant compaction helper is not timed or claimed ported. No whole-CLI throughput claim is made. Overflow is predeclared zero for these capacities; nonzero overflow rejects the configuration, rather than silently dropping keys. Vendor overflow sort is unmeasured, not unsupported.
+
+## Full semantic and physical evidence
+
+Five checked trials follow complete warmup. Actual initial table, no-success storage and counter are read back before timing; a same-stream DtoD copy immediately after each HtoD input upload captures every actual input word before that buffer is consumed by the original insertion kernel. This added audit copy is included symmetrically in every ROI. Complete echoed input is checked outside the timer. Guarded four stream buffers, table, input echo, no-success storage and count are checked.
+
+ROI: source bundle HtoD uploads, audit DtoD copies, original cooperative insertion, whole-context completion, complete table/no-success DtoH, and source-policy host extraction/histogram/threshold selection. Allocations, initial clears, prefix readbacks, independent checking and raw/canonical output writing are outside. This is an audited preallocated counting-stage ROI, not allocation-inclusive full CLI timing.
+
+Every raw physical table row/empty row and buffer word is retained in UInt64 sidecars. Canonicalization retains all table words through a checked complete permutation, ordering occupied rows by original UInt32-word key comparator and placing unchanged all-zero rows last. Duplicate occupied keys, nonzero discarded/empty payload, locked counters, overflow or missing words fail. Complete canonical table, histogram and selected rows are dual-compared. Physical slot identity across concurrent implementations is not claimed: raw_output_identity_claim:false. This is complete keyed numerical equivalence, not a checksum/property-only summary.
+
+Independent Python DNA reverse-complement canonicalization, arbitrary-width packing and Counter establish every key count, count histogram and threshold output. Original KMer source packing/normalization is independently checked on the complete generated key set before GPU use. Synthetic bundles are not real genome assembly or variant-call quality evidence.
+
+Source volatile polling and cooperative lock/probe/commit algorithm must be preserved. If explicit target warp barriers are added for frontend lowering, disclose them as a synchronization/mapping adaptation; untouched native success does not establish the original source is defective. No universal cross-backend capability claim is allowed.
