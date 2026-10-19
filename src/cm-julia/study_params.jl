@@ -1,0 +1,10 @@
+const N=22283
+const R=4099
+const SIG=31
+const M=127069
+const T=128
+const DB=175
+const SB=33
+const UC=690308
+const PREFIX=352282
+const COUNT=361102

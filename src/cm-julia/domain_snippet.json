@@ -1,0 +1,390 @@
+{
+  "benchmark": "cm",
+  "review_status": "source_audited",
+  "primary_family": "stochastic_statistics",
+  "primary_domain": "gene_expression_connectivity_mapping",
+  "secondary_domains": [
+    "bioinformatics",
+    "Monte_Carlo_random_signature_testing",
+    "drug_profile_connectivity"
+  ],
+  "scientific_task": "Score a signed gene-expression query against aggregated reference drug profiles, estimate a two-tailed Monte Carlo connection-score p-value, expected false positives and thresholded significance.",
+  "mathematical_operation": "Observed dot=sum_g ref_g*q_g, average=dot/(UCmax*setSize), UCmax=s*N-s*(s+1)/2+s; random_j=sum_k sign(u_k)*ref_floor((1-u_k shifted)*2*N)/(setSize*UCmax); K=sum_j[random_j>Float32(average)], p=2min(K/R,1-K/R) with source endpoint correction and knownexacthalf branchdefect.",
+  "discretization_or_topology": "FixedU133A22283geneindexedvectors; batchedindependentrandomsignatures,128threadblock integerreductions andgridstride loops. Geneuniverse isnotphysicalmesh.",
+  "invariants": [
+    "All20full361102F64encodedactualinput/output/guardcaptures bitidentical;352282actualinputprefix exact.",
+    "Independentunboundedintegerdot/score-numerator/dyadicsetnormalization/Float32rounding andseparatestatisticalformula matchesallraw8198scores,416partialreductions and14hoststatistics.",
+    "Actualindexselectionallinbounds, finiteoutputs andint32/inttoFloat32accumulations checkedwithinlimits; JACCscratchinitial/finalzero/128positionsoverwritten."
+  ],
+  "accuracy_requirements": [
+    "CrossGPUatol0/rtol0 fullvalues, exactcategoricalcounts/significance/guards.",
+    "IndependentCPUfullprimaryoutputs exact0; actualoriginalCLIformattedfinalvalues checkedwithinoriginalprintingprecision, not a rawfullCLIcaptureclaim."
+  ],
+  "precision_sensitivity": "Int32dot/reduction/count; Float32randomvalues, indexarithmetic andrandomscores, set1/2exactdyadicaccumulation; Float64CPUquerynormalization/pvalue/ENFP. Threshold convertsobserveddoubleaverage toFloat32 asoriginalGPUparameter.",
+  "input_size_regimes": "N22283,sig31,R4099(odd)/127069randomfloats perdrugset; twoaggregates set2/set1,175dotblocks/33score-countblocks128threads. OriginalCLIsyntheticR100000 separateuntimedreadiness.",
+  "community_use_case": "Gene-expression/drugconnectivity mapping primitive; syntheticfixtures validatecode/mathscope, not empirical biological/clinicalquality or populationpvaluecalibration.",
+  "provenance": [
+    {
+      "path": "src/cm-cuda/main.cpp",
+      "sha256": "21ec106220466fcaa24f5879e13202451b9317e5f56145b6ea6616c1b0230c4d"
+    },
+    {
+      "path": "src/cm-cuda/io.cpp",
+      "sha256": "e05ff247e89af9e617d76fe23dc682b05b4807708264c480c188802bdd819378"
+    },
+    {
+      "path": "src/cm-cuda/process.cu",
+      "sha256": "27f17b2a6c63646a8adc405dcec96800d2fdc6c38e10611b30d10d513045d67c"
+    },
+    {
+      "path": "src/cm-cuda/kernels.h",
+      "sha256": "ccad1f2ce9803c7283ead4d07381d48a75d76a3fcff10d540d3f6fc9d2613a3f"
+    },
+    {
+      "path": "src/cm-cuda/utils.h",
+      "sha256": "e954aace075f64e1f3bb6c961d77d0efc503a2c71f1b4992a09071825509b836"
+    },
+    {
+      "path": "src/cm-julia/device_common.jl",
+      "sha256": "10dd881024950b287199aec695af554f6a220f934a777a9d4ac34a11632e4b7b"
+    },
+    {
+      "path": "src/cm-julia/study_common.jl",
+      "sha256": "63e0aa3ab5dad321efdbe5c004eac90ee7748a39f3039eec4f4b458a831e3d1b"
+    },
+    {
+      "path": "src/cm-julia/study_plan.json",
+      "sha256": "5d131e8211f60b4398744cab7e399ae387f022d8527e54b412d970e2f0748cbc"
+    }
+  ],
+  "uncertainty": "Originalbiologicaldataset unavailable; exact50%sourcepvaluedefect prevents globalstatisticalmethodcertificate. Broadaggregation/sample/endpoint/overflowregimesunverified.",
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "Observed dot=sum_g ref_g*q_g, average=dot/(UCmax*setSize), UCmax=s*N-s*(s+1)/2+s; random_j=sum_k sign(u_k)*ref_floor((1-u_k shifted)*2*N)/(setSize*UCmax); K=sum_j[random_j>Float32(average)], p=2min(K/R,1-K/R) with source endpoint correction and knownexacthalf branchdefect.",
+      "mapping": "CUDA.@cuda explicit128threads/175dotblocks/33score-countblocks, dynamic512B reductiontile, ownCUDA.sync_threads/globalindex; scoreshmem0.",
+      "layout": "GuardedInt32ref/query/dot/count andFloat32RNG/scores;16guardseachend; Float64exactvalueencodingartifact andhoststats.",
+      "precision": {
+        "storage": [
+          "int32",
+          "float32"
+        ],
+        "compute": [
+          "int32_reductions",
+          "float32_randomscores"
+        ],
+        "host": [
+          "float64_normalization_statistics"
+        ],
+        "artifact_encoding": "float64 values; not uniformGPUdtype",
+        "independent_oracle": "Unboundedinteger/dyadicscore numerator andFloat32rounding, separatetwotailformula; fullactualinput reevaluation."
+      },
+      "memory": "Dynamic128Int32tile512B",
+      "synchronization": [
+        "allthreadreductionbarriers",
+        "dotD2H\u2192hostthreshold\u2192dependentcountGPU",
+        "countD2H\u2192hostpvalueENFPsignificance",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 128,
+        "dot_blocks": 175,
+        "score_count_blocks": 33,
+        "reduction_shared_bytes": 512,
+        "score_shared_bytes": 0,
+        "shared_allocation": "dynamic",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [
+        "CUDAthread/blockindex",
+        "CUDAdynamicshared/barrier"
+      ],
+      "library_boundary": "No vendorstatistical/GEMMlibrary. SourceC++RNGfixturegenerator outsideROI; GPUkernels authored perframework, hoststatistics translatedJulia.",
+      "fidelity_status": "complete3GPUstage_and_dependent_hoststatistics_named_scope",
+      "configuration_id": "cm_U133A22283_sig31_R4099_two_drugsets_full3GPUstages_hostfeedback_v1",
+      "source_evidence": [
+        {
+          "path": "src/cm-julia/cm-julia-cuda.jl/main.jl",
+          "sha256": "24e1be9bb69225bbb0bfdc86e38f10b77efb2479a9a9f2d6b2d8eab3fbffde24"
+        },
+        {
+          "path": "src/cm-cuda/main.cpp",
+          "sha256": "21ec106220466fcaa24f5879e13202451b9317e5f56145b6ea6616c1b0230c4d"
+        },
+        {
+          "path": "src/cm-cuda/io.cpp",
+          "sha256": "e05ff247e89af9e617d76fe23dc682b05b4807708264c480c188802bdd819378"
+        },
+        {
+          "path": "src/cm-cuda/process.cu",
+          "sha256": "27f17b2a6c63646a8adc405dcec96800d2fdc6c38e10611b30d10d513045d67c"
+        },
+        {
+          "path": "src/cm-cuda/kernels.h",
+          "sha256": "ccad1f2ce9803c7283ead4d07381d48a75d76a3fcff10d540d3f6fc9d2613a3f"
+        },
+        {
+          "path": "src/cm-cuda/utils.h",
+          "sha256": "e954aace075f64e1f3bb6c961d77d0efc503a2c71f1b4992a09071825509b836"
+        },
+        {
+          "path": "src/cm-julia/device_common.jl",
+          "sha256": "10dd881024950b287199aec695af554f6a220f934a777a9d4ac34a11632e4b7b"
+        },
+        {
+          "path": "src/cm-julia/study_common.jl",
+          "sha256": "63e0aa3ab5dad321efdbe5c004eac90ee7748a39f3039eec4f4b458a831e3d1b"
+        },
+        {
+          "path": "src/cm-julia/study_plan.json",
+          "sha256": "5d131e8211f60b4398744cab7e399ae387f022d8527e54b412d970e2f0748cbc"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident_two_drugsets_3GPUstages_dot_hostfeedback_count_hostpvalue",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "host_api_repairs": 0,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase; inheritedKAthenJACC. Nativefixtures/separateCPUoraclecreatedsharedreadiness.",
+      "allocation_covariates": "CorebufferspreallocatedoutsideROI all4; nativeC++vectors vsJuliaview/copy hostwrappers differ. Perlaunch/hostwrapperallocationcountersunmeasured.",
+      "limitations": [
+        "Named2drugsets/3referenceprofiles/full22283geneuniverse/signature31/random4099; actualoriginalCLI withsame syntheticgeneprofiles/default100000randomsamples independentlychecked onlyatitsformattedstatistics precision. ExternalcudaMapbiologicaldataset absent, no drug-effect/clinicalsignificance certificate.",
+        "SourcecomputePValueHelper returns0 at exacthalf vs independenttwotail1, actualcomponentwitness retained andtargethelper deliberatelypreservesit. Primaryodd4099 makesexacthalf unreachable; globalstatisticaldomain uncertified. Strict > ratherthan >= countpredicate preserved.",
+        "Resident6launch3GPUstage+hostfeedback ROI excludes originalfileIO/querymapping/referenceaggregation/RNG/allocation/inputH2D/fullscoreD2H. Allfullscores/partials/guards remaincapturedoutsideROI. Nativeintegrationadapted/excludeuntouched-nativeaggregates, no nativearithmeticrepair.",
+        "ActualdotD2H/hostnormalization defines threshold for subsequentcount; actualcountD2H controls pvalue/ENFP/significance. Wholehybrid_host_control, GPUcomponentframework_device_kernel; ordinarylaunchalone is not basisforhybridclassification.",
+        "KAstatic512Blocalmem versusnative/CUDAjl/JACCdynamic512Bperreduction; JACCsharedtemplate128zeroloads/stores+extra preloadsynchronization. Full128positionsoverwrittenwithactualpartials beforemath, actual256initial/finalzeros captured. HostAPI/copy/viewwrapper/allocation covariates unprofiled.",
+        "C++source randomstream actualstd::default_random_engine123/uniform_real_distribution<float>; pinnedGCC/libstdc++ generated bits sharedall4. Sign andgene selectioncoupled fromsamefloat asoriginal; no crosslanguage RNGreimplementation claim.",
+        "RandomFloat32indexselection nearzero caninprinciple round1-r to1; allactualprimaryindices[0,22282] andoriginalCLIoracleindices checkedinbounds. Arbitrary endpoint/randomstream sizesunverified.",
+        "Set sizes1/2 makeFloat32perterm/dotaccumulation exactdyadicwithincheckedintegerbound; otheraggregationcounts/floatroundoff andlargerquery/overflowregimesunverified. ScoresFloat32, hoststatisticsFloat64; artifactFloat64encoding doesnotimply allGPUcomputeFloat64.",
+        "No measuredroofline/counters/occupancy/causeisolation. OriginalnativewholeCLI timerincludesIO/RNG; primarypipeline numbers mustnot be comparedto that CLIwalltime.",
+        "Observedtokenwindows context/cache/sessioninclusive; orderedCUDAjlsharedhelper creation reusedKAthenJACC, native/readiness/verification/annotation separated. Noexclusivebilling/independentsynthesis/historicalrecovery claim."
+      ]
+    },
+    "ka": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "Observed dot=sum_g ref_g*q_g, average=dot/(UCmax*setSize), UCmax=s*N-s*(s+1)/2+s; random_j=sum_k sign(u_k)*ref_floor((1-u_k shifted)*2*N)/(setSize*UCmax); K=sum_j[random_j>Float32(average)], p=2min(K/R,1-K/R) with source endpoint correction and knownexacthalf branchdefect.",
+      "mapping": "KA.@kernel/local+group+globalindex/@localmem(Int32,128)/@synchronize; CUDABackendallocate,128workgroups/175or33blocks; pureframeworkdevicecode. Countentryrenamedcm_count! afterhostconstructorfeedback.",
+      "layout": "GuardedInt32ref/query/dot/count andFloat32RNG/scores;16guardseachend; Float64exactvalueencodingartifact andhoststats.",
+      "precision": {
+        "storage": [
+          "int32",
+          "float32"
+        ],
+        "compute": [
+          "int32_reductions",
+          "float32_randomscores"
+        ],
+        "host": [
+          "float64_normalization_statistics"
+        ],
+        "artifact_encoding": "float64 values; not uniformGPUdtype",
+        "independent_oracle": "Unboundedinteger/dyadicscore numerator andFloat32rounding, separatetwotailformula; fullactualinput reevaluation."
+      },
+      "memory": "Static128Int32tile512B",
+      "synchronization": [
+        "allthreadreductionbarriers",
+        "dotD2H\u2192hostthreshold\u2192dependentcountGPU",
+        "countD2H\u2192hostpvalueENFPsignificance",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 128,
+        "dot_blocks": 175,
+        "score_count_blocks": 33,
+        "reduction_shared_bytes": 512,
+        "score_shared_bytes": 0,
+        "shared_allocation": "static",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "No vendorstatistical/GEMMlibrary. SourceC++RNGfixturegenerator outsideROI; GPUkernels authored perframework, hoststatistics translatedJulia.",
+      "fidelity_status": "complete3GPUstage_and_dependent_hoststatistics_named_scope",
+      "configuration_id": "cm_U133A22283_sig31_R4099_two_drugsets_full3GPUstages_hostfeedback_v1",
+      "source_evidence": [
+        {
+          "path": "src/cm-julia/cm-julia-KA/main.jl",
+          "sha256": "c825949f7f67a14a398af90090fc7e9d3c8f9958bf964edb2cef55209b8eecbd"
+        },
+        {
+          "path": "src/cm-cuda/main.cpp",
+          "sha256": "21ec106220466fcaa24f5879e13202451b9317e5f56145b6ea6616c1b0230c4d"
+        },
+        {
+          "path": "src/cm-cuda/io.cpp",
+          "sha256": "e05ff247e89af9e617d76fe23dc682b05b4807708264c480c188802bdd819378"
+        },
+        {
+          "path": "src/cm-cuda/process.cu",
+          "sha256": "27f17b2a6c63646a8adc405dcec96800d2fdc6c38e10611b30d10d513045d67c"
+        },
+        {
+          "path": "src/cm-cuda/kernels.h",
+          "sha256": "ccad1f2ce9803c7283ead4d07381d48a75d76a3fcff10d540d3f6fc9d2613a3f"
+        },
+        {
+          "path": "src/cm-cuda/utils.h",
+          "sha256": "e954aace075f64e1f3bb6c961d77d0efc503a2c71f1b4992a09071825509b836"
+        },
+        {
+          "path": "src/cm-julia/device_common.jl",
+          "sha256": "10dd881024950b287199aec695af554f6a220f934a777a9d4ac34a11632e4b7b"
+        },
+        {
+          "path": "src/cm-julia/study_common.jl",
+          "sha256": "63e0aa3ab5dad321efdbe5c004eac90ee7748a39f3039eec4f4b458a831e3d1b"
+        },
+        {
+          "path": "src/cm-julia/study_plan.json",
+          "sha256": "5d131e8211f60b4398744cab7e399ae387f022d8527e54b412d970e2f0748cbc"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident_two_drugsets_3GPUstages_dot_hostfeedback_count_hostpvalue",
+      "program_candidates": 2,
+      "actual_device_jit_process_checks": 2,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 1,
+      "host_api_repairs": 1,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase; inheritedKAthenJACC. Nativefixtures/separateCPUoraclecreatedsharedreadiness.",
+      "allocation_covariates": "CorebufferspreallocatedoutsideROI all4; nativeC++vectors vsJuliaview/copy hostwrappers differ. Perlaunch/hostwrapperallocationcountersunmeasured.",
+      "limitations": [
+        "Named2drugsets/3referenceprofiles/full22283geneuniverse/signature31/random4099; actualoriginalCLI withsame syntheticgeneprofiles/default100000randomsamples independentlychecked onlyatitsformattedstatistics precision. ExternalcudaMapbiologicaldataset absent, no drug-effect/clinicalsignificance certificate.",
+        "SourcecomputePValueHelper returns0 at exacthalf vs independenttwotail1, actualcomponentwitness retained andtargethelper deliberatelypreservesit. Primaryodd4099 makesexacthalf unreachable; globalstatisticaldomain uncertified. Strict > ratherthan >= countpredicate preserved.",
+        "Resident6launch3GPUstage+hostfeedback ROI excludes originalfileIO/querymapping/referenceaggregation/RNG/allocation/inputH2D/fullscoreD2H. Allfullscores/partials/guards remaincapturedoutsideROI. Nativeintegrationadapted/excludeuntouched-nativeaggregates, no nativearithmeticrepair.",
+        "ActualdotD2H/hostnormalization defines threshold for subsequentcount; actualcountD2H controls pvalue/ENFP/significance. Wholehybrid_host_control, GPUcomponentframework_device_kernel; ordinarylaunchalone is not basisforhybridclassification.",
+        "KAstatic512Blocalmem versusnative/CUDAjl/JACCdynamic512Bperreduction; JACCsharedtemplate128zeroloads/stores+extra preloadsynchronization. Full128positionsoverwrittenwithactualpartials beforemath, actual256initial/finalzeros captured. HostAPI/copy/viewwrapper/allocation covariates unprofiled.",
+        "C++source randomstream actualstd::default_random_engine123/uniform_real_distribution<float>; pinnedGCC/libstdc++ generated bits sharedall4. Sign andgene selectioncoupled fromsamefloat asoriginal; no crosslanguage RNGreimplementation claim.",
+        "RandomFloat32indexselection nearzero caninprinciple round1-r to1; allactualprimaryindices[0,22282] andoriginalCLIoracleindices checkedinbounds. Arbitrary endpoint/randomstream sizesunverified.",
+        "Set sizes1/2 makeFloat32perterm/dotaccumulation exactdyadicwithincheckedintegerbound; otheraggregationcounts/floatroundoff andlargerquery/overflowregimesunverified. ScoresFloat32, hoststatisticsFloat64; artifactFloat64encoding doesnotimply allGPUcomputeFloat64.",
+        "No measuredroofline/counters/occupancy/causeisolation. OriginalnativewholeCLI timerincludesIO/RNG; primarypipeline numbers mustnot be comparedto that CLIwalltime.",
+        "Observedtokenwindows context/cache/sessioninclusive; orderedCUDAjlsharedhelper creation reusedKAthenJACC, native/readiness/verification/annotation separated. Noexclusivebilling/independentsynthesis/historicalrecovery claim."
+      ]
+    },
+    "jacc": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "Observed dot=sum_g ref_g*q_g, average=dot/(UCmax*setSize), UCmax=s*N-s*(s+1)/2+s; random_j=sum_k sign(u_k)*ref_floor((1-u_k shifted)*2*N)/(setSize*UCmax); K=sum_j[random_j>Float32(average)], p=2min(K/R,1-K/R) with source endpoint correction and knownexacthalf branchdefect.",
+      "mapping": "JACC.array/parallel_for128threads/175or33blocks/shared128zero-template/sync_workgroup, launch_specshmem512forreductions and0scores; pureframeworkdevicecode.",
+      "layout": "GuardedInt32ref/query/dot/count andFloat32RNG/scores;16guardseachend; Float64exactvalueencodingartifact andhoststats.",
+      "precision": {
+        "storage": [
+          "int32",
+          "float32"
+        ],
+        "compute": [
+          "int32_reductions",
+          "float32_randomscores"
+        ],
+        "host": [
+          "float64_normalization_statistics"
+        ],
+        "artifact_encoding": "float64 values; not uniformGPUdtype",
+        "independent_oracle": "Unboundedinteger/dyadicscore numerator andFloat32rounding, separatetwotailformula; fullactualinput reevaluation."
+      },
+      "memory": "Dynamic128Int32tile512B; JACCshared adds128zero-templatepreload+barrier,128actualpartials overwritebeforemath;256globalzerosactualreadbacks.",
+      "synchronization": [
+        "allthreadreductionbarriers",
+        "dotD2H\u2192hostthreshold\u2192dependentcountGPU",
+        "countD2H\u2192hostpvalueENFPsignificance",
+        "wholedevicecompletion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": 128,
+        "dot_blocks": 175,
+        "score_count_blocks": 33,
+        "reduction_shared_bytes": 512,
+        "score_shared_bytes": 0,
+        "shared_allocation": "dynamic",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "No vendorstatistical/GEMMlibrary. SourceC++RNGfixturegenerator outsideROI; GPUkernels authored perframework, hoststatistics translatedJulia.",
+      "fidelity_status": "complete3GPUstage_and_dependent_hoststatistics_named_scope",
+      "configuration_id": "cm_U133A22283_sig31_R4099_two_drugsets_full3GPUstages_hostfeedback_v1",
+      "source_evidence": [
+        {
+          "path": "src/cm-julia/cm-julia-JACC/main.jl",
+          "sha256": "b276c33e0562b7a63cdc3ee1e9b8442c64a9450a6a65d5a2f7428d8e5efda460"
+        },
+        {
+          "path": "src/cm-cuda/main.cpp",
+          "sha256": "21ec106220466fcaa24f5879e13202451b9317e5f56145b6ea6616c1b0230c4d"
+        },
+        {
+          "path": "src/cm-cuda/io.cpp",
+          "sha256": "e05ff247e89af9e617d76fe23dc682b05b4807708264c480c188802bdd819378"
+        },
+        {
+          "path": "src/cm-cuda/process.cu",
+          "sha256": "27f17b2a6c63646a8adc405dcec96800d2fdc6c38e10611b30d10d513045d67c"
+        },
+        {
+          "path": "src/cm-cuda/kernels.h",
+          "sha256": "ccad1f2ce9803c7283ead4d07381d48a75d76a3fcff10d540d3f6fc9d2613a3f"
+        },
+        {
+          "path": "src/cm-cuda/utils.h",
+          "sha256": "e954aace075f64e1f3bb6c961d77d0efc503a2c71f1b4992a09071825509b836"
+        },
+        {
+          "path": "src/cm-julia/device_common.jl",
+          "sha256": "10dd881024950b287199aec695af554f6a220f934a777a9d4ac34a11632e4b7b"
+        },
+        {
+          "path": "src/cm-julia/study_common.jl",
+          "sha256": "63e0aa3ab5dad321efdbe5c004eac90ee7748a39f3039eec4f4b458a831e3d1b"
+        },
+        {
+          "path": "src/cm-julia/study_plan.json",
+          "sha256": "5d131e8211f60b4398744cab7e399ae387f022d8527e54b412d970e2f0748cbc"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident_two_drugsets_3GPUstages_dot_hostfeedback_count_hostpvalue",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "host_api_repairs": 0,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase; inheritedKAthenJACC. Nativefixtures/separateCPUoraclecreatedsharedreadiness.",
+      "allocation_covariates": "CorebufferspreallocatedoutsideROI all4; nativeC++vectors vsJuliaview/copy hostwrappers differ. Perlaunch/hostwrapperallocationcountersunmeasured.",
+      "limitations": [
+        "Named2drugsets/3referenceprofiles/full22283geneuniverse/signature31/random4099; actualoriginalCLI withsame syntheticgeneprofiles/default100000randomsamples independentlychecked onlyatitsformattedstatistics precision. ExternalcudaMapbiologicaldataset absent, no drug-effect/clinicalsignificance certificate.",
+        "SourcecomputePValueHelper returns0 at exacthalf vs independenttwotail1, actualcomponentwitness retained andtargethelper deliberatelypreservesit. Primaryodd4099 makesexacthalf unreachable; globalstatisticaldomain uncertified. Strict > ratherthan >= countpredicate preserved.",
+        "Resident6launch3GPUstage+hostfeedback ROI excludes originalfileIO/querymapping/referenceaggregation/RNG/allocation/inputH2D/fullscoreD2H. Allfullscores/partials/guards remaincapturedoutsideROI. Nativeintegrationadapted/excludeuntouched-nativeaggregates, no nativearithmeticrepair.",
+        "ActualdotD2H/hostnormalization defines threshold for subsequentcount; actualcountD2H controls pvalue/ENFP/significance. Wholehybrid_host_control, GPUcomponentframework_device_kernel; ordinarylaunchalone is not basisforhybridclassification.",
+        "KAstatic512Blocalmem versusnative/CUDAjl/JACCdynamic512Bperreduction; JACCsharedtemplate128zeroloads/stores+extra preloadsynchronization. Full128positionsoverwrittenwithactualpartials beforemath, actual256initial/finalzeros captured. HostAPI/copy/viewwrapper/allocation covariates unprofiled.",
+        "C++source randomstream actualstd::default_random_engine123/uniform_real_distribution<float>; pinnedGCC/libstdc++ generated bits sharedall4. Sign andgene selectioncoupled fromsamefloat asoriginal; no crosslanguage RNGreimplementation claim.",
+        "RandomFloat32indexselection nearzero caninprinciple round1-r to1; allactualprimaryindices[0,22282] andoriginalCLIoracleindices checkedinbounds. Arbitrary endpoint/randomstream sizesunverified.",
+        "Set sizes1/2 makeFloat32perterm/dotaccumulation exactdyadicwithincheckedintegerbound; otheraggregationcounts/floatroundoff andlargerquery/overflowregimesunverified. ScoresFloat32, hoststatisticsFloat64; artifactFloat64encoding doesnotimply allGPUcomputeFloat64.",
+        "No measuredroofline/counters/occupancy/causeisolation. OriginalnativewholeCLI timerincludesIO/RNG; primarypipeline numbers mustnot be comparedto that CLIwalltime.",
+        "Observedtokenwindows context/cache/sessioninclusive; orderedCUDAjlsharedhelper creation reusedKAthenJACC, native/readiness/verification/annotation separated. Noexclusivebilling/independentsynthesis/historicalrecovery claim."
+      ]
+    }
+  }
+}
