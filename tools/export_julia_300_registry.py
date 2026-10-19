@@ -44,7 +44,7 @@ def usage_windows(benchmark,model):
         for e in events:
             if e.get('boundary') not in ['end','abandon']:continue
             begin=next((x for x in events if x.get('event_id')==e.get('begin_event_id')),None)
-            windows.append({k:e.get(k) for k in ['event_id','begin_event_id','agent','implementation_model','phase','boundary','recorded_at','usage_event_timestamp','elapsed_usage_event_start','delta_usage','positive_counter_span','source_identity_sha256','marker_lag_seconds','accounting_level','source_token_event_sha256','meter_driver_sha256','note','measurement_status','scope']} | {'begin_marker_lag_seconds':(begin.get('marker_lag_seconds') if begin.get('marker_lag_seconds') is not None else (datetime.datetime.fromisoformat(begin['recorded_at'])-datetime.datetime.fromisoformat(begin['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()) if begin else None,'evidence_path':str(f.relative_to(ROOT)),'evidence_sha256':digest(f),'counter_span_interpretation':'Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort.'})
+            windows.append({k:e.get(k) for k in ['event_id','begin_event_id','agent','implementation_model','phase','boundary','recorded_at','usage_event_timestamp','elapsed_usage_event_start','delta_usage','positive_counter_span','source_identity_sha256','marker_lag_seconds','accounting_level','source_token_event_sha256','meter_driver_sha256','note','measurement_status','scope','observed_model_metadata']} | {'begin_marker_lag_seconds':(begin.get('marker_lag_seconds') if begin.get('marker_lag_seconds') is not None else (datetime.datetime.fromisoformat(begin['recorded_at'])-datetime.datetime.fromisoformat(begin['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()) if begin else None,'evidence_path':str(f.relative_to(ROOT)),'evidence_sha256':digest(f),'counter_span_interpretation':'Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort.'})
     for w in windows:
         if w.get('marker_lag_seconds') is None and w.get('recorded_at') and w.get('usage_event_timestamp'):
             w['marker_lag_seconds']=(datetime.datetime.fromisoformat(w['recorded_at'])-datetime.datetime.fromisoformat(w['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()
@@ -53,8 +53,10 @@ def usage_windows(benchmark,model):
 
 # Exact source-line reviews retain raw events while correcting attribution and
 # grouping duplicate descriptions. Never deduplicate by textual similarity.
-def load_event_reviews():
+def load_event_reviews(extra_path=None):
     path=ROOT/'ontology/studies/julia_abstractions_300/event_review_overrides.json';document=read(path,{})
+    if extra_path is not None:
+        document={'entries':[*document.get('entries',[]),*read(extra_path,{}).get('entries',[])]}
     reviews={}
     for review in document.get('entries',[]):
         source=ROOT/review['source_path'];number=review['line']
@@ -63,6 +65,7 @@ def load_event_reviews():
             raise ValueError('Event review line missing: '+str(source))
         if hashlib.sha256(lines[number-1].strip().encode()).hexdigest()!=review['source_line_sha256']:
             raise ValueError('Event review source hash mismatch: '+str(source)+':'+str(number))
+        if review.get('canonical_taxonomy_code') is not None and review['canonical_taxonomy_code'] not in CODES:raise ValueError('Unknown reviewed taxonomy code')
         if review['canonical_origin_model'] not in [*MODELS,'cuda','shared_infrastructure']:
             raise ValueError('Unknown reviewed origin')
         key=(review['source_path'],number)
@@ -73,6 +76,8 @@ def apply_event_review(event,reviews):
     review=reviews.get((event['evidence_path'],event['evidence_line']))
     if review:
         event['origin_model']=review['canonical_origin_model']
+        if review.get('canonical_taxonomy_code') is not None:
+            event['raw_taxonomy_code']=event['taxonomy_code'];event['taxonomy_code']=review['canonical_taxonomy_code']
         if 'is_failure' in review:
             if type(review['is_failure']) is not bool:raise ValueError('Review failure flag must be boolean')
             event['is_failure']=review['is_failure']
@@ -168,8 +173,9 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--population',type=int,choices=[300,447,537],default=300);args=ap.parse_args();population=args.population
     OUT=ROOT/f'ontology/studies/julia_abstractions_{population}'
     now=datetime.datetime.now(datetime.timezone.utc).isoformat()
-    event_reviews=load_event_reviews()
+    event_reviews=load_event_reviews(ROOT/'ontology/studies/julia_abstractions_537/event_review_overrides.json' if population==537 else None)
     baseline=read(STATE/f'baseline_{population}.json');cohort=read(STATE/f'batch_{population}.json')
+    prospective_names=set(cohort.get('new_benchmarks',[])) if population==537 else set()
     selected=set(cohort['benchmarks']);base={x['bench']:x for x in baseline['benchmarks']}
     adjud=read(PAPER/'research/data/adjudications.json',{});disp=read(PAPER/'research/data/configuration_dispositions.json',{})
     latest={}
@@ -222,10 +228,10 @@ def main():
                 'interpretation':'Additional scoped mathematical/invariant evidence; complements full dual-reference checks, not a proof over all inputs.'}
         write(OUT/'domains'/(b+'.json'),domain);domain_rows.append(domain)
         for line,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
-            if event.get('implementation_model') in ['cuda','native_cuda']:
+            if event.get('implementation_model',event.get('model') if b in prospective_names else None) in ['cuda','native_cuda']:
                 all_reference_events.append({'benchmark_id':b,'evidence_path':str((STATE/'failure_events_300'/(b+'.jsonl')).relative_to(ROOT)),'evidence_line':line,'raw_event':event})
         for line,event in jsonlines(STATE/'failure_events_300'/(b+'.jsonl')):
-            if event.get('implementation_model') in ['shared','shared_infrastructure','infrastructure']:
+            if event.get('implementation_model',event.get('model') if b in prospective_names else None) in ['shared','shared_infrastructure','infrastructure']:
                 all_infrastructure_events.append({'benchmark_id':b,'evidence_path':str((STATE/'failure_events_300'/(b+'.jsonl')).relative_to(ROOT)),'evidence_line':line,'raw_event':event})
         for model,suffix in MODELS.items():
             folder=ROOT/'src'/(b+'-julia');path=folder/(b+'-julia-'+suffix)/'main.jl'
@@ -264,7 +270,7 @@ def main():
                     if not shared and (str(file.relative_to(ROOT)),e.get('compiler_check',e.get('check_id'))) in normalized_links:continue
                     em=e.get('implementation_model',e.get('model'))
                     if shared and em not in [model,'julia-'+model, suffix]:continue
-                    code=e.get('taxonomy_code') or e.get('error_tag') or e.get('tag') or e.get('code')
+                    code=e.get('taxonomy_code') or e.get('error_tag') or e.get('tag') or e.get('code') or (e.get('event_code') if b in prospective_names else None)
                     if code not in CODES:
                         match=re.search(r'\b(B[1-4]|R[1-3]|N[1-3]|S[12]|P1|T1)(?:_|\b)',str(e.get('status','')))
                         code=match.group(1) if match else None
@@ -383,9 +389,9 @@ def main():
     # Direct native/shared events have no Julia target row; retain them in origin accounting.
     standalone=[]
     for item in [*all_reference_events,*all_infrastructure_events]:
-        raw=item['raw_event'];code=raw.get('taxonomy_code') or raw.get('error_tag') or raw.get('tag') or raw.get('code')
+        raw=item['raw_event'];code=raw.get('taxonomy_code') or raw.get('error_tag') or raw.get('tag') or raw.get('code') or (raw.get('event_code') if item['benchmark_id'] in prospective_names else None)
         if code not in CODES:continue
-        model='cuda' if raw.get('implementation_model') in ['cuda','native_cuda'] else 'shared_infrastructure'
+        model='cuda' if raw.get('implementation_model',raw.get('model') if item['benchmark_id'] in prospective_names else None) in ['cuda','native_cuda'] else 'shared_infrastructure'
         standalone.append({**item,'event_id':raw.get('event_id') or hashlib.sha256((item['evidence_path']+':'+str(item['evidence_line'])).encode()).hexdigest()[:20],
             'implementation_model':model,'origin_model':raw.get('origin_model',model),'taxonomy_code':code,'phase':raw.get('phase','unspecified'),
             'is_failure':code not in ['N3','P1'] and raw.get('is_failure',raw.get('failure',True)) is not False and not raw.get('diagnostic_only',False) and raw.get('in_scope',True) is not False,

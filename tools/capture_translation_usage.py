@@ -2,6 +2,7 @@
 """Capture existing harness usage events; never launches a model or infers history."""
 import argparse,datetime,hashlib,json,os
 from pathlib import Path
+from translation_usage_metadata import configured_model_at_usage
 ROOT=Path(__file__).resolve().parents[1];STATE=ROOT/'.porting-state/portable_julia'
 p=argparse.ArgumentParser();p.add_argument('--agent',required=True);p.add_argument('--benchmark',required=True);p.add_argument('--model',choices=['shared','cuda_jl','ka','jacc'],required=True);p.add_argument('--phase',required=True);p.add_argument('--boundary',choices=['begin','end','abandon'],required=True);p.add_argument('--note',default='');a=p.parse_args()
 agent=a.agent if a.agent.startswith('/root') else '/root/'+a.agent
@@ -11,17 +12,16 @@ cohort=json.loads(cohort_path.read_text())['benchmarks']
 if a.benchmark not in cohort+['study300','study150','study447','study537','study90'] or not a.phase.replace('-','').replace('_','').isalnum():raise SystemExit('Invalid frozen benchmark/phase path')
 # Read only usage events from this explicitly registered agent stream.
 with path.open('rb') as f:
- size=path.stat().st_size;f.seek(max(0,size-2**21));lines=f.read().decode(errors='replace').splitlines()
+ size=path.stat().st_size;start=max(0,size-2**21);f.seek(start);lines=f.read(size-start).decode(errors='replace').splitlines()
 last=None
 model_metadata=None
 for line in lines:
  try:d=json.loads(line)
  except ValueError:continue
  x=d.get('payload',{})
- if d.get('type')=='turn_context' and x.get('model'):
-  model_metadata={'model':x['model'],'reasoning_effort':x.get('effort') or x.get('reasoning_effort'),'metadata_timestamp':d.get('timestamp'),'scope':'Observed configured identifier; exact serving snapshot/seed/temperature unknown.'}
  if x.get('type')=='token_count' and x.get('info',{}).get('total_token_usage'):last={'usage_event_timestamp':d.get('timestamp'),'cumulative_usage':x['info']['total_token_usage'],'source_token_event_sha256':hashlib.sha256(line.encode()).hexdigest()}
 if last is None:raise SystemExit('No current usage event; do not infer zero or overwrite historical proxies.')
+model_metadata=configured_model_at_usage(path,last['usage_event_timestamp'],size)
 folder=STATE/'usage_boundaries_300'/a.benchmark;folder.mkdir(parents=True,exist_ok=True);out=folder/(a.model+'_'+a.phase+'.jsonl')
 prior=[]
 if out.exists():prior=[json.loads(x) for x in out.read_text().splitlines() if x.strip()]
@@ -30,6 +30,7 @@ if a.boundary=='begin' and open_starts:raise SystemExit('This phase already has 
 if a.boundary in ['end','abandon'] and len(open_starts)!=1:raise SystemExit('Need exactly one preceding begin; no historical backfill.')
 now=datetime.datetime.now(datetime.timezone.utc).isoformat();event={'event_id':hashlib.sha256((now+agent+a.benchmark+a.model+a.phase+a.boundary).encode()).hexdigest()[:24],'recorded_at':now,'agent':agent,'benchmark':a.benchmark,'implementation_model':a.model,'phase':a.phase,'boundary':a.boundary,'source_identity_sha256':source['source_identity_sha256'],'rollout_byte_size_at_read':size,**last,'note':a.note,'measurement_kind':'observed_harness_cumulative_usage_boundary','scope':'Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.'}
 event['observed_model_metadata']=model_metadata
+event['model_metadata_reader_sha256']=hashlib.sha256(Path(__file__).with_name('translation_usage_metadata.py').read_bytes()).hexdigest()
 event['marker_lag_seconds']=(datetime.datetime.fromisoformat(now)-datetime.datetime.fromisoformat(last['usage_event_timestamp'].replace('Z','+00:00'))).total_seconds()
 event['accounting_level']='inclusive_workflow_overlaps_subphases' if a.phase=='benchmark_workflow' else 'declared_activity_window; interleaving must be disclosed'
 event['meter_driver_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()

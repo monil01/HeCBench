@@ -13,3 +13,5 @@ Each1093708Float32artifact includes546868exactactualinput/initialoutput/scalar/g
 Fivecheckedtrials, meanlastfour; ROI sumsfouroriginal16x16kernel+completionregions. No externalHDRparser/defaultimage/10,000repeat/fullapplicationclaim. Additionalpostmeasurement originalFloat32CPU signedmean1e-6check passesall20savedcaptures; source_criterion_audit.json pins exactextractedblocks/source/result/artifacts. Its aggregateweakness isexplicit; primaryfullpointwiseFloat64checks unchanged.
 
 audit_original_source_criterion.cpp is generated fromunchangedmain source reference/metricblocks; source_criterion_audit.json retains theirhashes andcompilercommand. ReexecutecompiledCPUauditor withfullsavedcapturepaths onlywhenavailable. RawGPUcaptures local, notGit/Overleaf.
+
+Completion API detail: native uses cudaDeviceSynchronize; Julia uses current-task-stream CUDA.synchronize(). All measured kernels in these harnesses use that stream. Different host wait APIs remain a timing covariate; see completion_scope_review.json. Earlier context-completion wording does not mean identical API calls.

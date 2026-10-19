@@ -32,6 +32,15 @@ def main():
           u=e.get('delta_usage');llm=e.get('observed_model_metadata',{});llm=llm.get('model') if llm else None;llm=llm or adj.get('model_identifier')
           effort_setting=(e.get('observed_model_metadata') or {}).get('reasoning_effort') or adj.get('reasoning_effort')
           reasons=[]
+          declared_b=adj.get('benchmark',adj.get('benchmark_id'))
+          declared_m=adj.get('implementation_model',adj.get('model'))
+          if declared_b is not None and declared_b!=b:reasons.append('adjudication_benchmark_identity_mismatch')
+          if declared_m is not None and declared_m!=model:reasons.append('adjudication_implementation_identity_mismatch')
+          if adj.get('end_event_id') is not None and adj['end_event_id']!=e['event_id']:reasons.append('adjudication_end_event_mismatch')
+          if adj.get('begin_event_id') is not None and adj['begin_event_id']!=e.get('begin_event_id'):reasons.append('adjudication_begin_event_mismatch')
+          if adj.get('observed_usage') is not None and any(adj['observed_usage'].get(k)!=((u or {}).get(k)) for k in COUNTERS):reasons.append('adjudication_actual_usage_mismatch')
+          declared_path=next((adj[k] for k in ('usage_boundary_file','boundary_file','boundary_path') if adj.get(k)),None)
+          if declared_path and (ROOT/declared_path).resolve()!=f.resolve():reasons.append('adjudication_window_path_mismatch')
           if e['boundary']!='end' or not u or any(u.get(k) is None or u[k]<0 for k in COUNTERS):reasons.append('incomplete_or_invalid_actual_window')
           if len([x for x in ev if x.get('boundary')=='end'])!=1 or any(x.get('boundary')=='abandon' for x in ev):reasons.append('multiple_or_partial_phase_segments_require_review')
           if adj.get('eligible_for_expected_workflow_cost_estimation') is not True:reasons.append('calibration_eligibility_not_adjudicated_true')
@@ -60,14 +69,21 @@ def main():
     for b in cohort['baseline_447_names']:
       for model in MODELS:
         record=read(ROOT/'ontology/studies/julia_abstractions_447/implementations'/b/(model+'.json'),{});old=(record.get('effort') or {}).get('translation_tokens') or {}
-        if old.get('total_tokens') is not None:continue
+        if old.get('historical_actual_total_tokens') is not None:continue
         choices=[f for f in fits if f['implementation_model']==model and f['status']=='exploratory_current_workflow_baseline']
-        estimates.append({'benchmark':b,'implementation_model':model,'historical_actual_total_tokens':None,'historical_accounting_status':old.get('status'),'historical_observed_activity_windows_exist':bool(old.get('observed_activity_windows')),'estimated_current_workflow_scenarios':choices,'estimation_status':'counterfactual_workflow_scenarios_available' if choices else 'insufficient_calibration','scope':'Expected declared translation/feedback-window tokens under each measured current workflow scenario, conditional on native readiness. Does not reconstruct actual historical token use; shared/native/verification/paper costs excluded. No observed ontology field overwritten.'})
+        estimates.append({'benchmark':b,'implementation_model':model,'historical_actual_total_tokens':None,'historical_accounting_status':old.get('status'),'prior_saved_record_total_tokens':old.get('total_tokens'),'prior_saved_total_is_historical_actual':False,'historical_observed_activity_windows_exist':bool((record.get('effort') or {}).get('observed_harness_activity_windows')),'estimated_current_workflow_scenarios':choices,'estimation_status':'counterfactual_workflow_scenarios_available' if choices else 'insufficient_calibration','scope':'Expected declared translation/feedback-window tokens under each measured current workflow scenario, conditional on native readiness. Does not reconstruct actual historical token use; shared/native/verification/paper costs excluded. No observed ontology field overwritten.'})
     doc={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'minimum_distinct_benchmarks_per_model_llm_harness_stratum':a.minimum_benchmarks,'observation_windows':len(observations),'eligible_windows':sum(r['eligibility'] for r in observations),'method':'Componentwise median baseline within implementation/configured-LLM/shared-harness strata; total=input+output, cached/reasoning remain subsets; leave-one-benchmark-out descriptive error. New90-only training. No performance or historical model-effect claim.','limitations':['Activity windows include repeated/cached context and marker lag.','Inherited context, sequential target reuse, stopping rules and actor dependence limit generalization.','No token totals inferred from saved source length.','Counterfactual workflow estimates remain separate from unknown historical consumption.','Eight samples is an exploratory floor, not proof of predictive accuracy.','This pilot baseline does not condition on scientific family, implementation class or source complexity; those recorded covariates require a larger validated model.'],'observations':observations,'fits':fits,'missing_historical_estimates':estimates}
     (out/'token_cost_calibration.json').write_text(json.dumps(doc,indent=2)+'\n')
     with (out/'token_observations.csv').open('w',newline='') as f:
       fields=['benchmark','implementation_model','configured_llm','reasoning_effort_setting','agent','event_id','eligibility','marker_lag_seconds']+COUNTERS;w=csv.DictWriter(f,fields);w.writeheader()
       for r in observations:w.writerow({k:r.get(k) for k in fields if k not in COUNTERS}|{k:(r['usage'] or {}).get(k) for k in COUNTERS})
+    publication=ROOT/'2026-PASC-Hecbench-Julia-paper/data';publication.mkdir(parents=True,exist_ok=True)
+    with (publication/'estimated_current_workflow_tokens.csv').open('w',newline='') as f:
+      fields=['benchmark','implementation_model','historical_actual_total_tokens','prior_record_status','prior_saved_proxy_total_tokens','configured_llm','reasoning_effort_setting','contains_shared_harness_creation','calibration_distinct_benchmarks','estimated_current_workflow_input_tokens','estimated_current_workflow_output_tokens','estimated_current_workflow_total_tokens','empirical_error_band_lower','empirical_error_band_upper','leave_benchmark_out_median_absolute_percentage_error','estimate_kind'];w=csv.DictWriter(f,fields);w.writeheader()
+      for record in estimates:
+        for fit in record['estimated_current_workflow_scenarios']:
+          point=fit['point_estimate'];band=fit['empirical_total_token_error_band']
+          w.writerow({'benchmark':record['benchmark'],'implementation_model':record['implementation_model'],'historical_actual_total_tokens':None,'prior_record_status':record['historical_accounting_status'],'prior_saved_proxy_total_tokens':record['prior_saved_record_total_tokens'],'configured_llm':fit['configured_llm'],'reasoning_effort_setting':fit['reasoning_effort_setting'],'contains_shared_harness_creation':fit['contains_shared_harness_creation'],'calibration_distinct_benchmarks':fit['distinct_benchmarks'],'estimated_current_workflow_input_tokens':point['input_tokens'],'estimated_current_workflow_output_tokens':point['output_tokens'],'estimated_current_workflow_total_tokens':point['total_tokens'],'empirical_error_band_lower':band[0],'empirical_error_band_upper':band[1],'leave_benchmark_out_median_absolute_percentage_error':fit['leave_benchmark_out_median_absolute_percentage_error'],'estimate_kind':'current_workflow_counterfactual_not_historical_actual'})
     print(json.dumps({'observed_windows':len(observations),'eligible_windows':sum(r['eligibility'] for r in observations),'fitted_strata':sum(f['status']=='exploratory_current_workflow_baseline' for f in fits),'historical_actuals_modified':False}))
 
 if __name__=='__main__':main()

@@ -464,6 +464,8 @@ def export_global_csv():
 def verify(config):
     prefix_count=config.get('input_prefix_count',0)
     if isinstance(prefix_count,bool) or not isinstance(prefix_count,int) or prefix_count<0:raise ValueError('input_prefix_count must be a nonnegative integer')
+    if any(k in config for k in ('reuse_verified_models','reuse_from_result')):
+        raise ValueError('Unsupported top-level reuse keys: use reuse_result and reuse_models; unknown reuse requests must not silently rerun references.')
     if any('reuse_run' in spec for spec in config.get('models',{}).values()):
         raise ValueError('Unsupported per-model reuse_run: use top-level reuse_result and reuse_models with strict source/config checks.')
     bench=config['benchmark']; run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'_'+bench
