@@ -1,5 +1,18 @@
 # Julia Correctness Check
 
+## Paper revision and artifact checkpoint — 19 October 2026
+
+The six review actions are complete: the 447-name study is primary; performance is stratified by reviewed implementation classes and available timing/size evidence; RQ5 has a capability/selection matrix; new timing, acceptance-gate and opposite-order translation controls are preserved separately; a public reproducibility release accompanies the compact paper repository; and the manuscript is organized around quantitative RQ answers and scientific cases.
+
+Resume through `2026-PASC-Hecbench-Julia-paper/research/checkpoints/LATEST.json`, `.porting-state/portable_julia/active_work_447.json`, and `src/_portable_study/paper_revision_20261019.md`. Public artifact: https://github.com/monil01/HeCBench-Julia-PASC-artifact/releases/tag/v1.0.0 . Research remains ignored in the paper/Overleaf repository; compact records, source snapshots and selected captures are release assets in the separate artifact repository. Do not move large raw captures into Overleaf or claim omitted historical captures were reproduced from hashes.
+
+The unchanged primary corpus has 447 names: 436 qualified numerical contracts, two property contracts, five execution-only cases and four native hardware barriers. The performance inclusion remains 377 names / 428 primary configurations. The new timing control uses four counterbalanced independent blocks per model, five checked trials each, discarding only the first time and averaging the last four: 80 completed model processes / 400 checked trials / 320 retained timings. One additional five-trial setup process is preserved and excluded from that completed design. New observations never replace the original cohort series.
+
+The fresh Keccak incorrect/repaired pair has ten checked trials and demonstrates that compilation/self-check agreement can miss shared defects. The generation microcontrol uses two fresh-context agents with opposite KA/JACC orders, one reverse256 workload and a maximum of three candidate evaluations per target. Four successful candidates make 15,360 exact value comparisons; one JACC arm needed an API-name repair. This is not a population success-rate, causal order-effect or independent target-cost estimate. New generation used gpt-6-astra, distinct from the historical production model. Whole-agent observed counters remain scoped and cannot be retrospectively allocated per target.
+
+The current main PDF has eight body pages, one reference page, and one SC-style artifact appendix page after references (nine non-reference pages). PASC's ten-page non-reference allowance includes appendices. The separate 38-page technical companion is not an approved supplement. Author metadata, final submission checks and external artifact assessment remain outside the completed experiments. No independent reviewer or artifact badge is claimed.
+
+
 ## Completed assessment checkpoint — 18 October 2026
 
 The 150-source worklist is fully assessed on the recorded environment: **139 named numerical agreements, 2 property contracts, 5 execution-only contracts, 4 native hardware barriers, 0 pending entries**. Numerical agreement includes explicitly separated corrected-native, known-defect and revised-contract strata; it is not universal application accuracy or raw bit identity. The 447-name union contains 436 numerical names, those two property names, five execution-only names and four unavailable operations.
