@@ -70,8 +70,8 @@ def file_sha256(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 def stream_float_comparison(a, b, atol, rtol, use_numpy=None):
-    """Full scalar contract in bounded chunks; optional vector arithmetic only."""
-    fmt = {'float32': ('f', 4), 'float64': ('d', 8)}.get(a.get('dtype'))
+    """Full FP/uint8 scalar contract in bounded chunks; optional vector arithmetic."""
+    fmt = {'float32': ('f', 4), 'float64': ('d', 8), 'uint8': ('B', 1)}.get(a.get('dtype'))
     count = a.get('count', 0)
     if (not fmt or not count or a.get('dtype') != b.get('dtype')
             or count != b.get('count')
@@ -94,11 +94,14 @@ def stream_float_comparison(a, b, atol, rtol, use_numpy=None):
             ba, bb = fa.read(wanted), fb.read(wanted)
             if len(ba) != wanted or len(bb) != wanted:
                 return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
+            if a.get('dtype') == 'uint8' and ba == bb:
+                checked += wanted
+                continue
             if np is not None:
                 # Python struct values are binary64 even for FP32 artifacts.
                 # Promote before subtracting to preserve that exact contract.
-                va = np.frombuffer(ba, dtype='<f' + str(fmt[1])).astype(np.float64, copy=False)
-                vb = np.frombuffer(bb, dtype='<f' + str(fmt[1])).astype(np.float64, copy=False)
+                va = np.frombuffer(ba, dtype='u1' if a['dtype']=='uint8' else '<f' + str(fmt[1])).astype(np.float64, copy=False)
+                vb = np.frombuffer(bb, dtype='u1' if a['dtype']=='uint8' else '<f' + str(fmt[1])).astype(np.float64, copy=False)
                 if not (np.isfinite(va).all() and np.isfinite(vb).all()):
                     return {'status': 'unverified', 'reason': 'missing/nonfinite/mismatched numerical values'}
                 with np.errstate(over='ignore', invalid='ignore', under='ignore'):
@@ -298,10 +301,10 @@ def compare_records(ref, got, atol, rtol, input_prefix_count=0, agreement_kind=N
             comparison['comparison_computation'] = 'reused_after_full_artifact_pair_rehash'
             comparison['input_prefix_check'] = prefix_check
             return comparison
-    large_float = (a and b and a.get('dtype') in ('float32', 'float64')
+    large_numeric = (a and b and a.get('dtype') in ('float32', 'float64', 'uint8')
                    and a.get('sha256') and b.get('sha256')
-                   and a.get('count', 0) * (4 if a['dtype'] == 'float32' else 8) >= 64 * 1024 * 1024)
-    comparison = (stream_float_comparison(a, b, atol, rtol) if large_float
+                   and a.get('count', 0) * ({'float32':4,'float64':8,'uint8':1}[a['dtype']]) >= 64 * 1024 * 1024)
+    comparison = (stream_float_comparison(a, b, atol, rtol) if large_numeric
                   else compare(artifact_values(ref),artifact_values(got),atol,rtol))
     if cache_key is not None and comparison.get('status') == 'pass':
         _NUMERIC_COMPARISON_CACHE[cache_key] = copy.deepcopy(comparison)

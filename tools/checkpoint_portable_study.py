@@ -39,6 +39,8 @@ for path in sorted((local / 'runs').glob('*/result.json')):
     if not any(d.get('variant_verified', {}).values()):
         continue
     config = effective_config(path,read(path.with_name('config.json')))
+    if d['benchmark'] in cohort.get('new_benchmarks',[]) and config.get('exclude_from_aggregate',False):
+        continue  # Keep reviewed invalid prospective mappings out of accepted counts.
     cid = d.get('configuration_id') or config['configuration_id']
     records[(d['benchmark'], cid)] = {
         'benchmark': d['benchmark'], 'configuration_id': cid,
