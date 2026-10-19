@@ -148,7 +148,7 @@ payload = {
     'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',
     'dirty_files': {k: git(p, 'status', '--short') for k,p in [('source',root),('paper',paper)]},
     'next_translation': ('Completed frozen cohort assessment: preserve matched/conditional/known-defect/unavailable outcomes; no automatic reruns.' if args.complete else 'Continue remaining150 disjoint queues KA then JACC within447-name union, repairing references where needed. Root commits verified variants separately.'),
-    'next_paper': ('Review-ready draft: supply author/publication metadata and arrange archival evidence release before submission.' if args.complete else 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.'),
+    'next_paper': ('Review-ready draft: supply author/publication metadata and perform final venue submission checks; consult active_work for the current artifact release and reproduction receipts.' if args.complete else 'Review scientific domains and per-model ontology/failures, update honest current counts and domain-scientist RQs. Build publication files when ready.'),
     'local_only_research': True,
     'paper_build_artifact': {'path':str((paper/'build/main.pdf').relative_to(root)),
         'sha256':hashlib.sha256((paper/'build/main.pdf').read_bytes()).hexdigest() if (paper/'build/main.pdf').exists() else None,
