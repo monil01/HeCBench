@@ -1,0 +1,35 @@
+// Original five CUDA entry definitions retained byte-for-byte by inclusion.
+#define main historical_cfd_main
+#include "../cfd-cuda/euler3d.cu"
+#undef main
+#include <vector>
+#include <array>
+#include <iomanip>
+#include <cstdlib>
+#include <algorithm>
+#include <string>
+#include <cassert>
+#include <chrono>
+static constexpr double ATOL=2e-4,RTOL=2e-3;
+static void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"CUDA failure %s\n",cudaGetErrorString(e));std::exit(2);}}
+static std::vector<double> read64(const char*name){std::ifstream f(name,std::ios::binary|std::ios::ate);assert(f);auto n=f.tellg();assert(n>=0&&n%8==0);std::vector<double>x(size_t(n)/8);f.seekg(0);f.read((char*)x.data(),n);assert(f);return x;}
+template<class T>struct Guarded{size_t n;T*base;std::vector<T> initial;Guarded(size_t n0,const std::vector<T>&payload):n(n0),initial(n+64,T(-9001.25)){assert(payload.size()==n);std::copy(payload.begin(),payload.end(),initial.begin()+32);ck(cudaMalloc((void**)&base,(n+64)*sizeof(T)));reset();}T*data(){return base+32;}void reset(){ck(cudaMemcpy(base,initial.data(),initial.size()*sizeof(T),cudaMemcpyHostToDevice));}std::vector<T>take(){std::vector<T>x(n+64);ck(cudaMemcpy(x.data(),base,x.size()*sizeof(T),cudaMemcpyDeviceToHost));return x;}~Guarded(){cudaFree(base);}};
+struct Case{int n,id,physical;std::vector<float>a,normal,ff;std::vector<int>nb;};
+static std::vector<Case> cases(){auto z=read64("fixture.bin");size_t k=0;assert(z.at(k++)==2);std::vector<Case>r;for(int c=0;c<2;c++){Case m;m.n=int(z.at(k++));assert(z.at(k++)==2000);m.id=int(z.at(k++));m.physical=c==0?192:97046;assert(m.n==(c==0?192:97152));for(int i=0;i<m.n;i++)m.a.push_back(float(z.at(k++)));for(int i=0;i<4*m.n;i++)m.nb.push_back(int(z.at(k++)));for(int i=0;i<12*m.n;i++)m.normal.push_back(float(z.at(k++)));for(int i=0;i<17;i++)m.ff.push_back(float(z.at(k++)));r.push_back(m);}assert(k==z.size());return r;}
+struct Check{bool ok=true;size_t checked=0;double maxabs=0,minrho=1e300,minp=1e300,freestream=0;const std::vector<double>&gold;size_t index=0;Check(const std::vector<double>&g):gold(g){};
+ template<class T>void input(Guarded<T>&g,std::vector<double>&out){auto x=g.take();for(size_t i=0;i<x.size();i++){ok&=x[i]==g.initial[i];out.push_back(double(x[i]));}}
+ void output(Guarded<float>&g,std::vector<double>&out){auto x=g.take();for(size_t i=0;i<x.size();i++){double v=x[i];out.push_back(v);if(i<32||i>=g.n+32){ok&=v==double(g.initial[i]);continue;}assert(index<gold.size());double expected=gold[index++];double err=std::abs(v-expected);maxabs=std::max(maxabs,err);ok&=std::isfinite(v)&&err<=ATOL+RTOL*std::abs(expected);checked++;}}
+ void physical(Guarded<float>&g,const Case&m){auto x=g.take();for(int i=0;i<m.n;i++){double rho=x[32+i],vsq=0;for(int d=0;d<3;d++){double v=x[32+i+(d+1)*m.n]/rho;vsq+=v*v;}double p=(double(1.4f)-1)*(x[32+i+4*m.n]-.5*rho*vsq);minrho=std::min(minrho,rho);minp=std::min(minp,p);ok&=rho>0&&p>0&&std::isfinite(rho)&&std::isfinite(p);if(m.id==0)for(int k=0;k<5;k++)freestream=std::max(freestream,std::abs(double(x[32+i+k*m.n])-m.ff[k]));if(i>=m.physical)for(int k=0;k<5;k++)ok&=x[32+i+k*m.n]==x[32+m.physical-1+k*m.n];}ok&=freestream<=3e-6;}
+};
+struct Buffers{Case m;Guarded<float>a,normal,ff,mx,my,mz,de,u,old,flux,dt;Guarded<int>nb;Buffers(const Case&q):m(q),a(q.n,q.a),normal(12*q.n,q.normal),ff(5,{q.ff.begin(),q.ff.begin()+5}),mx(3,{q.ff.begin()+5,q.ff.begin()+8}),my(3,{q.ff.begin()+8,q.ff.begin()+11}),mz(3,{q.ff.begin()+11,q.ff.begin()+14}),de(3,{q.ff.begin()+14,q.ff.end()}),u(5*q.n,std::vector<float>(5*q.n)),old(5*q.n,std::vector<float>(5*q.n)),flux(5*q.n,std::vector<float>(5*q.n)),dt(q.n,std::vector<float>(q.n)),nb(4*q.n,q.nb){}
+ void reset(){u.reset();old.reset();flux.reset();dt.reset();}
+ void inputs(Check&check,std::vector<double>&out,bool working){if(working){out.insert(out.end(),{double(m.n),2000,double(m.id)});}check.input(a,out);check.input(nb,out);check.input(normal,out);check.input(ff,out);check.input(mx,out);check.input(my,out);check.input(mz,out);check.input(de,out);if(working){check.input(u,out);check.input(old,out);check.input(flux,out);check.input(dt,out);}}
+ void outputs(Check&c,std::vector<double>&out){c.output(u,out);c.output(old,out);c.output(flux,out);c.output(dt,out);}
+ void init(){int n=m.n;initialize_variables<<<n/192,192>>>(n,u.data(),ff.data());initialize_variables<<<n/192,192>>>(n,old.data(),ff.data());initialize_variables<<<n/192,192>>>(n,flux.data(),ff.data());initialize_buffer<<<n/192,192>>>(dt.data(),0,n);}
+ void advance(int count){int n=m.n;for(int it=0;it<count;it++){ck(cudaMemcpy(old.data(),u.data(),n*5*sizeof(float),cudaMemcpyDeviceToDevice));compute_step_factor<<<n/192,192>>>(n,u.data(),a.data(),dt.data());for(int stage=0;stage<3;stage++){compute_flux<<<n/192,192>>>(n,nb.data(),normal.data(),u.data(),ff.data(),flux.data(),reinterpret_cast<Float3*>(de.data()),reinterpret_cast<Float3*>(mx.data()),reinterpret_cast<Float3*>(my.data()),reinterpret_cast<Float3*>(mz.data()));time_step<<<n/192,192>>>(stage,n,old.data(),u.data(),dt.data(),flux.data());}}}
+};
+int main(){static_assert(sizeof(Float3)==12,"source Float3 ABI");auto meshes=cases();auto gold=read64("oracle.bin");std::vector<Buffers*>b;for(auto&m:meshes)b.push_back(new Buffers(m));for(auto*x:b){x->init();x->advance(1);}ck(cudaDeviceSynchronize()); // explicit compile/launch warmup, discarded state
+ for(int trial=1;trial<=5;trial++){Check c(gold);std::vector<double>prefix{2},out;double seconds=0;std::vector<double>times;for(auto*x:b){x->reset();x->inputs(c,prefix,true);}assert(prefix.size()==size_t(1+33*(192+97152)+2*788));
+ for(auto*x:b){auto measure=[&](bool initialization){ck(cudaDeviceSynchronize());auto t0=std::chrono::steady_clock::now();if(initialization)x->init();else x->advance(100);ck(cudaDeviceSynchronize());auto t1=std::chrono::steady_clock::now();double t=std::chrono::duration<double>(t1-t0).count();seconds+=t;times.push_back(t);};measure(true);x->outputs(c,out);c.physical(x->u,x->m);for(int s=0;s<20;s++){measure(false);c.output(x->u,out);c.physical(x->u,x->m);}x->outputs(c,out);x->inputs(c,out,false);}
+ assert(c.index==gold.size());prefix.insert(prefix.end(),out.begin(),out.end());std::string file="output_trial"+std::to_string(trial)+".bin";std::ofstream f(file,std::ios::binary);f.write((char*)prefix.data(),prefix.size()*8);f.close();assert(f);printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":%.17g,\"max_rel_error\":null,\"min_density\":%.17g,\"min_pressure\":%.17g,\"freestream_max_abs\":%.17g,\"timing_region\":\"sum_initialization_and_20_100iteration_segments_percase_context_completion_excludes_observation\",\"jit_excluded\":true,\"internal_repeats\":1,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%zu,\"byte_order\":\"little\"},\"segment_seconds\":[",trial,seconds,c.ok?"true":"false",c.checked,c.maxabs,c.minrho,c.minp,c.freestream,file.c_str(),prefix.size());for(size_t i=0;i<times.size();i++)printf("%s%.17g",i?",":"",times[i]);printf("]}\n");fflush(stdout);}
+ for(auto*x:b)delete x;return 0;}
