@@ -1,5 +1,10 @@
 # Julia Correctness Check
 
+## Original runtime asset retrieval
+
+Before calling a DVC-declared runtime asset unavailable, inspect the recorded remote configuration and try its exact content object when access and size permit. The anonymous HeCBench remote currently serves `https://hecbench-geekdude.s3.amazonaws.com/files/md5/<first2>/<remaining30>`; SAD, EGS and Gibbs assets were recovered with matching declared MD5, byte size and additional SHA256 records. Preserve the request/status, archive identity and per-file hashes. Missing locally, not attempted, rejected remote access and confirmed unavailable are different observations; none establishes a framework limitation. Keep recovered source assets distinct from substitutes/author archives and from numerical verification. Improve new evidence without rewriting frozen historical captures or claiming recovered assets validate old executions.
+
+
 ## Failure reporting and effort units
 
 After computing verdicts, the verifier serializes nonfinite reported diagnostics as JSON null with separate original-token/path records. Preserve raw logs/artifact bytes; null is neither zero error nor success. This reporting step cannot change correctness, completeness, comparisons, tolerance or timing inclusion. Historical runs that failed before writing a receipt retain that explicit gap; never reconstruct accepted evidence from their diagnostics. Count a numerical rejection and a subsequent reporting-tool failure separately by origin.
