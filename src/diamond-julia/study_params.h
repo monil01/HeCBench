@@ -1,0 +1,3 @@
+#pragma once
+constexpr int L=33,D=50,CASES=3,PREFIX=14039,COUNT=26873,POSTERIOR_COUNT=12738;
+const int NS[3]={1,128,257};

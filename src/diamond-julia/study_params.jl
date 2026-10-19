@@ -1,0 +1,6 @@
+const L=33
+const D=50
+const PREFIX=14039
+const COUNT=26873
+const POSTERIOR_COUNT=12738
+const NS=(1,128,257)
