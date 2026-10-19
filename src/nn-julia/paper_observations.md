@@ -1,0 +1,9 @@
+# NN: scoped planar nearest-record lookup
+
+RQ1: All20 saved artifacts (947,298 values each) are bitidentical across CUDA, CUDA.jl, KA and JACC. Actual device-input bits, all final distances, complete ID/distance permutations and guards are checked. Independent Float64 geometry differs by at most1.526e-5 absolute/5.90e-8 relative within the predeclared budget. This is conditional agreement: an actual original CLI witness proves the CPU record swap loses association; a minimal owned value-temporary repair leaves the GPU body unchanged. No original external-dataset or geodesic-quality claim.
+
+RQ2: CUDA.jl/KA each use1 candidate/check. JACC uses2 host-program candidates after a whitespace ParseError; only1 authored device-body candidate and1 actual device-JIT process check. Prospective per-target input/cached/output/reasoning counters are separate from native preparation, saved-output verification and annotation. CUDA.jl includes shared harness creation; later targets reuse it and existing session context. Calibration strata preserve this difference and cannot reconstruct historical actual usage.
+
+RQ3: Mean trials2–5 composite seconds: CUDA1.352958735e-5, CUDA.jl1.6415570425e-5, KA3.21098289e-5, JACC3.7954352975e-5. Each is the sum of five per-case R10000 launch-loop means, with explicit whole-batch warmup. This includes dispatch/completion, excludes transfers and CPU selection, and cannot isolate a causal abstraction effect.
+
+RQ4: All three measured GPU versions are framework device kernels with Float32 AoS records,64 threads/block and no shared tile/atomics. An additional untimed parameter observer verifies actual device scalar inputs. The largest1.5MiB logical input/output fits the6MiB V100 L2 capacity; cache behavior and roofline coordinates were not measured. Final repeated outputs, not all overwritten intermediate launches, are captured.

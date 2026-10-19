@@ -1,0 +1,5 @@
+#define main original_nn_main
+#include "../../nn-cuda/nearestNeighbor.cu"
+#undef main
+#include <vector>
+int main(){std::vector<Record> rec;std::vector<LatLong> p;char fn[]="filelist.txt";int n=loadData(fn,rec,p);if(n!=6)return 2;LatLong* d;float* o;cudaMalloc(&d,n*sizeof(LatLong));cudaMalloc(&o,n*4);cudaMemcpy(d,p.data(),n*sizeof(LatLong),cudaMemcpyHostToDevice);nn<<<1,64>>>(n,30,90,d,o);if(cudaDeviceSynchronize()!=cudaSuccess)return 3;std::vector<float> out(n);cudaMemcpy(out.data(),o,n*4,cudaMemcpyDeviceToHost);printf("NN_WITNESS {\"geometry\":[1,64],\"locations\":[");for(int i=0;i<n;i++)printf("%s[%.9g,%.9g]",i?",":"",p[i].lat,p[i].lng);printf("],\"raw_distances\":[");for(int i=0;i<n;i++)printf("%s%.9g",i?",":"",out[i]);findLowest(rec,out.data(),n,5);printf("],\"record_ids_after_original_selection\":[");for(int i=0;i<n;i++)printf("%s%d",i?",":"",atoi(rec[i].recString+2));printf("],\"full_distances_after_original_selection\":[");for(int i=0;i<n;i++)printf("%s%.9g",i?",":"",out[i]);printf("]}\n");cudaFree(d);cudaFree(o);}

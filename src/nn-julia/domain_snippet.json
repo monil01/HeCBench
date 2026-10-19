@@ -1,0 +1,260 @@
+{
+  "benchmark": "nn",
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "geometry_robotics",
+    "primary_domain": "planar_nearest_record_search",
+    "secondary_domains": [
+      "geospatial_coordinate_queries"
+    ],
+    "scientific_task": "Compute distance from a query point to every planar record and select the nearest k associated record IDs.",
+    "mathematical_operation": "d_i = sqrt((lat_i-query_lat)^2 + (lng_i-query_lng)^2); strict-less-than partial selection of k distances and associated records.",
+    "discretization_or_topology": "Unstructured 2D coordinate points; planar coordinate units, no spherical metric.",
+    "invariants": [
+      "Nonnegative finite distances; exact zero at identical coordinates.",
+      "Returned record IDs form a full permutation and selected unique minima retain distance-record association."
+    ],
+    "accuracy_requirements": [
+      "Exact actual-device input bit-prefix, record IDs, guards and analytic zero/axis controls.",
+      "Full finite distances against independent Float64 norm within atol1e-5 + 8eps(Float32)*abs(reference)."
+    ],
+    "precision_sensitivity": "Float32 subtraction, products and sqrt can round differently; geographic-coordinate interpretation is outside the numerical contract.",
+    "input_size_regimes": "N=1,17,65,4099,131072 with10000 internal launches/case; no saturation/scaling or full external dataset claim.",
+    "community_use_case": "Nearest-record coordinate lookup in the source benchmark; application data quality is not established by synthetic fixtures.",
+    "provenance": [
+      {
+        "path": "src/nn-cuda/nearestNeighbor.cu",
+        "sha256": "53a80b353a5c6ff8e5539836f049a34d7910d82f411bcc2a2d3c5dc0276143af"
+      },
+      {
+        "path": "src/nn-julia/corrected_selection.h",
+        "sha256": "2908b6a8b548accc0ff909879cae50a5c26a8fa181f712a741f473af77ebb892"
+      },
+      {
+        "path": "src/nn-julia/study_common.jl",
+        "sha256": "1036f66e645228763b1cc3d78372b8b8377f68b0283381de33659ecf864d76df"
+      },
+      {
+        "path": "src/nn-julia/study_plan.json",
+        "sha256": "c0aa99eb74812c376a9532cc82dce2ee9d9378eafaa410a025ba56a60203acec"
+      }
+    ],
+    "uncertainty": "No realworld dataset validation; planar metric does not certify geographical distance."
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "conditionally_verified_native_reference_repaired",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Native Float32 planar norm and guarded point map; CPU partial record selection outside ROI",
+      "mapping": "CUDA.@cuda explicit global index",
+      "layout": "LatLong isbits AoS twoFloat32 fields,8bytes; input/output guard regions",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32"
+        ],
+        "artifact_encoding": "float64, including lossless UInt32 bit-word numeric encoding",
+        "independent_oracle": "float64 outside ROI"
+      },
+      "memory": "Global input/output; no authored shared tile or atomics",
+      "resource_geometry": {
+        "threads": 64,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "cache_behavior": null
+      },
+      "synchronization": [
+        "kernel_boundary",
+        "whole_device_completion_after_R_launches"
+      ],
+      "atomic_operations": [],
+      "library_boundary": "Backend runtime allocation/copy/completion outside ROI; ordinary compiler-lowered sqrt, no foreign CUDA device calls",
+      "fidelity_status": "original_device_kernel_semantics_named_fixture_corrected_host_selection",
+      "configuration_id": "nn_planar_AoS_5sizes_full_distances_corrected_host_record_swap_R10000_v1",
+      "source_evidence": [
+        {
+          "path": "src/nn-julia/nn-julia-cuda.jl/main.jl",
+          "sha256": "bd88a83b33616e35ab9c3d8b76fb300d817aa661161eb0ab559906d482310820"
+        },
+        {
+          "path": "src/nn-cuda/nearestNeighbor.cu",
+          "sha256": "53a80b353a5c6ff8e5539836f049a34d7910d82f411bcc2a2d3c5dc0276143af"
+        },
+        {
+          "path": "src/nn-julia/corrected_selection.h",
+          "sha256": "2908b6a8b548accc0ff909879cae50a5c26a8fa181f712a741f473af77ebb892"
+        },
+        {
+          "path": "src/nn-julia/study_common.jl",
+          "sha256": "1036f66e645228763b1cc3d78372b8b8377f68b0283381de33659ecf864d76df"
+        },
+        {
+          "path": "src/nn-julia/study_plan.json",
+          "sha256": "c0aa99eb74812c376a9532cc82dce2ee9d9378eafaa410a025ba56a60203acec"
+        }
+      ],
+      "source_commit": null,
+      "measured_device_definitions": {
+        "source_algorithm": 1,
+        "untimed_parameter_observer": 1
+      },
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "sum5_original_distance_kernel_batch_means_R10000",
+      "limitations": [
+        "Conditional minimal native CPU record-value-swap repair; original CUDA device body unchanged; untouched-native aggregate excluded.",
+        "Planar Euclidean coordinate distance, not geodesic distance or a scientifically validated geographical model.",
+        "Named synthetic AoS cases, not original external weather dataset/fileparser/default-throughput certification.",
+        "Final GPU distances after repeated overwrites and full CPU ID/distance permutation captured; not all overwritten R10000 intermediate outputs.",
+        "Composite sum of five per-case launch-loop means, not full application time or a single-size throughput.",
+        "Largest input+output1.5MiB fits V1006MiB L2 capacity; actual cache behavior, registers and DRAM bandwidth unmeasured.",
+        "No cross-vendor backend execution or independent human review."
+      ]
+    },
+    "ka": {
+      "status": "conditionally_verified_native_reference_repaired",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Native Float32 planar norm and guarded point map; CPU partial record selection outside ROI",
+      "mapping": "KernelAbstractions.@kernel global linear index",
+      "layout": "LatLong isbits AoS twoFloat32 fields,8bytes; input/output guard regions",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32"
+        ],
+        "artifact_encoding": "float64, including lossless UInt32 bit-word numeric encoding",
+        "independent_oracle": "float64 outside ROI"
+      },
+      "memory": "Global input/output; no authored shared tile or atomics",
+      "resource_geometry": {
+        "threads": 64,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "cache_behavior": null
+      },
+      "synchronization": [
+        "kernel_boundary",
+        "whole_device_completion_after_R_launches"
+      ],
+      "atomic_operations": [],
+      "library_boundary": "Backend runtime allocation/copy/completion outside ROI; ordinary compiler-lowered sqrt, no foreign CUDA device calls",
+      "fidelity_status": "original_device_kernel_semantics_named_fixture_corrected_host_selection",
+      "configuration_id": "nn_planar_AoS_5sizes_full_distances_corrected_host_record_swap_R10000_v1",
+      "source_evidence": [
+        {
+          "path": "src/nn-julia/nn-julia-KA/main.jl",
+          "sha256": "2a5a1a044f520c463137a514b7303f0bcdfb360f22dbcf81d856317dcd5d2bd5"
+        },
+        {
+          "path": "src/nn-cuda/nearestNeighbor.cu",
+          "sha256": "53a80b353a5c6ff8e5539836f049a34d7910d82f411bcc2a2d3c5dc0276143af"
+        },
+        {
+          "path": "src/nn-julia/corrected_selection.h",
+          "sha256": "2908b6a8b548accc0ff909879cae50a5c26a8fa181f712a741f473af77ebb892"
+        },
+        {
+          "path": "src/nn-julia/study_common.jl",
+          "sha256": "1036f66e645228763b1cc3d78372b8b8377f68b0283381de33659ecf864d76df"
+        },
+        {
+          "path": "src/nn-julia/study_plan.json",
+          "sha256": "c0aa99eb74812c376a9532cc82dce2ee9d9378eafaa410a025ba56a60203acec"
+        }
+      ],
+      "source_commit": "236fd017d25f3a245721e9644e4a902631765c68",
+      "measured_device_definitions": {
+        "source_algorithm": 1,
+        "untimed_parameter_observer": 1
+      },
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "sum5_original_distance_kernel_batch_means_R10000",
+      "limitations": [
+        "Conditional minimal native CPU record-value-swap repair; original CUDA device body unchanged; untouched-native aggregate excluded.",
+        "Planar Euclidean coordinate distance, not geodesic distance or a scientifically validated geographical model.",
+        "Named synthetic AoS cases, not original external weather dataset/fileparser/default-throughput certification.",
+        "Final GPU distances after repeated overwrites and full CPU ID/distance permutation captured; not all overwritten R10000 intermediate outputs.",
+        "Composite sum of five per-case launch-loop means, not full application time or a single-size throughput.",
+        "Largest input+output1.5MiB fits V1006MiB L2 capacity; actual cache behavior, registers and DRAM bandwidth unmeasured.",
+        "No cross-vendor backend execution or independent human review."
+      ]
+    },
+    "jacc": {
+      "status": "conditionally_verified_native_reference_repaired",
+      "implementation_class": "framework_device_kernel",
+      "algorithm": "Native Float32 planar norm and guarded point map; CPU partial record selection outside ROI",
+      "mapping": "JACC.parallel_for explicit LaunchSpec global index",
+      "layout": "LatLong isbits AoS twoFloat32 fields,8bytes; input/output guard regions",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32"
+        ],
+        "artifact_encoding": "float64, including lossless UInt32 bit-word numeric encoding",
+        "independent_oracle": "float64 outside ROI"
+      },
+      "memory": "Global input/output; no authored shared tile or atomics",
+      "resource_geometry": {
+        "threads": 64,
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "cache_behavior": null
+      },
+      "synchronization": [
+        "kernel_boundary",
+        "whole_device_completion_after_R_launches"
+      ],
+      "atomic_operations": [],
+      "library_boundary": "Backend runtime allocation/copy/completion outside ROI; ordinary compiler-lowered sqrt, no foreign CUDA device calls",
+      "fidelity_status": "original_device_kernel_semantics_named_fixture_corrected_host_selection",
+      "configuration_id": "nn_planar_AoS_5sizes_full_distances_corrected_host_record_swap_R10000_v1",
+      "source_evidence": [
+        {
+          "path": "src/nn-julia/nn-julia-JACC/main.jl",
+          "sha256": "cc0539379ebe472ad11f36a5dbbf538309818ea041ecf80a1325e27872c2ba7f"
+        },
+        {
+          "path": "src/nn-cuda/nearestNeighbor.cu",
+          "sha256": "53a80b353a5c6ff8e5539836f049a34d7910d82f411bcc2a2d3c5dc0276143af"
+        },
+        {
+          "path": "src/nn-julia/corrected_selection.h",
+          "sha256": "2908b6a8b548accc0ff909879cae50a5c26a8fa181f712a741f473af77ebb892"
+        },
+        {
+          "path": "src/nn-julia/study_common.jl",
+          "sha256": "1036f66e645228763b1cc3d78372b8b8377f68b0283381de33659ecf864d76df"
+        },
+        {
+          "path": "src/nn-julia/study_plan.json",
+          "sha256": "c0aa99eb74812c376a9532cc82dce2ee9d9378eafaa410a025ba56a60203acec"
+        }
+      ],
+      "source_commit": "87a4eaa37494d89a952f6d3b8719d0a56e1dd111",
+      "measured_device_definitions": {
+        "source_algorithm": 1,
+        "untimed_parameter_observer": 1
+      },
+      "program_candidates": 2,
+      "actual_device_jit_process_checks": 1,
+      "timing_scope": "sum5_original_distance_kernel_batch_means_R10000",
+      "limitations": [
+        "Conditional minimal native CPU record-value-swap repair; original CUDA device body unchanged; untouched-native aggregate excluded.",
+        "Planar Euclidean coordinate distance, not geodesic distance or a scientifically validated geographical model.",
+        "Named synthetic AoS cases, not original external weather dataset/fileparser/default-throughput certification.",
+        "Final GPU distances after repeated overwrites and full CPU ID/distance permutation captured; not all overwritten R10000 intermediate outputs.",
+        "Composite sum of five per-case launch-loop means, not full application time or a single-size throughput.",
+        "Largest input+output1.5MiB fits V1006MiB L2 capacity; actual cache behavior, registers and DRAM bandwidth unmeasured.",
+        "No cross-vendor backend execution or independent human review."
+      ]
+    }
+  },
+  "shared_domain_registry_edit": false
+}

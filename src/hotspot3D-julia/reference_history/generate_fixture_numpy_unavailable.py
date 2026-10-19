@@ -1,0 +1,18 @@
+from pathlib import Path
+import numpy as np,json,hashlib
+P=Path(__file__).resolve().parent;F=np.float32;pre=[F(4)];gold=[];cases=[]
+for n,z,steps,kind in [(64,2,1,'ambient'),(64,3,2,'varying'),(128,5,3,'uniform_power'),(512,8,5,'varying')]:
+ dx=F(F(.016)/n);dy=F(F(.016)/n);dz=F(F(.0005)/z);cap=F(.5*1.75e6*float(F(.0005))*float(dx)*float(dy));rx=F(float(dy)/(2*100*float(F(.0005))*float(dx)));ry=F(float(dx)/(2*100*float(F(.0005))*float(dy)));rz=F(float(dz)/(100*float(dx)*float(dy)));slope=F(3e6/(.5*float(F(.0005))*1.75e6));dt=F(.001/float(slope));step=F(dt/cap);ce=F(step/rx);cn=F(step/ry);ct=F(step/rz);cc=F(1-(2*float(ce)+2*float(cn)+3*float(ct)));params=[ce,ce,cn,cn,ct,ct,cc,step];N=n*n*z;i=np.arange(N,dtype=np.int64)
+ if kind=='ambient':temp=np.full(N,80,dtype='<f4');power=np.zeros(N,dtype='<f4')
+ elif kind=='uniform_power':temp=np.full(N,81,dtype='<f4');power=np.full(N,2,dtype='<f4')
+ else:temp=(80+((i*7)%17-8)/8).astype('<f4');power=(((i*17)%31)/8).astype('<f4')
+ guard=np.full(64,-777,dtype='<f4');initialout=np.full(N,-321,dtype='<f4');arrays=[np.concatenate((guard,a,guard))for a in [temp,power,initialout]];head=np.array([n,z,steps,*params],dtype='<f4');pre.extend(head);[pre.extend(a)for a in arrays]
+ # Independent whole3Dvector stencil uses symmetric clamped boundaries, notrollingzregisters.
+ a=temp.astype(np.float64).reshape(z,n,n);b=a.copy();p=power.astype(np.float64).reshape(z,n,n)
+ for k in range(steps):
+  west=np.concatenate((a[:,:,:1],a[:,:,:-1]),axis=2);east=np.concatenate((a[:,:,1:],a[:,:,-1:]),axis=2);north=np.concatenate((a[:,:1,:],a[:,:-1,:]),axis=1);south=np.concatenate((a[:,1:,:],a[:,-1:,:]),axis=1);bottom=np.concatenate((a[:1],a[:-1]),axis=0);top=np.concatenate((a[1:],a[-1:]),axis=0)
+  b=a;a=float(cc)*a+float(ce)*(west+east)+float(cn)*(north+south)+float(ct)*(bottom+top)+float(step)*p+float(ct)*80
+ final=a.ravel();previous=b.ravel();selected=final if steps%2 else previous
+ for v in [final,previous,selected,power.astype(np.float64)]:gold.extend(np.concatenate((guard.astype(np.float64),v,guard.astype(np.float64))))
+ cases.append(dict(n=n,layers=z,steps=steps,kind=kind,elements=N,params=[float(x)for x in params],selected_time_level=steps if steps%2 else steps-1,previous_is_initial_if_steps1=True,coefficient_row_sum=float(cc)+2*float(ce)+2*float(cn)+2*float(ct),max_exact_F64_final=float(max(final)),min_exact_F64_final=float(min(final)),uniform_analytic_recurrence='u[k+1]=(cc+2ce+2cn+2ct)*u[k]+step*p+ct*80',observed_time_level_defect=steps%2==0))
+pre=np.asarray(pre,dtype='<f4');gold=np.asarray(gold,dtype='<f8');pre.tofile(P/'fixture.bin');gold.tofile(P/'oracle.bin');(P/'fixture_manifest.json').write_text(json.dumps(dict(cases=cases,input_prefix_count=len(pre),output_count=len(gold),artifact_count=len(pre)+len(gold),atol=2e-4,rtol=2e-6,tolerance_rationale='ConservativeFloat32short-horizonweightedpositive-dot roundingbudget; max5steps,nativeFMAversusunfusedJulia mapping; independentFloat64field target, notarbitrary5000stepaccuracy.',shape_policy='nmultiple64and4,z>=2,sourceexact64x4columnmapping; zrollingregisterbodyunchanged',native_behavior_known_scientific_defect=True,defect='Sourceeven-iterationpublicd_sel returnspreviousstate ratherthanfinal; completeactualfinal/previousseparatelycapturedandchecked. SameCPUhelpercallerbufferparity hides it inRMS.',timing_scope='Sum4sourcekernel-loop/contextcompletionROIs, hostpointer swaps inside; fullallocation/H2D/D2H/freepipeline executed outsideROI; notendtoendtimer or5000stepdefaultclaim.',fixture_sha256=hashlib.sha256(pre.tobytes()).hexdigest()),indent=2)+'\n');print(len(pre),len(gold))
