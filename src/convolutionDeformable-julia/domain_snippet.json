@@ -1,0 +1,393 @@
+{
+  "benchmark": "convolutionDeformable",
+  "review_status": "source_audited",
+  "primary_family": "machine_learning",
+  "primary_domain": "modulated_deformable_convolution_backpropagation",
+  "secondary_domains": [
+    "computer_vision",
+    "image_feature_learning",
+    "bilinear_sampling_adjoint"
+  ],
+  "scientific_task": "Compute modulated deformable image-to-columns sampling and reverse-mode derivatives with respect to image values, sampling offsets and modulation masks.",
+  "mathematical_operation": "Columns_(c,k,o)=m_(g,k,o)*sum_(y,x) I_(c,y,x) phi(y-sampleY)*phi(x-sampleX), phi(t)=max(0,1-|t|); gradI is interpolation adjoint scatter, gradOffset derivatives ofshape weights, gradMask contraction ofsampleswithupstreamcolumns.",
+  "discretization_or_topology": "Regular2Dchannelimages withdeformablecontinuoussamplecoordinates; groupedchannels/offsetfields, zeroextensionoutsideimage, row-majorcolumnstensor. Not PDEmeshphysics.",
+  "invariants": [
+    "All20full27434F64encodedcapturesbitidentical,17080actualinputprefix exact; allcolumns/threegradientarrays/guards checked.",
+    "Independentquadrilateralshape-function/adjointfromactualinputs gives0observederror;72smoothFDcontrols corroborateanalyticprimarygradients.",
+    "Actualasymnativewronggradientwitness60wrongvalues and60independentinputFDcontrols; minimalownedhostargumentrepair restoresfullarrays without changingGPUbodies."
+  ],
+  "accuracy_requirements": [
+    "Predeclareddual/CPUatol2e-6,rtol2e-6 with exactinputprefix/guards; observedallprimaryerrors0 andbitidenticaloutputs.",
+    "FDepsilon2^-16, analytic/controlerror<2e-8 on72selectedprimarysmoothscalarprobes; fullgradientscheckedanalytically, notonlyselectedprobes."
+  ],
+  "precision_sensitivity": "Float32storage/weights/bilineargradientmath/atomicAdd accumulation; indicesmixedintegerwidth inJulia, sourceInt32. ArtifactFloat64exactencodingandCPUdoubleadjoint/FD areseparate, notF64GPUcompute.",
+  "input_size_regimes": "Fourperbatchslices/3geometries, C4/G2 orC6/G3, 3x3/2x3kernels, stride/dilationvariation, equalpad1/1or0/0. Source512threads/sourcegrid/allshmem0.",
+  "community_use_case": "Deformableconvolution component forlearnedimagefeatures; kernel/gradient fidelitynottrainingaccuracy, fullPyTorchintegration orimagebenchmarkquality.",
+  "provenance": [
+    {
+      "path": "src/convolutionDeformable-cuda/main.py",
+      "sha256": "6fc1f1c4096115b6914a8628c971db2fd4a4b4876b0224a776f6b8bde7063a11"
+    },
+    {
+      "path": "src/convolutionDeformable-cuda/dcn_v2.py",
+      "sha256": "6da8443bd98d8e24c889ef3d082ef1258bb70d5b8b4f2cff04fde78a4a1ebfaf"
+    },
+    {
+      "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_cuda.cu",
+      "sha256": "9c6f87b4017d4adcea019feaa51eef3bc756c49add0df23744ed4e10c0c77630"
+    },
+    {
+      "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.cu",
+      "sha256": "0099fdd72b0294f4197faa07ddc8a376018ede387acc85fd1641f31ce73c43ea"
+    },
+    {
+      "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.h",
+      "sha256": "f1075919fa8183efe65ee0f9adc8d289745415736090ebbbaae09f1d36b143b7"
+    },
+    {
+      "path": "src/convolutionDeformable-julia/device_common.jl",
+      "sha256": "b446ef1edc2174e53c16ed8b6670f52e7ba27c518e5eba62a8e2475fb3b4be11"
+    },
+    {
+      "path": "src/convolutionDeformable-julia/study_common.jl",
+      "sha256": "a6cc04a2cd0b81ff757b727866a67098826810421ba7308ffb9d7a9f960d7d4b"
+    },
+    {
+      "path": "src/convolutionDeformable-julia/study_plan.json",
+      "sha256": "b9e29ee64a3859ac01c1342a5deef358c4602733f2f9ddbb3d6b5cf9b9f7e291"
+    }
+  ],
+  "uncertainty": "Torch/fullDCNpipeline unavailable; defaultzero-offset/multibatchforward/nondyadic/largeoriginalgeometry regimesunmeasured, asymmetricnativewrapperknownwrong.",
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_named_custom_kernel_extension_only",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "classification_scope": "Timed3customsourceGPUkerneltriplet only; fullTorchpipelineunverified/unknown.",
+      "algorithm": "Columns_(c,k,o)=m_(g,k,o)*sum_(y,x) I_(c,y,x) phi(y-sampleY)*phi(x-sampleX), phi(t)=max(0,1-|t|); gradI is interpolation adjoint scatter, gradOffset derivatives ofshape weights, gradMask contraction ofsampleswithupstreamcolumns.",
+      "mapping": "CUDA.@cuda512threads/sourceceilgrid/0shared; sourcegridstride loops andCUDA.@atomic Float32image-gradient scatter; ownframeworkdeviceAPI.",
+      "layout": "Guardedrow-majorFloat32image/offset/mask/columns/gradarrays; columnsupstreambecomesforwardcolumns afterthirdstage, prefixpreservesactualoldgradientcolumns;16guards777eachedge.",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32_bilinear_derivatives_atomic_add"
+        ],
+        "indices": [
+          "int32_geometry",
+          "mixed_int32_int64_Juliaindexexpressions"
+        ],
+        "artifact_encoding": "float64exactencoding",
+        "independent_oracle": "PythonFloat64shape-function/adjoint,72smoothFDcontrols; dyadicfixtureoutputsF32representable"
+      },
+      "memory": "Globalgathers/atomicgradscatter; no authoredsharedmemory/localtiles.",
+      "synchronization": [
+        "Float32atomicadd",
+        "perbatchwholedevicepre/postROIcompletion"
+      ],
+      "atomic_operations": [
+        "framework_float32_add"
+      ],
+      "resource_geometry": {
+        "threads": 512,
+        "blocks": "ceil(source_n/512)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [
+        "CUDAglobalindex",
+        "CUDA.@atomic_float32"
+      ],
+      "library_boundary": "NoTensor/GEMM/autogradlibraryinsideprimaryROI. Upstreamgradientcolumns CPUgeneratedoutsideROI; fullTorchlibraryintegrationunverified.",
+      "fidelity_status": "complete_custom_source_GPU_triplet_named_B1_slice_scope",
+      "verification_scope": "native_extension_custom_backward_triplet_only",
+      "original_program_execution_verified": false,
+      "full_operator_pipeline_verified": false,
+      "custom_kernels_complete": true,
+      "configuration_id": "convolutionDeformable_full_custom_backward_triplet_4batchslices_3geometries_F32_dyadic_v1",
+      "source_evidence": [
+        {
+          "path": "src/convolutionDeformable-julia/convolutionDeformable-julia-cuda.jl/main.jl",
+          "sha256": "d2c72511e7fa44c0376f0be2f85ffa18beb512fd42e7beab9173bc94213994b5"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/main.py",
+          "sha256": "6fc1f1c4096115b6914a8628c971db2fd4a4b4876b0224a776f6b8bde7063a11"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/dcn_v2.py",
+          "sha256": "6da8443bd98d8e24c889ef3d082ef1258bb70d5b8b4f2cff04fde78a4a1ebfaf"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_cuda.cu",
+          "sha256": "9c6f87b4017d4adcea019feaa51eef3bc756c49add0df23744ed4e10c0c77630"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.cu",
+          "sha256": "0099fdd72b0294f4197faa07ddc8a376018ede387acc85fd1641f31ce73c43ea"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.h",
+          "sha256": "f1075919fa8183efe65ee0f9adc8d289745415736090ebbbaae09f1d36b143b7"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/device_common.jl",
+          "sha256": "b446ef1edc2174e53c16ed8b6670f52e7ba27c518e5eba62a8e2475fb3b4be11"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_common.jl",
+          "sha256": "a6cc04a2cd0b81ff757b727866a67098826810421ba7308ffb9d7a9f960d7d4b"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_plan.json",
+          "sha256": "b9e29ee64a3859ac01c1342a5deef358c4602733f2f9ddbb3d6b5cf9b9f7e291"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum4batch_backward_coord_col2im_im2col_customkernel_triplets_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "device_helper_definitions": 7,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CUDAjlcreates6commonGPUmathfunctions plusownatomichelper/harness; KAthenJACCinheritcommonmath andauthorownatomic/entrywrappers.",
+      "allocation_covariates": "AllworkingbufferspreallocatedoutsideROI; Juliaframeworklaunch/geometryargumentwrappers/nativehostlaunch overhead differ, allocation/resourcecountersunknown.",
+      "outside_primary_padding_boundary": "TargetpassesPW accordingtooriginaldevicekernelargument; originalnativehostlaunchbugretainedinprimarysource butequalpadding makesdifferenceinapplicable. Asymmetrictargetdual-referencecontract notcertified.",
+      "limitations": [
+        "Kernel-extension component scope only: all3sourcecustomGPUkernels/helpers in originaltimedbackwardperbatchtriplet; PythonTorchimport actuallyunavailable. FullDCN Conv2doffsetprediction/sigmoid/matmuls/autograd/weight-biasgradientintegration/fullCLI are unverified, notframeworkunsupported.",
+        "FourB1batchslices/threegeometries C4/G2 andC6/G3, K3x3 or2x3, stride/dilationvariants, named small5x7/7x9/6x8 images. Original100x64x128x128/defaultzerooffset-mask.5 regime andforwardmultibatchB>1path unmeasured. Finite-differencecontrols confinedsmoothnonintegeroffsets, notknotderivativeconvention.",
+        "UpstreamgradientcolumnsCPUW^Tgrad_output fixture outsideROI substitutesTorchlibrarysetup fornamedinputgeneration, not GPUlibraryimplementation. Completecustomtriplet survives actualrawcolumns/input-offset-maskgradients/guards capture; no fulloperatorGPU-output claim.",
+        "ActualnativeasymmetricPH1/PW0 hostlauncher passespad_h twice;60/60inputgradientvalueswrong,maxabs.5244140625. Minimalownedonehostargumentpad_w diagnostic restoresallfourfulloutputs0. PrimaryPH=PW=1or0 usesunchangedoriginalnativecode; thisoutofscopefailure/correction notpromotedinto primary.",
+        "Targetkernelmath uses declaredPW matchingoriginaldeviceargument; targethostwrapper doesnot emulateoriginalasymmetriclauncherbug. No asymmetricdual-reference/targetgenericpaddingcertificate fromequalpaddingprimary.",
+        "Nonzero dyadic\u00b1.25/\u00b1.375offsets, masks.25/.5/.75, dyadicimage/upstreamgradients makeallprimaryoracleoutputsF32representable andobservedatomicaccumulationsbitexact. ThisdoesnotcertifynondyadicFloat32roundoff/nondeterministicschedules/generalprecisionregimes.",
+        "EachROI sample sums4separate512threadcoord\u2192atomiccol2im\u2192im2coltriplet hostelapsedintervals pluswholedevicecompletion. SourceTorch usesstreamcompletion, nameddriveruseswholedevicecompletion all4; no foreignlibraryinsideROI. Allocation/H2D/capture/CPUoracle/librarysetup excluded.",
+        "JuliaNamedTuplebyvaluegeometry/indexABI andmixedInt32/Int64indexexpressions versusnativeindividualInt32args differ; GPUdata/mathFloat32. Hostlaunch/frameworkwrapper/argumentpacking/resourcecosts unprofiled. No causalfrontend orkernel-device-onlycomparison.",
+        "No profilerroofline/counters/occupancy/atomicserialization measurements. ActualatomicGPUcode+fullgradientagreement establishsemantics fornamedinputs, not performancebottleneck attribution.",
+        "Actualcontext/cache/sessioninclusiveorderedtargetusage: CUDAjlsharedmath/harness creation reusedKAthenJACC. Native/Torch/environment/asymdiagnostics/verification/annotation separate; cached/reasoningsubsets, noexclusivebilling/historicalrecovery."
+      ]
+    },
+    "ka": {
+      "status": "verified_named_custom_kernel_extension_only",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "classification_scope": "Timed3customsourceGPUkerneltriplet only; fullTorchpipelineunverified/unknown.",
+      "algorithm": "Columns_(c,k,o)=m_(g,k,o)*sum_(y,x) I_(c,y,x) phi(y-sampleY)*phi(x-sampleX), phi(t)=max(0,1-|t|); gradI is interpolation adjoint scatter, gradOffset derivatives ofshape weights, gradMask contraction ofsampleswithupstreamcolumns.",
+      "mapping": "KA.@kernel/globalindex/512workgroups/sourcegridstride; portableAtomix.@atomic Float32gradientadd; KAallocate/CUDABackend. No authoredforeignCUDAdeviceAPI.",
+      "layout": "Guardedrow-majorFloat32image/offset/mask/columns/gradarrays; columnsupstreambecomesforwardcolumns afterthirdstage, prefixpreservesactualoldgradientcolumns;16guards777eachedge.",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32_bilinear_derivatives_atomic_add"
+        ],
+        "indices": [
+          "int32_geometry",
+          "mixed_int32_int64_Juliaindexexpressions"
+        ],
+        "artifact_encoding": "float64exactencoding",
+        "independent_oracle": "PythonFloat64shape-function/adjoint,72smoothFDcontrols; dyadicfixtureoutputsF32representable"
+      },
+      "memory": "Globalgathers/atomicgradscatter; no authoredsharedmemory/localtiles.",
+      "synchronization": [
+        "Float32atomicadd",
+        "perbatchwholedevicepre/postROIcompletion"
+      ],
+      "atomic_operations": [
+        "framework_float32_add"
+      ],
+      "resource_geometry": {
+        "threads": 512,
+        "blocks": "ceil(source_n/512)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "NoTensor/GEMM/autogradlibraryinsideprimaryROI. Upstreamgradientcolumns CPUgeneratedoutsideROI; fullTorchlibraryintegrationunverified.",
+      "fidelity_status": "complete_custom_source_GPU_triplet_named_B1_slice_scope",
+      "verification_scope": "native_extension_custom_backward_triplet_only",
+      "original_program_execution_verified": false,
+      "full_operator_pipeline_verified": false,
+      "custom_kernels_complete": true,
+      "configuration_id": "convolutionDeformable_full_custom_backward_triplet_4batchslices_3geometries_F32_dyadic_v1",
+      "source_evidence": [
+        {
+          "path": "src/convolutionDeformable-julia/convolutionDeformable-julia-KA/main.jl",
+          "sha256": "6110d167042f3c06563aa8fdff83469481c54cb67f39c3a1292d611ea8f5418e"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/main.py",
+          "sha256": "6fc1f1c4096115b6914a8628c971db2fd4a4b4876b0224a776f6b8bde7063a11"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/dcn_v2.py",
+          "sha256": "6da8443bd98d8e24c889ef3d082ef1258bb70d5b8b4f2cff04fde78a4a1ebfaf"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_cuda.cu",
+          "sha256": "9c6f87b4017d4adcea019feaa51eef3bc756c49add0df23744ed4e10c0c77630"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.cu",
+          "sha256": "0099fdd72b0294f4197faa07ddc8a376018ede387acc85fd1641f31ce73c43ea"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.h",
+          "sha256": "f1075919fa8183efe65ee0f9adc8d289745415736090ebbbaae09f1d36b143b7"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/device_common.jl",
+          "sha256": "b446ef1edc2174e53c16ed8b6670f52e7ba27c518e5eba62a8e2475fb3b4be11"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_common.jl",
+          "sha256": "a6cc04a2cd0b81ff757b727866a67098826810421ba7308ffb9d7a9f960d7d4b"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_plan.json",
+          "sha256": "b9e29ee64a3859ac01c1342a5deef358c4602733f2f9ddbb3d6b5cf9b9f7e291"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum4batch_backward_coord_col2im_im2col_customkernel_triplets_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "device_helper_definitions": 7,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CUDAjlcreates6commonGPUmathfunctions plusownatomichelper/harness; KAthenJACCinheritcommonmath andauthorownatomic/entrywrappers.",
+      "allocation_covariates": "AllworkingbufferspreallocatedoutsideROI; Juliaframeworklaunch/geometryargumentwrappers/nativehostlaunch overhead differ, allocation/resourcecountersunknown.",
+      "outside_primary_padding_boundary": "TargetpassesPW accordingtooriginaldevicekernelargument; originalnativehostlaunchbugretainedinprimarysource butequalpadding makesdifferenceinapplicable. Asymmetrictargetdual-referencecontract notcertified.",
+      "limitations": [
+        "Kernel-extension component scope only: all3sourcecustomGPUkernels/helpers in originaltimedbackwardperbatchtriplet; PythonTorchimport actuallyunavailable. FullDCN Conv2doffsetprediction/sigmoid/matmuls/autograd/weight-biasgradientintegration/fullCLI are unverified, notframeworkunsupported.",
+        "FourB1batchslices/threegeometries C4/G2 andC6/G3, K3x3 or2x3, stride/dilationvariants, named small5x7/7x9/6x8 images. Original100x64x128x128/defaultzerooffset-mask.5 regime andforwardmultibatchB>1path unmeasured. Finite-differencecontrols confinedsmoothnonintegeroffsets, notknotderivativeconvention.",
+        "UpstreamgradientcolumnsCPUW^Tgrad_output fixture outsideROI substitutesTorchlibrarysetup fornamedinputgeneration, not GPUlibraryimplementation. Completecustomtriplet survives actualrawcolumns/input-offset-maskgradients/guards capture; no fulloperatorGPU-output claim.",
+        "ActualnativeasymmetricPH1/PW0 hostlauncher passespad_h twice;60/60inputgradientvalueswrong,maxabs.5244140625. Minimalownedonehostargumentpad_w diagnostic restoresallfourfulloutputs0. PrimaryPH=PW=1or0 usesunchangedoriginalnativecode; thisoutofscopefailure/correction notpromotedinto primary.",
+        "Targetkernelmath uses declaredPW matchingoriginaldeviceargument; targethostwrapper doesnot emulateoriginalasymmetriclauncherbug. No asymmetricdual-reference/targetgenericpaddingcertificate fromequalpaddingprimary.",
+        "Nonzero dyadic\u00b1.25/\u00b1.375offsets, masks.25/.5/.75, dyadicimage/upstreamgradients makeallprimaryoracleoutputsF32representable andobservedatomicaccumulationsbitexact. ThisdoesnotcertifynondyadicFloat32roundoff/nondeterministicschedules/generalprecisionregimes.",
+        "EachROI sample sums4separate512threadcoord\u2192atomiccol2im\u2192im2coltriplet hostelapsedintervals pluswholedevicecompletion. SourceTorch usesstreamcompletion, nameddriveruseswholedevicecompletion all4; no foreignlibraryinsideROI. Allocation/H2D/capture/CPUoracle/librarysetup excluded.",
+        "JuliaNamedTuplebyvaluegeometry/indexABI andmixedInt32/Int64indexexpressions versusnativeindividualInt32args differ; GPUdata/mathFloat32. Hostlaunch/frameworkwrapper/argumentpacking/resourcecosts unprofiled. No causalfrontend orkernel-device-onlycomparison.",
+        "No profilerroofline/counters/occupancy/atomicserialization measurements. ActualatomicGPUcode+fullgradientagreement establishsemantics fornamedinputs, not performancebottleneck attribution.",
+        "Actualcontext/cache/sessioninclusiveorderedtargetusage: CUDAjlsharedmath/harness creation reusedKAthenJACC. Native/Torch/environment/asymdiagnostics/verification/annotation separate; cached/reasoningsubsets, noexclusivebilling/historicalrecovery."
+      ]
+    },
+    "jacc": {
+      "status": "verified_named_custom_kernel_extension_only",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "classification_scope": "Timed3customsourceGPUkerneltriplet only; fullTorchpipelineunverified/unknown.",
+      "algorithm": "Columns_(c,k,o)=m_(g,k,o)*sum_(y,x) I_(c,y,x) phi(y-sampleY)*phi(x-sampleX), phi(t)=max(0,1-|t|); gradI is interpolation adjoint scatter, gradOffset derivatives ofshape weights, gradMask contraction ofsampleswithupstreamcolumns.",
+      "mapping": "JACC.array/parallel_for/paddedsourcegrid512threads/launch_specshmem0; JACC.@atomic aliasAtomix Float32image-gradientscatter, no foreignCUDAdeviceAPI.",
+      "layout": "Guardedrow-majorFloat32image/offset/mask/columns/gradarrays; columnsupstreambecomesforwardcolumns afterthirdstage, prefixpreservesactualoldgradientcolumns;16guards777eachedge.",
+      "precision": {
+        "storage": [
+          "float32"
+        ],
+        "compute": [
+          "float32_bilinear_derivatives_atomic_add"
+        ],
+        "indices": [
+          "int32_geometry",
+          "mixed_int32_int64_Juliaindexexpressions"
+        ],
+        "artifact_encoding": "float64exactencoding",
+        "independent_oracle": "PythonFloat64shape-function/adjoint,72smoothFDcontrols; dyadicfixtureoutputsF32representable"
+      },
+      "memory": "Globalgathers/atomicgradscatter; no authoredsharedmemory/localtiles.",
+      "synchronization": [
+        "Float32atomicadd",
+        "perbatchwholedevicepre/postROIcompletion"
+      ],
+      "atomic_operations": [
+        "framework_float32_add"
+      ],
+      "resource_geometry": {
+        "threads": 512,
+        "blocks": "ceil(source_n/512)",
+        "dynamic_shared_bytes": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "NoTensor/GEMM/autogradlibraryinsideprimaryROI. Upstreamgradientcolumns CPUgeneratedoutsideROI; fullTorchlibraryintegrationunverified.",
+      "fidelity_status": "complete_custom_source_GPU_triplet_named_B1_slice_scope",
+      "verification_scope": "native_extension_custom_backward_triplet_only",
+      "original_program_execution_verified": false,
+      "full_operator_pipeline_verified": false,
+      "custom_kernels_complete": true,
+      "configuration_id": "convolutionDeformable_full_custom_backward_triplet_4batchslices_3geometries_F32_dyadic_v1",
+      "source_evidence": [
+        {
+          "path": "src/convolutionDeformable-julia/convolutionDeformable-julia-JACC/main.jl",
+          "sha256": "60d7cee32be4aa6ef4a06e00b24b6f3e37cebf662e3b048b7986ec792b0020f6"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/main.py",
+          "sha256": "6fc1f1c4096115b6914a8628c971db2fd4a4b4876b0224a776f6b8bde7063a11"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/dcn_v2.py",
+          "sha256": "6da8443bd98d8e24c889ef3d082ef1258bb70d5b8b4f2cff04fde78a4a1ebfaf"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_cuda.cu",
+          "sha256": "9c6f87b4017d4adcea019feaa51eef3bc756c49add0df23744ed4e10c0c77630"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.cu",
+          "sha256": "0099fdd72b0294f4197faa07ddc8a376018ede387acc85fd1641f31ce73c43ea"
+        },
+        {
+          "path": "src/convolutionDeformable-cuda/src/cuda/dcn_v2_im2col_cuda.h",
+          "sha256": "f1075919fa8183efe65ee0f9adc8d289745415736090ebbbaae09f1d36b143b7"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/device_common.jl",
+          "sha256": "b446ef1edc2174e53c16ed8b6670f52e7ba27c518e5eba62a8e2475fb3b4be11"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_common.jl",
+          "sha256": "a6cc04a2cd0b81ff757b727866a67098826810421ba7308ffb9d7a9f960d7d4b"
+        },
+        {
+          "path": "src/convolutionDeformable-julia/study_plan.json",
+          "sha256": "b9e29ee64a3859ac01c1342a5deef358c4602733f2f9ddbb3d6b5cf9b9f7e291"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "sum4batch_backward_coord_col2im_im2col_customkernel_triplets_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 3,
+      "device_helper_definitions": 7,
+      "untimed_observer_definitions": 0,
+      "shared_device_helper_lineage": "CUDAjlcreates6commonGPUmathfunctions plusownatomichelper/harness; KAthenJACCinheritcommonmath andauthorownatomic/entrywrappers.",
+      "allocation_covariates": "AllworkingbufferspreallocatedoutsideROI; Juliaframeworklaunch/geometryargumentwrappers/nativehostlaunch overhead differ, allocation/resourcecountersunknown.",
+      "outside_primary_padding_boundary": "TargetpassesPW accordingtooriginaldevicekernelargument; originalnativehostlaunchbugretainedinprimarysource butequalpadding makesdifferenceinapplicable. Asymmetrictargetdual-referencecontract notcertified.",
+      "limitations": [
+        "Kernel-extension component scope only: all3sourcecustomGPUkernels/helpers in originaltimedbackwardperbatchtriplet; PythonTorchimport actuallyunavailable. FullDCN Conv2doffsetprediction/sigmoid/matmuls/autograd/weight-biasgradientintegration/fullCLI are unverified, notframeworkunsupported.",
+        "FourB1batchslices/threegeometries C4/G2 andC6/G3, K3x3 or2x3, stride/dilationvariants, named small5x7/7x9/6x8 images. Original100x64x128x128/defaultzerooffset-mask.5 regime andforwardmultibatchB>1path unmeasured. Finite-differencecontrols confinedsmoothnonintegeroffsets, notknotderivativeconvention.",
+        "UpstreamgradientcolumnsCPUW^Tgrad_output fixture outsideROI substitutesTorchlibrarysetup fornamedinputgeneration, not GPUlibraryimplementation. Completecustomtriplet survives actualrawcolumns/input-offset-maskgradients/guards capture; no fulloperatorGPU-output claim.",
+        "ActualnativeasymmetricPH1/PW0 hostlauncher passespad_h twice;60/60inputgradientvalueswrong,maxabs.5244140625. Minimalownedonehostargumentpad_w diagnostic restoresallfourfulloutputs0. PrimaryPH=PW=1or0 usesunchangedoriginalnativecode; thisoutofscopefailure/correction notpromotedinto primary.",
+        "Targetkernelmath uses declaredPW matchingoriginaldeviceargument; targethostwrapper doesnot emulateoriginalasymmetriclauncherbug. No asymmetricdual-reference/targetgenericpaddingcertificate fromequalpaddingprimary.",
+        "Nonzero dyadic\u00b1.25/\u00b1.375offsets, masks.25/.5/.75, dyadicimage/upstreamgradients makeallprimaryoracleoutputsF32representable andobservedatomicaccumulationsbitexact. ThisdoesnotcertifynondyadicFloat32roundoff/nondeterministicschedules/generalprecisionregimes.",
+        "EachROI sample sums4separate512threadcoord\u2192atomiccol2im\u2192im2coltriplet hostelapsedintervals pluswholedevicecompletion. SourceTorch usesstreamcompletion, nameddriveruseswholedevicecompletion all4; no foreignlibraryinsideROI. Allocation/H2D/capture/CPUoracle/librarysetup excluded.",
+        "JuliaNamedTuplebyvaluegeometry/indexABI andmixedInt32/Int64indexexpressions versusnativeindividualInt32args differ; GPUdata/mathFloat32. Hostlaunch/frameworkwrapper/argumentpacking/resourcecosts unprofiled. No causalfrontend orkernel-device-onlycomparison.",
+        "No profilerroofline/counters/occupancy/atomicserialization measurements. ActualatomicGPUcode+fullgradientagreement establishsemantics fornamedinputs, not performancebottleneck attribution.",
+        "Actualcontext/cache/sessioninclusiveorderedtargetusage: CUDAjlsharedmath/harness creation reusedKAthenJACC. Native/Torch/environment/asymdiagnostics/verification/annotation separate; cached/reasoningsubsets, noexclusivebilling/historicalrecovery."
+      ]
+    }
+  }
+}
