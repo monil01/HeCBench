@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Full final-field scalar/operator oracle with conservative per-element FP32 bounds."""
+from pathlib import Path
+import numpy as np,json,struct,hashlib
+from buffer_layout import SPECS
+P=Path(__file__).resolve().parent;schema=json.load(open(P/'params_schema.json'))['fields'];vals=struct.unpack('<'+''.join('i'if f['type']=='int32'else'f'for f in schema),(P/'common.bin').read_bytes());c={f['name']:v for f,v in zip(schema,vals)}
+read=lambda name,dtype='<f4':np.fromfile(P/name,dtype=dtype)
+frames=[read(f'frame{k}_f32.bin').reshape((c['frame_rows'],c['frame_cols']),order='F').astype(np.float64)for k in [0,10]];baseR=np.r_[read('endoRow_i32.bin','<i4'),read('epiRow_i32.bin','<i4')];baseC=np.r_[read('endoCol_i32.bin','<i4'),read('epiCol_i32.bin','<i4')];trackR=read('oracle_track_rows_i32.bin','<i4').reshape((51,11),order='F');trackC=read('oracle_track_cols_i32.bin','<i4').reshape((51,11),order='F');ncc=np.memmap(P/'oracle_NCC_f64.bin',dtype='<f8',mode='r').reshape((131,131,51,10),order='F')[:,:,:,9];cov=np.memmap(P/'oracle_covariance_f64.bin',dtype='<f8',mode='r').reshape((131,131,51,10),order='F')[:,:,:,9];box=np.memmap(P/'oracle_boxsum_f64.bin',dtype='<f8',mode='r').reshape((131,131,51,10),order='F')[:,:,:,9];covbudget=np.memmap(P/'oracle_covariance_budget_f64.bin',dtype='<f8',mode='r').reshape((131,131,51,10),order='F')[:,:,:,9];finalT=read('oracle_template_final_f64.bin','<f8').reshape((51,51,51),order='F')
+values={name:[]for name,t,n in SPECS};budgets={name:[]for name,t,n in SPECS};u=2.0**-24;gamma183=183*u/(1-183*u);gamma51=51*u/(1-51*u)
+def add(name,a,e=0):
+ a=np.asarray(a,dtype=np.float64);values[name].append(a.ravel(order='F'));budgets[name].append(np.broadcast_to(e,a.shape).astype(np.float64).ravel(order='F'))
+for p,(row,col)in enumerate(zip(baseR,baseC)):
+ t=frames[0][row-26:row+25,col-26:col+25];x=frames[1][row-41:row+40,col-41:col+40];sq=x*x;pad=np.pad(sq,((51,51),(51,51)));v=pad.cumsum(axis=0);ve=gamma183*np.abs(v);bottom=v[51:182,:];top=v[:131,:];de=ve[51:182,:]+ve[:131,:]+u*(np.abs(bottom)+np.abs(top)+ve[51:182,:]+ve[:131,:]);diff=bottom-top;h=diff.cumsum(axis=1);he=(1+gamma183)*de.cumsum(axis=1)+gamma183*np.abs(diff).cumsum(axis=1)
+ add('in2',x);add('conv',cov[:,:,p],covbudget[:,:,p]);add('in2_pad_cumv',v,ve);add('in2_pad_cumv_sel',bottom,ve[51:182,:]);add('in2_sub_cumh',h,he);add('in2_sub_cumh_sel',h[:,51:182],he[:,51:182]);add('in2_sub2',box[:,:,p]);add('in2_sqr',sq);add('in2_sqr_sub2',ncc[:,:,p],1e-3);add('in_sqr',t*t)
+ centerR=65+trackR[p,9]-row;centerC=65+trackC[p,9]-col;spike=np.zeros((131,131));spike[centerR,centerC]=1;support=np.zeros((131,131));support[max(0,centerR-5):min(131,centerR+5),max(0,centerC-5):min(131,centerC+5)]=1;mask=ncc[:,:,p]*support;add('tMask',spike);add('mask_conv',mask,1e-3*support);add('in_mod_temp',t[::-1,::-1]);add('in_partial_sum',t.sum(axis=0));add('in_sqr_partial_sum',(t*t).sum(axis=1));sv=t.sum();ss=(t*t).sum();add('in_final_sum',np.array([sv]));add('in_sqr_final_sum',np.array([ss]),gamma51*ss)
+ mean=sv/2601;var=ss/2601-mean*mean;ev=gamma51*ss/2601+u*(3*ss/2601+5*mean*mean);den=np.sqrt(2600*var);lo=np.sqrt(2600*max(0,var-ev));hi=np.sqrt(2600*(var+ev));add('denomT',np.array([den]),max(den-lo,hi-den)+5*u*abs(den))
+ # These arrays are validated by the separate exact argmax operator on the actualNCCmask.
+ av=np.abs(mask);mv=av.max(axis=0);idx=av.argmax(axis=0)+np.arange(131)*131;idx[mv==0]=0;add('par_max_val',mv,-2);add('par_max_coo',idx,-1)
+for name,data in [('endoRow',trackR[:20,10]),('endoCol',trackC[:20,10]),('epiRow',trackR[20:,10]),('epiCol',trackC[20:,10]),('endoT',finalT[:,:,:20]),('epiT',finalT[:,:,20:])]:add(name,data,3e-5 if name.endswith('T')else 0)
+for name,data in [('tEndoRowLoc',trackR[:20]),('tEndoColLoc',trackC[:20]),('tEpiRowLoc',trackR[20:]),('tEpiColLoc',trackC[20:])]:
+ a=np.zeros((104,data.shape[0]));a[:11,:]=data.T;add(name,a)
+refs=[];errs=[];layout=[];offset=0
+for name,typ,expr in SPECS:
+ a=np.concatenate(values[name]);e=np.concatenate(budgets[name]);size=eval(expr,{},c);assert len(a)==size,(name,len(a),size);guard=1234567 if typ=='int32'else-2047.5;a=np.r_[[guard]*16,a,[guard]*16];e=np.r_[[0]*16,e,[0]*16];refs.append(a);errs.append(e);layout.append({'name':name,'type':typ,'size':size,'guard':guard,'guarded_count':size+32,'final_offset':offset,'oracle_kind':'actual_map_exact_argmax'if name in ['par_max_val','par_max_coo']else'independent_array_or_scalar_operator','source_size_expression':expr});offset+=len(a)
+(P/'oracle_final_f64.bin').write_bytes(np.concatenate(refs).astype('<f8').tobytes());(P/'oracle_final_budget_f64.bin').write_bytes(np.concatenate(errs).astype('<f8').tobytes());(P/'buffer_layout.json').write_text(json.dumps({'benchmark':'heartwall','buffers':layout,'final_values':offset,'gamma183':gamma183,'gamma51':gamma51,'guard_exact':True,'negative_budget_markers':{'-1':'Dependentexactargmaxcoordinatesfromactualmaskarray','-2':'Dependentexactargmaxvaluesfromactualmaskarray'}},indent=2)+'\n');print('FINALORACLE',offset,'F64values',offset*8,'bytes each')
