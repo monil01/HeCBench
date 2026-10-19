@@ -1,0 +1,9 @@
+# SAD: full RGB valid-window intensity template distance
+
+The complete three-stageGPUoperator is implemented in CUDA.jl, KA and JACC: normalizedRGBL1distance (notMSE), cappedminimum20, exactoccurrencecount. OriginalrealDVC630x459image/116x116template plusfourcontrolledimages, source16x16/256geometry, fullarrays/actualinputs/readonly/guards, exactindependentintegeroracle. All20savedfull2210131Int32wordarrays arebyteidentical.
+
+Native source hasan independently demonstrated coordinate/compactrowstride defect:175786realfieldentrieswrong despite matchingreportedminimum/count. Syntheticbottomright andtwomatchcontrols exposescalarwronganswers. Explicitowned2semanticlinecompute-bounds/stridefix qualify native reference; originalsource/fullcaptures retained. Min/countbody unchanged. Originalconditionalcountbarriers actualsynccheck0errors; KA/JACC fullworkgroupbarrier placement ismappingadaptation, notnativebugclaim. All3targetfirstprogram/JITpass. JACCsharedpreloads/barriers and nativepragma4/ordinaryJulia loops areexplicitcompilerperformancecovariates.
+
+See contract.json/scientific_witness.json/saved_output_audit.json/paper_observations.md forsource, scientificscope, exactfive-trialtimes, candidates/tokens andRQlinks. Everytrialchecked, onlytime1discarded/meanlast4. R3percase source3kernelROImeans sumfivecases; min/count initialization/allocation/copies/oracle outside. OriginalfullR100CLIrealassets actuallyrunsasdiagnostic, notaccepted5trialperformance oruntouchedscientificcertificate.
+
+Use fetch_original_assets.py then generate_assets.py/build_contract.py (NumPyrequired) toregenerateexactdata; fullrealCPUoracle can take minutes. prepare_cold_config.py preparesfresh4modelconfig. Largearrays/rawdiagnostics staylocal withrecipes/hashprovenance, notOverleaf orimmutablev1artifact. Targettokensactualcontext-inclusive, shared/overlapwindows separate; unknownhistoricalactuals neverreplacedbyforecasts.
