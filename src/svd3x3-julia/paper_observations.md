@@ -1,0 +1,116 @@
+# SVD scientific and translation observations
+
+## RQ1
+
+```json
+{
+  "agreement_kind": "property_equivalence_not_identical_raw_values",
+  "raw_output_identity_claim": false,
+  "full_raw_state_audit": "raw_state_audit_20trials.json",
+  "audit_sha256": "74b087eb030847f16168e06acdb676589587249542833259401443840f0dbe60",
+  "primary_factorizations": 1403580,
+  "raw_files": 480,
+  "budgets_unchanged": true,
+  "original_full1M_failed_reconstruction_matrices": 1300,
+  "original_maximum_normalized_reconstruction": 0.009216337204435087,
+  "eight_sweep_full1M_failed_matrices": 0,
+  "eight_sweep_full1M_maximum_normalized_reconstruction": 1.655915308392778e-06,
+  "limits": [
+    "Corrected-native accuracy intervention changes only fixed Jacobi sweep count4to8 at unchanged predeclared property budgets; original algorithm intentionally approximate, failure of selected budget is not proof of unintended source bug.",
+    "No untouched-native aggregate eligibility; source -use_fast_math vs ordinary typed Float32 Julia rounding/contraction is an explicit covariate.",
+    "Full1M original-SoA native diagnostic independently checked; primary targets six named batches through65537, not a full1M target certificate or arbitrary dynamic-range/conditioning guarantee.",
+    "Signed singular vectors/subspaces are nonunique; property equivalence with allrawU/S/V retained, not identical raw values.",
+    "CPU LAPACK reference and independent tensor checker outside timedROI; no GPU SVD-library delegation.",
+    "Sequential helper/context reuse limits causal framework effort comparison; no profiler counters or measured roofline position."
+  ]
+}
+```
+
+## RQ2
+
+```json
+{
+  "CUDAjl_program_evaluations": 5,
+  "CUDAjl_device_JIT_processes": 3,
+  "CUDAjl_device_source_bundles": 3,
+  "CUDAjl_numerical_bodies": 2,
+  "formal_algorithm_designs": 1,
+  "CUDAjl_generator_invocations": 3,
+  "KA_program_and_JIT": 1,
+  "JACC_program_and_JIT": 1,
+  "actual_backend_compiler_invocations": null,
+  "operator_witness": "candidate_history/cuda_jl_device02_C_xor_as_Julia_power/operator_witness.log",
+  "failure_events": ".porting-state/portable_julia/failure_events_300/svd3x3.jsonl"
+}
+```
+
+## RQ3
+
+```json
+{
+  "protocol": "five_trials_last_four_v1",
+  "mean_last_four_seconds": {
+    "cuda": 6.482196428571429e-05,
+    "cuda_jl": 9.76905e-05,
+    "ka": 0.00010446485714285715,
+    "jacc": 0.00011304782142857145
+  },
+  "all_five_seconds": {
+    "cuda": [
+      6.425628571428572e-05,
+      6.477771428571428e-05,
+      6.480485714285715e-05,
+      6.497471428571428e-05,
+      6.473057142857142e-05
+    ],
+    "cuda_jl": [
+      9.45137142857143e-05,
+      9.669085714285715e-05,
+      9.79422857142857e-05,
+      9.786228571428572e-05,
+      9.826657142857144e-05
+    ],
+    "ka": [
+      0.00010081228571428571,
+      0.00010369514285714287,
+      0.00010520242857142858,
+      0.00010495800000000002,
+      0.00010400385714285715
+    ],
+    "jacc": [
+      0.00010732528571428572,
+      0.00012585828571428574,
+      0.00010844385714285716,
+      0.00010801385714285716,
+      0.00010987528571428573
+    ]
+  },
+  "scope": "sum_six_source_R7_regionmeans_contextcompletion",
+  "native_reference_repaired": true,
+  "exclude_untouched_native_aggregates": true
+}
+```
+
+## RQ4
+
+```json
+{
+  "observed_mechanism": "Actual C XOR copied as Julia exponentiation compiles but fails complete tensor checks; explicit xor restores fixedbudget fidelity.",
+  "hypotheses_not_measured": [
+    "private_scalar_register_pressure",
+    "launch_overhead",
+    "compiler_contraction_policy",
+    "roofline_position"
+  ]
+}
+```
+
+## RQ5
+
+```json
+{
+  "all_three": "framework_device_kernel",
+  "unsupported_features_observed": [],
+  "scope": "Own-framework genuineGPUmappings with sharedtypedhelper; originalaccuracytradeoff/fidelitybudget and nonuniquevectors affect target selection independently of compilation."
+}
+```
