@@ -1,6 +1,6 @@
 # Perlin: full-width strips, stream invariance and quantized accuracy
 
-RQ1: all20complete fields satisfy the predeclared one-grayscale-level Float64 physical oracle and dual-reference comparison. Actual inputs/guards/read-only tables/parameters, alpha255, RGB equality, lattice127 and same-model stream-count identity are exact. No unquantized-field, spectral-quality or originalfullheight certificate.
+RQ1: all20complete fields satisfy the predeclared one-grayscale-level Float64 physical oracle and dual-reference comparison. Actual inputs/guards/read-only tables/parameters, alpha255, RGB equality, lattice127 and same-model stream-count identity are exact. All20saved artifacts additionally have the same SHA256 in this experiment; that observed byte identity does not change the predeclared tolerant physical-oracle contract. No unquantized-field, spectral-quality or originalfullheight certificate.
 
 RQ2: one authored GPU candidate/JIT process per framework. CUDAjl has two whole-program evaluations because the initial environment path failed at CUDA import. All actual phase counters are separate from shared readiness/coordination and remain descriptive context-inclusive usage. Root interleaving is excluded from clean token forecasting.
 
