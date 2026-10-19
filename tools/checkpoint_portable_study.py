@@ -10,7 +10,7 @@ from study_evidence import effective_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--complete', action='store_true')
-parser.add_argument('--population',type=int,choices=[300,447],default=447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
+parser.add_argument('--population',type=int,choices=[300,447,537],default=447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 state = root / '.porting-state'

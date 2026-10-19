@@ -165,7 +165,7 @@ def normalize_traits(t):
 
 def main():
     global OUT
-    ap=argparse.ArgumentParser();ap.add_argument('--population',type=int,choices=[300,447],default=300);args=ap.parse_args();population=args.population
+    ap=argparse.ArgumentParser();ap.add_argument('--population',type=int,choices=[300,447,537],default=300);args=ap.parse_args();population=args.population
     OUT=ROOT/f'ontology/studies/julia_abstractions_{population}'
     now=datetime.datetime.now(datetime.timezone.utc).isoformat()
     event_reviews=load_event_reviews()

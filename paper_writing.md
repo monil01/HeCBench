@@ -1,5 +1,14 @@
 # PASC27 Julia translation paper — writing instructions
 
+## Active full-CUDA-suite expansion — 19 October 2026
+
+The user reopened coverage expansion to all537 nativeCUDA names (1611Julia implementation slots). The447-name study and releasev1.0.0 remain frozen;90 new names require native readiness, CUDA.jl, KA thenJACC, verification, timings and separate source commits. Current worklists: `.porting-state/portable_julia/batch_537.json` and per-owner `batch_537_<owner>.json`. Use three disjoint workers with the established owners and root coordination. Joint checkpoints use population537 and active_work_537; never mark completed447 as newly rerun.
+
+Capture prospective usage boundaries for every benchmark and every target/phase (native readiness, CUDAjl, KA, JACC, verification, annotation/paper). Record source-stream/model/context reuse, cached-input/output/reasoning counters, marker lag, attempts and failures. Keep shared/overlapping windows separate. Historical missing tokens remain null in observed fields. Derived estimates must use a separately named estimated field, a documented calibration population and model, held-out uncertainty/error and applicability limits; never replace measured counters or infer total effort from saved-source length alone. New calibration data can support later estimates; sparse or confounded calibration must remain insufficient rather than fabricate costs.
+
+All five trials must be checked; discard only the first timing and average the last four. Require identical declared actual inputs, dual GPU references and independent checks; retain exact device-input readbacks, complete outputs, compiler diagnostics, reference qualifications and source/environment hashes. GPU6 only under the established shared lock. Update per-model scientific/implementation ontology, failure events, effort logs, research observations, RQ links and paper tables together. Keep new537 extension observations separate from the frozen447 analyses until verified and explicitly included. Raw research remains outside Overleaf; preserve the published immutable release.
+
+
 ## Paper revision and artifact checkpoint — 19 October 2026
 
 The six review actions are complete: the 447-name study is primary; performance is stratified by reviewed implementation classes and available timing/size evidence; RQ5 has a capability/selection matrix; new timing, acceptance-gate and opposite-order translation controls are preserved separately; a public reproducibility release accompanies the compact paper repository; and the manuscript is organized around quantitative RQ answers and scientific cases.
