@@ -26,35 +26,37 @@ def main():
     inventory=read(out/'readiness_inventory.json',{});complexity={r['benchmark']:r for r in inventory.get('rows',[])}
     for b in cohort['new_benchmarks']:
       for model in MODELS:
-        f=state/'usage_boundaries_300'/b/(model+'_translation.jsonl');ev=[json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
         adjud_path=state/'calibration_537'/b/(model+'.json');adj=read(adjud_path,{})
-        for e in [e for e in ev if e.get('boundary') in ['end','abandon']]:
-          u=e.get('delta_usage');llm=e.get('observed_model_metadata',{});llm=llm.get('model') if llm else None;llm=llm or adj.get('model_identifier')
-          effort_setting=(e.get('observed_model_metadata') or {}).get('reasoning_effort') or adj.get('reasoning_effort')
-          reasons=[]
-          declared_b=adj.get('benchmark',adj.get('benchmark_id'))
-          declared_m=adj.get('implementation_model',adj.get('model'))
-          if declared_b is not None and declared_b!=b:reasons.append('adjudication_benchmark_identity_mismatch')
-          if declared_m is not None and declared_m!=model:reasons.append('adjudication_implementation_identity_mismatch')
-          if adj.get('end_event_id') is not None and adj['end_event_id']!=e['event_id']:reasons.append('adjudication_end_event_mismatch')
-          if adj.get('begin_event_id') is not None and adj['begin_event_id']!=e.get('begin_event_id'):reasons.append('adjudication_begin_event_mismatch')
-          if adj.get('observed_usage') is not None and any(adj['observed_usage'].get(k)!=((u or {}).get(k)) for k in COUNTERS):reasons.append('adjudication_actual_usage_mismatch')
-          declared_path=next((adj[k] for k in ('usage_boundary_file','boundary_file','boundary_path') if adj.get(k)),None)
-          if declared_path and (ROOT/declared_path).resolve()!=f.resolve():reasons.append('adjudication_window_path_mismatch')
-          if e['boundary']!='end' or not u or any(u.get(k) is None or u[k]<0 for k in COUNTERS):reasons.append('incomplete_or_invalid_actual_window')
-          if len([x for x in ev if x.get('boundary')=='end'])!=1 or any(x.get('boundary')=='abandon' for x in ev):reasons.append('multiple_or_partial_phase_segments_require_review')
-          if adj.get('eligible_for_expected_workflow_cost_estimation') is not True:reasons.append('calibration_eligibility_not_adjudicated_true')
-          if adj.get('cross_benchmark_work_inside_window') is not False:reasons.append('cross_benchmark_interleaving_unknown_or_present')
-          if not isinstance(adj.get('contains_shared_harness_creation'),bool):reasons.append('shared_harness_stratum_unknown')
-          if not llm:reasons.append('configured_model_identifier_unknown')
-          if not effort_setting:reasons.append('configured_reasoning_effort_unknown')
-          if u and all(isinstance(u.get(k),(int,float)) for k in COUNTERS):
-            if u['total_tokens']!=u['input_tokens']+u['output_tokens'] or u['cached_input_tokens']>u['input_tokens'] or u['reasoning_output_tokens']>u['output_tokens']:reasons.append('counter_relationship_invalid')
-          traits=read(state/'traits'/(b+'.json'),{})
-          features={'native_source_lines':complexity.get(b,{}).get('code_lines'),'native_source_files':complexity.get(b,{}).get('code_files'),'scientific_family':(traits.get('scientific_intent') or {}).get('primary_family'),'candidate_attempts':adj.get('candidate_attempts'),'implementation_class':(traits.get('implementation_class') or {}).get(model) if isinstance(traits.get('implementation_class'),dict) else traits.get('implementation_class')}
-          row={'features':features,'benchmark':b,'implementation_model':model,'configured_llm':llm,'reasoning_effort_setting':effort_setting,'agent':e.get('agent'),'event_id':e['event_id'],'source_identity_sha256':e.get('source_identity_sha256'),'usage':u,'marker_lag_seconds':e.get('marker_lag_seconds'),'observed_model_metadata':e.get('observed_model_metadata'),'shared_harness_creation':adj.get('contains_shared_harness_creation'),'context_reuse':adj.get('context_reuse'),'scope':e.get('scope'),'phase_adjudication':adj,'eligibility':not reasons,'exclusion_reasons':reasons,'window_path':str(f.relative_to(ROOT)),'window_file_sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'adjudication_sha256':hashlib.sha256(adjud_path.read_bytes()).hexdigest() if adjud_path.exists() else None}
-          observations.append(row)
-          if row['eligibility']:groups[(model,llm,effort_setting,row['shared_harness_creation'])].append(row)
+        # Both names denote prospective target translation plus feedback; keep actual paths/events.
+        for f in [state/'usage_boundaries_300'/b/(model+suffix) for suffix in ('_translation.jsonl','_translation_feedback.jsonl')]:
+          ev=[json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
+          for e in [e for e in ev if e.get('boundary') in ['end','abandon']]:
+            u=e.get('delta_usage');llm=e.get('observed_model_metadata',{});llm=llm.get('model') if llm else None;llm=llm or adj.get('model_identifier')
+            effort_setting=(e.get('observed_model_metadata') or {}).get('reasoning_effort') or adj.get('reasoning_effort')
+            reasons=[]
+            declared_b=adj.get('benchmark',adj.get('benchmark_id'))
+            declared_m=adj.get('implementation_model',adj.get('model'))
+            if declared_b is not None and declared_b!=b:reasons.append('adjudication_benchmark_identity_mismatch')
+            if declared_m is not None and declared_m!=model:reasons.append('adjudication_implementation_identity_mismatch')
+            if adj.get('end_event_id') is not None and adj['end_event_id']!=e['event_id']:reasons.append('adjudication_end_event_mismatch')
+            if adj.get('begin_event_id') is not None and adj['begin_event_id']!=e.get('begin_event_id'):reasons.append('adjudication_begin_event_mismatch')
+            if adj.get('observed_usage') is not None and any(adj['observed_usage'].get(k)!=((u or {}).get(k)) for k in COUNTERS):reasons.append('adjudication_actual_usage_mismatch')
+            declared_path=next((adj[k] for k in ('usage_boundary_file','boundary_file','boundary_path') if adj.get(k)),None)
+            if declared_path and (ROOT/declared_path).resolve()!=f.resolve():reasons.append('adjudication_window_path_mismatch')
+            if e['boundary']!='end' or not u or any(u.get(k) is None or u[k]<0 for k in COUNTERS):reasons.append('incomplete_or_invalid_actual_window')
+            if len([x for x in ev if x.get('boundary')=='end'])!=1 or any(x.get('boundary')=='abandon' for x in ev):reasons.append('multiple_or_partial_phase_segments_require_review')
+            if adj.get('eligible_for_expected_workflow_cost_estimation') is not True:reasons.append('calibration_eligibility_not_adjudicated_true')
+            if adj.get('cross_benchmark_work_inside_window') is not False:reasons.append('cross_benchmark_interleaving_unknown_or_present')
+            if not isinstance(adj.get('contains_shared_harness_creation'),bool):reasons.append('shared_harness_stratum_unknown')
+            if not llm:reasons.append('configured_model_identifier_unknown')
+            if not effort_setting:reasons.append('configured_reasoning_effort_unknown')
+            if u and all(isinstance(u.get(k),(int,float)) for k in COUNTERS):
+              if u['total_tokens']!=u['input_tokens']+u['output_tokens'] or u['cached_input_tokens']>u['input_tokens'] or u['reasoning_output_tokens']>u['output_tokens']:reasons.append('counter_relationship_invalid')
+            traits=read(state/'traits'/(b+'.json'),{})
+            features={'native_source_lines':complexity.get(b,{}).get('code_lines'),'native_source_files':complexity.get(b,{}).get('code_files'),'scientific_family':(traits.get('scientific_intent') or {}).get('primary_family'),'candidate_attempts':adj.get('candidate_attempts'),'implementation_class':(traits.get('implementation_class') or {}).get(model) if isinstance(traits.get('implementation_class'),dict) else traits.get('implementation_class')}
+            row={'features':features,'benchmark':b,'implementation_model':model,'configured_llm':llm,'reasoning_effort_setting':effort_setting,'agent':e.get('agent'),'event_id':e['event_id'],'source_identity_sha256':e.get('source_identity_sha256'),'usage':u,'marker_lag_seconds':e.get('marker_lag_seconds'),'observed_model_metadata':e.get('observed_model_metadata'),'shared_harness_creation':adj.get('contains_shared_harness_creation'),'context_reuse':adj.get('context_reuse'),'scope':e.get('scope'),'phase_adjudication':adj,'eligibility':not reasons,'exclusion_reasons':reasons,'window_path':str(f.relative_to(ROOT)),'window_file_sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'adjudication_sha256':hashlib.sha256(adjud_path.read_bytes()).hexdigest() if adjud_path.exists() else None}
+            observations.append(row)
+            if row['eligibility']:groups[(model,llm,effort_setting,row['shared_harness_creation'])].append(row)
     fits=[]
     for (model,llm,effort_setting,harness),rows in groups.items():
       distinct=len({r['benchmark'] for r in rows});fit={'implementation_model':model,'configured_llm':llm,'reasoning_effort_setting':effort_setting,'contains_shared_harness_creation':harness,'distinct_benchmarks':distinct,'agents':sorted({r['agent'] for r in rows}),'status':'insufficient_calibration','observed_benchmarks':sorted({r['benchmark'] for r in rows})}

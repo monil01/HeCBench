@@ -34,6 +34,9 @@ Current-workflow forecasts are published separately in `2026-PASC-Hecbench-Julia
 
 ## Prospective expansion evidence and paper integration
 
+Prospective target windows may be named `translation` or `translation_feedback`. The token calibration exporter reads both actual filenames and validates the declared benchmark/model, boundary path, event IDs and observed counters before eligibility. Preserve original events and exclude native/paper windows; do not copy or rename a window to make calibration discover it. A native approximation failing a selected scientific budget is an accuracy observation, not proof of an unintended source defect. Record any accuracy intervention, such as increasing a fixed iteration count, as a qualified algorithm change with original failures and unchanged/revised budgets explicit; exclude it from untouched-native comparisons.
+
+
 The current expansion dataset is regenerated with `tools/export_full_suite_expansion.py`; its compact publication snapshot is `2026-PASC-Hecbench-Julia-paper/data/prospective_extension.json`, with a separate manuscript section `sections/11_prospective_extension.tex`. Run token calibration before that export. Keep the frozen 447-name primary tables and release unchanged. The live 537-name ontology export and joint checkpoint retain pending outcomes. Update `active_work_537.json` with exact next actions and open meters, then use the newest joint checkpoint to resume.
 
 Record complete-program candidates, frontend evaluations and actual device-JIT processes as distinct units. Preserve failed source and diagnostics even when no successful trial row exists. New verifier versions additionally retain generated `.bin` files on process or evidence-parse failure, excluding unchanged runtime input assets; these are untyped diagnostic files, never accepted numerical evidence or timing samples. Missing historical failure artifacts stay explicitly missing.
