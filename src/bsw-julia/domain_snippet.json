@@ -1,0 +1,369 @@
+{
+  "benchmark": "bsw",
+  "scientific_intent": {
+    "review_status": "source_audited",
+    "primary_family": "graph_irregular",
+    "primary_domain": "protein_sequence_local_alignment",
+    "secondary_domains": [
+      "bioinformatics",
+      "wavefront_dynamic_programming"
+    ],
+    "scientific_task": "Batched protein pair local alignment scores and both start/end coordinates under BLOSUM62 substitution scores and affine gap penalties.",
+    "mathematical_operation": "H_ij=max(0,H_(i-1,j-1)+s(a_i,b_j),E_ij,F_ij); E_ij=max(E_(i,j-1)-1,H_(i,j-1)-6), F analog. Forwardlocalmax/endpoints then reverseprefixDP findsstarts withsource tie ordering.",
+    "discretization_or_topology": "Two-dimensional alignment dependency DAG per pairedproteinstring; sourceonecooperativethreadblock perpair, anti-diagonal execution, notphysicalmesh.",
+    "invariants": [
+      "All65optimal scores andfourcoordinates exactfullmatrixDP/source-tiecontrol; prefixreverseoptimum equalsforwardoptimum.",
+      "Actualdeviceinput/tables/offsets/hostfeedback exact, inputbuffersreadonly afterpacking andallguards exact.",
+      "Positivefixture scores, validbegin/endbounds; safeInt16maxscore<=11*128=1408."
+    ],
+    "accuracy_requirements": [
+      "Exactintegerfullvalues, atol0/rtol0; all20primaryartifacts bitidentical.",
+      "Supplementaluntimedswappedorientationall4full23167valuesexactindependentDP, no diagnosticperformancepromotion."
+    ],
+    "precision_sensitivity": "SignedInt16DPscore/gap arithmetic; currentlengthscoresboundedbelowoverflow. JuliaInt32shuffletransport withexplicitInt16truncation matches native shortpromotion/narrowing; indexedshufflelanestranslatedto1based.",
+    "input_size_regimes": "65pairedstrings/maxref160/query128/forwardandreverseglobal128threads,780dynamicbytes; individualshorterlengths vary andwarp boundaries exercised.",
+    "community_use_case": "Protein local sequencealignment buildingblock; syntheticstrings validate scoring/positionsemantics, not biologicaldataset/applicationalignmentquality.",
+    "broad_family_note": "Canonicalgraph_irregular broadfamily follows alignmentdependencyDAG, as existingNeedleman-Wunsch; precise scientificdomain remainsbioinformatics.",
+    "provenance": [
+      {
+        "path": "src/bsw-cuda/kernel.cu",
+        "sha256": "5e8811ec259fc7589fdeb7a6538fbd66f2d61b16e277edd32a59d886f1ab1692"
+      },
+      {
+        "path": "src/bsw-cuda/driver.cu",
+        "sha256": "418dd3014e89ad567a5feb03191cfd8346ee75bcfb06dd070db19dbe709bf1cb"
+      },
+      {
+        "path": "src/bsw-cuda/main.cu",
+        "sha256": "5e3e592dcd3f032e36682282ec048b4558256e609b52616577849b26e36b151c"
+      },
+      {
+        "path": "src/bsw-julia/device_components.jl",
+        "sha256": "3cb905ca9b5ec5c2689c9f31050bfc630007bc18f508e8534a907a2dc7001c31"
+      },
+      {
+        "path": "src/bsw-julia/study_common.jl",
+        "sha256": "cd5b05b5c65057b70469cffda70d0d8675a1afd40fa9d91edb482130c8bf0ba2"
+      },
+      {
+        "path": "src/bsw-julia/study_plan.json",
+        "sha256": "eb5cb60a28018413f769e26f405035cf29adb8d21fe8111d36bf4076ca595864"
+      }
+    ],
+    "uncertainty": "No originalDVCregressiondataset, tracebackalignmentpath/biologicalapplicationaccuracy or crossplatformvalidation."
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "Originaltwo-pass anti-diagonal BLOSUM62affinegapDP, register3diagonalstates/sharedwarpboundaryspills/warpindexedreduction, hostforwardendpointsfeedbackselectsreverseblocksize.",
+      "mapping": "CUDA.@cuda explicit65blocks/128threads/780dynamicbytes, ownCUDA.jlwarp/shared/barrierAPI.",
+      "layout": "PackedASCIIUInt8sequences, UInt32cumulativeoffsets, Int16BLOSUM62/encodingtables/DPscore/output;16guardvalues eachbufferend.",
+      "precision": {
+        "storage": [
+          "uint8_sequence",
+          "uint32_offsets",
+          "int16_scores_tables_outputs"
+        ],
+        "compute": [
+          "int16_DP",
+          "int32_indices_shuffle_transport"
+        ],
+        "host_geometry": "integer",
+        "artifact_encoding": "int32 exactvalueencoding",
+        "independent_oracle": "Pythonunboundedinteger fullrow-major affinegapDP; no antidiagonalGPUtranscription"
+      },
+      "memory": "Source3recentdiagonalregisterstates; shared3x1024Int16spill+6x32Int16warpreduction/boundary+576+91Int16tables;780dynamicInt8validitystorage bytes. Actualcompiledpadding/resourcecountersunknown.",
+      "synchronization": [
+        "allthread_barrier_betweenantidiagonals",
+        "warpballot_shuffle",
+        "forwardendD2H_hostdependent_reversegeometry",
+        "wholedevice_completion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "blocks": 65,
+        "threads_forward": 128,
+        "threads_reverse": 128,
+        "dynamic_shared_bytes": 780,
+        "static_shared_declared_elements": "Int16:3*1024+6*32+576+91; compilerpaddingunknown",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CUDA runtime/deviceAPI only; no vendoralignment/mathlibrary.",
+      "fidelity_status": "sourcekernel_complete_namedfullhostpipeline",
+      "configuration_id": "bsw_BLOSUM62_65positive_pairs_full2pass_hostfeedback_Int16_hostprefixpack_v2",
+      "source_evidence": [
+        {
+          "path": "src/bsw-julia/bsw-julia-cuda.jl/main.jl",
+          "sha256": "313d4452969a5ca1189ad85d31e80d11f54830dd6e9333d3df26002536774c9f"
+        },
+        {
+          "path": "src/bsw-cuda/kernel.cu",
+          "sha256": "5e8811ec259fc7589fdeb7a6538fbd66f2d61b16e277edd32a59d886f1ab1692"
+        },
+        {
+          "path": "src/bsw-cuda/driver.cu",
+          "sha256": "418dd3014e89ad567a5feb03191cfd8346ee75bcfb06dd070db19dbe709bf1cb"
+        },
+        {
+          "path": "src/bsw-cuda/main.cu",
+          "sha256": "5e3e592dcd3f032e36682282ec048b4558256e609b52616577849b26e36b151c"
+        },
+        {
+          "path": "src/bsw-julia/device_components.jl",
+          "sha256": "3cb905ca9b5ec5c2689c9f31050bfc630007bc18f508e8534a907a2dc7001c31"
+        },
+        {
+          "path": "src/bsw-julia/study_common.jl",
+          "sha256": "cd5b05b5c65057b70469cffda70d0d8675a1afd40fa9d91edb482130c8bf0ba2"
+        },
+        {
+          "path": "src/bsw-julia/study_plan.json",
+          "sha256": "eb5cb60a28018413f769e26f405035cf29adb8d21fe8111d36bf4076ca595864"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "named_source_its1_hostpacking_H2D_forward_host_end_feedback_reverse_D2H",
+      "program_candidates": 2,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 1,
+      "frontend_repairs": 1,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 1,
+      "untimed_observer_definitions": 0,
+      "device_helper_functions": 3,
+      "supplemental_validation_processes": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase; inheritedKAthenJACC, ownentrypointsseparatelycompiled.",
+      "allocation_covariates": "C++std::vector<string>deepcopies versusJuliaVector<String>immutableelementreferencecopies; alloffsetreconstruction/bytepackingactualinsideROI; language/frameworklaunchallocationsunmeasured.",
+      "limitations": [
+        "Named65positive synthetic proteinpairs/maxref160/maxquery128, sourceits1. OriginalDVCprotein regressiondataset absent; >20000batching, multilineFASTA, empty/zero-score pairs, >1024thread/Int16overflow regimes unmeasured.",
+        "Source hostquerybuffer uses maxContig ratherthan maxRead; primarymaxref>=maxquery is bounds-safe. No arbitrary originalCLI or unsafehostgeometry certification.",
+        "OriginalsourceGPUkernelbody unchanged; ownednameddriver instruments guarded buffers/fullcaptures/warmup/fivetrials, excludesdiagnosticprintf andretainsallrelevantpacking/prefix/transfer/feedback stages. Nativeintegrationadapted/excludeuntouched-nativeaggregates; no mathematicalnativekernelrepair.",
+        "Wholepipeline hybrid_host_control: actualforwardendreadback computesreversegeometry. GPUcomponentCUDAjlownframework;KA/JACCexplicitCUDAwarpballot/shuffle/shared/barriercomponents plusKAexplicitCUDAhostlaunchadapter. No crossbackendportablekernelclaim.",
+        "PinnedKACUDAcall lacksdynamicshmemkeyword; KA-generatedobj.f/context islaunchedthroughCUDA.@cuda with780bytes. Thisisversion-scopedbackendextension, notproofKAunsupported.",
+        "NativeC++deepsequencevectorcopies versusJuliaimmutableStringvectorcopies, languagepacking/allocation/launchwrappers andpageabletransferwrappers differ. Fullpipelineelapsedperformance, not kernel-only/frontendcausalranking; actualallocationcounts/counters unknown.",
+        "Source sharedsamevalueinitialization andwarp-masks retained; formalCUDAmemorymodel/racefreedom notproved by observednumericagreement.",
+        "Finalsurvivingscores/fourcoordinates/guards andactualinputimages/forwardhostfeedbackcaptured, notalloverwrittenregister/DPintermediates. IndependentfullmatrixDP is oracleonly, not replacementGPUalgorithm.",
+        "PrimaryorientationA>=B; supplementaluntimedall4swappedorientationcaptures exerciseA<B withsameunchangeddevicebodies. Supplementaltimes excluded, onevalidationprocess/model countedseparately.",
+        "IntegerInt16DP, notfloatingpointrooflinework. Vendorresourcecounters/actualstaticpadding/registers/occupancy andcausalbottlenecks unmeasured.",
+        "Context/cache/sessioninclusiveactualusagewindows withorderedCUDAjlhelperreuse; sharedreadiness/verification/annotation separate, noexclusivebilling/historicaltokenrecovery orindependentsynthesiscomparison."
+      ]
+    },
+    "ka": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "hybrid_device_intrinsics",
+      "algorithm": "Originaltwo-pass anti-diagonal BLOSUM62affinegapDP, register3diagonalstates/sharedwarpboundaryspills/warpindexedreduction, hostforwardendpointsfeedbackselectsreverseblocksize.",
+      "mapping": "KA.@kernel/KA.allocate; CUDA-backendobj.f/context explicitCUDA.@cuda dynamicmemorylaunch, CUDAdevicehelpers; declaredhybrid.",
+      "layout": "PackedASCIIUInt8sequences, UInt32cumulativeoffsets, Int16BLOSUM62/encodingtables/DPscore/output;16guardvalues eachbufferend.",
+      "precision": {
+        "storage": [
+          "uint8_sequence",
+          "uint32_offsets",
+          "int16_scores_tables_outputs"
+        ],
+        "compute": [
+          "int16_DP",
+          "int32_indices_shuffle_transport"
+        ],
+        "host_geometry": "integer",
+        "artifact_encoding": "int32 exactvalueencoding",
+        "independent_oracle": "Pythonunboundedinteger fullrow-major affinegapDP; no antidiagonalGPUtranscription"
+      },
+      "memory": "Source3recentdiagonalregisterstates; shared3x1024Int16spill+6x32Int16warpreduction/boundary+576+91Int16tables;780dynamicInt8validitystorage bytes. Actualcompiledpadding/resourcecountersunknown.",
+      "synchronization": [
+        "allthread_barrier_betweenantidiagonals",
+        "warpballot_shuffle",
+        "forwardendD2H_hostdependent_reversegeometry",
+        "wholedevice_completion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "blocks": 65,
+        "threads_forward": 128,
+        "threads_reverse": 128,
+        "dynamic_shared_bytes": 780,
+        "static_shared_declared_elements": "Int16:3*1024+6*32+576+91; compilerpaddingunknown",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [
+        "CUDA.vote_ballot_sync",
+        "CUDA.shfl_sync/shfl_down_sync",
+        "CUDA.sync_threads",
+        "CUDA.CuStaticSharedArray/CuDynamicSharedArray",
+        "CUDA.threadIdx/blockIdx/blockDim"
+      ],
+      "library_boundary": "CUDA runtime/deviceAPI only; no vendoralignment/mathlibrary.",
+      "fidelity_status": "sourcekernel_complete_namedfullhostpipeline",
+      "configuration_id": "bsw_BLOSUM62_65positive_pairs_full2pass_hostfeedback_Int16_hostprefixpack_v2",
+      "source_evidence": [
+        {
+          "path": "src/bsw-julia/bsw-julia-KA/main.jl",
+          "sha256": "34851291de1ee20b6fa17c02c5bd75b9b393521242b689d961af6d67db085dd3"
+        },
+        {
+          "path": "src/bsw-cuda/kernel.cu",
+          "sha256": "5e8811ec259fc7589fdeb7a6538fbd66f2d61b16e277edd32a59d886f1ab1692"
+        },
+        {
+          "path": "src/bsw-cuda/driver.cu",
+          "sha256": "418dd3014e89ad567a5feb03191cfd8346ee75bcfb06dd070db19dbe709bf1cb"
+        },
+        {
+          "path": "src/bsw-cuda/main.cu",
+          "sha256": "5e3e592dcd3f032e36682282ec048b4558256e609b52616577849b26e36b151c"
+        },
+        {
+          "path": "src/bsw-julia/device_components.jl",
+          "sha256": "3cb905ca9b5ec5c2689c9f31050bfc630007bc18f508e8534a907a2dc7001c31"
+        },
+        {
+          "path": "src/bsw-julia/study_common.jl",
+          "sha256": "cd5b05b5c65057b70469cffda70d0d8675a1afd40fa9d91edb482130c8bf0ba2"
+        },
+        {
+          "path": "src/bsw-julia/study_plan.json",
+          "sha256": "eb5cb60a28018413f769e26f405035cf29adb8d21fe8111d36bf4076ca595864"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "named_source_its1_hostpacking_H2D_forward_host_end_feedback_reverse_D2H",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "frontend_repairs": 0,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 1,
+      "untimed_observer_definitions": 0,
+      "device_helper_functions": 3,
+      "supplemental_validation_processes": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase; inheritedKAthenJACC, ownentrypointsseparatelycompiled.",
+      "allocation_covariates": "C++std::vector<string>deepcopies versusJuliaVector<String>immutableelementreferencecopies; alloffsetreconstruction/bytepackingactualinsideROI; language/frameworklaunchallocationsunmeasured.",
+      "limitations": [
+        "Named65positive synthetic proteinpairs/maxref160/maxquery128, sourceits1. OriginalDVCprotein regressiondataset absent; >20000batching, multilineFASTA, empty/zero-score pairs, >1024thread/Int16overflow regimes unmeasured.",
+        "Source hostquerybuffer uses maxContig ratherthan maxRead; primarymaxref>=maxquery is bounds-safe. No arbitrary originalCLI or unsafehostgeometry certification.",
+        "OriginalsourceGPUkernelbody unchanged; ownednameddriver instruments guarded buffers/fullcaptures/warmup/fivetrials, excludesdiagnosticprintf andretainsallrelevantpacking/prefix/transfer/feedback stages. Nativeintegrationadapted/excludeuntouched-nativeaggregates; no mathematicalnativekernelrepair.",
+        "Wholepipeline hybrid_host_control: actualforwardendreadback computesreversegeometry. GPUcomponentCUDAjlownframework;KA/JACCexplicitCUDAwarpballot/shuffle/shared/barriercomponents plusKAexplicitCUDAhostlaunchadapter. No crossbackendportablekernelclaim.",
+        "PinnedKACUDAcall lacksdynamicshmemkeyword; KA-generatedobj.f/context islaunchedthroughCUDA.@cuda with780bytes. Thisisversion-scopedbackendextension, notproofKAunsupported.",
+        "NativeC++deepsequencevectorcopies versusJuliaimmutableStringvectorcopies, languagepacking/allocation/launchwrappers andpageabletransferwrappers differ. Fullpipelineelapsedperformance, not kernel-only/frontendcausalranking; actualallocationcounts/counters unknown.",
+        "Source sharedsamevalueinitialization andwarp-masks retained; formalCUDAmemorymodel/racefreedom notproved by observednumericagreement.",
+        "Finalsurvivingscores/fourcoordinates/guards andactualinputimages/forwardhostfeedbackcaptured, notalloverwrittenregister/DPintermediates. IndependentfullmatrixDP is oracleonly, not replacementGPUalgorithm.",
+        "PrimaryorientationA>=B; supplementaluntimedall4swappedorientationcaptures exerciseA<B withsameunchangeddevicebodies. Supplementaltimes excluded, onevalidationprocess/model countedseparately.",
+        "IntegerInt16DP, notfloatingpointrooflinework. Vendorresourcecounters/actualstaticpadding/registers/occupancy andcausalbottlenecks unmeasured.",
+        "Context/cache/sessioninclusiveactualusagewindows withorderedCUDAjlhelperreuse; sharedreadiness/verification/annotation separate, noexclusivebilling/historicaltokenrecovery orindependentsynthesiscomparison."
+      ]
+    },
+    "jacc": {
+      "status": "verified_named_native_integration_adapted",
+      "implementation_class": "hybrid_host_control",
+      "device_component_class": "hybrid_device_intrinsics",
+      "algorithm": "Originaltwo-pass anti-diagonal BLOSUM62affinegapDP, register3diagonalstates/sharedwarpboundaryspills/warpindexedreduction, hostforwardendpointsfeedbackselectsreverseblocksize.",
+      "mapping": "JACC.parallel_for exact65*128/launch_spec blocks65,threads128,shmem_size780,syncfalse; JACC.array; CUDAdevicehelpers declaredhybrid.",
+      "layout": "PackedASCIIUInt8sequences, UInt32cumulativeoffsets, Int16BLOSUM62/encodingtables/DPscore/output;16guardvalues eachbufferend.",
+      "precision": {
+        "storage": [
+          "uint8_sequence",
+          "uint32_offsets",
+          "int16_scores_tables_outputs"
+        ],
+        "compute": [
+          "int16_DP",
+          "int32_indices_shuffle_transport"
+        ],
+        "host_geometry": "integer",
+        "artifact_encoding": "int32 exactvalueencoding",
+        "independent_oracle": "Pythonunboundedinteger fullrow-major affinegapDP; no antidiagonalGPUtranscription"
+      },
+      "memory": "Source3recentdiagonalregisterstates; shared3x1024Int16spill+6x32Int16warpreduction/boundary+576+91Int16tables;780dynamicInt8validitystorage bytes. Actualcompiledpadding/resourcecountersunknown.",
+      "synchronization": [
+        "allthread_barrier_betweenantidiagonals",
+        "warpballot_shuffle",
+        "forwardendD2H_hostdependent_reversegeometry",
+        "wholedevice_completion"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "blocks": 65,
+        "threads_forward": 128,
+        "threads_reverse": 128,
+        "dynamic_shared_bytes": 780,
+        "static_shared_declared_elements": "Int16:3*1024+6*32+576+91; compilerpaddingunknown",
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [
+        "CUDA.vote_ballot_sync",
+        "CUDA.shfl_sync/shfl_down_sync",
+        "CUDA.sync_threads",
+        "CUDA.CuStaticSharedArray/CuDynamicSharedArray",
+        "CUDA.threadIdx/blockIdx/blockDim"
+      ],
+      "library_boundary": "CUDA runtime/deviceAPI only; no vendoralignment/mathlibrary.",
+      "fidelity_status": "sourcekernel_complete_namedfullhostpipeline",
+      "configuration_id": "bsw_BLOSUM62_65positive_pairs_full2pass_hostfeedback_Int16_hostprefixpack_v2",
+      "source_evidence": [
+        {
+          "path": "src/bsw-julia/bsw-julia-JACC/main.jl",
+          "sha256": "8a37b319a721c1ee1a3a4d5cec8e500f2882ff6ec09b9e95a5e4685690a0b715"
+        },
+        {
+          "path": "src/bsw-cuda/kernel.cu",
+          "sha256": "5e8811ec259fc7589fdeb7a6538fbd66f2d61b16e277edd32a59d886f1ab1692"
+        },
+        {
+          "path": "src/bsw-cuda/driver.cu",
+          "sha256": "418dd3014e89ad567a5feb03191cfd8346ee75bcfb06dd070db19dbe709bf1cb"
+        },
+        {
+          "path": "src/bsw-cuda/main.cu",
+          "sha256": "5e3e592dcd3f032e36682282ec048b4558256e609b52616577849b26e36b151c"
+        },
+        {
+          "path": "src/bsw-julia/device_components.jl",
+          "sha256": "3cb905ca9b5ec5c2689c9f31050bfc630007bc18f508e8534a907a2dc7001c31"
+        },
+        {
+          "path": "src/bsw-julia/study_common.jl",
+          "sha256": "cd5b05b5c65057b70469cffda70d0d8675a1afd40fa9d91edb482130c8bf0ba2"
+        },
+        {
+          "path": "src/bsw-julia/study_plan.json",
+          "sha256": "eb5cb60a28018413f769e26f405035cf29adb8d21fe8111d36bf4076ca595864"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "named_source_its1_hostpacking_H2D_forward_host_end_feedback_reverse_D2H",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "frontend_repairs": 0,
+      "device_compiler_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 1,
+      "untimed_observer_definitions": 0,
+      "device_helper_functions": 3,
+      "supplemental_validation_processes": 1,
+      "shared_device_helper_lineage": "AuthoredCUDAjlphase; inheritedKAthenJACC, ownentrypointsseparatelycompiled.",
+      "allocation_covariates": "C++std::vector<string>deepcopies versusJuliaVector<String>immutableelementreferencecopies; alloffsetreconstruction/bytepackingactualinsideROI; language/frameworklaunchallocationsunmeasured.",
+      "limitations": [
+        "Named65positive synthetic proteinpairs/maxref160/maxquery128, sourceits1. OriginalDVCprotein regressiondataset absent; >20000batching, multilineFASTA, empty/zero-score pairs, >1024thread/Int16overflow regimes unmeasured.",
+        "Source hostquerybuffer uses maxContig ratherthan maxRead; primarymaxref>=maxquery is bounds-safe. No arbitrary originalCLI or unsafehostgeometry certification.",
+        "OriginalsourceGPUkernelbody unchanged; ownednameddriver instruments guarded buffers/fullcaptures/warmup/fivetrials, excludesdiagnosticprintf andretainsallrelevantpacking/prefix/transfer/feedback stages. Nativeintegrationadapted/excludeuntouched-nativeaggregates; no mathematicalnativekernelrepair.",
+        "Wholepipeline hybrid_host_control: actualforwardendreadback computesreversegeometry. GPUcomponentCUDAjlownframework;KA/JACCexplicitCUDAwarpballot/shuffle/shared/barriercomponents plusKAexplicitCUDAhostlaunchadapter. No crossbackendportablekernelclaim.",
+        "PinnedKACUDAcall lacksdynamicshmemkeyword; KA-generatedobj.f/context islaunchedthroughCUDA.@cuda with780bytes. Thisisversion-scopedbackendextension, notproofKAunsupported.",
+        "NativeC++deepsequencevectorcopies versusJuliaimmutableStringvectorcopies, languagepacking/allocation/launchwrappers andpageabletransferwrappers differ. Fullpipelineelapsedperformance, not kernel-only/frontendcausalranking; actualallocationcounts/counters unknown.",
+        "Source sharedsamevalueinitialization andwarp-masks retained; formalCUDAmemorymodel/racefreedom notproved by observednumericagreement.",
+        "Finalsurvivingscores/fourcoordinates/guards andactualinputimages/forwardhostfeedbackcaptured, notalloverwrittenregister/DPintermediates. IndependentfullmatrixDP is oracleonly, not replacementGPUalgorithm.",
+        "PrimaryorientationA>=B; supplementaluntimedall4swappedorientationcaptures exerciseA<B withsameunchangeddevicebodies. Supplementaltimes excluded, onevalidationprocess/model countedseparately.",
+        "IntegerInt16DP, notfloatingpointrooflinework. Vendorresourcecounters/actualstaticpadding/registers/occupancy andcausalbottlenecks unmeasured.",
+        "Context/cache/sessioninclusiveactualusagewindows withorderedCUDAjlhelperreuse; sharedreadiness/verification/annotation separate, noexclusivebilling/historicaltokenrecovery orindependentsynthesiscomparison."
+      ]
+    }
+  }
+}
