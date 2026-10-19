@@ -1,0 +1,365 @@
+{
+  "benchmark": "ced",
+  "review_status": "source_audited",
+  "primary_family": "signal_image",
+  "primary_domain": "image_edge_detection",
+  "secondary_domains": [
+    "computer_vision",
+    "stencil_filtering"
+  ],
+  "scientific_task": "Compute a Canny-derived image edge map using per-term-truncated Gaussian smoothing, Sobel magnitude/orientation, non-maximum suppression and source point threshold.",
+  "mathematical_operation": "G_rc=sum_ij floor(w_ij I_(r+i,c+j)); Sobel sx/sy, clipped floor(hypotf), atan2f quantized0/45/90/135, strictdirectionalmaximum, edge=255[NMS>=40].",
+  "discretization_or_topology": "Regular2D row-major byteimage; shared18x18 tile for16x16 interior and3x3neighbors; explicitzero intermediate/angleborder and preservedworkingimageborder.",
+  "invariants": [
+    "All20primaryactual-input/output/guard artifacts bitidentical; independentcoordinatefull-state checks pass0 observederror.",
+    "All4actualuntimedstage traces669680values exactlyindependentCPU; sourceGaussian,angle,edges/guards exact; predeclaredSobel/NMSmagnitude CPUbudget1 notused.",
+    "Actual27coefficientvalues before/after unchanged; JACCauxiliarytemplateinitial/finalzero andall324sharedtilepositionsuniquelyoverwritten."
+  ],
+  "accuracy_requirements": [
+    "StrictdualGPUatol0/rtol0full803730Int32encodedvalues, prefix401922exactbytes.",
+    "IndependentCPUbudget exactGauss/theta/edges/guards, abs1Sobel/NMSmagnitudes predeclaredbeforeGPU. Observedall0."
+  ],
+  "precision_sensitivity": "UInt8storage; Int32sharedtile/index/accumulator; Float32Gaussian products convertedperterm, exactintegerSobelgradientfloataccumulation, nativehypotf/atan2f viaCUDAbackendBase overrides. Minimumfixtureanglethresholdmargin6.151199340820312e-5.",
+  "input_size_regimes": "12residentframes, sizes34x50/66x98/130x194 eachconstant/quadrantstep/slantedstripes/modulartexture; interiors exact16tilemultiples.",
+  "community_use_case": "Imageedge-map primitive; namedmathematicalcomponent fidelity does not establish imageclassification/segmentation/applicationaccuracy.",
+  "provenance": [
+    {
+      "path": "src/ced-cuda/main.cu",
+      "sha256": "e486e114179a933269b48e4a3a8d4848ef6fae80c977706cf781e656e206b6be"
+    },
+    {
+      "path": "src/ced-julia/source_kernels.inc",
+      "sha256": "0ee9bb98650864a4811391b6ca41554a70e5a8b5577d52e211015bb8ce122b75"
+    },
+    {
+      "path": "src/ced-julia/device_common.jl",
+      "sha256": "930c9d9bf0f9bd0bb1d4df8dd412f4e077a576224dadda984bea5826cd958541"
+    },
+    {
+      "path": "src/ced-julia/study_common.jl",
+      "sha256": "d16d938aabb78b02ab289d2de0758903d53e930cf8c9aa2f683372cd34de3fcb"
+    },
+    {
+      "path": "src/ced-julia/study_plan.json",
+      "sha256": "a11715f115e4f6485426124f4d0b1e911f3a87ad7478cfbb37b2a6a5b358f51f"
+    }
+  ],
+  "uncertainty": "DVCimage data/CPU-GPUpartition/completeoriginalCLI andfullcanonicalCannyquality unverified. Source method variants preserved and disclosed.",
+  "implementation_traits": {
+    "cuda_jl": {
+      "status": "verified_conditional_reference_named_pipeline",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "G_rc=sum_ij floor(w_ij I_(r+i,c+j)); Sobel sx/sy, clipped floor(hypotf), atan2f quantized0/45/90/135, strictdirectionalmaximum, edge=255[NMS>=40].",
+      "mapping": "CUDA.@cuda explicitlogical2D16x16 blocks, CuDynamicSharedArray(Int32,324), CUDA.sync_threads; ownframeworkdeviceAPI.",
+      "layout": "Guardedrow-majorUInt8threebuffers/frame;16byte211guards eachend. CoeffFloat32Gaussian9/Int32Sobel18; artifactInt32exactencoding.",
+      "precision": {
+        "storage": [
+          "uint8",
+          "int32_shared",
+          "float32_coefficients"
+        ],
+        "compute": [
+          "int32",
+          "float32"
+        ],
+        "independent_oracle": "Pythonunboundedintegercoordinatefilters/doublehypot+atan2roundedFloat32; source-specific conversion/order andstagebudgets."
+      },
+      "memory": "DynamicInt32tile1296B forG/S/N; H0; coefficientglobalreadonlybycode.",
+      "synchronization": [
+        "workgroupbarrier_aftercompletehalo",
+        "wholedevicecompletionwarmup/pre/postROI"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": [
+          16,
+          16
+        ],
+        "interior_shapes": [
+          [
+            32,
+            48
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            128,
+            192
+          ]
+        ],
+        "shared_bytes_G_S_N": 1296,
+        "shared_allocation": "dynamic",
+        "shared_bytes_H": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [
+        "CUDAthread/blockindex",
+        "CUDAsharedmemory/barrier"
+      ],
+      "library_boundary": "CompilerprovidedFloat32libdevicehypotf/atan2f viaordinaryBaseGPUoverrides; noopaqueimage/vendorpipeline library.",
+      "fidelity_status": "complete4sourceGPUstages_named_conditional_borders",
+      "configuration_id": "ced_defined_zero_borders_12resident_frames_full4GPUstages_3sizes_aligned_H0_v2",
+      "source_evidence": [
+        {
+          "path": "src/ced-julia/ced-julia-cuda.jl/main.jl",
+          "sha256": "9495a79e60123f7cf30a675a399144789c88100db5b089b8f630bca58601994b"
+        },
+        {
+          "path": "src/ced-cuda/main.cu",
+          "sha256": "e486e114179a933269b48e4a3a8d4848ef6fae80c977706cf781e656e206b6be"
+        },
+        {
+          "path": "src/ced-julia/source_kernels.inc",
+          "sha256": "0ee9bb98650864a4811391b6ca41554a70e5a8b5577d52e211015bb8ce122b75"
+        },
+        {
+          "path": "src/ced-julia/device_common.jl",
+          "sha256": "930c9d9bf0f9bd0bb1d4df8dd412f4e077a576224dadda984bea5826cd958541"
+        },
+        {
+          "path": "src/ced-julia/study_common.jl",
+          "sha256": "d16d938aabb78b02ab289d2de0758903d53e930cf8c9aa2f683372cd34de3fcb"
+        },
+        {
+          "path": "src/ced-julia/study_plan.json",
+          "sha256": "a11715f115e4f6485426124f4d0b1e911f3a87ad7478cfbb37b2a6a5b358f51f"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident12frames_48source_kernel_launches_whole_device_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 0,
+      "supplemental_untimed_pipeline_executions": 1,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase, inheritedKAthenJACC; independententrypoints/compilerchecks.",
+      "limitations": [
+        "Conditional zero-defined intermediate/angle borders repair actual source uninitialized reads; original parser byte-target fscanf heap overrun concretely witnessed. Original dataset CLI remains uncertified; no untouched-native aggregate.",
+        "Named12residentframes/3sizes34x50,66x98,130x194/fourpatternsfixed48launch ROI; original hostthread/partition/transfers/IO excluded. CPU/mixed/dynamicpartition/full DVCframes unmeasured.",
+        "Source Gaussian truncates each Float32 product into Int32 accumulator; source finalstage is point threshold40, not connectivity hysteresis. Preserved as method choices, not automatically scientific defects. No full canonical Canny/application-quality certificate.",
+        "Native __constant__ coefficient symbols versus Julia global GPU read-only-by-code arrays; all27 sourceparameter values/bits readbackbefore/after exact. Memory/ABI mapping differs.",
+        "Original native H reserves1296unused dynamicbytes; prospectively selected all4 H0. Original H1296baseline retained and accidental duplicate excluded independentofspeed. Resource/integration adaptation, not a mandatory generic KA/JACC policy.",
+        "KA static1296B local tile versus CUDAjl/native/JACC dynamic1296B. JACCshared(template) adds324zero loads/stores and preloadsynchronization per tiledblock; full324values overwritten beforemath, actual648initial/finalzero values verified. Backendresource/wrapper covariates remain.",
+        "Hot resident workingbuffers401808B, smallimages. No measured devicecounters/roofline/occupancy or causalfrontendbottleneck claim. Actualnativefunctionattributes only, not performanceprofiling.",
+        "Fullsurvivingbuffers andguards afterall5 ROI trials; completeactualperstage traces fromoneadditionaluntimedpipeline/model afterprimarytimings. No claim overwrittentimedintermediates captured.",
+        "Exact crossGPUfullartifactagreement and independentcoordinateoracle acrossfinite syntheticfixtures are not proof allinputdimensions, allthresholdtie/nearnonintegercases or sourcefullapplicationquality.",
+        "Context/cache/sessioninclusive prospective tokens, ordered sharedhelper inheritance, native/readiness/verification/annotation separated; no exclusivebilling or recovered historicaltokens."
+      ]
+    },
+    "ka": {
+      "status": "verified_conditional_reference_named_pipeline",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "G_rc=sum_ij floor(w_ij I_(r+i,c+j)); Sobel sx/sy, clipped floor(hypotf), atan2f quantized0/45/90/135, strictdirectionalmaximum, edge=255[NMS>=40].",
+      "mapping": "KA.@kernel, @index(Local/Group/Global,NTuple), @localmem(Int32,324), @synchronize; CUDABackend allocate, logical16x16 workgroup. No authoredCUDAdeviceintrinsics.",
+      "layout": "Guardedrow-majorUInt8threebuffers/frame;16byte211guards eachend. CoeffFloat32Gaussian9/Int32Sobel18; artifactInt32exactencoding.",
+      "precision": {
+        "storage": [
+          "uint8",
+          "int32_shared",
+          "float32_coefficients"
+        ],
+        "compute": [
+          "int32",
+          "float32"
+        ],
+        "independent_oracle": "Pythonunboundedintegercoordinatefilters/doublehypot+atan2roundedFloat32; source-specific conversion/order andstagebudgets."
+      },
+      "memory": "StaticKAInt32localmemtile1296B forG/S/N; H0; coefficientglobalreadonlybycode. Actualcompilerpadding/resources unmeasured.",
+      "synchronization": [
+        "workgroupbarrier_aftercompletehalo",
+        "wholedevicecompletionwarmup/pre/postROI"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": [
+          16,
+          16
+        ],
+        "interior_shapes": [
+          [
+            32,
+            48
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            128,
+            192
+          ]
+        ],
+        "shared_bytes_G_S_N": 1296,
+        "shared_allocation": "static",
+        "shared_bytes_H": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CompilerprovidedFloat32libdevicehypotf/atan2f viaordinaryBaseGPUoverrides; noopaqueimage/vendorpipeline library.",
+      "fidelity_status": "complete4sourceGPUstages_named_conditional_borders",
+      "configuration_id": "ced_defined_zero_borders_12resident_frames_full4GPUstages_3sizes_aligned_H0_v2",
+      "source_evidence": [
+        {
+          "path": "src/ced-julia/ced-julia-KA/main.jl",
+          "sha256": "2c2f15c415b9a5f3e5e6cd37d66c20592be62fd7e59e2b34a66421365451c63d"
+        },
+        {
+          "path": "src/ced-cuda/main.cu",
+          "sha256": "e486e114179a933269b48e4a3a8d4848ef6fae80c977706cf781e656e206b6be"
+        },
+        {
+          "path": "src/ced-julia/source_kernels.inc",
+          "sha256": "0ee9bb98650864a4811391b6ca41554a70e5a8b5577d52e211015bb8ce122b75"
+        },
+        {
+          "path": "src/ced-julia/device_common.jl",
+          "sha256": "930c9d9bf0f9bd0bb1d4df8dd412f4e077a576224dadda984bea5826cd958541"
+        },
+        {
+          "path": "src/ced-julia/study_common.jl",
+          "sha256": "d16d938aabb78b02ab289d2de0758903d53e930cf8c9aa2f683372cd34de3fcb"
+        },
+        {
+          "path": "src/ced-julia/study_plan.json",
+          "sha256": "a11715f115e4f6485426124f4d0b1e911f3a87ad7478cfbb37b2a6a5b358f51f"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident12frames_48source_kernel_launches_whole_device_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 0,
+      "supplemental_untimed_pipeline_executions": 1,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase, inheritedKAthenJACC; independententrypoints/compilerchecks.",
+      "limitations": [
+        "Conditional zero-defined intermediate/angle borders repair actual source uninitialized reads; original parser byte-target fscanf heap overrun concretely witnessed. Original dataset CLI remains uncertified; no untouched-native aggregate.",
+        "Named12residentframes/3sizes34x50,66x98,130x194/fourpatternsfixed48launch ROI; original hostthread/partition/transfers/IO excluded. CPU/mixed/dynamicpartition/full DVCframes unmeasured.",
+        "Source Gaussian truncates each Float32 product into Int32 accumulator; source finalstage is point threshold40, not connectivity hysteresis. Preserved as method choices, not automatically scientific defects. No full canonical Canny/application-quality certificate.",
+        "Native __constant__ coefficient symbols versus Julia global GPU read-only-by-code arrays; all27 sourceparameter values/bits readbackbefore/after exact. Memory/ABI mapping differs.",
+        "Original native H reserves1296unused dynamicbytes; prospectively selected all4 H0. Original H1296baseline retained and accidental duplicate excluded independentofspeed. Resource/integration adaptation, not a mandatory generic KA/JACC policy.",
+        "KA static1296B local tile versus CUDAjl/native/JACC dynamic1296B. JACCshared(template) adds324zero loads/stores and preloadsynchronization per tiledblock; full324values overwritten beforemath, actual648initial/finalzero values verified. Backendresource/wrapper covariates remain.",
+        "Hot resident workingbuffers401808B, smallimages. No measured devicecounters/roofline/occupancy or causalfrontendbottleneck claim. Actualnativefunctionattributes only, not performanceprofiling.",
+        "Fullsurvivingbuffers andguards afterall5 ROI trials; completeactualperstage traces fromoneadditionaluntimedpipeline/model afterprimarytimings. No claim overwrittentimedintermediates captured.",
+        "Exact crossGPUfullartifactagreement and independentcoordinateoracle acrossfinite syntheticfixtures are not proof allinputdimensions, allthresholdtie/nearnonintegercases or sourcefullapplicationquality.",
+        "Context/cache/sessioninclusive prospective tokens, ordered sharedhelper inheritance, native/readiness/verification/annotation separated; no exclusivebilling or recovered historicaltokens."
+      ]
+    },
+    "jacc": {
+      "status": "verified_conditional_reference_named_pipeline",
+      "implementation_class": "framework_device_kernel",
+      "device_component_class": "framework_device_kernel",
+      "algorithm": "G_rc=sum_ij floor(w_ij I_(r+i,c+j)); Sobel sx/sy, clipped floor(hypotf), atan2f quantized0/45/90/135, strictdirectionalmaximum, edge=255[NMS>=40].",
+      "mapping": "JACC.array, parallel_for2D/globalindices, launch_spec16x16/sourcegrid, shared(templateInt32[324]), sync_workgroup; dynamic1296G/S/N,H0. No authoredCUDAdeviceintrinsics.",
+      "layout": "Guardedrow-majorUInt8threebuffers/frame;16byte211guards eachend. CoeffFloat32Gaussian9/Int32Sobel18; artifactInt32exactencoding.",
+      "precision": {
+        "storage": [
+          "uint8",
+          "int32_shared",
+          "float32_coefficients"
+        ],
+        "compute": [
+          "int32",
+          "float32"
+        ],
+        "independent_oracle": "Pythonunboundedintegercoordinatefilters/doublehypot+atan2roundedFloat32; source-specific conversion/order andstagebudgets."
+      },
+      "memory": "DynamicInt32tile1296B viaJACCshared; zero-template324preload+extra barrier beforecompleteimageoverwrite; H0; coefficientglobalreadonlybycode.",
+      "synchronization": [
+        "workgroupbarrier_aftercompletehalo",
+        "wholedevicecompletionwarmup/pre/postROI"
+      ],
+      "atomic_operations": [],
+      "resource_geometry": {
+        "threads": [
+          16,
+          16
+        ],
+        "interior_shapes": [
+          [
+            32,
+            48
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            128,
+            192
+          ]
+        ],
+        "shared_bytes_G_S_N": 1296,
+        "shared_allocation": "dynamic",
+        "shared_bytes_H": 0,
+        "register_count": null,
+        "occupancy": null
+      },
+      "backend_specific_device_components": [],
+      "library_boundary": "CompilerprovidedFloat32libdevicehypotf/atan2f viaordinaryBaseGPUoverrides; noopaqueimage/vendorpipeline library.",
+      "fidelity_status": "complete4sourceGPUstages_named_conditional_borders",
+      "configuration_id": "ced_defined_zero_borders_12resident_frames_full4GPUstages_3sizes_aligned_H0_v2",
+      "source_evidence": [
+        {
+          "path": "src/ced-julia/ced-julia-JACC/main.jl",
+          "sha256": "4c765c18fdd156a4e7c884f44be9e454da51b04f9ddc47fe2b637c0b6ddf8c1b"
+        },
+        {
+          "path": "src/ced-cuda/main.cu",
+          "sha256": "e486e114179a933269b48e4a3a8d4848ef6fae80c977706cf781e656e206b6be"
+        },
+        {
+          "path": "src/ced-julia/source_kernels.inc",
+          "sha256": "0ee9bb98650864a4811391b6ca41554a70e5a8b5577d52e211015bb8ce122b75"
+        },
+        {
+          "path": "src/ced-julia/device_common.jl",
+          "sha256": "930c9d9bf0f9bd0bb1d4df8dd412f4e077a576224dadda984bea5826cd958541"
+        },
+        {
+          "path": "src/ced-julia/study_common.jl",
+          "sha256": "d16d938aabb78b02ab289d2de0758903d53e930cf8c9aa2f683372cd34de3fcb"
+        },
+        {
+          "path": "src/ced-julia/study_plan.json",
+          "sha256": "a11715f115e4f6485426124f4d0b1e911f3a87ad7478cfbb37b2a6a5b358f51f"
+        }
+      ],
+      "source_commit": null,
+      "timing_scope": "resident12frames_48source_kernel_launches_whole_device_completion",
+      "program_candidates": 1,
+      "actual_device_jit_process_checks": 1,
+      "frontend_rejections": 0,
+      "compiler_feedback_repairs": 0,
+      "authored_device_body_candidates": 1,
+      "authored_algorithm_definitions": 4,
+      "untimed_observer_definitions": 0,
+      "supplemental_untimed_pipeline_executions": 1,
+      "shared_device_helper_lineage": "CreatedCUDAjlphase, inheritedKAthenJACC; independententrypoints/compilerchecks.",
+      "limitations": [
+        "Conditional zero-defined intermediate/angle borders repair actual source uninitialized reads; original parser byte-target fscanf heap overrun concretely witnessed. Original dataset CLI remains uncertified; no untouched-native aggregate.",
+        "Named12residentframes/3sizes34x50,66x98,130x194/fourpatternsfixed48launch ROI; original hostthread/partition/transfers/IO excluded. CPU/mixed/dynamicpartition/full DVCframes unmeasured.",
+        "Source Gaussian truncates each Float32 product into Int32 accumulator; source finalstage is point threshold40, not connectivity hysteresis. Preserved as method choices, not automatically scientific defects. No full canonical Canny/application-quality certificate.",
+        "Native __constant__ coefficient symbols versus Julia global GPU read-only-by-code arrays; all27 sourceparameter values/bits readbackbefore/after exact. Memory/ABI mapping differs.",
+        "Original native H reserves1296unused dynamicbytes; prospectively selected all4 H0. Original H1296baseline retained and accidental duplicate excluded independentofspeed. Resource/integration adaptation, not a mandatory generic KA/JACC policy.",
+        "KA static1296B local tile versus CUDAjl/native/JACC dynamic1296B. JACCshared(template) adds324zero loads/stores and preloadsynchronization per tiledblock; full324values overwritten beforemath, actual648initial/finalzero values verified. Backendresource/wrapper covariates remain.",
+        "Hot resident workingbuffers401808B, smallimages. No measured devicecounters/roofline/occupancy or causalfrontendbottleneck claim. Actualnativefunctionattributes only, not performanceprofiling.",
+        "Fullsurvivingbuffers andguards afterall5 ROI trials; completeactualperstage traces fromoneadditionaluntimedpipeline/model afterprimarytimings. No claim overwrittentimedintermediates captured.",
+        "Exact crossGPUfullartifactagreement and independentcoordinateoracle acrossfinite syntheticfixtures are not proof allinputdimensions, allthresholdtie/nearnonintegercases or sourcefullapplicationquality.",
+        "Context/cache/sessioninclusive prospective tokens, ordered sharedhelper inheritance, native/readiness/verification/annotation separated; no exclusivebilling or recovered historicaltokens."
+      ]
+    }
+  }
+}
