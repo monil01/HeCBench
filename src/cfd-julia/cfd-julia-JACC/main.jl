@@ -1,0 +1,17 @@
+using CUDA,JACC
+include(joinpath(@__DIR__,"..","euler_device.jl"))
+@inline initialize_buffer_kernel(i,d,v,n)=initialize_buffer_at(i,d,v,n)
+@inline initialize_variables_kernel(i,n,u,ff)=initialize_variables_at(i,n,u,ff)
+@inline compute_step_factor_kernel(i,n,u,a,step)=compute_step_factor_at(i,n,u,a,step)
+@inline compute_flux_kernel(i,n,nb,normals,u,ff,flux,de,mx,my,mz)=compute_flux_at(i,n,nb,normals,u,ff,flux,de,mx,my,mz)
+@inline time_step_kernel(i,stage,n,old,u,step,flux)=time_step_at(i,stage,n,old,u,step,flux)
+const small_spec=JACC.launch_spec(;threads=192,blocks=1,shmem_size=0,sync=false)
+const full_spec=JACC.launch_spec(;threads=192,blocks=506,shmem_size=0,sync=false)
+launch_spec(n)=n==192 ? small_spec : full_spec
+launch_init(n,u,ff)=(JACC.parallel_for(launch_spec(n),n,initialize_variables_kernel,n,u,ff);nothing)
+launch_zero(n,d)=(JACC.parallel_for(launch_spec(n),n,initialize_buffer_kernel,d,0f0,n);nothing)
+launch_step(n,u,a,step)=(JACC.parallel_for(launch_spec(n),n,compute_step_factor_kernel,n,u,a,step);nothing)
+launch_flux(n,nb,normal,u,ff,flux,de,mx,my,mz)=(JACC.parallel_for(launch_spec(n),n,compute_flux_kernel,n,nb,normal,u,ff,flux,de,mx,my,mz);nothing)
+launch_update(stage,n,old,u,step,flux)=(JACC.parallel_for(launch_spec(n),n,time_step_kernel,stage,n,old,u,step,flux);nothing)
+include(joinpath(@__DIR__,"..","study_common.jl"))
+main()
