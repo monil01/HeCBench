@@ -1,0 +1,7 @@
+# Multi-material observations
+
+- **RQ1:** An unchanged native CLI prints PASS despite 1,287 infinite neighborhood outputs. The checker subtracts infinities and does not reject the resulting NaN. Explicit self-neighbor exclusion is a corrected scientific reference, not untouched CUDA agreement. All 60 corrected captures pass finite full-output, actual-input, guard and independent dense-oracle checks.
+- **RQ2:** One submitted source bundle, five authored kernel definitions and three configuration process checks per target; zero target compiler/numerical repairs. Native scientific repair, reporting-field qualification and an annotation Python syntax error are separate phases. Observed token windows include context/cache and reuse.
+- **RQ3:** Five checked trials retain their individual stage times and mean2–5. Paired performance now passes for all three modes through source/hash-bound immutable timing-alias replay. All60 original rows, numerical criteria and timing samples remain unchanged; no GPU retiming or sample selection occurred.
+- **RQ4:** All three targets are framework device kernels. Source fused modes reduce density/pressure launch count, not fuse the whole pipeline; CSR versus linked lookup is preserved. Actual register/traffic measurements are absent, so no claimed bottleneck or roofline coordinate.
+- **RQ5:** All three public APIs can express this compact FP64 component without foreign CUDA device features. A 96×80 corrected fixture cannot establish production performance or physical application validity.
