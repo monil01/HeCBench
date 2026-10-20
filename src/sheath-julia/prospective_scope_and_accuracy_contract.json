@@ -1,0 +1,71 @@
+{
+  "benchmark": "sheath",
+  "predeclared_before_any_GPU_execution": true,
+  "source_model": "1D electrostaticparticleincell,100cells/dx1e-4/dt1e-11,16AMUpositiveions/electronmassnegativeelectrons,FP32CICscatter,CPUcharge/SORPoisson/electricfield,FP64leapfrogrewind/push,absorbingparticlewalls",
+  "cases": [
+    {
+      "case": 0,
+      "particles_per_species": 500000,
+      "timesteps": 1,
+      "cold_neutral_control": false,
+      "path": "src/sheath-julia/data/case0.bin",
+      "bytes": 16000012,
+      "sha256": "ffd8f5b2a261d750eb3ae7fd495f68a430b487672a73e674801d2d1129cee2da"
+    },
+    {
+      "case": 1,
+      "particles_per_species": 4099,
+      "timesteps": 25,
+      "cold_neutral_control": false,
+      "path": "src/sheath-julia/data/case1.bin",
+      "bytes": 131180,
+      "sha256": "2e4478793cc060a3817789b09b2ab6f6477678f368d4267dc09a00febc2da7a0"
+    },
+    {
+      "case": 2,
+      "particles_per_species": 257,
+      "timesteps": 1000,
+      "cold_neutral_control": true,
+      "path": "src/sheath-julia/data/case2.bin",
+      "bytes": 8236,
+      "sha256": "81d9aa6551ff60daeea0a1a8fd9d34457490ae62fc519d5103bd33d1e93d1ea3"
+    }
+  ],
+  "full_native_CLI_measured": false,
+  "scope_limits": [
+    "500k/speciescase1step retainsoriginalactualinitializedx/v andmodelparameters",
+    "4099/species25steps retainsoriginalthermalSampler/physicalparameters withnamedparticleweightscaling",
+    "257/species1000steps isexplicitcoldneutralzero-fieldpositivecontrol, notsourcehotplasma1000stepevolution",
+    "Theseorthogonalcontrols do not jointlycertify full500k\u00d71000timesteps orphysicalsheathformation."
+  ],
+  "ROI": "Sourcewholemainloopwork\u2014includingCPUcharge/SOR/field,densitytransfers,twoSCATTER/twoPUSHperstep,diagnosticsat25/sourcegridfileoutputat1000\u2014summedcases. Initialscatter/field/halfsteprewindoutsideROI. ObserverCPUchecks/capturespauseandresumetimer symmetrically; excludeuntouchedwholeCLI/timingaggregates.",
+  "validation_plan": {
+    "full_actual_inputs": "Complete meaningfulinitializedGPUpositions/velocities/aliveflags readbackbothspecies plus101fieldvalues whenused; constants/sourceparameterbytes bound. AoSdead7paddingbytesnotsemanticinput, rawparentpreserved.",
+    "all_stage_outputs": "CompletebothspeciesparticleAoSraw snapshots initial/afterrewind/aftereverypush, allactualGPUdensity101readbacks andCPUscaled/rho/phi/eftrace, fullfinaloutputs andactualguardbytes.",
+    "independent_density": "LongDoubleCICaccumulation withFP32weightquantization andcount-specificgamma_k positive-sumerrorinterval plusFloat32hostscalingrounding. Checkintegratedaliveparticleweight/chargeconservation independently.",
+    "independent_field": "LongDoubleThomasDirichletPoisson andequationresidual/fielddifference checkonactualrho, sourceSORiterations/convergenceflags explicit, noforcesuccess ifsourcefails.",
+    "independent_particles": "LongDoublescalarCICgather/rewind/push onactualpreviousparticlesandactualfield; gamma64operationerrorbounds, flagpolicy fromactualroundedpositions; allterminalwalllossandfinitevalueschecked.",
+    "numeric_dual_reference": "Completecomponentwisephysicalvalues normalizedonlybydeclaredphysicalunits, fullactualrawvalues also retained; no summaryorpropertyonlysubstitution. Exactactualinputprefixbytes, flags0/1exact under tolerance.",
+    "unit_scales": {
+      "position": 0.01,
+      "velocity": "speciesoriginalthermalvth",
+      "potential": "K*(3*11604.52)/QE",
+      "field": "potentialscale/DX",
+      "species_density": 1e+16,
+      "charge_density": "QE*1e16"
+    },
+    "predeclared_dual_normalized_atol": 0.0001,
+    "predeclared_dual_normalized_rtol": 0.0001,
+    "acceptance_qualification": "Namedcrossmodelarithmeticagreementbudget, notanalyticalglobalcoupledtrajectorybound, plasmafidelity/calibration claim ordiscretizationconvergence guarantee. Anyfailure remainsrejected; no silentboundrelaxation.",
+    "raw_output_identity_claim": false,
+    "raw_field_trace": "CompleteunscaledFloat32ni/neandFloat64rho/phi/ef101values retainedoutsideROIaftereveryfieldsolve; completeparticleAoS+all5physicalparents/rawguardbytes separately afterrewindandeachpush. Normalizedprimaryisnotliteralphysicalbyteidentity.",
+    "normalization": "Outputcomponentunitsonly; native/Juliaactualunscaledvalues retainedphysicaltrace, no semanticvaluesdropped. Boolalive/solverflags mustexactlymatch, actualprimaryinputprefixunscaledfullDoublebits."
+  },
+  "attempts_so_far": {
+    "GPU_processes": 0,
+    "target_source_candidates": 0,
+    "CPU_fixture_builds": 1,
+    "CPU_fixture_generator_processes": 1
+  },
+  "unsupported_features": []
+}
