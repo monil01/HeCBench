@@ -1,0 +1,11 @@
+# SS observations
+
+RQ1: all20fullartifacts/1400physicalfiles pass exact counts/source-finalpositions, actualinputreadbacks/guards/inactivebytes/losslessrawbijection/fullhosttail replay. Originalfulltext/R20000 plus6namedcontrols, notallpossibleinputs. NativeGPUfileunchanged; conditionalinactive-outputinitializationandhostmemmove excludeduntouchedbaseline. Textmatching, notphysicalmodelvalidation.
+
+RQ2: CUDAjl3wholeprogramsubmissions/2actualGPUJITprocesses/1mathbodybundle; hostparsefailurethenpackagelegacyworkerabort preserved. KA/JACC1candidate/1actualJIT each, all2bodydefinitions executed. Actualtokenwindows includecached/inheritedcontext andorderedreuse; noexclusivebilling/intrinsicranking.
+
+RQ3: meanlast4seconds native/CUDAjl/KA/JACC 6.575400272, 6.899674680, 6.918612087, 6.845185773. All5retained; sourcefullrepeatloops+hostlaunch/contextcompletion, CPUsearch/sort/captureoutside.
+
+RQ4: source256threadgroups, shared2queuefilters andatomics retained; KAstaticpattern vsnative/runtimepattern, explicitCUDAbackendextensions andownedstreamdifferentfromnative/default arecovariates. No profiler/rooflineorcausalattribution.
+
+RQ5: faithfulworkfeasibleusingCUDA-specificbackendfeatures; purebackendsnotcertified. Fullrawappendorderidentityfalse, complete source-requiredsortednumericresultidentitytrue.
