@@ -31,3 +31,7 @@ Actual cold CPU execution reproduced all62 binary assets/432,355,216B exactly an
 ## Effort accounting
 
 CUDA.jl6 program evaluations include1 frontend syntax rejection,1 actual device compiler identifier repair,1 environment worker failure and2 numerical/contract rejections;5 reached device JIT. KA/JACC each one candidate/check after shared controller/contract inheritance, with no arithmetic repair. Target counter windows total10,949,555 /2,123,794 /2,469,809 tokens; input/cached/output/reasoning breakdowns remain in immutable boundary events and manifests. Shared native preparation, verification and annotation are separate. These context-inclusive counters are not exclusive billed costs or recovered historical cost; heterogeneous revised scopes are calibration-ineligible.
+
+## Fresh explicit source-buffer guard study
+
+A separately named, fresh symmetric I1 study now passes all four models with complete head/tail evidence for39 native source-vector allocations and38 Julia source arrays per trial. See [guarded_I1/README.md](guarded_I1/README.md), `guarded_I1/full35_saved_audit.json` and `guarded_I1/guard_saved_audit.json`. It retains the old revised metric and all numerical/trajectory limitations. Its new timings are separate from the unguarded series above; no old capture or source arithmetic was rewritten. CUDA/framework internal temporary pools and out-of-bounds reads are outside canary coverage. The original three-update failures and unverified1000-update trajectory remain open.
