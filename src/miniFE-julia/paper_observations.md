@@ -1,0 +1,9 @@
+# miniFE observations (new537 extension)
+
+- **RQ1:** Complete2³/16³/128³-cell sourcepipeline; all20 full15,061,421-value captures andall postreduction buffers agree exactly. IndependentQ1operator/RHS/true residual checks pass. ConditionalCPUboundaryset correction, not untouched-native fidelity. Largestmesh true residual2.65209e-8 vsdeclared1e-7, reaches200cap; no sourceepsilonconvergence claim.
+- **RQ2:** One complete candidate/one actual device-JITprogramprocess perJulia target. Fourentrydefinitions/seven exercised sourceoperations distinctfromcandidatecounts. Native scientificreadiness and CPUhelperT1failures separate; actualprospectiveinclusivecached/input/output/reasoning usage in effort_summary.json. SpecializednativeCPU/controllerhybrid excludedordinarytokenforecast.
+- **RQ3:** Fullpipeline meanlast4times native8.39510762525s, CUDAjl8.38521481675s, KA8.59916297375s, JACC8.87103989075s. All5checked, originalseriespreserved. CPUassembly/controller/copies/I/O included; no GPU-only ranking.
+- **RQ4:** Direct27nodeboundary witness and fulltensorQ1oracle establishCPUboundaryeliminationdefect; originalhomogeneouscenterhelper mismatches unitforcingoperator. FMA/tree/sourcegeometry matched acrossGPUtranslations; no profiler/counter-basedbottleneckinference.
+- **RQ5:** KA genuinekernel/localmem/barrier APIs and JACC genuineparallel_forwithCUDAshared/barrierextensions successfully integrate originalserialCPUFEcontroller. CUDAallocation/stream/CABI requirements andconditionalreference remain explicit. Not backendindependence or broadframeworkrecommendation.
+
+Continuumcenter512³odd-modefinite-sum control0.22287949631594; native128discretecenter0.22292864538303, difference4.91491e-5. Observedfinite-sumconvergence andmeshrefinement are not a rigorouscontinuumerrorbound or a puremethodorderestimate. Fourunexercisedvectoroperationbranches andoriginalMPI/OpenMP/ELLpaths remain uncertified.
