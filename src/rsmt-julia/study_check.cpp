@@ -1,0 +1,3 @@
+#include "study_support.h"
+#include <iostream>
+extern "C" int study_check(const char*p,double*metrics){try{auto cs=cases(),dummy=cs;auto v=readints(p);size_t off=0;auto exact=[&](I want){need(off<v.size()&&v[off++]==want,"independent exact full output/input/guard mismatch");};for(auto&c:cs){exact(c.nets);exact(c.pins);for(auto*a:{&c.idx,&c.x,&c.y})for(I x:*a)exact(x);}for(auto&c:cs){for(I x:c.oracle)exact(x);for(int i=0;i<8*128;i++)exact(I(0xa5a5a5a5));}need(off==v.size(),"full artifact length");metrics[0]=metrics[1]=0;return 0;}catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 1;}}
