@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+import pathlib,json,argparse
+P=pathlib.Path(__file__).resolve().parent;R=P.parents[1];F=pathlib.Path('/tmp/hecbench-stencil-ports-rbc-fixtures')
+a=argparse.ArgumentParser();a.add_argument('--models',default='cuda');a.add_argument('--output',required=True);a.add_argument('--reuse-result');a.add_argument('--fixtures',type=pathlib.Path,default=F);z=a.parse_args();F=z.fixtures.resolve()
+assets=[F/x for x in ['actual_inputs.bin','independent_oracle.bin','oracle_budgets.bin','independent_oracle_report.json']]
+shared=[P/x for x in ['full_study.cu','configured_source.cuh','build_program.py','independent_oracle.jl','layout.json','verification_plan.md','reference_provenance.json','conduction_heat_flux_witness.py','conduction_heat_flux_witness.json','source_body_identity.json']]+list((P/'reference_history').iterdir())+assets
+assert json.load(open(F/'independent_oracle_report.json'))['pass'] is True
+sz=json.load(open(F/'prepare_sizes.json'));c=dict(benchmark='rayleighBenardConvection',configuration_id='original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1',configuration_role='primary',gpu=6,timeout=1800,atol=0,rtol=0,input_prefix_count=sz['input_float32_count'],inputs_shared_verified=True,timed_regions_equivalent_verified=True,native_behavior_known_scientific_defect=True,exclude_from_scientific_fidelity_aggregates=True,exclude_untouched_native_aggregates=True,reference_provenance=json.load(open(P/'reference_provenance.json')),models={})
+for m in z.models.split(','):
+ native=m=='cuda';tag={'cuda_jl':'cuda.jl','ka':'KA','jacc':'JACC'}.get(m);cwd=P if native else P/('rayleighBenardConvection-julia-'+tag)
+ spec=dict(cwd=str(cwd),build=['python3',str(P/'build_program.py'),'--mode','native' if native else 'shared','--output','study_native' if native else 'study_gpu.so','--arch','{arch}'],command=['./study_native',str(F),'0'] if native else ['julia','--project='+str(R/'src'/('_julia_jacc_env' if m=='jacc' else '_julia_ka_env')),str(cwd/'main.jl'),'study_gpu.so',str(F)],structured=True,bind_all_declared_dependencies=True,source_dependencies=[str(x) for x in shared]+([] if native else [str(P/'study_common.jl'),str(cwd/'main.jl')]),verification_method='FullActualInputs_CompleteFinalFields_All1000AdaptiveSteps_IndependentFloat64RK3_QualifiedExcessHeatFlux',native_check_description='All native sevenGPUbodies unchanged; full500x1000/1000RK3steps; exactdualoutputs and independent .3%scaledfieldLinf/source-roundedcoefficients/actualadaptivehistory oracle; known total-versus-excessNu diagnostic qualification, notcontinuumPDEcertificate.')
+ c['models'][m]=spec
+if z.reuse_result:c.update(reuse_result=str(pathlib.Path(z.reuse_result).resolve()),reuse_models=[m for m in c['models'] if m!=z.models.split(',')[-1]])
+out=pathlib.Path(z.output);out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(c,indent=2)+'\n');print(out)
