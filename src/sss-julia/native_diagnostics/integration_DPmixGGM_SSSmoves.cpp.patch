@@ -1,0 +1,82 @@
+--- original/DPmixGGM_SSSmoves.cpp
++++ configured/DPmixGGM_SSSmoves.cpp
+@@ -15,7 +15,7 @@
+ 
+ #ifdef USE_GPU
+ #ifndef KERNELS
+-#include "kernels.cu"
++#include "../study_interface.h"
+ #endif
+ #endif
+ 
+@@ -158,6 +158,7 @@
+   int ndecomp = 0;
+   myInt buffsiz;
+ 
++  sss_observe_graph(G);
+   // Make CanDeleteEdge buffer and transfer to the GPUs
+   device.n_delete = n_delete;
+   last = 0;
+@@ -171,7 +172,7 @@
+   last += G->nCliques;
+   for (j = 0; j < G->nCliques; j++) {
+     for (k = 0; k < p; k++) {
+-      device.h_in_delete[last + j * p + k] = G->Cliques[j][k];
++      device.h_in_delete[last + j * p + k] = (k < G->CliquesDimens[j] ? G->Cliques[j][k] : 0);
+     }
+   };
+   last += p * (G->nCliques);
+@@ -192,8 +193,7 @@
+                   cudaMemcpyHostToDevice, device.delete_stream);
+ 
+   // Submit CanDeleteEdge (on device 0)
+-  CanDeleteEdge<<<device.n_delete, BLOCK_SIZE, 0, device.delete_stream>>>(
+-      device.d_in_delete, device.d_which_delete);
++  sss_launch(0,device.n_delete,0,device.delete_stream,device.d_in_delete,nullptr,device.d_which_delete,size_temp/sizeof(myInt),0);
+ 
+   // Make CanAddEdge buffer and transfer to the GPUs
+   buffsiz = sizeof(myInt) * (p + 2 * (G->nTreeEdges) +
+@@ -220,7 +220,7 @@
+   last += G->nSeparators;
+   for (j = 0; j < G->nSeparators; j++) {
+     for (k = 0; k < p; k++) {
+-      device.h_in_add[last + j * p + k] = G->Separators[j][k];
++      device.h_in_add[last + j * p + k] = (k < G->SeparatorsDimens[j] ? G->Separators[j][k] : 0);
+     }
+   };
+   last += p * (G->nSeparators);
+@@ -255,8 +255,7 @@
+                                2 * (G->nTreeEdges) + p * p + 2 * device.n_add);
+   cudaMemcpyAsync(device.d_in_add, device.h_in_add, size_temp,
+                   cudaMemcpyHostToDevice, device.add_stream);
+-  CanAddEdge<<<device.n_add, BLOCK_SIZE, buffsiz, device.add_stream>>>(
+-      device.d_in_delete, device.d_in_add, device.d_which_add);
++  sss_launch(1,device.n_add,buffsiz,device.add_stream,device.d_in_delete,device.d_in_add,device.d_which_add,0,size_temp/sizeof(myInt));
+ 
+   // Get CanDeleteEdge results for the GPU
+   size_temp = sizeof(myInt) * (device.n_delete);
+@@ -265,6 +264,7 @@
+ 
+   // DeleteEdge
+   cudaStreamSynchronize(device.delete_stream);
++  sss_observe_results(0,device.n_delete,device.which_delete);
+   for (k = 0; k < device.n_delete; k++) {
+     if (device.which_delete[k] != -1) {
+       which[ndecomp] = k;
+@@ -292,6 +292,7 @@
+   // AddEdge
+   n_add_till_now = 0;
+   cudaStreamSynchronize(device.add_stream);
++  sss_observe_results(1,device.n_add,device.which_add);
+   for (k = 0; k < device.n_add; k++) {
+     j = n_add_till_now + k;
+     if (j >= n_add) {
+@@ -351,7 +352,7 @@
+     score[i] = exp(score[i]) / sumScore;
+   }
+   i = rand_int_weighted(ndecomp + 1, score);
+-  int which_change = which[i];
++  int which_change = (i < ndecomp ? which[i] : -1);
+ 
+   // Necessary changes in G
+   if (i < num_CanDelete) {

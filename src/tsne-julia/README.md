@@ -2,9 +2,11 @@
 
 ## Selected scope
 
+The current additional guard study is `20261020T151316499476Z_tsne`: all four models pass the revised I1 contract with saved explicit source-buffer head/tail guards. Its separate timings and evidence are in `guarded_I1/README.md`. The unguarded series below is retained historical evidence.
+
 Original60000-point MNIST precomputed KNN32 inputs,130×130 interpolation boxes,3 nodes/axis, **one complete update**. All24 active original CUDA entry definitions are represented by25 mathematical cases in one generic Julia index body. The unused BroadcastRowVector definition is not certified. Four Fourier passes are source custom direct DFT kernels, not cuFFT. Complete programs are **hybrid host control**, with own-framework device kernels; there is no native GPU kernel delegation.
 
-Final result: `.porting-state/portable_julia/runs/20261020T070225578007Z_tsne/result.json`. Each model has an untimed warmup and five checked in-process executions; mean trials2–5 is0.08478019025 /0.92132640325 /0.910263911 /0.9957545565 seconds (CUDA/CUDA.jl/KA/JACC). Original source input IO and observation are excluded consistently. Framework host allocation, retention, reduction and GC behavior remain covariates; this is not a pure frontend comparison.
+Historical unguarded result: `.porting-state/portable_julia/runs/20261020T070225578007Z_tsne/result.json`. Each model has an untimed warmup and five checked in-process executions; mean trials2–5 is0.08478019025 /0.92132640325 /0.910263911 /0.9957545565 seconds (CUDA/CUDA.jl/KA/JACC). Original source input IO and observation are excluded consistently. Framework host allocation, retention, reduction and GC behavior remain covariates; this is not a pure frontend comparison.
 
 ## Numerical evidence and exclusions
 
@@ -14,7 +16,7 @@ The **revised contract** scales only four Fourier fields by fixed CPU-derived po
 
 The strict three-update contract failed integer gridding/interpolation comparisons and remains failed. Original1000-update CLI actually exited0 with finite final text but has **no full trajectory certificate**. Target perplexity50 is infeasible for31 nonself neighbors: source capped200-step search yields31. Source normalization-axis simplification and high-dimensional KNN generation are not validated application quality. No claim of full scientific t-SNE quality or convergence.
 
-**Safety coverage:** selected captures have no explicit output/allocation redzones. Original unchanged I1 native memcheck12.9 reported0 errors; this is separate diagnostic evidence, not all-model bounds/guard coverage. Report this remaining requirement explicitly. Native GPU arithmetic is unchanged; the named observer/integration adapter and revised metric exclude the result from untouched-native aggregates.
+**Historical safety coverage:** the unguarded captures described above have no explicit output/allocation redzones. Original unchanged I1 native memcheck12.9 reported0 errors; this is separate diagnostic evidence, not all-model bounds/guard coverage. The later explicit guard study below addresses source-allocation canaries; framework-internal storage and out-of-bounds reads remain outside that evidence. Native GPU arithmetic is unchanged; the named observer/integration adapter and revised metric exclude the result from untouched-native aggregates.
 
 ## Cold CPU regeneration and fresh configuration
 

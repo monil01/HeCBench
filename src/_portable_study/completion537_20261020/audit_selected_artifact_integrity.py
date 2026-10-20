@@ -45,6 +45,7 @@ def main():
             for trial in trials:
                 counts['trial_rows']+=1
                 if trial.get('correct') is not True:errors.append(model+':recorded_self_check_not_pass')
+                if trial.get('jit_excluded') is not True:errors.append(model+':warmup_exclusion_not_declared')
                 artifact=trial.get('output_artifact')
                 if execution:
                     if artifact or trial.get('checked_values')!=0:errors.append(model+':unexpected_execution_only_numerical_output')
@@ -73,7 +74,7 @@ def main():
         errors=sorted(set(errors));issues.extend({'benchmark':bench,'issue':x}for x in errors)
         rows.append({'benchmark':bench,'result':selected['result'],'result_sha256':selected['result_sha256'],'outcome':selected['outcome'],'qualification':selected['qualification'],'issues':errors,'primary_artifacts':artifacts})
         print(json.dumps({'benchmark':bench,'issues':len(errors),'artifact_paths_so_far':counts['artifact_paths']}),flush=True)
-    out={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'audit_source_sha256':sha(Path(__file__)),'census_path':str(args.census),'census_sha256':sha(args.census),'scope':'Full-byte integrity of selected primary saved output artifacts plus recomputed means and recorded all-five dual-reference gates. Does not rerun GPU kernels or scientific oracles, certify full CLI coverage, recheck auxiliary property-model buffers, or promote property/execution outcomes to numerical identity. Hardlink hash reuse only for same device/inode/size/mtime/ctime during this audit; every pathname stat verified.','summary':{'selected_benchmark_names':len(rows),'exclusive_outcomes':dict(collections.Counter(x['outcome']for x in rows)),**counts,'primary_artifact_bytes_across_paths':total_bytes,'unique_inodes_hashed':len(cache),'unique_primary_artifact_bytes_hashed':unique_bytes,'hard_issue_count':len(issues)},'issues':issues,'rows':rows}
+    out={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'audit_source_sha256':sha(Path(__file__)),'census_path':str(args.census),'census_sha256':sha(args.census),'scope':'Full-byte integrity of selected primary saved output artifacts plus recomputed means and recorded all-five dual-reference gates. Does not rerun GPU kernels or scientific oracles, certify full CLI coverage, recheck auxiliary property-model buffers, or promote property/execution outcomes to numerical identity. Hardlink hash reuse only for same device/inode/size/mtime/ctime during this audit; every pathname stat verified.','summary':{'selected_benchmark_names':len(rows),'audited_benchmarks':sum(x['outcome']!='execution_only'for x in rows),'execution_only_names':sum(x['outcome']=='execution_only'for x in rows),'exclusive_outcomes':dict(collections.Counter(x['outcome']for x in rows)),**counts,'primary_artifact_bytes_across_paths':total_bytes,'unique_inodes_hashed':len(cache),'unique_primary_artifact_bytes_hashed':unique_bytes,'hard_issue_count':len(issues)},'issues':issues,'rows':rows}
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(out,indent=2)+'\n');print(json.dumps(out['summary']),flush=True)
     return 1 if issues else 0
 
