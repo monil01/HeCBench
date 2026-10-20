@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Serial resumable V100 profiling campaign; stages one benchmark at a time.
+
+Fresh scratch bounds the working set on disk. No existing profiler attempt is
+overwritten. The GPU collector owns device/lock/idle guards for each execution.
+"""
+import argparse
+import datetime
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+
+def main():
+    ap=argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--source-root',type=Path,required=True)
+    ap.add_argument('--raw-root',type=Path,required=True)
+    ap.add_argument('--campaign-id',required=True)
+    ap.add_argument('--benchmark',action='append')
+    ap.add_argument('--exclude-benchmark',action='append',default=[])
+    ap.add_argument('--reviews',type=Path)
+    ap.add_argument('--selection-overrides',type=Path)
+    ap.add_argument('--timeout',type=int,default=180)
+    ap.add_argument('--limit',type=int)
+    ap.add_argument('--asset-cap-mib',type=int,default=512)
+    a=ap.parse_args();root=a.source_root.resolve();raw=a.raw_root.resolve()
+    raw.relative_to(Path('/tmp'))
+    if not a.campaign_id.replace('-','').replace('_','').isalnum():
+        ap.error('Use an alphanumeric campaign ID with optional hyphens/underscores')
+    census=root/'src/_portable_study/completion537_20261020/current537_census.json'
+    population=json.loads(census.read_text())
+    names=sorted(x['benchmark']for x in population['rows'])
+    if a.benchmark:names=[b for b in names if b in a.benchmark]
+    names=[b for b in names if b not in a.exclude_benchmark]
+    if a.limit:names=names[:a.limit]
+    journal=raw/('campaign_'+a.campaign_id+'.jsonl')
+    def note(event):
+        event.update(time=datetime.datetime.now(datetime.timezone.utc).isoformat())
+        with journal.open('a')as f:f.write(json.dumps(event)+'\n')
+        print(json.dumps(event),flush=True)
+    note({'event':'start_or_resume','pid':os.getpid(),'benchmarks':len(names),
+          'campaign_id':a.campaign_id,'root':str(root)})
+    for index,b in enumerate(names,1):
+        batch=raw/('batch'+a.campaign_id+'-'+b)
+        if not batch.exists():
+            prepare=[sys.executable,str(root/'tools/v100_roofline_prepare.py'),
+                '--source-root',str(root),'--census',str(census),'--output-root',str(batch),
+                '--benchmark',b,'--stage','--asset-cap-mib',str(a.asset_cap_mib)]
+            if a.reviews:prepare+=['--reviews',str(a.reviews)]
+            result=subprocess.run(prepare,cwd=root,capture_output=True,text=True)
+            note({'event':'prepare','benchmark':b,'ordinal':index,'returncode':result.returncode,
+                  'stdout':result.stdout,'stderr':result.stderr})
+            if result.returncode:
+                # Preserve incomplete staging; repair/review explicitly on resume.
+                continue
+        collector=[sys.executable,str(root/'tools/v100_roofline_collect.py'),
+            '--source-root',str(root),'--plan-root',str(batch),'--timeout',str(a.timeout)]
+        if a.selection_overrides:collector+=['--selection-overrides',str(a.selection_overrides)]
+        result=subprocess.run(collector,cwd=root,capture_output=True,text=True)
+        note({'event':'collect','benchmark':b,'ordinal':index,'returncode':result.returncode,
+              'stdout':result.stdout,'stderr':result.stderr})
+        # Root alone updates ontology measurement records. A single campaign
+        # controller must run; never start concurrent controllers on this tree.
+        summarize=[sys.executable,str(root/'tools/v100_roofline_summarize.py'),
+                   '--source-root',str(root),'--raw-root',str(raw)]
+        result=subprocess.run(summarize,cwd=root,capture_output=True,text=True)
+        if result.returncode:
+            note({'event':'freeze_failed_stop','benchmark':b,'stderr':result.stderr})
+            raise SystemExit(result.returncode)
+        note({'event':'frozen','benchmark':b,'ordinal':index,'summary':json.loads(result.stdout)})
+    note({'event':'selected_plan_traversal_finished','benchmarks':len(names),
+          'meaning':'Traversal is not complete roofline/ROI/bottleneck analysis; inspect per-case statuses.'})
+
+
+if __name__=='__main__':main()

@@ -11,7 +11,7 @@ for p in (Path.home()/'.codex/sessions').rglob('*.jsonl'):
  except (OSError,ValueError):continue
  source=m.get('source',{});spawn=source.get('subagent',{}).get('thread_spawn',{}) if isinstance(source,dict) else {}
  agent='/root' if thread in p.name else spawn.get('agent_path') if spawn.get('parent_thread_id')==thread else None
- if agent in ['/root','/root/maps_ports','/root/stencil_ports','/root/portable_infrastructure']:mapping[agent]={'path':str(p),'source_identity_sha256':hashlib.sha256(p.name.encode()).hexdigest()}
+ if agent in ['/root','/root/maps_ports','/root/stencil_ports','/root/portable_infrastructure','/root/cold_jacc_first','/root/cold_ka_first']:mapping[agent]={'path':str(p),'source_identity_sha256':hashlib.sha256(p.name.encode()).hexdigest()}
 if '/root' not in mapping:raise SystemExit('Root rollout not found; cannot register this study reliably.')
 p=STATE/'usage_meter_sources.json';now=datetime.datetime.now(datetime.timezone.utc).isoformat()
 if p.exists():

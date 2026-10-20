@@ -10,6 +10,8 @@ from study_evidence import effective_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--complete', action='store_true')
+parser.add_argument('--roofline-active', action='store_true',
+                    help='Checkpoint the active V100 profiling campaign separately from translation completion.')
 parser.add_argument('--population',type=int,choices=[300,447,537],default=537 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_537.json').exists() else 447 if (Path(__file__).resolve().parents[1]/'.porting-state/portable_julia/batch_447.json').exists() else 300)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
@@ -102,6 +104,19 @@ for marker_file in sorted((local/'usage_boundaries_300').glob('*/*.jsonl')):
                 'recorded_at':e.get('recorded_at'),'path':str(marker_file.relative_to(root)),
                 'resume_action':'Continue only within same registered stream identity; otherwise abandon with reason and unknown cost, then begin a new prospective segment.'})
 heads = {k: git(p, 'rev-parse', 'HEAD') for k, p in [('source', root), ('paper', paper)]}
+roofline_path = root/'ontology/studies/v100_roofline_537'
+roofline_snapshot = None
+if args.roofline_active:
+    if args.population != 537:
+        raise SystemExit('The active roofline campaign uses the explicit 537-name population.')
+    roofline_snapshot = {
+        'protocol': 'ontology/studies/v100_roofline_537/protocol.json',
+        'protocol_sha256': hashlib.sha256((roofline_path/'protocol.json').read_bytes()).hexdigest(),
+        'progress': read(roofline_path/'PROGRESS.json', {}),
+        'active_work': read(local/'active_work_537.json', {}).get('roofline_campaign', {}),
+        'resume': 'Inspect the active collector session/PID, device processes and lock before launching. Preserve finished raw profiles; summarize only finished attempts. Continue blocked-plan/ROI/precision review. Inventory and partial kernel samples do not complete the campaign.',
+        'primary_timing_protocol': 'five_trials_last_four_v1_unchanged',
+        'translation_completion_is_separate': True}
 now = datetime.datetime.now(datetime.timezone.utc)
 stamp = now.strftime('%Y%m%dT%H%M%S%fZ')
 status = f'active_{target}_benchmark_expansion'
@@ -129,6 +144,8 @@ if args.complete:
         raise SystemExit('Refresh the full numerical evidence audit before completing the census.')
     if not (paper / 'build/main.pdf').is_file():raise SystemExit('Paper PDF missing.')
     status = f'complete_{target}_assessments_manuscript_review_ready'
+if args.roofline_active:
+    status = f'active_v100_roofline_{target}_translation_assessments_separate'
 payload = {
     'created_at': now.isoformat(), 'status': status, 'heads': heads,
     'instruction_hashes': {n: hashlib.sha256((root/n).read_bytes()).hexdigest()
@@ -147,6 +164,7 @@ payload = {
     'ownership': cohort.get('ownership', {}), 'all_configuration_evidence': list(records.values()),
     'active_work': read(local/f'active_work_{target}.json', {}),
     'active_work_path': str((local/f'active_work_{target}.json').relative_to(root)),
+    'roofline_campaign': roofline_snapshot,
     'model_status_inventory': str((local/f'study_{target}_status.json').relative_to(root)),
     'open_prospective_usage_segments': usage_segments,
     'usage_meter_resume': 'Run tools/register_translation_usage.py for this session. Never subtract across stream identities or retrospectively allocate old counters.',
@@ -166,6 +184,9 @@ payload = {
         'Historic300 PASS labels are not strengthened verification. Unknown costs and unreviewed scientific annotations stay unknown.',
         'Research data/scripts/checkpoints stay local and ignored. Paper GitHub/Overleaf contains publication files only.',
         'Interpret implementation models cuda_jl/ka/jacc separately from Julia language/package release identifiers.']}
+if args.roofline_active:
+    payload['next_translation'] = 'Preserve completed translation assessments and frozen correctness/timing evidence; current work is profiling, not port translation.'
+    payload['next_paper'] = 'Continue the V100 campaign, source/ROI/precision review, per-version scientific ontology analysis and explicit missingness. Do not present partial samples as completed whole-benchmark analysis.'
 folder = paper/'research/checkpoints'
 folder.mkdir(parents=True, exist_ok=True)
 out = folder/('checkpoint_'+stamp+'.md')
@@ -186,11 +207,14 @@ latest = {'checkpoint_id': stamp, 'path': str(out.relative_to(root)),
           'verification_strata': strata, 'verification_strata_interpretation':strata_interpretation, 'matched_count_includes_conditional_and_multigpu': True,
           'performance_protocol': 'five_trials_last_four_v1',
           'source_head': heads['source'], 'paper_head': heads['paper']}
+if args.roofline_active:
+    latest['roofline_campaign'] = roofline_snapshot
 tmp = folder/'LATEST.json.tmp'
 tmp.write_text(json.dumps(latest, indent=2)+'\n')
 tmp.replace(folder/'LATEST.json')
 # A small tracked-source pointer can be committed without shipping research logs.
-summary = root/f'ontology/studies/julia_abstractions_{target}/PROGRESS.json'
+summary = (roofline_path/'CHECKPOINT.json' if args.roofline_active else
+           root/f'ontology/studies/julia_abstractions_{target}/PROGRESS.json')
 summary.parent.mkdir(parents=True, exist_ok=True)
 summary.write_text(json.dumps(latest, indent=2)+'\n')
 print(json.dumps(latest))

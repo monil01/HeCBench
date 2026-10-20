@@ -12,6 +12,61 @@ Every accepted newly measured version retains all five correctness checks, dual 
 
 New large evidence is partly stored in owned `/tmp` trees with canonical aliases and exact path/hash provenance. **Preserve those captures before reboot or temporary-storage cleanup.** Missing raw captures cannot be certified by their hashes alone. Keep large research and GPU captures outside the Overleaf paper Git repository; compact data and PDF recipes are versioned. The later extension and its local raw evidence are not implicitly included in release v1.0.0. Never invoke sudo/sudoedit or any privilege-escalation workaround; no OS update is required.
 
+## Active V100 roofline campaign — 537 names × four models
+
+Translation assessment completion above remains unchanged. The new profiling
+campaign covers CUDA, CUDA.jl, KA and JACC for all 537 names (2148 explicit status
+slots); it does not require a floating-point point for every slot. Read
+[roofline policy](ontology/studies/v100_roofline_537/POLICY.md),
+[campaign protocol](ontology/studies/v100_roofline_537/protocol.json),
+[progress](ontology/studies/v100_roofline_537/PROGRESS.json) and
+[stage schema](ontology/studies/v100_roofline_537/ledger_schema.json). Use
+`tools/v100_roofline_classify.py` for CPU-only per-kernel counter classification.
+Keep frozen 447 analyses and published releases unchanged.
+
+- Retain all five native hardware barriers as explicit unavailable assessments:
+  `blas-fp4gemm`, `blas-fp8gemm`, `blas-mxfp6gemm`, `blas-mxfp8gemm`, `twell`.
+  Integer, host, communication, memory-only, execution-only and zero-device-kernel
+  cases need appropriate diagnostics/statuses, never invented scalar FLOPs. Vendor
+  kernels may execute even when the front end authors zero GPU functions.
+- Bind each profile to its actual selected configuration/result/source/environment,
+  device/library/tool hashes, semantic stages, case/iteration/launch geometry and
+  true ROI. The validated selector `--filter-mode per-launch-config --kernel-name-base
+  mangled --kernel-id '::regex:.*:1'` distinguishes specializations and captures
+  first-per-specialization/geometry samples only. The old default function-name
+  selector merged callbacks; retain its earlier undercoverage. It does not prove
+  full-ROI or steady-state coverage. Parameter sweeps such as `maxFlops` require
+  explicit case-aware selectors and count/order checks; generic names need source review.
+- Keep timed arithmetic precision separate from storage, host/oracle/initialization
+  precision and artifact encoding. Preserve FP16/FP32/FP64/tensor instruction
+  vectors and validated packed/tensor formulas. Use direct measured DRAM read+write
+  bytes and matching device duration; keep L2/shared/local tiers distinct. Missing
+  counters are null. Clock-adjusted modeled ceilings are not empirical sustained
+  calibration. Mixed precision has separate projections, not an arbitrary summed
+  FP32 roofline.
+- `roofline_regime` means geometric memory-side/near-ridge/compute-side placement.
+  A causal bottleneck requires separate compatible measured evidence; otherwise
+  it remains unknown, including low-attainment, mixed/tensor and incomplete cases.
+  Never equally average kernels into a whole-benchmark bottleneck; complete-stage
+  mapping/multiplicities and concurrency-aware compatible work/bytes/time are
+  required for any declared aggregate.
+- Profiling is a separate experiment: preserve primary five checked trials and
+  mean runs 2–5 unchanged. Record replay/cache/clock policy, coverage, raw counters,
+  failures and actual profile duration separately. GPU6 remains serialized by the
+  established lock; no sudo, privilege workaround, OS changes or global clocks.
+  Root owns runner, measurement metadata and Git. Shared review/profiling effort
+  is separate from translation; retain observed receipts and left-censoring in
+  [review accounting](ontology/studies/v100_roofline_537/shared_review_usage.json).
+
+Joint checkpoints must include all 537x4 profiling statuses and denominators,
+selected configuration/source/stage mappings, raw report/counter paths and hashes,
+coverage and missing metrics, precision/ceiling formulas, failed attempts/replay
+limitations, storage retention and next actions, open profiling usage windows, and
+paper/ontology export state. Store profiler durations separately from the immutable
+primary five-run times. Resume via the existing linked checkpoint flow and the
+roofline progress ledger; profiling progress never expands scientific correctness
+or promotes an unverified native contract.
+
 ## Historical completion request — 20 October 2026
 
 The user requests finishing all benchmarks with verification. Resume from `.porting-state/portable_julia/active_work_537.json`, canonical `batch_537.json`, and the latest joint paper checkpoint. Read `AGENT_INSTRUCTIONS_CODEX_Julia.md`, `JULIA_CORRECTNESS_CHECK.md` and `paper_writing.md` together. Older completion statements describe frozen cohorts, not the open 537-name task. Root alone commits source; preserve each verified implementation in a separate commit. Continue repairable work and paper integration until complete; retain actual hardware and workflow blockers explicitly. Never invoke sudo/sudoedit, wrappers or another privilege-escalation mechanism; no OS updates are needed.

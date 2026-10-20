@@ -106,6 +106,25 @@ COLUMNS = [
  ('Performance','trials','All recorded trial seconds','derived.trials'),
  ('Performance','hardware_stratum','Hardware stratum','derived.hardware_stratum'),
  ('Performance','profiling','Profiling status','record.implementation_ontology.profiling_status'),
+ ('V100 roofline observations','v100_status','V100 profiling status','roofline.profiling_status'),
+ ('V100 roofline observations','v100_config','V100 profiled configurations','roofline.configuration_ids'),
+ ('V100 roofline observations','v100_device','V100 device UUID','roofline.device_uuid'),
+ ('V100 roofline observations','v100_kernels','V100 recorded kernel observations','roofline.kernel_observation_count'),
+ ('V100 roofline observations','v100_loaded','V100 hash-verified kernel observations','roofline.loaded_kernel_observation_count'),
+ ('V100 roofline observations','v100_coverage','V100 ROI coverage','roofline.roi_coverage'),
+ ('V100 roofline observations','v100_regimes','Sampled kernel geometric regimes','roofline.geometric_regimes'),
+ ('V100 roofline observations','v100_predicted_limit','Sampled compute/memory limit prediction','roofline.predicted_resource_limits'),
+ ('V100 roofline observations','v100_causal','V100 causal bottleneck','roofline.causal_bottleneck'),
+ ('V100 roofline observations','v100_precision','Sampled execution precision classes','roofline.precision_classes'),
+ ('V100 roofline observations','v100_link','V100 profile evidence link status','roofline.evidence_link_status'),
+ ('V100 roofline observations','v100_source','V100 profile evidence paths','roofline.evidence_paths'),
+ ('Native CUDA roofline baseline','v100_native_status','Native CUDA profiling status','roofline_native.profiling_status'),
+ ('Native CUDA roofline baseline','v100_native_kernels','Native CUDA recorded kernel observations','roofline_native.kernel_observation_count'),
+ ('Native CUDA roofline baseline','v100_native_coverage','Native CUDA ROI coverage','roofline_native.roi_coverage'),
+ ('Native CUDA roofline baseline','v100_native_regimes','Native CUDA sampled geometric regimes','roofline_native.geometric_regimes'),
+ ('Native CUDA roofline baseline','v100_native_predicted_limit','Native CUDA compute/memory limit prediction','roofline_native.predicted_resource_limits'),
+ ('Native CUDA roofline baseline','v100_native_causal','Native CUDA causal bottleneck','roofline_native.causal_bottleneck'),
+ ('Native CUDA roofline baseline','v100_native_link','Native CUDA evidence link status','roofline_native.evidence_link_status'),
  ('Effort and failures','attempts','Candidate attempts','record.effort.candidate_attempts'),
  ('Effort and failures','compiler_checks','Compiler checks','record.effort.compiler_checks'),
  ('Effort and failures','compiler_repairs','Compiler feedback repairs','record.effort.compiler_feedback_repairs'),
@@ -143,9 +162,114 @@ def distinct(values):
     return result
 
 
+def load_roofline_registry(root, population):
+    """Read configuration-scoped profile links; never mutate inferred catalogue traits.
+
+    Only hash-verified linked observations contribute sampled geometric regimes.
+    Native CUDA is a baseline property, not a fourth Julia implementation row.
+    """
+    folder = root/'ontology/studies/v100_roofline_537'
+    summaries, inputs, linked_inputs = {}, [], {}
+    stats = {m:{'status_counts':{}, 'registry_slots':0, 'hash_verified_kernel_observations':0,
+                'slots_with_hash_verified_observations':0, 'evidence_link_issues':0,
+                'complete_ROI_slots':0} for m in ['cuda', *MODELS]}
+    protocol_path = folder/'protocol.json'
+    protocol = json.loads(protocol_path.read_text()) if population == 537 and protocol_path.exists() else {}
+    if population == 537 and protocol_path.exists(): inputs.append(protocol_path)
+    for file in sorted((folder/'benchmarks').glob('*.json')) if population == 537 else []:
+        registry_raw = file.read_bytes()
+        registry = json.loads(registry_raw); inputs.append(file)
+        bid = registry.get('benchmark', file.stem)
+        config = get(registry, 'accepted_named_contract.configuration_id')
+        for model in stats:
+            entry = registry.get('models', {}).get(model, {})
+            status = entry.get('profiling_status', 'not_recorded')
+            ref = entry.get('kernel_observations', {})
+            refs = ref if isinstance(ref, list) else [ref] if isinstance(ref, dict) and ref else []
+            # Future compact records may also be inline in the registry.
+            observations = entry.get('kernel_records', [])
+            observations = list(observations) if isinstance(observations, list) else []
+            link_status, paths = [], []
+            for link in refs:
+                name = link.get('path'); expected = link.get('sha256')
+                if not name:
+                    link_status.append('missing_path'); continue
+                path = Path(name); path = path if path.is_absolute() else root/path
+                paths.append(name)
+                if not path.is_file():
+                    link_status.append('missing_linked_evidence'); continue
+                raw = path.read_bytes(); actual = hashlib.sha256(raw).hexdigest()
+                if not expected:
+                    link_status.append('missing_expected_hash'); continue
+                if actual != expected:
+                    link_status.append('hash_mismatch'); continue
+                compression = link.get('compression') or ('gzip' if path.suffix == '.gz' else None)
+                if compression not in [None, 'gzip']:
+                    link_status.append('unsupported_compression'); continue
+                try:
+                    decoded = gzip.decompress(raw) if compression == 'gzip' else raw
+                except (OSError, EOFError):
+                    link_status.append('invalid_gzip_evidence'); continue
+                decoded_hash = hashlib.sha256(decoded).hexdigest()
+                decoded_expected = link.get('uncompressed_sha256')
+                if compression == 'gzip' and not decoded_expected:
+                    link_status.append('missing_uncompressed_hash'); continue
+                if decoded_expected and decoded_hash != decoded_expected:
+                    link_status.append('uncompressed_hash_mismatch'); continue
+                try: report = json.loads(decoded)
+                except (ValueError, UnicodeDecodeError):
+                    link_status.append('invalid_linked_json'); continue
+                records = report.get('records', report.get('kernel_records', [])) if isinstance(report, dict) else report
+                if not isinstance(records, list):
+                    link_status.append('invalid_kernel_records'); continue
+                observations.extend(records); linked_inputs[str(path)] = {'sha256':actual, 'uncompressed_sha256':decoded_hash, 'compression':compression}
+                link_status.append('hash_verified')
+            if entry.get('kernel_records'): link_status.append('registry_inline')
+            if not link_status: link_status = ['not_linked']
+            regimes, precisions, observed_configs = [], [], []
+            for obs in observations:
+                if not isinstance(obs, dict): continue
+                precisions.append(obs.get('precision_class'))
+                observed_configs.append(get(obs, 'scope_context.configuration_id'))
+                for point in obs.get('scalar_precision_projections', {}).values():
+                    if isinstance(point, dict) and (point.get('executed_scalar_flops') or 0) > 0:
+                        regimes.append(point.get('roofline_regime'))
+            ids = distinct(observed_configs + [entry.get('profile_plan_configuration_id') or config])
+            causal = entry.get('observed_bottleneck') or entry.get('causal_bottleneck') or 'unknown'
+            recorded = entry.get('sampled_kernel_count')
+            if recorded is None and observations: recorded = len(observations)
+            summary = {'profiling_status':status, 'configuration_ids':ids,
+                       'device_uuid':get(entry,'device.uuid') or get(protocol,'gpu.uuid'),
+                       'kernel_observation_count':recorded,
+                       'loaded_kernel_observation_count':len(observations) if observations else (0 if refs else None),
+                       'roi_coverage':entry.get('roi_coverage','unknown'),
+                       'geometric_regimes':distinct(regimes), 'precision_classes':distinct(precisions),
+                       'predicted_resource_limits':distinct([{'memory_side':'memory_bound_roofline_prediction',
+                           'compute_side':'compute_bound_roofline_prediction','near_ridge':'ridge_transition'}.get(x,'unclassified') for x in regimes]),
+                       'causal_bottleneck':causal, 'evidence_link_status':distinct(link_status),
+                       'evidence_paths':paths + entry.get('profile_ids', []),
+                       'registry_path':str(file.relative_to(root)),
+                       'registry_sha256':hashlib.sha256(registry_raw).hexdigest(),
+                       'raw_model_record':entry, 'kernel_observations':observations,
+                       'geometric_regime_scope':'Sampled per-kernel precision projections only; not whole-ROI bottleneck'}
+            summaries[(bid,model)] = summary
+            st = stats[model]; st['registry_slots'] += 1
+            st['status_counts'][status] = st['status_counts'].get(status,0)+1
+            st['hash_verified_kernel_observations'] += len(observations)
+            st['slots_with_hash_verified_observations'] += bool(observations)
+            st['evidence_link_issues'] += any(v not in ['not_linked','hash_verified','registry_inline'] for v in link_status)
+            st['complete_ROI_slots'] += summary['roi_coverage'] in ['complete_device_ROI','complete_workflow','complete_ROI']
+    return summaries, {'models':stats, 'registry_names':len({b for b,m in summaries}),
+                       'population':537 if population == 537 else None,
+                       'native_baseline_is_not_a_Julia_implementation_row':True,
+                       'source':'ontology/studies/v100_roofline_537',
+                       'linked_evidence_sha256':linked_inputs}, inputs
+
+
 def build(root, population=447):
     ont = root/'ontology'
     study = ont/f'studies/julia_abstractions_{population}'
+    roofline, roofline_summary, roofline_inputs = load_roofline_registry(root, population)
     normalized = root/'2026-PASC-Hecbench-Julia-paper/research/revision_experiments/classes/normalized_records.json'
     class_rows = json.loads(normalized.read_text()) if normalized.exists() else []
     classes = {(r['benchmark'], r['model']): r for r in class_rows}
@@ -195,7 +319,7 @@ def build(root, population=447):
         derived['timing_scope'] = get(rec,'implementation_ontology_normalized.timing_scope') or get(rec,'shared_benchmark_traits.timing_scope')
         derived['failure_codes'] = distinct([e.get('taxonomy_code') for e in get(rec,'failure_taxonomy.events',[])])
         derived['token_windows'] = get(rec,'effort.translation_tokens.observed_activity_windows',[])
-        sources = {'id':bid,'model':model,'record':rec,'base':bases.get(bid,{}),'domain':dom,'classes':classes.get((bid,model),{}),'derived':derived}
+        sources = {'id':bid,'model':model,'record':rec,'base':bases.get(bid,{}),'domain':dom,'classes':classes.get((bid,model),{}),'derived':derived,'roofline':roofline.get((bid,model),{}),'roofline_native':roofline.get((bid,'cuda'),{})}
         props = flatten({k:v for k,v in sources.items() if k not in ['base','domain']})
         values = {key:get(sources,path) for _,key,_,path in COLUMNS}
         rows.append({'id':bid,'model':model,'values':values,'properties':props,'configurations':cfg,'record_path':str(file.relative_to(root))})
@@ -207,7 +331,8 @@ def build(root, population=447):
     payload={'rows':sorted(rows,key=lambda r:(r['id'],list(MODELS).index(r['model']) if r['model'] in MODELS else 3)),
              'base_properties':base_props,'columns':[{'group':g,'key':k,'label':l,'path':p} for g,k,l,p in COLUMNS],
              'study_path':str(study.relative_to(root)),'status_counts':counts,'assessed_names':len(domains),'class_source':str(normalized.relative_to(root)) if normalized.exists() else None,
-             'population_context':context(root,population),'source_files':len(inputs),'additional_workflow_source_files':len(workflow_inputs),'source_digest':hashlib.sha256(b''.join(p.read_bytes() for p in inputs+workflow_inputs)).hexdigest()}
+             'roofline_summary':roofline_summary, 'population_context':context(root,population),'source_files':len(inputs),'additional_workflow_source_files':len(workflow_inputs),'source_digest':hashlib.sha256(b''.join(p.read_bytes() for p in inputs+workflow_inputs+roofline_inputs)).hexdigest()}
+    payload['roofline_source_digest'] = hashlib.sha256(json.dumps(roofline_summary.get('linked_evidence_sha256',{}),sort_keys=True).encode()).hexdigest()
     meta={'total':len(data),'status':{'recorded':len(data)},'generated':datetime.datetime.now(datetime.timezone.utc).isoformat()}
     return data,meta,payload
 
@@ -223,7 +348,22 @@ def main():
     packed=base64.b64encode(gzip.compress(json.dumps(payload,separators=(',',':'),default=str).encode(),mtime=0)).decode()
     unpack="JSON.parse(await new Response(new Blob([Uint8Array.from(atob('"+packed+"'), c => c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('gzip'))).text())"
     template=template.replace('__STUDY_DATA__',unpack)
-    template=template.replace('__EXPLORER_JS__',(assets/'explorer.js').read_text()).replace('__EXPLORER_CSS__',(assets/'explorer.css').read_text())
+    explorer_js = (assets/'explorer.js').read_text()
+    if args.population == 537:
+        template = template.replace('<h2 id="explorer">', '<h2>V100 kernel observations</h2><p class="secnote">Native CUDA remains the baseline; the Julia implementation denominator is unchanged. Profiles are configuration/device-specific samples. Geometric roofline position and causal bottlenecks are separate; inferred catalogue resource bias is preserved.</p><div id="rooflineSummary"></div><h2 id="explorer">', 1)
+        explorer_js += """
+const RF=STUDY.roofline_summary;
+const RM={cuda:'Native CUDA',cuda_jl:'CUDA.jl',ka:'KernelAbstractions',jacc:'JACC'};
+const rs=Object.values(RF.models||{});
+const statuses=[...new Set(rs.flatMap(s=>Object.keys(s.status_counts||{})))].sort();
+$('rooflineSummary').innerHTML='<table class="study-table"><thead><tr><th>V100 profile assessment</th>'+Object.values(RM).map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr></thead><tbody>'+statuses.map(k=>'<tr><td>'+esc(k.replaceAll('_',' '))+'</td>'+Object.keys(RM).map(m=>'<td class="study-count">'+(RF.models[m]?.status_counts[k]??0)+'</td>').join('')+'</tr>').join('')+[
+ ['Linked kernel observations (hash verified)','hash_verified_kernel_observations'],
+ ['Slots with linked observations','slots_with_hash_verified_observations'],
+ ['Explicit complete ROI coverage','complete_ROI_slots'],
+ ['Linked evidence issues','evidence_link_issues']
+].map(([label,key])=>'<tr><td>'+esc(label)+'</td>'+Object.keys(RM).map(m=>'<td class="study-count">'+(RF.models[m]?.[key]??0)+'</td>').join('')+'</tr>').join('')+'</tbody></table><p class="cap">'+RF.registry_names+' benchmark registry names; status counts are per model, not extra Julia implementations. Completed profiling processes can still have partial or unassigned ROI coverage. No observations is not a measured zero. Filter V100 columns or search raw roofline fields below for exact configurations, device, source links and kernel records.</p>';
+"""
+    template=template.replace('__EXPLORER_JS__',explorer_js).replace('__EXPLORER_CSS__',(assets/'explorer.css').read_text())
     template=template.replace('<script>', '<script>\n(async () => {')
     template=template.replace('</script>', "\n})().catch(error => { document.getElementById('count').textContent = 'Could not load the report. Use a current Chrome, Firefox, Edge or Safari browser with gzip decompression support.'; console.error(error); });\n</script>")
     out=args.output or root/'ontology/reports/ontology_report.html';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(template)
