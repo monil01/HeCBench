@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+import pathlib,argparse,json,uuid
+P=pathlib.Path(__file__).resolve().parent;R=P.parents[1]
+a=argparse.ArgumentParser();a.add_argument('--models',default='cuda');a.add_argument('--output',required=True);a.add_argument('--reuse-result');a.add_argument('--capture-root',type=pathlib.Path);a.add_argument('--fixtures',type=pathlib.Path,default=pathlib.Path('/tmp/hecbench-stencil-ports-slu-fixtures-v2'));z=a.parse_args();F=z.fixtures.resolve();old=json.load(open(pathlib.Path(z.reuse_result).resolve().with_name('config.json')))if z.reuse_result else{};capture_root=z.capture_root.resolve()if z.capture_root else pathlib.Path(old.get('capture_root','/tmp/hecbench-stencil-ports-slu-private/campaign_'+uuid.uuid4().hex))
+r=json.load(open(F/'native_preparation_report.json'));assert r['pass']is True
+assets=[F/'cases.txt',F/'asset_provenance.json',F/'canonical_actual_input_prefix.bin',F/'native_preparation_report.json']+[pathlib.Path(x['path'])for x in json.load(open(F/'asset_provenance.json'))['cases']]
+shared=[P/x for x in ['full_study.cu','integrated_numeric.cuh','integrated_main.cuh','corrected_numeric.cuh','checked_preprocess.cpp','independent_oracle.h','study_interface.h','build_program.py','verification_plan.md','reference_provenance.json','shared_ordering_witness.json','ordering_correction_provenance.json','source_archive.json']]+[p for p in (P/'reference_history').rglob('*')if p.is_file()]+[R/'src/slu-cuda/src/nicslu.tar.bz2']+assets
+# Bind exact extracted vendor source/headers used by PIC builder, plus makefile defining objects.
+V=pathlib.Path('/tmp/hecbench-stencil-ports-slu-original/src/nicslu')
+shared += [V/'lib/Makefile']+[p for d in ['source','include','util']for p in (V/d).iterdir()if p.suffix in ['.c','.h']]
+c=dict(benchmark='slu',configuration_id='ASIC100k_add32_positivePair16_2048_fullLU_sourcelevels_ordered_v1',configuration_role='primary',gpu=6,timeout=1800,atol=2e-5,rtol=2e-5,input_prefix_count=r['input_prefix_count'],inputs_shared_verified=True,timed_regions_equivalent_verified=True,native_reference_repaired=True,exclude_untouched_native_aggregates=True,reference_provenance=json.load(open(P/'reference_provenance.json')),capture_root=str(capture_root),models={})
+for m in z.models.split(','):
+ native=m=='cuda';tag={'cuda_jl':'cuda.jl','ka':'KA','jacc':'JACC'}.get(m);cwd=P if native else P/('slu-julia-'+tag)
+ c['models'][m]=dict(cwd=str(cwd),build=['python3',str(P/'build_program.py'),'--mode','native'if native else'shared','--output','study_native'if native else'study_gpu.so','--arch','{arch}'],command=['./study_native',str(F),str(capture_root/'cuda'),'0']if native else['julia','--project='+str(R/'src'/('_julia_jacc_env'if m=='jacc'else'_julia_ka_env')),str(cwd/'main.jl'),'study_gpu.so',str(F),str(capture_root/m)],structured=True,bind_all_declared_dependencies=True,source_dependencies=[str(p)for p in shared]+([]if native else[str(P/'study_common.jl'),str(cwd/'main.jl')]),verification_method='FullActualInputs_AllSparseLUandSolvedX_FullLongDoubleSparseProduct_OriginalSystemBackwardError',native_check_description='FulloriginalASIC99340/add32 and namedpflagcontrols; allactualdeviceinputs includingfullinternal4.113GBscratch losslesslycaptured, fullcombinedLU/X; independent1e-4factorcomponentwise/normwise/originalAx=bbackwarderror. Conditionalorderingrepair, originalNICSLUCPUpreprocess/symbolic/solve outside numericGPUloopwallclockROI.')
+if z.reuse_result:
+ c.update(reuse_result=str(pathlib.Path(z.reuse_result).resolve()),reuse_models=[m for m in c['models']if m!=z.models.split(',')[-1]])
+ for m in c['reuse_models']:c['models'][m]=old['models'][m]
+p=pathlib.Path(z.output);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(c,indent=2)+'\n');print(p)

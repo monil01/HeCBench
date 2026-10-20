@@ -1,0 +1,99 @@
+#===============================================================================
+# User Options
+#===============================================================================
+
+# Compiler can be set below, or via environment variable
+CC        = nvcc
+OPTIMIZE  = yes
+DEBUG     = no
+VERIFY    = yes
+LAUNCHER  =
+
+#===============================================================================
+# Program name & source code list
+#===============================================================================
+SLU_PATH = .
+
+SLU_LIBS = $(SLU_PATH)/nicslu/lib/nicslu.a \
+           $(SLU_PATH)/nicslu/util/nicslu_util.a
+
+program = main
+
+obj = $(SLU_LIBS) preprocess.o Timer.o numeric.o symbolic.o main.o
+
+#===============================================================================
+# Sets Flags
+#===============================================================================
+SLU_INC = -I$(SLU_PATH)/../include \
+          -I$(SLU_PATH)/nicslu/include \
+          -I$(SLU_PATH)/nicslu/util
+
+# Standard Flags
+CFLAGS := $(EXTRA_CFLAGS) -std=c++17 -Xcompiler -Wall $(SLU_INC)
+
+# Linker Flags
+LDFLAGS = 
+
+# Debug Flags
+ifeq ($(DEBUG),yes)
+  CFLAGS += -g -DDEBUG
+  LDFLAGS  += -g
+endif
+
+# Optimization Flags
+ifeq ($(OPTIMIZE),yes)
+  CFLAGS += -O3
+endif
+
+ifeq ($(VERIFY),yes)
+  CFLAGS += -DVERIFY
+endif
+#===============================================================================
+# Targets to Build
+#===============================================================================
+
+$(program): $(obj)
+	$(CC) $(CFLAGS) $(obj) -o $@ $(LDFLAGS)
+
+Timer.o: $(SLU_PATH)/Timer.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+numeric.o: numeric.cu
+	$(CC) $(CFLAGS) -c $< -o $@
+
+symbolic.o: $(SLU_PATH)/symbolic.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+main.o: $(SLU_PATH)/main.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+preprocess.o: $(SLU_PATH)/preprocess.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Auto-extract NICSLU on first build (or if a previous extraction was
+# incomplete). nicslu/Makefile is the sentinel — make treats the extracted
+# tree as an output of the tarball.
+$(SLU_PATH)/nicslu/Makefile: $(SLU_PATH)/nicslu.tar.bz2
+	@if [ ! -f $(SLU_PATH)/nicslu/include/nicslu.h ] || \
+	    [ ! -d $(SLU_PATH)/nicslu/source ]; then \
+		echo "Extracting NICSLU..."; \
+		rm -rf $(SLU_PATH)/nicslu; \
+		tar -xjf $(SLU_PATH)/nicslu.tar.bz2 -C $(SLU_PATH); \
+	fi
+
+$(SLU_PATH)/nicslu/lib/nicslu.a: $(SLU_PATH)/nicslu/Makefile
+	$(MAKE) -C $(SLU_PATH)/nicslu/
+
+$(SLU_PATH)/nicslu/util/nicslu_util.a: $(SLU_PATH)/nicslu/Makefile
+	$(MAKE) -C $(SLU_PATH)/nicslu/
+
+clean:
+	rm -rf $(program) $(obj) *.dat
+	@[ -f $(SLU_PATH)/nicslu/Makefile ] && \
+		$(MAKE) -C $(SLU_PATH)/nicslu/ clean || true
+
+test: $(program)
+	$(LAUNCHER) ./$(program) -i $(SLU_PATH)/nicslu/test/add32.mtx
+
+run: $(program)
+	$(LAUNCHER) ./$(program) -i $(SLU_PATH)/nicslu/demo/ASIC_100k.mtx
