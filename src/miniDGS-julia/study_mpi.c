@@ -1,0 +1,12 @@
+// CPU-only original two-rank nonblocking halo exchange. No CUDA API or device code.
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+static int rank,size;static MPI_Request in_request,out_request;static int messages;
+static void checked(int code){if(code!=MPI_SUCCESS){fprintf(stderr,"MPIstatus%d\n",code);MPI_Abort(MPI_COMM_WORLD,code);}}
+int study_mpi_init(void){int initialized;checked(MPI_Initialized(&initialized));if(!initialized)checked(MPI_Init(NULL,NULL));checked(MPI_Comm_rank(MPI_COMM_WORLD,&rank));checked(MPI_Comm_size(MPI_COMM_WORLD,&size));if(size!=2)MPI_Abort(MPI_COMM_WORLD,2);return rank;}
+void study_mpi_start(float*out,float*in,int count){messages=count>0;int peer=1-rank;if(messages){checked(MPI_Isend(out,count,MPI_FLOAT,peer,6666+peer,MPI_COMM_WORLD,&out_request));checked(MPI_Irecv(in,count,MPI_FLOAT,peer,6666+rank,MPI_COMM_WORLD,&in_request));}}
+void study_mpi_finish(void){MPI_Status*instatus=(MPI_Status*)calloc(size,sizeof(MPI_Status));MPI_Status*outstatus=(MPI_Status*)calloc(size,sizeof(MPI_Status));if(!instatus||!outstatus)MPI_Abort(MPI_COMM_WORLD,7);if(messages){checked(MPI_Waitall(1,&in_request,instatus));checked(MPI_Waitall(1,&out_request,outstatus));}free(outstatus);free(instatus);}
+void study_mpi_barrier(void){checked(MPI_Barrier(MPI_COMM_WORLD));}
+double study_mpi_time(void){return MPI_Wtime();}
+void study_mpi_finalize(void){checked(MPI_Finalize());}
