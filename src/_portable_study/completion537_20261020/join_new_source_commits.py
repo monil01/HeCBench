@@ -11,7 +11,11 @@ receipt=json.loads(a.receipts.read_text());phases={x['phase']:x['commit']for x i
 for model,phase,suffix in [('cuda_jl','shared','cuda.jl'),('ka','KA','KA'),('jacc','JACC','JACC')]:
  commit=phases[phase];main=R/f'src/{a.benchmark}-julia/{a.benchmark}-julia-{suffix}/main.jl';assert subprocess.check_output(['git','show',f'{commit}:{main.relative_to(R)}'],cwd=R)==main.read_bytes()
  main_sha=hashlib.sha256(main.read_bytes()).hexdigest()
- for f in [R/f'.porting-state/porting_logs/{a.benchmark}-julia-{model}/manifest.json',R/f'.porting-state/portable_julia/status_300/{a.benchmark}/{model}.json',main.parent/'translation_accounting.json',main.parent/'study_manifest.json']:
+ metadata_paths=[R/f'.porting-state/porting_logs/{a.benchmark}-julia-{model}/manifest.json',R/f'.porting-state/portable_julia/status_300/{a.benchmark}/{model}.json',main.parent/'translation_accounting.json',main.parent/'study_manifest.json']
+ if model=='cuda_jl':
+  legacy_alias=R/f'.porting-state/porting_logs/{a.benchmark}-julia/manifest.json'
+  if legacy_alias.exists() and json.loads(legacy_alias.read_text()).get('source_sha256')==main_sha:metadata_paths.append(legacy_alias)
+ for f in metadata_paths:
   if not f.exists():continue
   d=json.loads(f.read_text())
   if d.get('source_commit')==commit and d.get('coordinator_source_commit_join',{}).get('source_sha256')==main_sha:continue

@@ -11,6 +11,7 @@ def write(p,x):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dump
 def effort_manifest(b,model):
  aliases={'cuda_jl':['cuda_jl','cuda.jl','cuda'],'ka':['ka','KA'],'jacc':['jacc','JACC']}.get(model,[])
  paths=[ROOT/f'.porting-state/porting_logs/{b}-julia-{a}/manifest.json' for a in aliases]
+ if model=='cuda_jl':paths.append(ROOT/f'.porting-state/porting_logs/{b}-julia/manifest.json')
  paths=[p for p in paths if p.is_file()]
  suffix={'cuda_jl':'cuda.jl','ka':'KA','jacc':'JACC'}.get(model)
  current=sha(ROOT/'src'/f'{b}-julia'/f'{b}-julia-{suffix}'/'main.jl') if suffix else None
