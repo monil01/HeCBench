@@ -1,0 +1,9 @@
+# MT observations
+
+- **RQ1:** Four versions retain the full original 4096×5860 MT/Box–Muller output footprint plus boundary-seed controls. All 20 primary artifacts are bit-identical. Independent block-twist/Float32 recurrence and LongDouble transformation checks cover 242.4 million values/model; exact parameters and actual guards are retained. Uniform values are explicitly untimed replay, not captured timed intermediates. Statistical-generator quality remains unproved.
+- **RQ2:** Every target's first two-kernel complete program passes. One shared CPU audit command used a mistyped evidence folder; it failed closed and was corrected without GPU rerunning. Prospective translation windows are 1,588,482 / 1,098,656 / 1,690,239 tokens; common-harness creation, ordered reuse, cached context, coordination and overlapping verification scopes are explicit. Native readiness is separate.
+- **RQ3:** Full-size pair means over retained trials are 3.506 / 4.938 / 4.965 / 5.076 ms for CUDA / CUDA.jl / KA / JACC. Each primary trial averages three internal pair repeats; original 1000-repeat performance is unmeasured, and controls/replay are outside the reported ROI.
+- **RQ4:** All three express private 19-word UInt32 state, exact wrap arithmetic and Float32 transcendental math without vendor RNG or CUDA device extensions. Source geometry/layout are retained; JACC shared memory is explicitly zero. No measured counters isolate register/local-state placement, SFUs, bandwidth or host dispatch as causes of the observed differences.
+- **RQ5:** This complete arithmetic RNG pipeline is expressible in every target. Ordered shared-body reuse and a single CUDA backend limit target-generation and deployment generalizations; numerical agreement is not a period/distribution/independence certificate.
+
+The neighboring JSON, source hashes, raw-output receipts and README define the exact numerical, physical-guard and timing scopes.
