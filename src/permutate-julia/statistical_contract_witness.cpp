@@ -1,0 +1,2 @@
+#include "reference_history/header.h"
+int main(){uint8_t a[]={3,2,1,0};double n=0,l=0,p=0;directional_runs_and_number_of_inc_dec(&n,&l,&p,a,4);printf("{\"source_directional_runs\":%.0f,\"source_max_run\":%.0f,\"source_max_inc_dec\":%.0f,\"mathematical_max_run\":3,\"mathematical_max_inc_dec\":3,\"source_terminal_run_omission_confirmed\":%s}\n",n,l,p,l==0&&p==4?"true":"false");return !(l==0&&p==4);}
