@@ -1,0 +1,9 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <fstream>
+#include <cstdio>
+#include <stdexcept>
+#define CHECK(x) if((x)!=cudaSuccess)throw std::runtime_error(cudaGetErrorString(cudaGetLastError()));
+__global__ void probe(const float*input,float*out,int n){int i=blockIdx.x*blockDim.x+threadIdx.x;if(i<n){float x=input[i];out[2*i]=atan(x);out[2*i+1]=atan(x)*(1.f/3.14159f)+.5f;}}
+int main(int argc,char**argv){std::ifstream f(argv[1],std::ios::binary);int n;f.read((char*)&n,4);std::vector<float>in(n),host(n*2+128);f.read((char*)in.data(),n*4);float*di,*dout;CHECK(cudaMalloc(&di,n*4));CHECK(cudaMalloc(&dout,host.size()*4));CHECK(cudaMemcpy(di,in.data(),n*4,cudaMemcpyHostToDevice));
+for(int t=0;t<=5;t++){CHECK(cudaMemset(dout,165,host.size()*4));probe<<<(n+255)/256,256>>>(di,dout+64,n);CHECK(cudaDeviceSynchronize());if(!t)continue;CHECK(cudaMemcpy(host.data(),dout,host.size()*4,cudaMemcpyDeviceToHost));std::vector<double>values(in.begin(),in.end());values.insert(values.end(),host.begin()+64,host.end()-64);char name[80];snprintf(name,80,"math_trial%d.bin",t);std::ofstream out(name,std::ios::binary);out.write((char*)values.data(),values.size()*8);char guard[80];snprintf(guard,80,"math_trial%d.guards.u8",t);std::ofstream g(guard,std::ios::binary);g.write((char*)host.data(),256);g.write((char*)(host.data()+host.size()-64),256);bool good=true;for(int i=0;i<256;i++)good&=((unsigned char*)host.data())[i]==165&&((unsigned char*)(host.data()+host.size()-64))[i]==165;printf("STUDY_TRIAL {\"trial\":%d,\"correct\":%s,\"time_seconds\":0,\"checked_values\":%zu,\"max_abs_error\":null,\"max_rel_error\":null,\"timing_region\":\"diagnostic_only_unmeasured\",\"jit_excluded\":true,\"internal_repeats\":1,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%zu,\"byte_order\":\"little\"}}\n",t,good?"true":"false",values.size(),name,values.size());}CHECK(cudaFree(di));CHECK(cudaFree(dout));}

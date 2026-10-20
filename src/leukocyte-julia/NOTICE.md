@@ -1,0 +1,3 @@
+# Attribution
+
+The immutable original HeCBench leukocyte source and bundled Meschach copyright/license notices are retained in original_native. Julia CPU/GPU translations, scientific controls and measurement adapters were authored by Codex for this study on2026-10-19. The Meschach-derived scaled-pivot LU and spline matrix equations are translated in study_host.jl; original authors David E. Steward and Zbigniew Leyk and original source copyright/license remain applicable as provided. No original license notice was removed. The version-compatible Float32 atan helper records actual source compiler arithmetic constants and operations; it is explicitly scoped to matching the observed CUDA12.0 source approximation.
