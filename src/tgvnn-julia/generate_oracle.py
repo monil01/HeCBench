@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Independent vector-calculus / Gram-eigen nuclear-prox CPU oracle; no CUDA."""
+import argparse,pathlib,json,struct,hashlib,time,os
+import numpy as np
+P=pathlib.Path(__file__).resolve().parent;R=P.parents[1]
+def ra(p):
+ b=p.read_bytes();h=struct.unpack('<6Q',b[:48]);assert h[0]==0x7961727261776172 and h[1]==0 and h[2:4]==(4,8);dims=struct.unpack('<'+'Q'*h[5],b[48:48+8*h[5]]);assert len(b)==48+8*h[5]+h[4] and np.prod(dims)*8==h[4];return np.frombuffer(b,dtype='<c8',offset=48+8*h[5]).copy(),dims
+
+def grad(a,shape,axis,mu):
+ axis=(1,0,2)[axis] # semantic source x advances rows; y advances one
+ x=a.reshape(shape,order='F');z=np.zeros(shape,dtype=np.complex128);sl=[slice(None)]*3;sr=sl.copy();sl[axis]=slice(0,-1);sr[axis]=slice(1,None);z[tuple(sl)]=(x[tuple(sr)]-x[tuple(sl)])/(mu if axis==2 else 1);return z.ravel(order='F')
+def div(a,shape,axis,mu):
+ # Source negative adjoint; temporal interior is scaled but boundaries are not.
+ axis=(1,0,2)[axis] # source x/y coordinate convention, not array axis naming
+ x=a.reshape(shape,order='F');z=np.zeros(shape,dtype=np.complex128);c=[slice(None)]*3;l=c.copy();c[axis]=slice(1,-1);l[axis]=slice(0,-2);z[tuple(c)]=(x[tuple(c)]-x[tuple(l)])/(mu if axis==2 else 1);c[axis]=0;z[tuple(c)]=x[tuple(c)];c[axis]=-1;l[axis]=-2;z[tuple(c)]=-x[tuple(l)];return z.ravel(order='F')
+def fft(a,shape,inverse=False):
+ x=a.reshape(shape,order='F');s=np.sqrt(shape[0]*shape[1]);return ((np.fft.ifft2(x,axes=(0,1))*s) if inverse else (np.fft.fft2(x,axes=(0,1))/s)).ravel(order='F')
+def oracle(image,mask,shape,iterations,alpha=.004,beta=.5,tau=.25,sigma=.25,mu=1):
+ # Source normalizes by abs(real) of first BLAS complex1-norm maximum.
+ k=int(np.argmax(abs(image.real)+abs(image.imag)));scale=float(np.float32(1)/np.float32(abs(image[k].real)));assert np.isfinite(scale)
+ img=image.astype(np.complex128)*scale;mask=mask.astype(np.complex128);b=fft(img,shape)*mask;zero=fft(b*mask,shape,True)
+ n=len(img);l=np.maximum(zero.real,0).astype(np.complex128);s=np.zeros(n,dtype=np.complex128);w=np.zeros((3,n),dtype=np.complex128);p=w.copy();q=np.zeros((6,n),dtype=np.complex128);r=s.copy();lb=l.copy();sb=s.copy();wb=w.copy();tmp=np.zeros((12,n),dtype=np.complex128);trace={}
+ for it in range(1,iterations+1):
+  a1=float(np.exp(it/iterations*np.log(alpha*.5)+(iterations-it)/iterations*np.log(alpha)));a0=float(np.sqrt(2)*a1)
+  lo=l.copy();so=s.copy();wo=w.copy()
+  residual=fft(lb+sb,shape)*mask-b;r=(r+sigma*residual)/(1+sigma)
+  g=np.array([grad(sb,shape,j,mu)for j in range(3)]);p-=sigma*(g+wb);p/=np.maximum(1,np.sqrt(np.sum(abs(p)**2,axis=0))/a1)
+  D=lambda j,c:div(wb[c],shape,j,mu)
+  sym=np.array([D(0,0),D(1,1),D(2,2),(D(1,0)+D(0,1))*.5,(D(0,2)+D(2,0))*.5,(D(2,1)+D(1,2))*.5]);q-=sigma*sym;q/=np.maximum(1,np.sqrt(np.sum(abs(q[:3])**2,axis=0)+2*np.sum(abs(q[3:])**2,axis=0))/a0)
+  rz=fft(r*mask,shape,True);dp=np.array([div(p[j],shape,j,mu)for j in range(3)]);s-=tau*(rz+np.sum(dp,axis=0))
+  G=lambda j,c:grad(q[c],shape,j,mu)
+  dq=np.array([G(0,0),G(1,3),G(2,4),G(0,3),G(1,1),G(2,5),G(0,4),G(1,5),G(2,2)]);w-=tau*(dq.reshape((3,3,n)).sum(axis=1)-p)
+  A=(l-tau*rz).reshape((shape[0]*shape[1],shape[2]),order='F');H=A.conj().T@A;e,V=np.linalg.eigh(H);sing=np.sqrt(np.maximum(e,0));coeff=np.zeros_like(sing);positive=sing>beta;coeff[positive]=1-beta/sing[positive];l=(A@((V*coeff)@V.conj().T)).ravel(order='F');shrunk=np.maximum(sing[::-1]-beta,0)
+  sb=2*s-so;wb=2*w-wo;lb=2*l-lo;tmp=np.concatenate((dp,dq),axis=0)
+  if it==1:trace={k:v.copy()for k,v in dict(r=r,p=p,q=q,s=s,w=w,l=l,lb=lb,sb=sb,wb=wb,tmp=tmp).items()}
+  if it%50==0:print(json.dumps({'iteration':it,'total':iterations,'max_reconstruction':float(np.max(abs(l+s)))}),flush=True)
+ out=dict(img=img,mask=mask,imgz=zero,imgb=b,imgl=l,imgs=s,w=w,p=p,q=q,r=r,lbar=lb,sbar=sb,wbar=wb,lold=lo,sold=so,wold=wo,tmp=tmp,imgr=l+s,ls=shrunk,ls2=shrunk.astype(np.complex128))
+ return out,trace
+
+def save(o,name,a):
+ a=np.asarray(a);file=o/(name+'.bin');a.astype('<c16'if np.iscomplexobj(a)else'<f8').ravel().tofile(file);return {'path':str(file),'sha256':hashlib.sha256(file.read_bytes()).hexdigest(),'bytes':file.stat().st_size,'count':a.size,'dtype':'complex128'if np.iscomplexobj(a)else'float64'}
+def main():
+ a=argparse.ArgumentParser();a.add_argument('--output',type=pathlib.Path,required=True);a.add_argument('--case',choices=['pincat','rectangular'],default='pincat');a.add_argument('--iterations',type=int,default=500);z=a.parse_args();o=z.output;o.mkdir(parents=True,exist_ok=True)
+ if z.case=='pincat':image,shape=ra(R/'src/tgvnn-cuda/data/pincat.ra');mask,ms=ra(R/'src/tgvnn-cuda/data/pincat_mask.ra');assert shape==ms
+ else:
+  shape=(7,5,4);i=np.arange(np.prod(shape));image=(np.float32(1)+((i*17)%31).astype(np.float32)/32+1j*((i*11)%13).astype(np.float32)/64).astype('<c8');mask=((i*3)%7<4).astype('<c8');mask[0]=1
+ start=time.monotonic();out,trace=oracle(image,mask,shape,z.iterations);assets={'input_img':save(o,'input_img',image.astype(np.complex128)),'input_mask':save(o,'input_mask',mask.astype(np.complex128))};rows={k:save(o,k,v)for k,v in out.items()};tr={k:save(o,'first_iteration_'+k,v)for k,v in trace.items()};proof={'case':z.case,'shape':shape,'iterations':z.iterations,'CPU_seconds':time.monotonic()-start,'numpy':np.__version__,'independent_algorithm':'Vectorized finite difference/symmetric tensor projection; normalized numpy FFT; Hermitian Gram eigenvalue functional calculus for nuclear proximal, not replaying source cuSOLVER SVD.','input_assets':assets,'output_assets':rows,'first_iteration_trace':tr,'caveat':'Temporal adjoint boundaries intentionally retain source no1/mu; declaredmu1 only. No MRI clinical quality/groundtruth certificate.'};(o/'oracle_manifest.json').write_text(json.dumps(proof,indent=2)+'\n');print(json.dumps({'done':True,'CPU_seconds':proof['CPU_seconds'],'oracle':str(o/'oracle_manifest.json')}))
+if __name__=='__main__':main()
