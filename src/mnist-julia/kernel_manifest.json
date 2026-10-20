@@ -1,0 +1,116 @@
+[
+  {
+    "name": "apply_step_function",
+    "args": "input,output,N",
+    "N": "N",
+    "body": "output[n+1]=1f0/(1f0+exp(-input[n+1]))"
+  },
+  {
+    "name": "makeError",
+    "args": "err,output,Y,N",
+    "N": "N",
+    "body": "err[n+1]=(Y==n ? 1f0 : 0f0)-output[n+1]"
+  },
+  {
+    "name": "apply_grad",
+    "args": "output,grad,N",
+    "N": "N",
+    "body": "output[n+1]=muladd(.1f0,grad[n+1],output[n+1])"
+  },
+  {
+    "name": "fp_preact_c1",
+    "args": "input,preact,weight",
+    "N": "86400",
+    "body": "kr=n%5;kc=div(n,5)%5;ch=div(n,25)%6;r=div(n,150)%24;c=div(n,3600)%24\n  atomic_add!(preact,(ch*24+r)*24+c+1,weight[(ch*5+kr)*5+kc+1]*input[(r+kr)*28+c+kc+1])"
+  },
+  {
+    "name": "fp_bias_c1",
+    "args": "preact,bias",
+    "N": "3456",
+    "body": "ch=n%6;r=div(n,6)%24;c=div(n,144)%24;i=(ch*24+r)*24+c+1\n  preact[i]+=bias[ch+1]"
+  },
+  {
+    "name": "fp_preact_s1",
+    "args": "input,preact,weight",
+    "N": "3456",
+    "body": "kr=n%4;kc=div(n,4)%4;ch=div(n,16)%6;r=div(n,96)%6;c=div(n,576)%6\n  atomic_add!(preact,(ch*6+r)*6+c+1,weight[kr*4+kc+1]*input[(ch*24+r*4+kr)*24+c*4+kc+1])"
+  },
+  {
+    "name": "fp_bias_s1",
+    "args": "preact,bias",
+    "N": "216",
+    "body": "ch=n%6;r=div(n,6)%6;c=div(n,36)%6;i=(ch*6+r)*6+c+1\n  preact[i]+=bias[1]"
+  },
+  {
+    "name": "fp_preact_f",
+    "args": "input,preact,weight",
+    "N": "2160",
+    "body": "cl=n%10;ch=div(n,10)%6;r=div(n,60)%6;c=div(n,360)%6;i=(ch*6+r)*6+c\n  atomic_add!(preact,cl+1,weight[cl*216+i+1]*input[i+1])"
+  },
+  {
+    "name": "fp_bias_f",
+    "args": "preact,bias",
+    "N": "10",
+    "body": "preact[n+1]+=bias[n+1]"
+  },
+  {
+    "name": "bp_weight_f",
+    "args": "dweight,dpreact,poutput",
+    "N": "2160",
+    "body": "cl=n%10;ch=div(n,10)%6;r=div(n,60)%6;c=div(n,360)%6;i=(ch*6+r)*6+c\n  dweight[cl*216+i+1]=dpreact[cl+1]*poutput[i+1]"
+  },
+  {
+    "name": "bp_bias_f",
+    "args": "bias,dpreact",
+    "N": "10",
+    "body": "bias[n+1]=muladd(.1f0,dpreact[n+1],bias[n+1])"
+  },
+  {
+    "name": "bp_output_s1",
+    "args": "doutput,nweight,ndpreact",
+    "N": "2160",
+    "body": "cl=n%10;ch=div(n,10)%6;r=div(n,60)%6;c=div(n,360)%6;i=(ch*6+r)*6+c\n  atomic_add!(doutput,i+1,nweight[cl*216+i+1]*ndpreact[cl+1])"
+  },
+  {
+    "name": "bp_preact_s1",
+    "args": "dpreact,doutput,preact",
+    "N": "216",
+    "body": "ch=n%6;r=div(n,6)%6;c=div(n,36)%6;i=(ch*6+r)*6+c+1;o=1f0/(1f0+exp(-preact[i]))\n  dpreact[i]=doutput[i]*o*(1f0-o)"
+  },
+  {
+    "name": "bp_weight_s1",
+    "args": "dweight,dpreact,poutput",
+    "N": "3456",
+    "body": "kr=n%4;kc=div(n,4)%4;ch=div(n,16)%6;r=div(n,96)%6;c=div(n,576)%6\n  atomic_add!(dweight,kr*4+kc+1,dpreact[(ch*6+r)*6+c+1]*poutput[(ch*24+r*4+kr)*24+c*4+kc+1])"
+  },
+  {
+    "name": "bp_bias_s1",
+    "args": "bias,dpreact",
+    "N": "216",
+    "body": "ch=n%6;r=div(n,6)%6;c=div(n,36)%6\n  atomic_add!(bias,1,.1f0*dpreact[(ch*6+r)*6+c+1]/216f0)"
+  },
+  {
+    "name": "bp_output_c1",
+    "args": "doutput,nweight,ndpreact",
+    "N": "3456",
+    "body": "kr=n%4;kc=div(n,4)%4;ch=div(n,16)%6;r=div(n,96)%6;c=div(n,576)%6\n  atomic_add!(doutput,(ch*24+r*4+kr)*24+c*4+kc+1,nweight[kr*4+kc+1]*ndpreact[(ch*6+r)*6+c+1])"
+  },
+  {
+    "name": "bp_preact_c1",
+    "args": "dpreact,doutput,preact",
+    "N": "3456",
+    "body": "ch=n%6;r=div(n,6)%24;c=div(n,144)%24;i=(ch*24+r)*24+c+1;o=1f0/(1f0+exp(-preact[i]))\n  dpreact[i]=doutput[i]*o*(1f0-o)"
+  },
+  {
+    "name": "bp_weight_c1",
+    "args": "dweight,dpreact,poutput",
+    "N": "86400",
+    "body": "ch=n%6;kr=div(n,6)%5;kc=div(n,30)%5;r=div(n,150)%24;c=div(n,3600)%24\n  atomic_add!(dweight,(ch*5+kr)*5+kc+1,dpreact[(ch*24+r)*24+c+1]*poutput[(r+kr)*28+c+kc+1]/576f0)"
+  },
+  {
+    "name": "bp_bias_c1",
+    "args": "bias,dpreact",
+    "N": "3456",
+    "body": "ch=n%6;r=div(n,6)%24;c=div(n,144)%24\n  atomic_add!(bias,ch+1,.1f0*dpreact[(ch*24+r)*24+c+1]/576f0)"
+  }
+]
