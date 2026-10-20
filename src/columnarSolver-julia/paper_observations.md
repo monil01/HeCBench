@@ -1,0 +1,56 @@
+# columnarSolver: fixed academic fixture
+
+## RQ1
+
+{
+  "status": "conditional_corrected_native_full_workload_numerical_agreement",
+  "all_four_five_trials": true,
+  "checked_values_per_trial": 475697,
+  "full_saved_audit": "all20_exact_full_source_workload_independent_saved_audit_pass",
+  "full_guard_bytes": 51200,
+  "known_plaintext_thread": 361,
+  "scope": "Only supplied 397-character fixture, KEY_LENGTH30, 150000 moves per trajectory and 1024 trajectories. No external input, global optimality, RNG independence or general cryptanalysis claim."
+}
+
+## RQ2
+
+{
+  "actual_phase_windows": "effort_summary.json",
+  "candidate_programs": {
+    "cuda_jl": 1,
+    "ka": 1,
+    "jacc": 1
+  },
+  "authored_definitions_per_program": 2,
+  "native_adapter_compile_failures": 2,
+  "native_diagnostic_gpu_programs": 3,
+  "historical_cost_unknown": true
+}
+
+## RQ3
+
+{
+  "seconds_last_four_mean": {
+    "cuda": 14.575939050999999,
+    "cuda_jl": 38.39174022825,
+    "ka": 38.376800655500006,
+    "jacc": 39.225764467750004
+  },
+  "timing_scope": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+  "exclude_untouched_native_aggregates": true
+}
+
+## RQ4
+
+{
+  "mechanism": "Both nvcc12.0 and12.9 intermediate arrays retain last-candidate character0 while final accepted key/score/RNG matches CPU. Volatile best private storage alone restores full exact state. Compiler root cause not proven.",
+  "weak_source_checker_counterfactual": "Would accept both489-row faulty arrays; independent full key-to-plaintext gate rejects them. Not an executed original unsafe CLI result.",
+  "traits": "implementation_traits.json"
+}
+
+## RQ5
+
+{
+  "selection": "All frameworks implement the fixed full workload, but conditional reference and private-state mapping prevent general performance recommendations.",
+  "unsupported_feature_claim": false
+}
