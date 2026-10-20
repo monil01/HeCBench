@@ -1,0 +1,33 @@
+# Predeclared XLQC numerical and timing contract
+
+Declared before any checked native five-trial or target series. Original-source exploratory SP/DP runs each converged in nine iterations and are diagnostic readiness evidence, not the checked study.
+
+## Source and numerical scope
+
+Execute the complete original H2O/STO-3G Hartree–Fock SCF pipeline: original geometry and basis files, 7 contracted/21 primitive basis functions, 10 electrons, initial GWH guess, incremental Coulomb/exchange formation, DIIS, eigenproblem, density update and original convergence criterion. Separate named SP and DP configurations exercise all four original GPU entry definitions across the study. Source GPU files and CPU SCF/GSL controller remain byte-identical. The instrumentation dispatches J/K through an explicit callback when a target exists, with no native fallback in that mode; native dispatch uses the unchanged kernels.
+
+Both configurations require the observed matched-work contract of nine converged iterations (no fixed-iteration replacement or forced early exit). A different iteration count is preserved and rejected for this contract; it is not proof that a different converged solver is mathematically invalid. No arbitrary input, higher-angular-momentum basis or unexecuted Rys root branch is certified. The full original H2O case is retained, not an isolated ERI toy.
+
+Initialize guarded output allocations with a finite poison pattern outside timing. Original output buffers are overwritten completely before read, so this instrumentation does not repair an observed undefined-input/source read. Four input arrays and full J/K outputs are read back, with all six allocations guarded by 256 aligned bytes on each side. Every J/K stage checks all actual input values against the source host density and initial read-only data, and all read-only inputs remain unchanged after the kernel.
+
+The exact initial-input prefix includes actual GPU PBF coordinates/exponents/coefficient-normalizations, primitive-to-contracted map, actual Q array, first actual density, dimensions/electron count/nuclear energy and full source one-electron/orthogonalization matrices. The raw Float64 prefix bits must match every trial and model. Later density inputs are actual coupled solver feedback: retain and compare them as full numerical stage values, rather than falsely asserting independently fixed density bits. Complete stage density inputs/J/K outputs and all iteration density/Fock/J/K matrices, MO energies and source energy/convergence scalars are compared against native and CUDA.jl. Complete raw MO coefficients are retained separately with eigenproblem, orthogonality and density-projector checks; raw eigenvector phase identity is not claimed.
+
+## Independent mathematical gates
+
+The independent CPU Coulomb integral uses the alternative PyQuante B-array/incomplete-gamma formulation, rather than GPU Rys polynomial quadrature. A separately preserved CPU clone tightens the bundled original EPS=1e-9/ITMAX100 and replaces its small-x Boys clamp with an exact-zero/convergent integral series. Unique symbol prefixes prevent interposition with unchanged original CPU routines. This is validation code, not a native GPU or SCF algorithm correction. External review measured tight Boys versus independent 128-point integral quadrature at 2.963e-15 maximum sampled absolute difference; this is a sampled qualification, not a universal rigorous bound.
+
+Generate independent full primitive ERI caches from **actual GPU-readback** PBF values. The SP stage oracle first rounds the source primitive input fields to Float32, matching source input casts; it does not pretend to reproduce every SP arithmetic operation. The physical final-state oracle uses the original Float64 primitive fields. Any reconstructed reviewer fixture is only a diagnostic and must be compared to the actual input before use.
+
+For every primitive J/K value, use absolute-plus-relative engineering budgets: DP `5e-10 + 5e-9*abs(expected)`; SP `1e-5 + 3e-5*abs(expected)`. Preserve the actual source Q as the **raw ERI**, despite a misleading square-root comment. Preserve its actual screening products and threshold1e-16. Do not silently replace Q with its square root or claim this source policy is a universally rigorous Schwarz bound.
+
+Every iteration checks CᵀSC=I, DSD=2D, Tr(DS)=10 and FC=SCε with maximum absolute residual<1e-8. At the converged state, construct a fresh **unscreened** physical F(D_new) independently. Its commutator FDS−SDF and difference between physical HF energy and the reported post-DIIS source scalar must each be≤5e-8 DP or≤5e-5 SP. Do not demand physical self-consistency at unconverged iterations or equate source post-DIIS Fock with fresh F(D_new). All compared values must be finite. These are explicitly bounded model/Float32/Float64 engineering accuracy contracts, not experimental chemical ground truth.
+
+Full numeric comparison is separate per precision: DP atol1e-8/rtol1e-7, SP atol2e-5/rtol2e-5; independent stricter per-field physical gates remain mandatory. Raw eigenvector coefficients remain complete auxiliary evidence, not falsely equal primary outputs. No canonicalization discards GPU numerical outputs.
+
+## Timing and execution
+
+One complete source SCF warmup precedes five checked full SCF trials for each configuration/model. Average trials2–5, keep all five and drop no outlier. Preserve exact nanosecond durations; do not reuse the source's Float32 microsecond-reporting approximation.
+
+The ROI is the sum of **all original J and K stage regions** over the full converged SCF: source dispatch/host callback and context completion. Source CPU basis parsing, one-electron integrals, DIIS/eigensolves/density construction and full scientific/capture checks execute outside these source kernel-stage timers. It is neither full-program wall time nor pure device event time. Target host interoperation overhead belongs inside the same stage regions. Initializing, readbacks, independent integral caches and validation are outside those regions. All GPU work uses physical6 under the existing global central-runner lock; no nested lock around the verifier.
+
+Pin the private GSL2.8 static library and compiler/dependency hashes. No system package installation, sudo or shared Julia environment mutation is used. Native CPU/GSL code is common to all models; disclose its interoperation and package version as part of the experiment. Preserve failed adapter builds/fixture orchestration independently from GPU translation candidates. No target drafting starts until native full-state independent preparation passes.

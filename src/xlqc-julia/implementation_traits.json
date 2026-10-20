@@ -1,0 +1,1617 @@
+{
+  "benchmark": "xlqc",
+  "primary_motif": "Rys_quadrature_primitive_ERI_shared_block_reductions_coupled_SCF",
+  "scientific_intent": {
+    "benchmark": "xlqc",
+    "primary_family": "quantum_electronic",
+    "review_status": "source_reviewed",
+    "domain": "Electronic-structure quantum chemistry",
+    "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+    "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+    "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+    "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+    "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+    "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+    "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+    "scientific_invariants": [
+      "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+      "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+      "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+      "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+    ],
+    "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+    "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+    "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+    "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+    "source_evidence": [
+      {
+        "path": "src/xlqc-julia/reference_history/README.md",
+        "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+        "bytes": 416
+      },
+      {
+        "path": "src/xlqc-julia/reference_history/main.cu",
+        "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+        "bytes": 24067
+      },
+      {
+        "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+        "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+        "bytes": 83412
+      },
+      {
+        "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+        "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+        "bytes": 80521
+      },
+      {
+        "path": "src/xlqc-julia/verification_plan.md",
+        "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+        "bytes": 6635
+      },
+      {
+        "path": "src/xlqc-julia/all4_full_capture_audit.json",
+        "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+        "bytes": 36136
+      }
+    ]
+  },
+  "implementation_traits": {
+    "cuda_jl": {
+      "implementation_model": "cuda_jl",
+      "review_status": "source_reviewed",
+      "implementation_status": "verified",
+      "implementation_class": "CUDAjl_authored_GPU_native_CPU_GSL_SCF_controller_hybrid",
+      "authored_device_kernel_count": 4,
+      "authored_device_kernel_definitions": 4,
+      "executed_distinct_authored_entries": 4,
+      "executed_entry_names": [
+        "J_DP",
+        "K_DP"
+      ],
+      "shared_device_math_function_definitions": 21,
+      "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. CUDA.jl@cuda direct entry kernels.",
+      "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+      "storage_precision": [
+        "Float64 global PBF/D/Q/J/K/SCF states",
+        "Int32 index map",
+        "Float64 private Rys values"
+      ],
+      "compute_precision": [
+        "Float64 Rys/integral/density/shared arithmetic",
+        "Original source CPU/GSL Float64 SCF",
+        "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+      ],
+      "synchronization": [
+        "Full-block barrier before deterministic shared reduction",
+        "One owned serial CUDA stream for target launches; original native default stream",
+        "Source cudaDeviceSynchronize completion inside each J/K timed region"
+      ],
+      "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+      "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+      "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+      "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+      "native_to_julia_mapping": {
+        "status": "matched",
+        "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+      },
+      "scientific_intent": {
+        "benchmark": "xlqc",
+        "primary_family": "quantum_electronic",
+        "review_status": "source_reviewed",
+        "domain": "Electronic-structure quantum chemistry",
+        "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+        "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+        "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+        "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+        "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+        "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+        "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+        "scientific_invariants": [
+          "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+          "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+          "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+          "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+        ],
+        "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+        "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+        "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+        "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+        "source_evidence": [
+          {
+            "path": "src/xlqc-julia/reference_history/README.md",
+            "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+            "bytes": 416
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/main.cu",
+            "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+            "bytes": 24067
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+            "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+            "bytes": 83412
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+            "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+            "bytes": 80521
+          },
+          {
+            "path": "src/xlqc-julia/verification_plan.md",
+            "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+            "bytes": 6635
+          },
+          {
+            "path": "src/xlqc-julia/all4_full_capture_audit.json",
+            "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+            "bytes": 36136
+          }
+        ]
+      },
+      "scientific_precision_mode": "DP",
+      "native_reference_repaired": false,
+      "source_evidence": [
+        {
+          "path": "src/xlqc-julia/xlqc-julia-cuda.jl/main.jl",
+          "sha256": "8ca3a090ba40397d0c6031b5f00177633c9d4345233c40bac2f2b0d652a7f137",
+          "bytes": 439
+        },
+        {
+          "path": "src/xlqc-julia/device_bodies.jl",
+          "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+          "bytes": 241885
+        },
+        {
+          "path": "src/xlqc-julia/study_common.jl",
+          "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+          "bytes": 2723
+        },
+        {
+          "path": "src/xlqc-julia/all4_full_capture_audit.json",
+          "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+          "bytes": 36136
+        }
+      ],
+      "package_environment": {
+        "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "julia_version": "1.12.6",
+        "packages": {
+          "CUDA": "6.2.1",
+          "CUDACore": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "StaticArrays": "1.9.18"
+        },
+        "files": {
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+        },
+        "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+      },
+      "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+      "keyconfounds": [
+        "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+        "Validation/capture outside timed stages extends inter-stage gaps",
+        "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+        "No hardware counters/register/spill/roofline measurements",
+        "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+      ],
+      "selected_dispatches": {
+        "total_including_warmup": 108,
+        "checked_trials": 90,
+        "warmup": 18,
+        "per_entry": [
+          0,
+          0,
+          54,
+          54
+        ],
+        "actual_log": {
+          "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T075902459010Z_xlqc/cuda_jl_run1.log",
+          "sha256": "a4d5b3229f01e68b73ca6b7ee1b673fda915289d2647b87e392b5b9ae08a4acf",
+          "bytes": 439881
+        }
+      },
+      "scientific_precision_modes": [
+        "SP",
+        "DP"
+      ],
+      "configuration_traits": {
+        "H2O_STO3G_full_converged9_SCF_SP_J_K_stages_v1": {
+          "implementation_model": "cuda_jl",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "CUDAjl_authored_GPU_native_CPU_GSL_SCF_controller_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_SP",
+            "K_SP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. CUDA.jl@cuda direct entry kernels.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float32 private Rys values"
+          ],
+          "compute_precision": [
+            "Float32 Rys polynomial/integral arithmetic plus Float64 density products/shared accumulation",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "matched",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "SP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-cuda.jl/main.jl",
+              "sha256": "8ca3a090ba40397d0c6031b5f00177633c9d4345233c40bac2f2b0d652a7f137",
+              "bytes": 439
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              54,
+              54,
+              0,
+              0
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T075812741928Z_xlqc/cuda_jl_run1.log",
+              "sha256": "4545d582b0d6fddff31cfda52bcc0dfe6a8df100decaa6adf6c8c7173d47515d",
+              "bytes": 439834
+            }
+          }
+        },
+        "H2O_STO3G_full_converged9_SCF_DP_J_K_stages_v1": {
+          "implementation_model": "cuda_jl",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "CUDAjl_authored_GPU_native_CPU_GSL_SCF_controller_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_DP",
+            "K_DP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. CUDA.jl@cuda direct entry kernels.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float64 private Rys values"
+          ],
+          "compute_precision": [
+            "Float64 Rys/integral/density/shared arithmetic",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "matched",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "DP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-cuda.jl/main.jl",
+              "sha256": "8ca3a090ba40397d0c6031b5f00177633c9d4345233c40bac2f2b0d652a7f137",
+              "bytes": 439
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              0,
+              0,
+              54,
+              54
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T075902459010Z_xlqc/cuda_jl_run1.log",
+              "sha256": "a4d5b3229f01e68b73ca6b7ee1b673fda915289d2647b87e392b5b9ae08a4acf",
+              "bytes": 439881
+            }
+          }
+        }
+      },
+      "attempts": {
+        "complete_program_submissions": 4,
+        "mathematical_formula_bundle_candidates": 1,
+        "GPU_entry_mapping_candidates": 1,
+        "actual_translated_device_JIT_processes": 3,
+        "backend_internal_compiler_invocations": null,
+        "failed_device_compiler_checks": 0,
+        "observed_failed_programs": 2,
+        "host_launch_or_reporting_failures": 2,
+        "observed_GPU_runtime_failures": 0,
+        "observed_independent_numerical_rejections": 0,
+        "authored_GPU_entry_definitions": 4,
+        "mathematical_quadrature_helpers": 17,
+        "shared_device_math_functions": 21,
+        "precision_configs": 2,
+        "unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort."
+      }
+    },
+    "ka": {
+      "implementation_model": "ka",
+      "review_status": "source_reviewed",
+      "implementation_status": "verified",
+      "implementation_class": "KA_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+      "authored_device_kernel_count": 4,
+      "authored_device_kernel_definitions": 4,
+      "executed_distinct_authored_entries": 4,
+      "executed_entry_names": [
+        "J_DP",
+        "K_DP"
+      ],
+      "shared_device_math_function_definitions": 21,
+      "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. KA physical groups are flattened64-thread groups; KA Cartesian local/group IDs explicitly supply source x/y to the four math entries. CUDA backend shared storage/barriers retained; reversible source mapping review verifies no floating formula change.",
+      "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+      "storage_precision": [
+        "Float64 global PBF/D/Q/J/K/SCF states",
+        "Int32 index map",
+        "Float64 private Rys values"
+      ],
+      "compute_precision": [
+        "Float64 Rys/integral/density/shared arithmetic",
+        "Original source CPU/GSL Float64 SCF",
+        "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+      ],
+      "synchronization": [
+        "Full-block barrier before deterministic shared reduction",
+        "One owned serial CUDA stream for target launches; original native default stream",
+        "Source cudaDeviceSynchronize completion inside each J/K timed region"
+      ],
+      "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+      "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+      "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+      "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+      "native_to_julia_mapping": {
+        "status": "adapted",
+        "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+      },
+      "scientific_intent": {
+        "benchmark": "xlqc",
+        "primary_family": "quantum_electronic",
+        "review_status": "source_reviewed",
+        "domain": "Electronic-structure quantum chemistry",
+        "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+        "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+        "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+        "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+        "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+        "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+        "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+        "scientific_invariants": [
+          "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+          "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+          "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+          "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+        ],
+        "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+        "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+        "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+        "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+        "source_evidence": [
+          {
+            "path": "src/xlqc-julia/reference_history/README.md",
+            "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+            "bytes": 416
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/main.cu",
+            "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+            "bytes": 24067
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+            "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+            "bytes": 83412
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+            "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+            "bytes": 80521
+          },
+          {
+            "path": "src/xlqc-julia/verification_plan.md",
+            "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+            "bytes": 6635
+          },
+          {
+            "path": "src/xlqc-julia/all4_full_capture_audit.json",
+            "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+            "bytes": 36136
+          }
+        ]
+      },
+      "scientific_precision_mode": "DP",
+      "native_reference_repaired": false,
+      "source_evidence": [
+        {
+          "path": "src/xlqc-julia/xlqc-julia-KA/main.jl",
+          "sha256": "b1bd2b1a99c3cc0e57ab4fd3b3e88e5c1b78d7062595c92082f018f8784e4b3b",
+          "bytes": 1642
+        },
+        {
+          "path": "src/xlqc-julia/device_bodies.jl",
+          "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+          "bytes": 241885
+        },
+        {
+          "path": "src/xlqc-julia/study_common.jl",
+          "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+          "bytes": 2723
+        },
+        {
+          "path": "src/xlqc-julia/all4_full_capture_audit.json",
+          "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+          "bytes": 36136
+        },
+        {
+          "path": "src/xlqc-julia/xlqc-julia-KA/device_bodies.jl",
+          "sha256": "0207dcfa8d7505570bd097604c09da04440a6208761f247460224c531ed19fe5",
+          "bytes": 240584
+        },
+        {
+          "path": "src/xlqc-julia/KA_mapping_review.json",
+          "sha256": "c8198b0cd74e8e9154407dee684a80fb2b7e2f1e2c68adc37186a2323037c412",
+          "bytes": 980
+        }
+      ],
+      "package_environment": {
+        "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "julia_version": "1.12.6",
+        "packages": {
+          "CUDA": "6.2.1",
+          "CUDACore": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "StaticArrays": "1.9.18"
+        },
+        "files": {
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+          "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+        },
+        "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+      },
+      "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+      "keyconfounds": [
+        "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+        "Validation/capture outside timed stages extends inter-stage gaps",
+        "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+        "No hardware counters/register/spill/roofline measurements",
+        "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+      ],
+      "selected_dispatches": {
+        "total_including_warmup": 108,
+        "checked_trials": 90,
+        "warmup": 18,
+        "per_entry": [
+          0,
+          0,
+          54,
+          54
+        ],
+        "actual_log": {
+          "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080335378568Z_xlqc/ka_run1.log",
+          "sha256": "874025c7e8a7f12a6ee6b69076c805df71867196e16815dc485056c0f80c9938",
+          "bytes": 434187
+        }
+      },
+      "scientific_precision_modes": [
+        "SP",
+        "DP"
+      ],
+      "configuration_traits": {
+        "H2O_STO3G_full_converged9_SCF_SP_J_K_stages_v1": {
+          "implementation_model": "ka",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "KA_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_SP",
+            "K_SP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. KA physical groups are flattened64-thread groups; KA Cartesian local/group IDs explicitly supply source x/y to the four math entries. CUDA backend shared storage/barriers retained; reversible source mapping review verifies no floating formula change.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float32 private Rys values"
+          ],
+          "compute_precision": [
+            "Float32 Rys polynomial/integral arithmetic plus Float64 density products/shared accumulation",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "adapted",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "SP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-KA/main.jl",
+              "sha256": "b1bd2b1a99c3cc0e57ab4fd3b3e88e5c1b78d7062595c92082f018f8784e4b3b",
+              "bytes": 1642
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            },
+            {
+              "path": "src/xlqc-julia/xlqc-julia-KA/device_bodies.jl",
+              "sha256": "0207dcfa8d7505570bd097604c09da04440a6208761f247460224c531ed19fe5",
+              "bytes": 240584
+            },
+            {
+              "path": "src/xlqc-julia/KA_mapping_review.json",
+              "sha256": "c8198b0cd74e8e9154407dee684a80fb2b7e2f1e2c68adc37186a2323037c412",
+              "bytes": 980
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              54,
+              54,
+              0,
+              0
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080232409119Z_xlqc/ka_run1.log",
+              "sha256": "e090b54f89fd6fc4d9dec6a2d4ed70a0e9a1ad2ce50d879ae45b7d1d52414531",
+              "bytes": 434130
+            }
+          }
+        },
+        "H2O_STO3G_full_converged9_SCF_DP_J_K_stages_v1": {
+          "implementation_model": "ka",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "KA_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_DP",
+            "K_DP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. KA physical groups are flattened64-thread groups; KA Cartesian local/group IDs explicitly supply source x/y to the four math entries. CUDA backend shared storage/barriers retained; reversible source mapping review verifies no floating formula change.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float64 private Rys values"
+          ],
+          "compute_precision": [
+            "Float64 Rys/integral/density/shared arithmetic",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "adapted",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "DP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-KA/main.jl",
+              "sha256": "b1bd2b1a99c3cc0e57ab4fd3b3e88e5c1b78d7062595c92082f018f8784e4b3b",
+              "bytes": 1642
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            },
+            {
+              "path": "src/xlqc-julia/xlqc-julia-KA/device_bodies.jl",
+              "sha256": "0207dcfa8d7505570bd097604c09da04440a6208761f247460224c531ed19fe5",
+              "bytes": 240584
+            },
+            {
+              "path": "src/xlqc-julia/KA_mapping_review.json",
+              "sha256": "c8198b0cd74e8e9154407dee684a80fb2b7e2f1e2c68adc37186a2323037c412",
+              "bytes": 980
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_ka_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+              "/home/imo/HeCBench_julia/src/_julia_ka_env/LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              0,
+              0,
+              54,
+              54
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080335378568Z_xlqc/ka_run1.log",
+              "sha256": "874025c7e8a7f12a6ee6b69076c805df71867196e16815dc485056c0f80c9938",
+              "bytes": 434187
+            }
+          }
+        }
+      },
+      "attempts": {
+        "complete_program_submissions": 3,
+        "mathematical_formula_bundle_candidates": 1,
+        "GPU_entry_mapping_candidates": 2,
+        "actual_translated_device_JIT_processes": 3,
+        "backend_internal_compiler_invocations": null,
+        "failed_device_compiler_checks": 0,
+        "observed_failed_programs": 1,
+        "host_launch_or_reporting_failures": 0,
+        "observed_GPU_runtime_failures": 1,
+        "observed_independent_numerical_rejections": 0,
+        "authored_GPU_entry_definitions": 4,
+        "mathematical_quadrature_helpers": 17,
+        "shared_device_math_functions": 21,
+        "precision_configs": 2,
+        "unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort."
+      }
+    },
+    "jacc": {
+      "implementation_model": "jacc",
+      "review_status": "source_reviewed",
+      "implementation_status": "verified",
+      "implementation_class": "JACC_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+      "authored_device_kernel_count": 4,
+      "authored_device_kernel_definitions": 4,
+      "executed_distinct_authored_entries": 4,
+      "executed_entry_names": [
+        "J_DP",
+        "K_DP"
+      ],
+      "shared_device_math_function_definitions": 21,
+      "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. JACC2Dparallel_for explicit physical8\u00d78threads/21\u00d721blocks, zero dynamic shared allocation and source512Bstatic shared; cachekey(op,n) with all other resource/stream fields fixed.",
+      "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+      "storage_precision": [
+        "Float64 global PBF/D/Q/J/K/SCF states",
+        "Int32 index map",
+        "Float64 private Rys values"
+      ],
+      "compute_precision": [
+        "Float64 Rys/integral/density/shared arithmetic",
+        "Original source CPU/GSL Float64 SCF",
+        "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+      ],
+      "synchronization": [
+        "Full-block barrier before deterministic shared reduction",
+        "One owned serial CUDA stream for target launches; original native default stream",
+        "Source cudaDeviceSynchronize completion inside each J/K timed region"
+      ],
+      "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+      "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+      "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+      "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+      "native_to_julia_mapping": {
+        "status": "matched",
+        "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+      },
+      "scientific_intent": {
+        "benchmark": "xlqc",
+        "primary_family": "quantum_electronic",
+        "review_status": "source_reviewed",
+        "domain": "Electronic-structure quantum chemistry",
+        "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+        "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+        "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+        "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+        "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+        "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+        "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+        "scientific_invariants": [
+          "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+          "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+          "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+          "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+        ],
+        "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+        "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+        "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+        "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+        "source_evidence": [
+          {
+            "path": "src/xlqc-julia/reference_history/README.md",
+            "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+            "bytes": 416
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/main.cu",
+            "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+            "bytes": 24067
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+            "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+            "bytes": 83412
+          },
+          {
+            "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+            "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+            "bytes": 80521
+          },
+          {
+            "path": "src/xlqc-julia/verification_plan.md",
+            "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+            "bytes": 6635
+          },
+          {
+            "path": "src/xlqc-julia/all4_full_capture_audit.json",
+            "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+            "bytes": 36136
+          }
+        ]
+      },
+      "scientific_precision_mode": "DP",
+      "native_reference_repaired": false,
+      "source_evidence": [
+        {
+          "path": "src/xlqc-julia/xlqc-julia-JACC/main.jl",
+          "sha256": "06eb8e482b9a9068431347abfd7a3157ae862322a50b1ba7f0b6d184c7d34385",
+          "bytes": 1239
+        },
+        {
+          "path": "src/xlqc-julia/device_bodies.jl",
+          "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+          "bytes": 241885
+        },
+        {
+          "path": "src/xlqc-julia/study_common.jl",
+          "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+          "bytes": 2723
+        },
+        {
+          "path": "src/xlqc-julia/all4_full_capture_audit.json",
+          "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+          "bytes": 36136
+        }
+      ],
+      "package_environment": {
+        "project": "/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "julia_version": "1.12.6",
+        "packages": {
+          "CUDA": "6.2.1",
+          "CUDACore": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0",
+          "StaticArrays": "1.9.18"
+        },
+        "files": {
+          "/home/imo/HeCBench_julia/src/_julia_jacc_env/Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+          "/home/imo/HeCBench_julia/src/_julia_jacc_env/Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+          "/home/imo/HeCBench_julia/src/_julia_jacc_env/LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+        },
+        "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+      },
+      "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+      "keyconfounds": [
+        "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+        "Validation/capture outside timed stages extends inter-stage gaps",
+        "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+        "No hardware counters/register/spill/roofline measurements",
+        "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+      ],
+      "selected_dispatches": {
+        "total_including_warmup": 108,
+        "checked_trials": 90,
+        "warmup": 18,
+        "per_entry": [
+          0,
+          0,
+          54,
+          54
+        ],
+        "actual_log": {
+          "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080700313841Z_xlqc/jacc_run1.log",
+          "sha256": "7c3003c185b9094776e0ec74969065915e4b7a8ebb1f91fbe12c23cd3fbe1cf5",
+          "bytes": 437034
+        }
+      },
+      "scientific_precision_modes": [
+        "SP",
+        "DP"
+      ],
+      "configuration_traits": {
+        "H2O_STO3G_full_converged9_SCF_SP_J_K_stages_v1": {
+          "implementation_model": "jacc",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "JACC_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_SP",
+            "K_SP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. JACC2Dparallel_for explicit physical8\u00d78threads/21\u00d721blocks, zero dynamic shared allocation and source512Bstatic shared; cachekey(op,n) with all other resource/stream fields fixed.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float32 private Rys values"
+          ],
+          "compute_precision": [
+            "Float32 Rys polynomial/integral arithmetic plus Float64 density products/shared accumulation",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "matched",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "SP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-JACC/main.jl",
+              "sha256": "06eb8e482b9a9068431347abfd7a3157ae862322a50b1ba7f0b6d184c7d34385",
+              "bytes": 1239
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_jacc_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "JACC": "1.4.0",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              54,
+              54,
+              0,
+              0
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080532036491Z_xlqc/jacc_run1.log",
+              "sha256": "cd50581fb7f3f8b7b2b14e087cf926f1350345603cf6f684c4fa0ecbde2ce368",
+              "bytes": 436984
+            }
+          }
+        },
+        "H2O_STO3G_full_converged9_SCF_DP_J_K_stages_v1": {
+          "implementation_model": "jacc",
+          "review_status": "source_reviewed",
+          "implementation_status": "verified",
+          "implementation_class": "JACC_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+          "authored_device_kernel_count": 4,
+          "authored_device_kernel_definitions": 4,
+          "executed_distinct_authored_entries": 2,
+          "executed_entry_names": [
+            "J_DP",
+            "K_DP"
+          ],
+          "shared_device_math_function_definitions": 21,
+          "work_item_mapping": "Native physical8\u00d78 thread blocks and21\u00d721grid, zero-based primitive/contracted indices, full triangular primitive output plus64-element shared Float64 reduction. JACC2Dparallel_for explicit physical8\u00d78threads/21\u00d721blocks, zero dynamic shared allocation and source512Bstatic shared; cachekey(op,n) with all other resource/stream fields fixed.",
+          "data_layout": "All actual global numerical arrays are Float64, including the SP mode; Int32 primitive\u2192contracted map. SP means Float32 Rys evaluation with Float64 D/Q/J/K and shared reductions. Private roots/weights/G use explicit row-major63scalar storage.",
+          "storage_precision": [
+            "Float64 global PBF/D/Q/J/K/SCF states",
+            "Int32 index map",
+            "Float64 private Rys values"
+          ],
+          "compute_precision": [
+            "Float64 Rys/integral/density/shared arithmetic",
+            "Original source CPU/GSL Float64 SCF",
+            "Independent CPU tighter Boys/B-array Float64 with long-double source-check sums and NumPy replay"
+          ],
+          "synchronization": [
+            "Full-block barrier before deterministic shared reduction",
+            "One owned serial CUDA stream for target launches; original native default stream",
+            "Source cudaDeviceSynchronize completion inside each J/K timed region"
+          ],
+          "resources": "Logical8\u00d78groups/21\u00d721blocks;512Bsource static shared reduction,0dynamic shared. Private63Rys scalars plus polynomial locals; actual registers/spills/occupancy unmeasured, no inferred roofline.",
+          "host_device_boundary": "Original C++/GSL2.8 CPU basis/one-electron/GWH/DIIS/eigen/density controller retained through48byteCABI; all four GPU math entries authored in Julia and dispatched only through this model. Native fallback branch never selected for nonnull callback; borrowed device arrays are not copied inside callbacks.",
+          "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+          "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+          "native_to_julia_mapping": {
+            "status": "matched",
+            "reason": "Same original Rys/J/K/SCF algorithm and precision; KA logical IDs restore source geometry on flattened backend, common CABI host mapping explicit."
+          },
+          "scientific_intent": {
+            "benchmark": "xlqc",
+            "primary_family": "quantum_electronic",
+            "review_status": "source_reviewed",
+            "domain": "Electronic-structure quantum chemistry",
+            "subdomain": "Restricted closed-shell Hartree\u2013Fock water/STO-3G",
+            "scientific_question": "Can the full source SCF pipeline retain two-electron Coulomb/exchange accuracy and converge to a physically self-consistent density under each GPU dispatch abstraction?",
+            "mathematical_operation": "Rys-quadrature primitive ERIs, contracted J/K, incremental Fock and DIIS/eigen/density iteration; F=H+J\u2212K/2, D=2*Cocc*Cocc\u1d40.",
+            "classification_rationale": "Source explicitly identifies experimental quantum chemistry/H2O Hartree\u2013Fock; Gaussian electronic-structure integrals are the scientific operator, not generic GEMM or a PDE.",
+            "community_use_case": "Assess source-faithful mixed-precision electronic-structure GPU kernels inside an unchanged CPU SCF controller, with physical state checks rather than a scalar convergence message alone.",
+            "boundary_conditions": "Original water geometry in Angstrom converted by source0.5291772086Angstrom/bohr; neutral10electrons, 7contracted/21primitive STO-3G functions; source5dflagdefault has no d functions here.",
+            "boundary_policy": "Full original default H2O model in SP/DP; source raw-ERI Q screening threshold1e-16 retained even though its comment says sqrt. No rigorous general Schwarz-bound claim.",
+            "scientific_invariants": [
+              "Every primitive J/K value checked against alternative tight-Boys B-array Coulomb integrals on actual inputs",
+              "Every iteration C\u1d40SC=I, DSD=2D, Tr(DS)=10 and FC=SC\u03b5",
+              "Converged fresh unscreened physical F(D_new) commutator and HF energy checked independently of post-DIIS reported scalar",
+              "Exact actual initial input bits and all raw global input/output buffers, guards and read-only byte identity"
+            ],
+            "accuracy_requirements": "Per-primitive DP5e-10+5e-9|expected| and SP1e-5+3e-5|expected|; each S-metric/eigen/projector residual<1e-8; converged physical commutator/energy gap\u22645e-8DP or5e-5SP. Full dual-reference tolerance declared perprecision.",
+            "physical_claim_limit": "Numerical validation of the named finite-basis Hartree\u2013Fock model, not experimental chemistry or an independently reimplemented entire SCF solver. CPU/GSL controller is shared, with independently checked integral/state equations.",
+            "scientific_validity": "Unchanged native GPU/CPU scientific algorithm passes independent named-model gates in both precision modes.",
+            "support_boundary": "Full original H2O/STO3G SP/DP nine converged iterations; actual Rys roots1\u20133/BoysX0..36.76205. Other basis sets/higher-root branches are unverified; sourceRoot6 is an unimplemented, unexecuted path, not a framework limitation.",
+            "source_evidence": [
+              {
+                "path": "src/xlqc-julia/reference_history/README.md",
+                "sha256": "e873651311428df5806ec9ba148fe1f1ec8505cc51466da67917fcaeb7650035",
+                "bytes": 416
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/main.cu",
+                "sha256": "4b948646e582cd579ddbfe4264777798e53eb1b4283c25769dd3eedc21ad9a60",
+                "bytes": 24067
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_sp.cu",
+                "sha256": "d16b6e5161677be9da78cd8e97da388027ee977dca6df909c6fb49c39e7c2a8e",
+                "bytes": 83412
+              },
+              {
+                "path": "src/xlqc-julia/reference_history/cuda_rys_dp.cu",
+                "sha256": "ab409a918b5e33666f8e702e58fa91aa4bf96fc09f5571734381da086876b451",
+                "bytes": 80521
+              },
+              {
+                "path": "src/xlqc-julia/verification_plan.md",
+                "sha256": "d1a5b3f8ac4c9a48eba35944f7564f64a4dce4b7b4cbe566bc1d21863ff991e4",
+                "bytes": 6635
+              },
+              {
+                "path": "src/xlqc-julia/all4_full_capture_audit.json",
+                "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+                "bytes": 36136
+              }
+            ]
+          },
+          "scientific_precision_mode": "DP",
+          "native_reference_repaired": false,
+          "source_evidence": [
+            {
+              "path": "src/xlqc-julia/xlqc-julia-JACC/main.jl",
+              "sha256": "06eb8e482b9a9068431347abfd7a3157ae862322a50b1ba7f0b6d184c7d34385",
+              "bytes": 1239
+            },
+            {
+              "path": "src/xlqc-julia/device_bodies.jl",
+              "sha256": "0f0b48c7b4aba41dcf77bfcfd4ae3ce072c8babd93a89b24e1638a3ae2c12b4d",
+              "bytes": 241885
+            },
+            {
+              "path": "src/xlqc-julia/study_common.jl",
+              "sha256": "eeeaf6f2a4c7034b3d3db9c600fb3a5d0ff5b207532a9180865dda0d26b85512",
+              "bytes": 2723
+            },
+            {
+              "path": "src/xlqc-julia/all4_full_capture_audit.json",
+              "sha256": "f004beaed3821bb9047a8c8cd2687feb85f2fca537a1bae9a922ac5427143663",
+              "bytes": 36136
+            }
+          ],
+          "package_environment": {
+            "project": "/home/imo/HeCBench_julia/src/_julia_jacc_env",
+            "julia_version": "1.12.6",
+            "packages": {
+              "CUDA": "6.2.1",
+              "CUDACore": "6.2.1",
+              "KernelAbstractions": "0.9.45",
+              "JACC": "1.4.0",
+              "StaticArrays": "1.9.18"
+            },
+            "files": {
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+              "/home/imo/HeCBench_julia/src/_julia_jacc_env/LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+            },
+            "scope": "Read-onlypinnedenvironmentsnapshotwhileownCUDAjlprocessusingexplicitproject; notinferenceofunrelatedvendorruntime."
+          },
+          "attempt_unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort.",
+          "keyconfounds": [
+            "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+            "Validation/capture outside timed stages extends inter-stage gaps",
+            "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+            "No hardware counters/register/spill/roofline measurements",
+            "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+          ],
+          "selected_dispatches": {
+            "total_including_warmup": 108,
+            "checked_trials": 90,
+            "warmup": 18,
+            "per_entry": [
+              0,
+              0,
+              54,
+              54
+            ],
+            "actual_log": {
+              "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T080700313841Z_xlqc/jacc_run1.log",
+              "sha256": "7c3003c185b9094776e0ec74969065915e4b7a8ebb1f91fbe12c23cd3fbe1cf5",
+              "bytes": 437034
+            }
+          }
+        }
+      },
+      "attempts": {
+        "complete_program_submissions": 2,
+        "mathematical_formula_bundle_candidates": 1,
+        "GPU_entry_mapping_candidates": 1,
+        "actual_translated_device_JIT_processes": 2,
+        "backend_internal_compiler_invocations": null,
+        "failed_device_compiler_checks": 0,
+        "observed_failed_programs": 0,
+        "host_launch_or_reporting_failures": 0,
+        "observed_GPU_runtime_failures": 0,
+        "observed_independent_numerical_rejections": 0,
+        "authored_GPU_entry_definitions": 4,
+        "mathematical_quadrature_helpers": 17,
+        "shared_device_math_functions": 21,
+        "precision_configs": 2,
+        "unit": "Whole program submissions and actual translated-device-JIT processes are distinct from mapping candidates, math formulas, C++ adapter builds and internal compiler invocations. Source CPU/GSL/common adapter repairs are separate native/shared effort."
+      }
+    }
+  },
+  "storage_precision": [
+    "Float64 global numerical arrays",
+    "Int32 indices",
+    "SPFloat32orDPFloat64privateRys"
+  ],
+  "compute_precision": [
+    "SPFloat32Rys/Float64accumulation",
+    "DPFloat64",
+    "CPUFloat64SCF"
+  ],
+  "synchronization": [
+    "block_barrier",
+    "whole_context_stage_completion"
+  ],
+  "native_to_julia_mapping": {
+    "status": "adapted",
+    "reason": "Common sourceCPU/GSL CABI, own targetGPU entries; KA logical Cartesian restoration."
+  },
+  "implementation_class": {
+    "cuda_jl": "CUDAjl_authored_GPU_native_CPU_GSL_SCF_controller_hybrid",
+    "ka": "KA_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid",
+    "jacc": "JACC_dispatch_CUDA_backend_shared_barrier_native_CPU_GSL_SCF_hybrid"
+  },
+  "timing_scope": "Sum all18 original J/K dispatch+context-completion stage regions over the full9-iteration converged SCF. CPU/GSL/controller between stages, captures and validation outside ROI; their added pauses may affect clocks/caches. Not full SCF wall time or isolated device events.",
+  "verification_contract": "7029complete actual GPU/selected SCF numeric words with495exact initial-input words; every stage actual feedback density and output checked. Complete raw MO C auxiliary with eigen/metric/projector gates, no raw eigenvector phase identity claim.",
+  "keyconfounds": [
+    "Common native CPU/GSL controller means hybrid pipeline, not pure Julia full host translation",
+    "Validation/capture outside timed stages extends inter-stage gaps",
+    "Native vs Julia source arithmetic may differ within declared SP budget; no performance causal attribution",
+    "No hardware counters/register/spill/roofline measurements",
+    "Source actual raw Q screening differs from sqrt comment; named physical model passes independent fresh unscreened checks"
+  ]
+}
