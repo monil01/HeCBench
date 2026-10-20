@@ -63,6 +63,7 @@ def main():
                     files[entry['original_name']] = data
                 prov = json.loads(files['profile_provenance.json'])
                 plan = json.loads(files['plan.json'])
+                require(prov['gpu_uuid'] == 'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d', 'Unexpected device UUID')
                 require(sha(files['plan.json']) == prov['plan_sha256'], 'Plan provenance SHA mismatch')
                 collector = files.get('collector_source.py', snapshots.get(prov['collector_sha256']))
                 require(collector is not None and sha(collector) == prov['collector_sha256'], 'Exact collector source unavailable')
@@ -71,7 +72,14 @@ def main():
                     require(sha(data) == plan[key], 'Selected contract SHA mismatch: '+name)
                 row.update(benchmark=plan['benchmark'], model=plan['model'], status=prov['status'], manifest_files=len(files))
                 if 'counters.csv' in files:
-                    require(sha(files['counters.csv']) == prov['counters_sha256'], 'Counter provenance SHA mismatch')
+                    if sha(files['counters.csv']) != prov['counters_sha256']:
+                        require('counter_snapshot_recovery.json' in files and 'counter_snapshot_at_derivation.csv' in files, 'Counter provenance SHA mismatch')
+                        recovery=json.loads(files['counter_snapshot_recovery.json']);snapshot=files['counter_snapshot_at_derivation.csv']
+                        require(sha(snapshot)==prov['counters_sha256']==recovery['recovered_snapshot_sha256'], 'Recovered counter snapshot SHA mismatch')
+                        require(sha(files['counters.csv'])==recovery['later_counter_sha256'], 'Late counter recovery parent SHA mismatch')
+                        require(files['counters.csv'].startswith(snapshot) and len(snapshot)==recovery['recovered_snapshot_bytes'], 'Recovered prefix bytes mismatch')
+                        require('derived.json' not in files and prov['status']!='profile_process_completed', 'Late recovery cannot certify accepted derivations')
+                        qualifications.append({'profile_id':identity,'qualification':'Timed-out NCU descendants appended after provenance hash. Exact original snapshot recovered by SHA-matching retained byte prefix; late data remains diagnostic only.'})
                 if 'derived.json' in files:
                     report = json.loads(files['derived.json'])
                     require(report['input_sha256'] == sha(files['counters.csv']), 'Derivation input SHA mismatch')
@@ -89,6 +97,10 @@ def main():
                     groups, digest = parser.read_csv(csv_path)
                     require(digest == report['input_sha256'], 'Re-read CSV SHA mismatch')
                     require(len(groups) == report['kernel_count'] == len(report['records']), 'Kernel count mismatch')
+                    if prov.get('profile_device_identity_verified'):
+                        require(prov['expected_device_pci'] == {'domain':0,'bus':203,'device':0}, 'Expected UUID-to-PCI mapping changed')
+                        for group in groups:
+                            require(tuple(group['metrics'].get('device__attribute_pci_'+key+'_id') for key in ('domain','bus','device')) == (0,203,0), 'Raw counter PCI row mismatch')
                     parameters = inspect.signature(parser.derive).parameters
                     for group, saved in zip(groups, report['records']):
                         values = dict(half_lanes=saved.get('fp16_lane_factor'),
@@ -98,6 +110,18 @@ def main():
                                       tensor_convention_evidence=saved.get('tensor_convention_evidence'))
                         actual = parser.derive(group, **{k:v for k,v in values.items() if k in parameters})
                         require(actual == saved, 'Historical derivation recomputation mismatch: '+str(saved.get('identity')))
+                    annotation_path = manifest_path.parent/'annotated.json.gz'
+                    if annotation_path.exists():
+                        annotation = json.loads(frozen(annotation_path))
+                        require(annotation['unannotated_derived_sha256'] == sha(files['derived.json']), 'Annotation parent SHA mismatch')
+                        require(len(annotation['records']) == len(report['records']), 'Annotation kernel count mismatch')
+                        mutable_scope = {'ROI_stage','semantic_family_in_primary_ROI','sample_phase','ROI_review_sha256','sample_in_primary_timed_invocation','source_capture_binding_qualification'}
+                        for saved, labeled in zip(report['records'], annotation['records']):
+                            original_scope = saved.get('scope_context', {})
+                            revised_scope = labeled.get('scope_context', {})
+                            require({k:v for k,v in original_scope.items() if k not in mutable_scope} == {k:v for k,v in revised_scope.items() if k not in mutable_scope}, 'Annotation changed immutable scope facts')
+                            numeric = {k:v for k,v in labeled.items() if k not in {'scope_context','ROI_annotation'}}
+                            require(numeric == {k:v for k,v in saved.items() if k!='scope_context'}, 'Annotation changed measured or derived fields')
                     row['recomputed_kernels'] = len(groups)
                     row['parser_sha256'] = parser_sha
                 if not prov.get('profile_device_identity_verified'):
@@ -123,6 +147,7 @@ def main():
                     continue
                 try:
                     path = root / observation['path']
+                    require(str(path.parent.relative_to(root)) in state['profile_ids'], 'Selected observations belong to a different attempt')
                     require(sha(path.read_bytes()) == observation['sha256'], 'Selected observation compressed SHA mismatch')
                     require(sha(frozen(path)) == observation['uncompressed_sha256'], 'Selected observation raw SHA mismatch')
                 except Exception as error:

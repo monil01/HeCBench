@@ -25,6 +25,10 @@ def main():
     ap.add_argument('--selection-overrides',type=Path)
     ap.add_argument('--timeout',type=int,default=180)
     ap.add_argument('--limit',type=int)
+    ap.add_argument('--skip-frozen',action='store_true',
+                    help='Resume queue after benchmark freeze events already journaled; failures still need separate explicit follow-up attempts.')
+    ap.add_argument('--stop-file',type=Path,
+                    help='If this file exists after a benchmark freeze, stop the controller at that boundary without interrupting a GPU child.')
     ap.add_argument('--asset-cap-mib',type=int,default=512)
     a=ap.parse_args();root=a.source_root.resolve();raw=a.raw_root.resolve()
     raw.relative_to(Path('/tmp'))
@@ -37,6 +41,12 @@ def main():
     names=[b for b in names if b not in a.exclude_benchmark]
     if a.limit:names=names[:a.limit]
     journal=raw/('campaign_'+a.campaign_id+'.jsonl')
+    already_frozen=set()
+    if a.skip_frozen and journal.exists():
+        for line in journal.read_text().splitlines():
+            try:event=json.loads(line)
+            except ValueError:continue
+            if event.get('event')=='frozen':already_frozen.add(event['benchmark'])
     def note(event):
         event.update(time=datetime.datetime.now(datetime.timezone.utc).isoformat())
         with journal.open('a')as f:f.write(json.dumps(event)+'\n')
@@ -44,6 +54,8 @@ def main():
     note({'event':'start_or_resume','pid':os.getpid(),'benchmarks':len(names),
           'campaign_id':a.campaign_id,'root':str(root)})
     for index,b in enumerate(names,1):
+        if b in already_frozen:
+            continue
         batch=raw/('batch'+a.campaign_id+'-'+b)
         if not batch.exists():
             prepare=[sys.executable,str(root/'tools/v100_roofline_prepare.py'),
@@ -71,6 +83,10 @@ def main():
             note({'event':'freeze_failed_stop','benchmark':b,'stderr':result.stderr})
             raise SystemExit(result.returncode)
         note({'event':'frozen','benchmark':b,'ordinal':index,'summary':json.loads(result.stdout)})
+        if a.stop_file and a.stop_file.exists():
+            note({'event':'controller_stopped_at_benchmark_boundary','benchmark':b,
+                  'meaning':'Explicit controller handoff; scientific task remains active.'})
+            return
     note({'event':'selected_plan_traversal_finished','benchmarks':len(names),
           'meaning':'Traversal is not complete roofline/ROI/bottleneck analysis; inspect per-case statuses.'})
 

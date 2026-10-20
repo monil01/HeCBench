@@ -82,3 +82,34 @@ unrestricted fallback is permitted.
 `atomicSystemWide` is held from kernel replay: CPU and GPU concurrently update
 the same managed allocation. Its translation/property verification is unchanged;
 a separate application-replay or single-pass measurement method is needed.
+
+## Live execution safeguards
+
+Resume the recorded collectors and CPU export supervisor from
+`.porting-state/portable_julia/active_work_537.json`; do not duplicate the full
+queue. All GPU work takes the shared lock, waits for an idle GPU and monitors
+foreign GPU activity during profiling. On contention, terminate only the owned
+fresh profiling session and retain the failure; never signal another workload.
+Wait for owned descendants to exit before hashing outputs. A timeout enlarged
+from the saved runtime is an operational limit, not a runtime prediction.
+
+Select the best qualified capture per model, while exposing the latest attempt
+and preserving all failures separately. Source-counted retained-trial selectors
+require exact source/config/result bindings and an observed launch-count match.
+They describe a fresh profiled scientific window; they do not turn cold replay
+into the historical unprofiled trial or establish elapsed host ROI throughput.
+
+Check the memory domain before assigning a bandwidth limit: host-mapped primary
+data (including `zerocopy` and `halo-finder`) need host/PCIe analysis, so an HBM
+roofline bottleneck prediction is not applicable. Keep raw DRAM/L2 diagnostics.
+Tensor conversion requires a validated metric convention and a source-bound
+per-kernel arithmetic-mode approval; record whether executed SASS was observed.
+Keep scalar epilogue work and tensor work separate. Missing or unreviewed modes
+remain unconverted rather than inheriting another kernel's peak.
+
+Run `tools/v100_roofline_refresh.py` for frozen evidence integrity checks,
+precision-aware figures, ontology and compact paper exports. An integrity audit
+checks hashes and derivations; it does not prove scientific correctness, source
+ROI membership or causal bottlenecks. Queue completion never implies complete
+scientific analysis. Keep raw evidence outside the paper repository.
+

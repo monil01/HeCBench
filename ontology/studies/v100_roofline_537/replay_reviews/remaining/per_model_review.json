@@ -1,0 +1,2605 @@
+{
+  "review_scope": "CPU-only full selected control/memory source review of remaining20models. This replaces prior incomplete triage, not historical primary evidence. State safety is distinct from replay tool support, actual scientific acceptance, output isolation, residency and wholeROI representativeness.",
+  "summary": {
+    "safe": 16,
+    "unknown": 4
+  },
+  "rows": [
+    {
+      "benchmark": "hungarian",
+      "model": "cuda",
+      "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Host flags are updated/read only between kernels. Native RUN macro calls cudaDeviceSynchronize after every stage, then host branches on managed globals. Julia run does the same before reading/writing its four UnifiedMemory flags. No CPU responder is required while a kernel runs.",
+      "qualifications": [
+        "Restore all mutated global/static device arrays and managed flags for each pass; native has __device__ symbol storage and __managed__ control globals, Julia has CuArray/managed pointers.",
+        "Host-controlled iterative stage/state trajectory and full assignments/cost/slack/guards must still pass. First-per-name/geometry is not every adaptive iteration.",
+        "Managed control-page residency and host solver overhead are not represented by kernel DRAM counters. This is not evidence of floating-point roofline applicability for predominantly integer combinatorial work.",
+        "Separate staging concern: Julia study_common.jl uses source-derived historical auxiliary directory; Landlock will safely reject until a reviewed path-only copy overlay redirects it. Replay assessment does not clear output gates."
+      ],
+      "measurement_alternative": "Conditional per-kernel replay; if symbol/managed flag restoration fails use separately reviewed application replay with full host controller and exact checks, not a fixed stage sequence.",
+      "memory_tier_review": "Device arrays plus small managed control pages; integer-kernel roofline applicability must be explicit.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/hungarian/cuda/plan.json",
+      "source_plan_sha256": "91f498d4cd5762485ff44794b1b1d26e06dac460e9b6c09770601657f4ff4497",
+      "reference_result_sha256": "f1ed5ba0b2a9dc1937cb3ed4e951264ef25d4b10c1395aab3083d2506fb7f0ee",
+      "reference_config_sha256": "8c6a33cec375a89d08f640176d3cc913a19164923336e9a328aa4e7678d76e5d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_cuda.cu",
+          "sha256": "8598bf4943a626f90554e4aa9861a25ace1dbd7e94503c32f00d7425082f460a"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/generate_study_fixture.py",
+          "sha256": "2a73e76231559b186d358fe5b85ec16ded90b4831f5288498697de991f4348da"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_cuda.cu",
+          "sha256": "8598bf4943a626f90554e4aa9861a25ace1dbd7e94503c32f00d7425082f460a",
+          "findings": [
+            {
+              "line": 11,
+              "text": "#define RUN(k,b,t,s,id) do{k<<<b,t,s>>>();CK(cudaDeviceSynchronize());counts[id]++;if(++launches>10000){fprintf(stderr,\"iterationcap\\n\");exit(11);}}while(0)"
+            },
+            {
+              "line": 12,
+              "text": "std::vector<int>solve(){std::vector<int>counts(16);int launches=0;"
+            },
+            {
+              "line": 14,
+              "text": "do{repeat_kernel=false;RUN(step_2,1,zeros_size>256?256:zeros_size,0,6);}while(repeat_kernel);"
+            },
+            {
+              "line": 16,
+              "text": "while(1){do{goto_5=false;repeat_kernel=false;RUN(step_4,1,zeros_size>256?256:zeros_size,0,10);}while(repeat_kernel&&!goto_5);if(goto_5)break;"
+            },
+            {
+              "line": 20,
+              "text": "int main(){static_assert(sizeof(int)==4);auto prefix=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/fixture.bin\",196610),gold=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/oracle.bin\",198147);auto reset=[&](int ci){CK(cudaMemcpyToSymbol(slack,prefix.data()+2+ci*n*n,n*n*4));};for(int ci=0;ci<3;ci++){reset(ci);solve();}"
+            },
+            {
+              "line": 22,
+              "text": "for(int ci=0;ci<3;ci++){reset(ci);CK(cudaDeviceSynchronize());auto t=std::chrono::steady_clock::now();auto c=solve();CK(cudaDeviceSynchronize());double dt=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();elapsed+=dt;paths.push_back(dt);counts.insert(counts.end(),c.begin(),c.end());std::vector<int>cs(n),rs(n),cost(n*n);CK(cudaMemcpyFromSymbol(cs.data(),column_of_star_at_row,n*4));CK(cudaMemcpyFromSymbol(rs.data(),row_of_star_at_column,n*4));CK(cudaMemcpyFromSymbol(cost.data(),slack,n*n*4));raw.insert(raw.end(),cost.begin(),cost.end());raw.insert(raw.end(),cs.begin(),cs.end());raw.insert(raw.end(),rs.begin(),rs.end());long total=0;for(int r=0;r<n;r++){int col=cs[r];ok&=col>=0&&col<n;if(col>=0&&col<n){total+=prefix[2+ci*n*n+col*n+r];ok&=rs[col]==r&&cost[col*n+r]==0;}}for(int x:cost)ok&=x>=0;art.insert(art.end(),cs.begin(),cs.end());art.insert(art.end(),rs.begin(),rs.end());art.push_back(int(total));art.insert(art.end(),prefix.begin()+2+ci*n*n,prefix.begin()+2+(ci+1)*n*n);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d",
+          "findings": [
+            {
+              "line": 97,
+              "text": "__device__ data slack[nrows*ncols];           // The slack matrix"
+            },
+            {
+              "line": 98,
+              "text": "__device__ data min_in_rows[nrows];           // Minimum in rows"
+            },
+            {
+              "line": 99,
+              "text": "__device__ data min_in_cols[ncols];           // Minimum in columns"
+            },
+            {
+              "line": 108,
+              "text": "__device__ data max_in_mat_row[nrows];        // Used in step 1 to stores the maximum in rows"
+            },
+            {
+              "line": 109,
+              "text": "__device__ data min_in_mat_col[ncols];        // Used in step 1 to stores the minimums in columns"
+            },
+            {
+              "line": 110,
+              "text": "__device__ data d_min_in_mat_vect[n_blocks_reduction];  // Used in step 6 to stores the intermediate results from the first reduction kernel"
+            },
+            {
+              "line": 111,
+              "text": "__device__ data d_min_in_mat;                 // Used in step 6 to store the minimum"
+            },
+            {
+              "line": 113,
+              "text": "MANAGED __device__ int zeros_size;            // The number fo zeros"
+            },
+            {
+              "line": 114,
+              "text": "MANAGED __device__ int n_matches;             // Used in step 3 to count the number of matches found"
+            },
+            {
+              "line": 115,
+              "text": "MANAGED __device__ bool goto_5;               // After step 4, goto step 5?"
+            },
+            {
+              "line": 116,
+              "text": "MANAGED __device__ bool repeat_kernel;        // Needs to repeat the step 2 and step 4 kernel?"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d",
+          "findings": [
+            {
+              "line": 7,
+              "text": "  launch!(Val(k),S,nb,nt,shared);CUDA.device_synchronize(blocking=true);counts[k+1]+=1;launches+=1;launches<=10000||error(\"iterationcap\")"
+            },
+            {
+              "line": 11,
+              "text": "  hostflags[4]=0;run(6,1,min(256,Int(hostflags[1])),12);hostflags[4]==0&&break"
+            },
+            {
+              "line": 14,
+              "text": "  run(7,4,64);run(8,4,64);hostflags[2]>=256&&break;run(9,4,64)"
+            },
+            {
+              "line": 17,
+              "text": "    hostflags[3]=0;hostflags[4]=0;run(10,1,min(256,Int(hostflags[1])),12)"
+            },
+            {
+              "line": 18,
+              "text": "    !(hostflags[4]!=0&&hostflags[3]==0)&&break"
+            },
+            {
+              "line": 20,
+              "text": "   hostflags[3]!=0&&break"
+            },
+            {
+              "line": 29,
+              "text": " owners=[CUDA.fill(Int32(1515870810),n+16) for n in H_SIZES];views=[view(d,9:length(d)-8) for d in owners];flags=CuArray{Int32,1,CUDA.UnifiedMemory}(undef,4);hostflags=unsafe_wrap(Array,convert(Ptr{Int32},flags.data[].mem),(4,);own=false);fill!(hostflags,0)"
+            },
+            {
+              "line": 35,
+              "text": " auxdir=joinpath(@__DIR__,\"..\",\"..\",\".porting-state\",\"porting_logs\",\"hungarian-julia-$(H_MODEL)\",\"aux_pid$(getpid())\");mkpath(auxdir)"
+            },
+            {
+              "line": 39,
+              "text": "   copyto!(S.slack,c);CUDA.device_synchronize(blocking=true);actual_input=Array(S.slack);ok&=actual_input==c;t=time_ns();co=hsolve(launch!,S,hostflags);CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-t)*1e-9);append!(counts,co)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "hungarian",
+      "model": "cuda_jl",
+      "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Host flags are updated/read only between kernels. Native RUN macro calls cudaDeviceSynchronize after every stage, then host branches on managed globals. Julia run does the same before reading/writing its four UnifiedMemory flags. No CPU responder is required while a kernel runs.",
+      "qualifications": [
+        "Restore all mutated global/static device arrays and managed flags for each pass; native has __device__ symbol storage and __managed__ control globals, Julia has CuArray/managed pointers.",
+        "Host-controlled iterative stage/state trajectory and full assignments/cost/slack/guards must still pass. First-per-name/geometry is not every adaptive iteration.",
+        "Managed control-page residency and host solver overhead are not represented by kernel DRAM counters. This is not evidence of floating-point roofline applicability for predominantly integer combinatorial work.",
+        "Separate staging concern: Julia study_common.jl uses source-derived historical auxiliary directory; Landlock will safely reject until a reviewed path-only copy overlay redirects it. Replay assessment does not clear output gates."
+      ],
+      "measurement_alternative": "Conditional per-kernel replay; if symbol/managed flag restoration fails use separately reviewed application replay with full host controller and exact checks, not a fixed stage sequence.",
+      "memory_tier_review": "Device arrays plus small managed control pages; integer-kernel roofline applicability must be explicit.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/hungarian/cuda_jl/plan.json",
+      "source_plan_sha256": "6aa05e4a57c5dae29b53c34559d6e2f92faca310666ef6e08f977a418789fa04",
+      "reference_result_sha256": "f1ed5ba0b2a9dc1937cb3ed4e951264ef25d4b10c1395aab3083d2506fb7f0ee",
+      "reference_config_sha256": "8c6a33cec375a89d08f640176d3cc913a19164923336e9a328aa4e7678d76e5d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian-julia-cuda.jl/main.jl",
+          "sha256": "f713fba1bfae907df555c0f530550ae49120690c510c5aecabdb57be304a2017"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian_math.jl",
+          "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/generate_study_fixture.py",
+          "sha256": "2a73e76231559b186d358fe5b85ec16ded90b4831f5288498697de991f4348da"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_cuda.cu",
+          "sha256": "8598bf4943a626f90554e4aa9861a25ace1dbd7e94503c32f00d7425082f460a",
+          "findings": [
+            {
+              "line": 11,
+              "text": "#define RUN(k,b,t,s,id) do{k<<<b,t,s>>>();CK(cudaDeviceSynchronize());counts[id]++;if(++launches>10000){fprintf(stderr,\"iterationcap\\n\");exit(11);}}while(0)"
+            },
+            {
+              "line": 12,
+              "text": "std::vector<int>solve(){std::vector<int>counts(16);int launches=0;"
+            },
+            {
+              "line": 14,
+              "text": "do{repeat_kernel=false;RUN(step_2,1,zeros_size>256?256:zeros_size,0,6);}while(repeat_kernel);"
+            },
+            {
+              "line": 16,
+              "text": "while(1){do{goto_5=false;repeat_kernel=false;RUN(step_4,1,zeros_size>256?256:zeros_size,0,10);}while(repeat_kernel&&!goto_5);if(goto_5)break;"
+            },
+            {
+              "line": 20,
+              "text": "int main(){static_assert(sizeof(int)==4);auto prefix=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/fixture.bin\",196610),gold=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/oracle.bin\",198147);auto reset=[&](int ci){CK(cudaMemcpyToSymbol(slack,prefix.data()+2+ci*n*n,n*n*4));};for(int ci=0;ci<3;ci++){reset(ci);solve();}"
+            },
+            {
+              "line": 22,
+              "text": "for(int ci=0;ci<3;ci++){reset(ci);CK(cudaDeviceSynchronize());auto t=std::chrono::steady_clock::now();auto c=solve();CK(cudaDeviceSynchronize());double dt=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();elapsed+=dt;paths.push_back(dt);counts.insert(counts.end(),c.begin(),c.end());std::vector<int>cs(n),rs(n),cost(n*n);CK(cudaMemcpyFromSymbol(cs.data(),column_of_star_at_row,n*4));CK(cudaMemcpyFromSymbol(rs.data(),row_of_star_at_column,n*4));CK(cudaMemcpyFromSymbol(cost.data(),slack,n*n*4));raw.insert(raw.end(),cost.begin(),cost.end());raw.insert(raw.end(),cs.begin(),cs.end());raw.insert(raw.end(),rs.begin(),rs.end());long total=0;for(int r=0;r<n;r++){int col=cs[r];ok&=col>=0&&col<n;if(col>=0&&col<n){total+=prefix[2+ci*n*n+col*n+r];ok&=rs[col]==r&&cost[col*n+r]==0;}}for(int x:cost)ok&=x>=0;art.insert(art.end(),cs.begin(),cs.end());art.insert(art.end(),rs.begin(),rs.end());art.push_back(int(total));art.insert(art.end(),prefix.begin()+2+ci*n*n,prefix.begin()+2+(ci+1)*n*n);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d",
+          "findings": [
+            {
+              "line": 97,
+              "text": "__device__ data slack[nrows*ncols];           // The slack matrix"
+            },
+            {
+              "line": 98,
+              "text": "__device__ data min_in_rows[nrows];           // Minimum in rows"
+            },
+            {
+              "line": 99,
+              "text": "__device__ data min_in_cols[ncols];           // Minimum in columns"
+            },
+            {
+              "line": 108,
+              "text": "__device__ data max_in_mat_row[nrows];        // Used in step 1 to stores the maximum in rows"
+            },
+            {
+              "line": 109,
+              "text": "__device__ data min_in_mat_col[ncols];        // Used in step 1 to stores the minimums in columns"
+            },
+            {
+              "line": 110,
+              "text": "__device__ data d_min_in_mat_vect[n_blocks_reduction];  // Used in step 6 to stores the intermediate results from the first reduction kernel"
+            },
+            {
+              "line": 111,
+              "text": "__device__ data d_min_in_mat;                 // Used in step 6 to store the minimum"
+            },
+            {
+              "line": 113,
+              "text": "MANAGED __device__ int zeros_size;            // The number fo zeros"
+            },
+            {
+              "line": 114,
+              "text": "MANAGED __device__ int n_matches;             // Used in step 3 to count the number of matches found"
+            },
+            {
+              "line": 115,
+              "text": "MANAGED __device__ bool goto_5;               // After step 4, goto step 5?"
+            },
+            {
+              "line": 116,
+              "text": "MANAGED __device__ bool repeat_kernel;        // Needs to repeat the step 2 and step 4 kernel?"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d",
+          "findings": [
+            {
+              "line": 7,
+              "text": "  launch!(Val(k),S,nb,nt,shared);CUDA.device_synchronize(blocking=true);counts[k+1]+=1;launches+=1;launches<=10000||error(\"iterationcap\")"
+            },
+            {
+              "line": 11,
+              "text": "  hostflags[4]=0;run(6,1,min(256,Int(hostflags[1])),12);hostflags[4]==0&&break"
+            },
+            {
+              "line": 14,
+              "text": "  run(7,4,64);run(8,4,64);hostflags[2]>=256&&break;run(9,4,64)"
+            },
+            {
+              "line": 17,
+              "text": "    hostflags[3]=0;hostflags[4]=0;run(10,1,min(256,Int(hostflags[1])),12)"
+            },
+            {
+              "line": 18,
+              "text": "    !(hostflags[4]!=0&&hostflags[3]==0)&&break"
+            },
+            {
+              "line": 20,
+              "text": "   hostflags[3]!=0&&break"
+            },
+            {
+              "line": 29,
+              "text": " owners=[CUDA.fill(Int32(1515870810),n+16) for n in H_SIZES];views=[view(d,9:length(d)-8) for d in owners];flags=CuArray{Int32,1,CUDA.UnifiedMemory}(undef,4);hostflags=unsafe_wrap(Array,convert(Ptr{Int32},flags.data[].mem),(4,);own=false);fill!(hostflags,0)"
+            },
+            {
+              "line": 35,
+              "text": " auxdir=joinpath(@__DIR__,\"..\",\"..\",\".porting-state\",\"porting_logs\",\"hungarian-julia-$(H_MODEL)\",\"aux_pid$(getpid())\");mkpath(auxdir)"
+            },
+            {
+              "line": 39,
+              "text": "   copyto!(S.slack,c);CUDA.device_synchronize(blocking=true);actual_input=Array(S.slack);ok&=actual_input==c;t=time_ns();co=hsolve(launch!,S,hostflags);CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-t)*1e-9);append!(counts,co)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "hungarian",
+      "model": "jacc",
+      "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Host flags are updated/read only between kernels. Native RUN macro calls cudaDeviceSynchronize after every stage, then host branches on managed globals. Julia run does the same before reading/writing its four UnifiedMemory flags. No CPU responder is required while a kernel runs.",
+      "qualifications": [
+        "Restore all mutated global/static device arrays and managed flags for each pass; native has __device__ symbol storage and __managed__ control globals, Julia has CuArray/managed pointers.",
+        "Host-controlled iterative stage/state trajectory and full assignments/cost/slack/guards must still pass. First-per-name/geometry is not every adaptive iteration.",
+        "Managed control-page residency and host solver overhead are not represented by kernel DRAM counters. This is not evidence of floating-point roofline applicability for predominantly integer combinatorial work.",
+        "Separate staging concern: Julia study_common.jl uses source-derived historical auxiliary directory; Landlock will safely reject until a reviewed path-only copy overlay redirects it. Replay assessment does not clear output gates."
+      ],
+      "measurement_alternative": "Conditional per-kernel replay; if symbol/managed flag restoration fails use separately reviewed application replay with full host controller and exact checks, not a fixed stage sequence.",
+      "memory_tier_review": "Device arrays plus small managed control pages; integer-kernel roofline applicability must be explicit.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/hungarian/jacc/plan.json",
+      "source_plan_sha256": "cc821462452c7ab8128f5f2a034dcbd2c2c19475d4b759f7c6323da5cbd8b49f",
+      "reference_result_sha256": "f1ed5ba0b2a9dc1937cb3ed4e951264ef25d4b10c1395aab3083d2506fb7f0ee",
+      "reference_config_sha256": "8c6a33cec375a89d08f640176d3cc913a19164923336e9a328aa4e7678d76e5d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian-julia-JACC/main.jl",
+          "sha256": "67ce9c161ea854a3fb3f7a5e0b8273d899105766a54c615417400209f51f5fb7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian_math.jl",
+          "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/generate_study_fixture.py",
+          "sha256": "2a73e76231559b186d358fe5b85ec16ded90b4831f5288498697de991f4348da"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_cuda.cu",
+          "sha256": "8598bf4943a626f90554e4aa9861a25ace1dbd7e94503c32f00d7425082f460a",
+          "findings": [
+            {
+              "line": 11,
+              "text": "#define RUN(k,b,t,s,id) do{k<<<b,t,s>>>();CK(cudaDeviceSynchronize());counts[id]++;if(++launches>10000){fprintf(stderr,\"iterationcap\\n\");exit(11);}}while(0)"
+            },
+            {
+              "line": 12,
+              "text": "std::vector<int>solve(){std::vector<int>counts(16);int launches=0;"
+            },
+            {
+              "line": 14,
+              "text": "do{repeat_kernel=false;RUN(step_2,1,zeros_size>256?256:zeros_size,0,6);}while(repeat_kernel);"
+            },
+            {
+              "line": 16,
+              "text": "while(1){do{goto_5=false;repeat_kernel=false;RUN(step_4,1,zeros_size>256?256:zeros_size,0,10);}while(repeat_kernel&&!goto_5);if(goto_5)break;"
+            },
+            {
+              "line": 20,
+              "text": "int main(){static_assert(sizeof(int)==4);auto prefix=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/fixture.bin\",196610),gold=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/oracle.bin\",198147);auto reset=[&](int ci){CK(cudaMemcpyToSymbol(slack,prefix.data()+2+ci*n*n,n*n*4));};for(int ci=0;ci<3;ci++){reset(ci);solve();}"
+            },
+            {
+              "line": 22,
+              "text": "for(int ci=0;ci<3;ci++){reset(ci);CK(cudaDeviceSynchronize());auto t=std::chrono::steady_clock::now();auto c=solve();CK(cudaDeviceSynchronize());double dt=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();elapsed+=dt;paths.push_back(dt);counts.insert(counts.end(),c.begin(),c.end());std::vector<int>cs(n),rs(n),cost(n*n);CK(cudaMemcpyFromSymbol(cs.data(),column_of_star_at_row,n*4));CK(cudaMemcpyFromSymbol(rs.data(),row_of_star_at_column,n*4));CK(cudaMemcpyFromSymbol(cost.data(),slack,n*n*4));raw.insert(raw.end(),cost.begin(),cost.end());raw.insert(raw.end(),cs.begin(),cs.end());raw.insert(raw.end(),rs.begin(),rs.end());long total=0;for(int r=0;r<n;r++){int col=cs[r];ok&=col>=0&&col<n;if(col>=0&&col<n){total+=prefix[2+ci*n*n+col*n+r];ok&=rs[col]==r&&cost[col*n+r]==0;}}for(int x:cost)ok&=x>=0;art.insert(art.end(),cs.begin(),cs.end());art.insert(art.end(),rs.begin(),rs.end());art.push_back(int(total));art.insert(art.end(),prefix.begin()+2+ci*n*n,prefix.begin()+2+(ci+1)*n*n);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d",
+          "findings": [
+            {
+              "line": 97,
+              "text": "__device__ data slack[nrows*ncols];           // The slack matrix"
+            },
+            {
+              "line": 98,
+              "text": "__device__ data min_in_rows[nrows];           // Minimum in rows"
+            },
+            {
+              "line": 99,
+              "text": "__device__ data min_in_cols[ncols];           // Minimum in columns"
+            },
+            {
+              "line": 108,
+              "text": "__device__ data max_in_mat_row[nrows];        // Used in step 1 to stores the maximum in rows"
+            },
+            {
+              "line": 109,
+              "text": "__device__ data min_in_mat_col[ncols];        // Used in step 1 to stores the minimums in columns"
+            },
+            {
+              "line": 110,
+              "text": "__device__ data d_min_in_mat_vect[n_blocks_reduction];  // Used in step 6 to stores the intermediate results from the first reduction kernel"
+            },
+            {
+              "line": 111,
+              "text": "__device__ data d_min_in_mat;                 // Used in step 6 to store the minimum"
+            },
+            {
+              "line": 113,
+              "text": "MANAGED __device__ int zeros_size;            // The number fo zeros"
+            },
+            {
+              "line": 114,
+              "text": "MANAGED __device__ int n_matches;             // Used in step 3 to count the number of matches found"
+            },
+            {
+              "line": 115,
+              "text": "MANAGED __device__ bool goto_5;               // After step 4, goto step 5?"
+            },
+            {
+              "line": 116,
+              "text": "MANAGED __device__ bool repeat_kernel;        // Needs to repeat the step 2 and step 4 kernel?"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d",
+          "findings": [
+            {
+              "line": 7,
+              "text": "  launch!(Val(k),S,nb,nt,shared);CUDA.device_synchronize(blocking=true);counts[k+1]+=1;launches+=1;launches<=10000||error(\"iterationcap\")"
+            },
+            {
+              "line": 11,
+              "text": "  hostflags[4]=0;run(6,1,min(256,Int(hostflags[1])),12);hostflags[4]==0&&break"
+            },
+            {
+              "line": 14,
+              "text": "  run(7,4,64);run(8,4,64);hostflags[2]>=256&&break;run(9,4,64)"
+            },
+            {
+              "line": 17,
+              "text": "    hostflags[3]=0;hostflags[4]=0;run(10,1,min(256,Int(hostflags[1])),12)"
+            },
+            {
+              "line": 18,
+              "text": "    !(hostflags[4]!=0&&hostflags[3]==0)&&break"
+            },
+            {
+              "line": 20,
+              "text": "   hostflags[3]!=0&&break"
+            },
+            {
+              "line": 29,
+              "text": " owners=[CUDA.fill(Int32(1515870810),n+16) for n in H_SIZES];views=[view(d,9:length(d)-8) for d in owners];flags=CuArray{Int32,1,CUDA.UnifiedMemory}(undef,4);hostflags=unsafe_wrap(Array,convert(Ptr{Int32},flags.data[].mem),(4,);own=false);fill!(hostflags,0)"
+            },
+            {
+              "line": 35,
+              "text": " auxdir=joinpath(@__DIR__,\"..\",\"..\",\".porting-state\",\"porting_logs\",\"hungarian-julia-$(H_MODEL)\",\"aux_pid$(getpid())\");mkpath(auxdir)"
+            },
+            {
+              "line": 39,
+              "text": "   copyto!(S.slack,c);CUDA.device_synchronize(blocking=true);actual_input=Array(S.slack);ok&=actual_input==c;t=time_ns();co=hsolve(launch!,S,hostflags);CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-t)*1e-9);append!(counts,co)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "hungarian",
+      "model": "ka",
+      "configuration_id": "hungarian_full_state_machine_N256_unique6core_and_planted3cases_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Host flags are updated/read only between kernels. Native RUN macro calls cudaDeviceSynchronize after every stage, then host branches on managed globals. Julia run does the same before reading/writing its four UnifiedMemory flags. No CPU responder is required while a kernel runs.",
+      "qualifications": [
+        "Restore all mutated global/static device arrays and managed flags for each pass; native has __device__ symbol storage and __managed__ control globals, Julia has CuArray/managed pointers.",
+        "Host-controlled iterative stage/state trajectory and full assignments/cost/slack/guards must still pass. First-per-name/geometry is not every adaptive iteration.",
+        "Managed control-page residency and host solver overhead are not represented by kernel DRAM counters. This is not evidence of floating-point roofline applicability for predominantly integer combinatorial work.",
+        "Separate staging concern: Julia study_common.jl uses source-derived historical auxiliary directory; Landlock will safely reject until a reviewed path-only copy overlay redirects it. Replay assessment does not clear output gates."
+      ],
+      "measurement_alternative": "Conditional per-kernel replay; if symbol/managed flag restoration fails use separately reviewed application replay with full host controller and exact checks, not a fixed stage sequence.",
+      "memory_tier_review": "Device arrays plus small managed control pages; integer-kernel roofline applicability must be explicit.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/hungarian/ka/plan.json",
+      "source_plan_sha256": "ef9be333faeb8fd07ab4d5ee4e9ca85e3b85f9f7a8e3bdd8c9a513de78b9811f",
+      "reference_result_sha256": "f1ed5ba0b2a9dc1937cb3ed4e951264ef25d4b10c1395aab3083d2506fb7f0ee",
+      "reference_config_sha256": "8c6a33cec375a89d08f640176d3cc913a19164923336e9a328aa4e7678d76e5d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian-julia-KA/main.jl",
+          "sha256": "5c12f9fa3f977d0d75f5591dcf9af637e4cbcea76a01af5d5370c9f0996e3d1e"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/hungarian_math.jl",
+          "sha256": "457ad8a4a89a628abd29c72e3ae616bc0508654b6f4033a10513f93dcce675e3"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/generate_study_fixture.py",
+          "sha256": "2a73e76231559b186d358fe5b85ec16ded90b4831f5288498697de991f4348da"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_cuda.cu",
+          "sha256": "8598bf4943a626f90554e4aa9861a25ace1dbd7e94503c32f00d7425082f460a",
+          "findings": [
+            {
+              "line": 11,
+              "text": "#define RUN(k,b,t,s,id) do{k<<<b,t,s>>>();CK(cudaDeviceSynchronize());counts[id]++;if(++launches>10000){fprintf(stderr,\"iterationcap\\n\");exit(11);}}while(0)"
+            },
+            {
+              "line": 12,
+              "text": "std::vector<int>solve(){std::vector<int>counts(16);int launches=0;"
+            },
+            {
+              "line": 14,
+              "text": "do{repeat_kernel=false;RUN(step_2,1,zeros_size>256?256:zeros_size,0,6);}while(repeat_kernel);"
+            },
+            {
+              "line": 16,
+              "text": "while(1){do{goto_5=false;repeat_kernel=false;RUN(step_4,1,zeros_size>256?256:zeros_size,0,10);}while(repeat_kernel&&!goto_5);if(goto_5)break;"
+            },
+            {
+              "line": 20,
+              "text": "int main(){static_assert(sizeof(int)==4);auto prefix=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/fixture.bin\",196610),gold=load(\"/home/imo/HeCBench_julia/src/hungarian-julia/oracle.bin\",198147);auto reset=[&](int ci){CK(cudaMemcpyToSymbol(slack,prefix.data()+2+ci*n*n,n*n*4));};for(int ci=0;ci<3;ci++){reset(ci);solve();}"
+            },
+            {
+              "line": 22,
+              "text": "for(int ci=0;ci<3;ci++){reset(ci);CK(cudaDeviceSynchronize());auto t=std::chrono::steady_clock::now();auto c=solve();CK(cudaDeviceSynchronize());double dt=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();elapsed+=dt;paths.push_back(dt);counts.insert(counts.end(),c.begin(),c.end());std::vector<int>cs(n),rs(n),cost(n*n);CK(cudaMemcpyFromSymbol(cs.data(),column_of_star_at_row,n*4));CK(cudaMemcpyFromSymbol(rs.data(),row_of_star_at_column,n*4));CK(cudaMemcpyFromSymbol(cost.data(),slack,n*n*4));raw.insert(raw.end(),cost.begin(),cost.end());raw.insert(raw.end(),cs.begin(),cs.end());raw.insert(raw.end(),rs.begin(),rs.end());long total=0;for(int r=0;r<n;r++){int col=cs[r];ok&=col>=0&&col<n;if(col>=0&&col<n){total+=prefix[2+ci*n*n+col*n+r];ok&=rs[col]==r&&cost[col*n+r]==0;}}for(int x:cost)ok&=x>=0;art.insert(art.end(),cs.begin(),cs.end());art.insert(art.end(),rs.begin(),rs.end());art.push_back(int(total));art.insert(art.end(),prefix.begin()+2+ci*n*n,prefix.begin()+2+(ci+1)*n*n);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-cuda/main.cu",
+          "sha256": "b4be772aa2beb027845451f64ce5e845d65d0f22b40ddd09429c874d174e969d",
+          "findings": [
+            {
+              "line": 97,
+              "text": "__device__ data slack[nrows*ncols];           // The slack matrix"
+            },
+            {
+              "line": 98,
+              "text": "__device__ data min_in_rows[nrows];           // Minimum in rows"
+            },
+            {
+              "line": 99,
+              "text": "__device__ data min_in_cols[ncols];           // Minimum in columns"
+            },
+            {
+              "line": 108,
+              "text": "__device__ data max_in_mat_row[nrows];        // Used in step 1 to stores the maximum in rows"
+            },
+            {
+              "line": 109,
+              "text": "__device__ data min_in_mat_col[ncols];        // Used in step 1 to stores the minimums in columns"
+            },
+            {
+              "line": 110,
+              "text": "__device__ data d_min_in_mat_vect[n_blocks_reduction];  // Used in step 6 to stores the intermediate results from the first reduction kernel"
+            },
+            {
+              "line": 111,
+              "text": "__device__ data d_min_in_mat;                 // Used in step 6 to store the minimum"
+            },
+            {
+              "line": 113,
+              "text": "MANAGED __device__ int zeros_size;            // The number fo zeros"
+            },
+            {
+              "line": 114,
+              "text": "MANAGED __device__ int n_matches;             // Used in step 3 to count the number of matches found"
+            },
+            {
+              "line": 115,
+              "text": "MANAGED __device__ bool goto_5;               // After step 4, goto step 5?"
+            },
+            {
+              "line": 116,
+              "text": "MANAGED __device__ bool repeat_kernel;        // Needs to repeat the step 2 and step 4 kernel?"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/hungarian-julia/study_common.jl",
+          "sha256": "e8ec91ea2667254786b6baca5c7770d8c40cdfd7d20f10fe4d06dc4f0822657d",
+          "findings": [
+            {
+              "line": 7,
+              "text": "  launch!(Val(k),S,nb,nt,shared);CUDA.device_synchronize(blocking=true);counts[k+1]+=1;launches+=1;launches<=10000||error(\"iterationcap\")"
+            },
+            {
+              "line": 11,
+              "text": "  hostflags[4]=0;run(6,1,min(256,Int(hostflags[1])),12);hostflags[4]==0&&break"
+            },
+            {
+              "line": 14,
+              "text": "  run(7,4,64);run(8,4,64);hostflags[2]>=256&&break;run(9,4,64)"
+            },
+            {
+              "line": 17,
+              "text": "    hostflags[3]=0;hostflags[4]=0;run(10,1,min(256,Int(hostflags[1])),12)"
+            },
+            {
+              "line": 18,
+              "text": "    !(hostflags[4]!=0&&hostflags[3]==0)&&break"
+            },
+            {
+              "line": 20,
+              "text": "   hostflags[3]!=0&&break"
+            },
+            {
+              "line": 29,
+              "text": " owners=[CUDA.fill(Int32(1515870810),n+16) for n in H_SIZES];views=[view(d,9:length(d)-8) for d in owners];flags=CuArray{Int32,1,CUDA.UnifiedMemory}(undef,4);hostflags=unsafe_wrap(Array,convert(Ptr{Int32},flags.data[].mem),(4,);own=false);fill!(hostflags,0)"
+            },
+            {
+              "line": 35,
+              "text": " auxdir=joinpath(@__DIR__,\"..\",\"..\",\".porting-state\",\"porting_logs\",\"hungarian-julia-$(H_MODEL)\",\"aux_pid$(getpid())\");mkpath(auxdir)"
+            },
+            {
+              "line": 39,
+              "text": "   copyto!(S.slack,c);CUDA.device_synchronize(blocking=true);actual_input=Array(S.slack);ok&=actual_input==c;t=time_ns();co=hsolve(launch!,S,hostflags);CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-t)*1e-9);append!(counts,co)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "openmp",
+      "model": "cuda",
+      "configuration_id": "openmp_hostconcurrency_n262144_f1to32_repeat37_legacyalloc_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Native OpenMP worker allocates its own cudaMalloc buffer for a disjoint host segment, performs ordered copy/launch/copy/free; Julia worker owns its own CuArray and synchronizes before copying/freeing. No running kernel consumes another CPU worker response or shares its writable buffer.",
+      "qualifications": [
+        "Restore in-place device data before extra passes; retain allocation lifetime until each worker completes all intercepted/replayed operations.",
+        "Native may use legacy default stream whereas Julia workers have task stream semantics; per-kernel profiling/serialization does not preserve host-thread concurrency or launch contention.",
+        "Original full262144element outputs over both repetitions and all1/2/4/8/16/32worker factors remain mandatory. One first kernel per geometry does not measure all worker copies.",
+        "Application replay may have nondeterministic thread/kernel order; do not assume replay matching across host workers without auditing actual stream/context and invocation matching."
+      ],
+      "measurement_alternative": "Conditional per-kernel component counters; timeline instrumentation or explicitly supported range/concurrency profiling for the whole host concurrency question.",
+      "memory_tier_review": "Device allocation arithmetic plus transfer/allocation costs outside sampled kernel; avoid whole ROI bottleneck inference.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/openmp/cuda/plan.json",
+      "source_plan_sha256": "a0763e2075761951a5fec0042ab8da0c9fd4361fa532cb8f9ae5fede08bcc89d",
+      "reference_result_sha256": "e9dbe56a0f485b95e9fb817dc3a4478dfb9799e3729e93146c780ffa8f5f355d",
+      "reference_config_sha256": "0400073cfc5535ec9370ba11f4c35c861fbaac1733803d5d3fd8c9ea0a4dfb7a",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_native.cu",
+          "sha256": "593b1234e5da98315e029ab67bc5d189823005cd0741e5a480479f5343056856"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-cuda/main.cu",
+          "sha256": "a0fab309ffdef63f91f153b13b1f5a27586562a6d0b4cb547b0e2854fce5bf40"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_include/reference.h",
+          "sha256": "a134a5f7326998b04c582c798a2e4530b490d6f84408eff45c4dfdf81fc5857c"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_native.cu",
+          "sha256": "593b1234e5da98315e029ab67bc5d189823005cd0741e5a480479f5343056856",
+          "findings": [
+            {
+              "line": 7,
+              "text": "#pragma omp parallel"
+            },
+            {
+              "line": 8,
+              "text": "{int lane=omp_get_thread_num(),count=omp_get_num_threads(),per=n/count;int*sub=host.data()+lane*per;for(int i=0;i<per;i++)sub[i]=i+lane*per;int*d;cudaMalloc(&d,per*4);cudaMemcpy(d,sub,per*4,cudaMemcpyHostToDevice);addConstant<<<per/256,256>>>(d,3,37);cudaMemcpy(sub,d,per*4,cudaMemcpyDeviceToHost);cudaFree(d);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f",
+          "findings": [
+            {
+              "line": 1,
+              "text": "function execute!(run!,host,f)"
+            },
+            {
+              "line": 4,
+              "text": "  Threads.@spawn begin"
+            },
+            {
+              "line": 6,
+              "text": "   initial=Int32.(start-1:stop-1);device=CuArray(initial)"
+            },
+            {
+              "line": 7,
+              "text": "   run!(device,Int32(3),Int32(37));CUDA.synchronize()"
+            },
+            {
+              "line": 8,
+              "text": "   copyto!(view(host,start:stop),Array(device));CUDA.unsafe_free!(device)"
+            },
+            {
+              "line": 13,
+              "text": "function study(run!)"
+            },
+            {
+              "line": 16,
+              "text": " for f in (1,2,4,8,16,32);execute!(run!,host,f);end"
+            },
+            {
+              "line": 20,
+              "text": "   CUDA.synchronize();t=time_ns();execute!(run!,host,f);CUDA.synchronize();total+=(time_ns()-t)*1e-9;append!(got,host)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "openmp",
+      "model": "cuda_jl",
+      "configuration_id": "openmp_hostconcurrency_n262144_f1to32_repeat37_legacyalloc_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Native OpenMP worker allocates its own cudaMalloc buffer for a disjoint host segment, performs ordered copy/launch/copy/free; Julia worker owns its own CuArray and synchronizes before copying/freeing. No running kernel consumes another CPU worker response or shares its writable buffer.",
+      "qualifications": [
+        "Restore in-place device data before extra passes; retain allocation lifetime until each worker completes all intercepted/replayed operations.",
+        "Native may use legacy default stream whereas Julia workers have task stream semantics; per-kernel profiling/serialization does not preserve host-thread concurrency or launch contention.",
+        "Original full262144element outputs over both repetitions and all1/2/4/8/16/32worker factors remain mandatory. One first kernel per geometry does not measure all worker copies.",
+        "Application replay may have nondeterministic thread/kernel order; do not assume replay matching across host workers without auditing actual stream/context and invocation matching."
+      ],
+      "measurement_alternative": "Conditional per-kernel component counters; timeline instrumentation or explicitly supported range/concurrency profiling for the whole host concurrency question.",
+      "memory_tier_review": "Device allocation arithmetic plus transfer/allocation costs outside sampled kernel; avoid whole ROI bottleneck inference.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/openmp/cuda_jl/plan.json",
+      "source_plan_sha256": "e22fa48a531dc6a96dd2f987087f2afdd0ae3e1ab0947c4544037d71c3dadb92",
+      "reference_result_sha256": "e9dbe56a0f485b95e9fb817dc3a4478dfb9799e3729e93146c780ffa8f5f355d",
+      "reference_config_sha256": "0400073cfc5535ec9370ba11f4c35c861fbaac1733803d5d3fd8c9ea0a4dfb7a",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/openmp-julia-cuda.jl/main.jl",
+          "sha256": "86fd2b70b2365a6936f1f48b89333489dc39d719bb2de55350771791b96f82f2"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_native.cu",
+          "sha256": "593b1234e5da98315e029ab67bc5d189823005cd0741e5a480479f5343056856",
+          "findings": [
+            {
+              "line": 7,
+              "text": "#pragma omp parallel"
+            },
+            {
+              "line": 8,
+              "text": "{int lane=omp_get_thread_num(),count=omp_get_num_threads(),per=n/count;int*sub=host.data()+lane*per;for(int i=0;i<per;i++)sub[i]=i+lane*per;int*d;cudaMalloc(&d,per*4);cudaMemcpy(d,sub,per*4,cudaMemcpyHostToDevice);addConstant<<<per/256,256>>>(d,3,37);cudaMemcpy(sub,d,per*4,cudaMemcpyDeviceToHost);cudaFree(d);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f",
+          "findings": [
+            {
+              "line": 1,
+              "text": "function execute!(run!,host,f)"
+            },
+            {
+              "line": 4,
+              "text": "  Threads.@spawn begin"
+            },
+            {
+              "line": 6,
+              "text": "   initial=Int32.(start-1:stop-1);device=CuArray(initial)"
+            },
+            {
+              "line": 7,
+              "text": "   run!(device,Int32(3),Int32(37));CUDA.synchronize()"
+            },
+            {
+              "line": 8,
+              "text": "   copyto!(view(host,start:stop),Array(device));CUDA.unsafe_free!(device)"
+            },
+            {
+              "line": 13,
+              "text": "function study(run!)"
+            },
+            {
+              "line": 16,
+              "text": " for f in (1,2,4,8,16,32);execute!(run!,host,f);end"
+            },
+            {
+              "line": 20,
+              "text": "   CUDA.synchronize();t=time_ns();execute!(run!,host,f);CUDA.synchronize();total+=(time_ns()-t)*1e-9;append!(got,host)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "openmp",
+      "model": "jacc",
+      "configuration_id": "openmp_hostconcurrency_n262144_f1to32_repeat37_legacyalloc_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Native OpenMP worker allocates its own cudaMalloc buffer for a disjoint host segment, performs ordered copy/launch/copy/free; Julia worker owns its own CuArray and synchronizes before copying/freeing. No running kernel consumes another CPU worker response or shares its writable buffer.",
+      "qualifications": [
+        "Restore in-place device data before extra passes; retain allocation lifetime until each worker completes all intercepted/replayed operations.",
+        "Native may use legacy default stream whereas Julia workers have task stream semantics; per-kernel profiling/serialization does not preserve host-thread concurrency or launch contention.",
+        "Original full262144element outputs over both repetitions and all1/2/4/8/16/32worker factors remain mandatory. One first kernel per geometry does not measure all worker copies.",
+        "Application replay may have nondeterministic thread/kernel order; do not assume replay matching across host workers without auditing actual stream/context and invocation matching."
+      ],
+      "measurement_alternative": "Conditional per-kernel component counters; timeline instrumentation or explicitly supported range/concurrency profiling for the whole host concurrency question.",
+      "memory_tier_review": "Device allocation arithmetic plus transfer/allocation costs outside sampled kernel; avoid whole ROI bottleneck inference.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/openmp/jacc/plan.json",
+      "source_plan_sha256": "a62980cada10fe0c9d0a617436c7a91876cc7b94f4d0349dffb4497b67f8979e",
+      "reference_result_sha256": "e9dbe56a0f485b95e9fb817dc3a4478dfb9799e3729e93146c780ffa8f5f355d",
+      "reference_config_sha256": "0400073cfc5535ec9370ba11f4c35c861fbaac1733803d5d3fd8c9ea0a4dfb7a",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/openmp-julia-JACC/main.jl",
+          "sha256": "e13bb057e6462568f51cd15b67c02eb325f68c42691fe130b6a8183045be8f14"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_native.cu",
+          "sha256": "593b1234e5da98315e029ab67bc5d189823005cd0741e5a480479f5343056856",
+          "findings": [
+            {
+              "line": 7,
+              "text": "#pragma omp parallel"
+            },
+            {
+              "line": 8,
+              "text": "{int lane=omp_get_thread_num(),count=omp_get_num_threads(),per=n/count;int*sub=host.data()+lane*per;for(int i=0;i<per;i++)sub[i]=i+lane*per;int*d;cudaMalloc(&d,per*4);cudaMemcpy(d,sub,per*4,cudaMemcpyHostToDevice);addConstant<<<per/256,256>>>(d,3,37);cudaMemcpy(sub,d,per*4,cudaMemcpyDeviceToHost);cudaFree(d);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f",
+          "findings": [
+            {
+              "line": 1,
+              "text": "function execute!(run!,host,f)"
+            },
+            {
+              "line": 4,
+              "text": "  Threads.@spawn begin"
+            },
+            {
+              "line": 6,
+              "text": "   initial=Int32.(start-1:stop-1);device=CuArray(initial)"
+            },
+            {
+              "line": 7,
+              "text": "   run!(device,Int32(3),Int32(37));CUDA.synchronize()"
+            },
+            {
+              "line": 8,
+              "text": "   copyto!(view(host,start:stop),Array(device));CUDA.unsafe_free!(device)"
+            },
+            {
+              "line": 13,
+              "text": "function study(run!)"
+            },
+            {
+              "line": 16,
+              "text": " for f in (1,2,4,8,16,32);execute!(run!,host,f);end"
+            },
+            {
+              "line": 20,
+              "text": "   CUDA.synchronize();t=time_ns();execute!(run!,host,f);CUDA.synchronize();total+=(time_ns()-t)*1e-9;append!(got,host)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "openmp",
+      "model": "ka",
+      "configuration_id": "openmp_hostconcurrency_n262144_f1to32_repeat37_legacyalloc_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Native OpenMP worker allocates its own cudaMalloc buffer for a disjoint host segment, performs ordered copy/launch/copy/free; Julia worker owns its own CuArray and synchronizes before copying/freeing. No running kernel consumes another CPU worker response or shares its writable buffer.",
+      "qualifications": [
+        "Restore in-place device data before extra passes; retain allocation lifetime until each worker completes all intercepted/replayed operations.",
+        "Native may use legacy default stream whereas Julia workers have task stream semantics; per-kernel profiling/serialization does not preserve host-thread concurrency or launch contention.",
+        "Original full262144element outputs over both repetitions and all1/2/4/8/16/32worker factors remain mandatory. One first kernel per geometry does not measure all worker copies.",
+        "Application replay may have nondeterministic thread/kernel order; do not assume replay matching across host workers without auditing actual stream/context and invocation matching."
+      ],
+      "measurement_alternative": "Conditional per-kernel component counters; timeline instrumentation or explicitly supported range/concurrency profiling for the whole host concurrency question.",
+      "memory_tier_review": "Device allocation arithmetic plus transfer/allocation costs outside sampled kernel; avoid whole ROI bottleneck inference.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/openmp/ka/plan.json",
+      "source_plan_sha256": "6e82b8662c463ee427ee3715ca4fafa4dfebe0a0a0a2459fd502d5f86301233b",
+      "reference_result_sha256": "e9dbe56a0f485b95e9fb817dc3a4478dfb9799e3729e93146c780ffa8f5f355d",
+      "reference_config_sha256": "0400073cfc5535ec9370ba11f4c35c861fbaac1733803d5d3fd8c9ea0a4dfb7a",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/openmp-julia-KA/main.jl",
+          "sha256": "aceee09c359a494d42f38d21ead1df1426959395bee2d8663a50e7ca58e248f1"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_native.cu",
+          "sha256": "593b1234e5da98315e029ab67bc5d189823005cd0741e5a480479f5343056856",
+          "findings": [
+            {
+              "line": 7,
+              "text": "#pragma omp parallel"
+            },
+            {
+              "line": 8,
+              "text": "{int lane=omp_get_thread_num(),count=omp_get_num_threads(),per=n/count;int*sub=host.data()+lane*per;for(int i=0;i<per;i++)sub[i]=i+lane*per;int*d;cudaMalloc(&d,per*4);cudaMemcpy(d,sub,per*4,cudaMemcpyHostToDevice);addConstant<<<per/256,256>>>(d,3,37);cudaMemcpy(sub,d,per*4,cudaMemcpyDeviceToHost);cudaFree(d);}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/openmp-julia/study_common.jl",
+          "sha256": "5e759d46e8ecd0714b511270af99676cd6568de33756ae98fa58acdb3207503f",
+          "findings": [
+            {
+              "line": 1,
+              "text": "function execute!(run!,host,f)"
+            },
+            {
+              "line": 4,
+              "text": "  Threads.@spawn begin"
+            },
+            {
+              "line": 6,
+              "text": "   initial=Int32.(start-1:stop-1);device=CuArray(initial)"
+            },
+            {
+              "line": 7,
+              "text": "   run!(device,Int32(3),Int32(37));CUDA.synchronize()"
+            },
+            {
+              "line": 8,
+              "text": "   copyto!(view(host,start:stop),Array(device));CUDA.unsafe_free!(device)"
+            },
+            {
+              "line": 13,
+              "text": "function study(run!)"
+            },
+            {
+              "line": 16,
+              "text": " for f in (1,2,4,8,16,32);execute!(run!,host,f);end"
+            },
+            {
+              "line": 20,
+              "text": "   CUDA.synchronize();t=time_ns();execute!(run!,host,f);CUDA.synchronize();total+=(time_ns()-t)*1e-9;append!(got,host)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "prefetch",
+      "model": "cuda",
+      "configuration_id": "prefetch_cpu_firsttouch_um_two_sizes_both_policies_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Managed A/B are CPU-initialized before the launch loop and inspected after kernel completion, never modified by a live host responder. The kernel updates B+=A, so managed B must be restored before each additional pass.",
+      "qualifications": [
+        "Static state/progress safety does NOT preserve managed page residency. CPU writes every page before timed trials; prefetch changes device placement before each source iteration. Profiler memory backup/restore and cache flushing can change this physical state.",
+        "Current first invocation per name/geometry selects warmup kernels, not a timed CPU-reset/prepared state. Prefetch/no-prefetch modes share name/geometry: the selector does not distinguish them. Native warmup launches add with no prefetch; Julia launches add then optionally prefetches afterward.",
+        "Do not use this raw sample to claim prefetch benefit, migration cost or whole timed ROI compute/memory bound. Device DRAM bytes omit host-link transfer/page-fault work; cache-control all is not a residency-reset protocol.",
+        "Original seven-update full-array result check and no automatic CuArray adaptor prefetch policy remain mandatory."
+      ],
+      "measurement_alternative": "Per-kernel replay only as explicitly labeled instrumented sample. For actual policy comparison use a reviewed timed-state selector plus application/single-pass strategy and validated host\u2192device residency/fault/link instrumentation; retain original full workload, no silent prefetch/no-prefetch rewrite.",
+      "memory_tier_review": "Unified managed memory: device DRAM versus host-resident/migrating pages must be measured, not inferred from pointer type.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/prefetch/cuda/plan.json",
+      "source_plan_sha256": "77a0e65cdb55e7bf82b07760ad4479b1679297f7eb1f5b823699d0f1873b25dd",
+      "reference_result_sha256": "6427f9d794dc18bd2e4dae5842ab1e4dd888f6b62ec99da3f5ac8789db6c98af",
+      "reference_config_sha256": "9f50c903b5858c550a057eedb0c40f73cf0a83ae3fe25292abe9dd2a36ad0586",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_native.cu",
+          "sha256": "9b15731a484ca1d6a47a9954f43b69696daca5bac4b627c1de4cb503d234e936"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-cuda/main.cu",
+          "sha256": "85e69dcfb7f663e6b8b7a4db46f4ebcc2a815ac6a0297f9e6ed8489a4437a57c"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/src/compiler/execution.jl",
+          "sha256": "aa4b93d911a4cbe2e37a913c576748688b16d46134c435c78842a3aebb53aaf8"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/lib/cudadrv/memory.jl",
+          "sha256": "31045810c2eee390b97f08286879d06421f8be5fe5e88fdc4fd755ff4fe0b1bb"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_native.cu",
+          "sha256": "9b15731a484ca1d6a47a9954f43b69696daca5bac4b627c1de4cb503d234e936",
+          "findings": [
+            {
+              "line": 10,
+              "text": "int main(){int cma;CK(cudaDeviceGetAttribute(&cma,cudaDevAttrConcurrentManagedAccess,0));if(!cma){puts(\"CMA unsupported\");return 3;}std::vector<Case>cs;std::vector<float>prefix;for(int n:{4099,1048579}){prefix.push_back(float(n));prefix.push_back(7);for(int i=0;i<n;i++)prefix.push_back(n==4099?1.f:float(i%17-8)/16.f);for(int i=0;i<n;i++)prefix.push_back(n==4099?2.f:float((i*5)%23-11)/32.f);for(bool mode:{true,false}){Case c;c.n=n;c.mode=mode;CK(cudaMallocManaged(&c.a,n*4));CK(cudaMallocManaged(&c.b,n*4));init(c);add<<<(n+255)/256,256>>>(n,c.a,c.b);cs.push_back(c);}}CK(cudaDeviceSynchronize());bool all=true;"
+            },
+            {
+              "line": 11,
+              "text": "for(int trial=1;trial<=5;trial++){for(auto&c:cs)init(c);CK(cudaDeviceSynchronize());std::vector<double>times;for(auto&c:cs){auto start=std::chrono::steady_clock::now();for(int r=0;r<7;r++){if(c.mode){cudaMemLocation loc;loc.type=cudaMemLocationTypeDevice;loc.id=0;CK(cudaMemPrefetchAsync(c.a,c.n*4,loc,0));CK(cudaMemPrefetchAsync(c.b,c.n*4,loc,0));}add<<<(c.n+255)/256,256>>>(c.n,c.a,c.b);CK(cudaGetLastError());CK(cudaDeviceSynchronize());}times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/7);}auto out=prefix;bool ok=true;double time=0;for(auto t:times)time+=t;for(auto&c:cs){for(int i=0;i<c.n;i++){float a=c.n==4099?1.f:float(i%17-8)/16.f;float b=c.n==4099?2.f:float((i*5)%23-11)/32.f;ok&=c.a[i]==a&&c.b[i]==b+7*a;out.push_back(c.a[i]);}for(int i=0;i<c.n;i++)out.push_back(c.b[i]);}all&=ok;std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";FILE*f=fopen(path.c_str(),\"wb\");if(!f)return 4;fwrite(out.data(),4,out.size(),f);fclose(f);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"component_seconds\\\":[%.12g,%.12g,%.12g,%.12g],\\\"correct\\\":%s,\\\"checked_values\\\":4210712,\\\"max_abs_error\\\":%d,\\\"max_rel_error\\\":%d,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":7,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,time,times[0],times[1],times[2],times[3],ok?\"true\":\"false\",ok?0:1,ok?0:1,path.c_str(),out.size());}for(auto&c:cs){CK(cudaFree(c.a));CK(cudaFree(c.b));}puts(all?\"PASS\":\"FAIL\");return all?0:1;}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e",
+          "findings": [
+            {
+              "line": 13,
+              "text": "function prefetch_study(launch!)"
+            },
+            {
+              "line": 23,
+              "text": "   da=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},a);db=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},b)"
+            },
+            {
+              "line": 24,
+              "text": "   copyto!(ha,ca);copyto!(hb,cb);launch!(Int32(n),da,db)"
+            },
+            {
+              "line": 25,
+              "text": "   if mode;CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream());end"
+            },
+            {
+              "line": 26,
+              "text": "   CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 30,
+              "text": " CUDA.device_synchronize(blocking=true);allok=true"
+            },
+            {
+              "line": 32,
+              "text": "  # CPU writes every managed page after warmup/last capture; setup outside ROI."
+            },
+            {
+              "line": 33,
+              "text": "  for (n,mode,a,b,ha,hb,da,db,ca,cb) in states;copyto!(ha,ca);copyto!(hb,cb);end"
+            },
+            {
+              "line": 34,
+              "text": "  CUDA.device_synchronize(blocking=true);times=Float64[]"
+            },
+            {
+              "line": 39,
+              "text": "     CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream())"
+            },
+            {
+              "line": 41,
+              "text": "    launch!(Int32(n),da,db);CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "prefetch",
+      "model": "cuda_jl",
+      "configuration_id": "prefetch_cpu_firsttouch_um_two_sizes_both_policies_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Managed A/B are CPU-initialized before the launch loop and inspected after kernel completion, never modified by a live host responder. The kernel updates B+=A, so managed B must be restored before each additional pass.",
+      "qualifications": [
+        "Static state/progress safety does NOT preserve managed page residency. CPU writes every page before timed trials; prefetch changes device placement before each source iteration. Profiler memory backup/restore and cache flushing can change this physical state.",
+        "Current first invocation per name/geometry selects warmup kernels, not a timed CPU-reset/prepared state. Prefetch/no-prefetch modes share name/geometry: the selector does not distinguish them. Native warmup launches add with no prefetch; Julia launches add then optionally prefetches afterward.",
+        "Do not use this raw sample to claim prefetch benefit, migration cost or whole timed ROI compute/memory bound. Device DRAM bytes omit host-link transfer/page-fault work; cache-control all is not a residency-reset protocol.",
+        "Original seven-update full-array result check and no automatic CuArray adaptor prefetch policy remain mandatory."
+      ],
+      "measurement_alternative": "Per-kernel replay only as explicitly labeled instrumented sample. For actual policy comparison use a reviewed timed-state selector plus application/single-pass strategy and validated host\u2192device residency/fault/link instrumentation; retain original full workload, no silent prefetch/no-prefetch rewrite.",
+      "memory_tier_review": "Unified managed memory: device DRAM versus host-resident/migrating pages must be measured, not inferred from pointer type.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/prefetch/cuda_jl/plan.json",
+      "source_plan_sha256": "3923a2cc2b2dba34733fb2def854956c7cf07f0bc30179125d2ee493cc98201d",
+      "reference_result_sha256": "6427f9d794dc18bd2e4dae5842ab1e4dd888f6b62ec99da3f5ac8789db6c98af",
+      "reference_config_sha256": "9f50c903b5858c550a057eedb0c40f73cf0a83ae3fe25292abe9dd2a36ad0586",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/prefetch-julia-cuda.jl/study.jl",
+          "sha256": "8b1627e31e63eb3df826aef494335052c4c256b8f80be21ab8f9236d5c0d4e9b"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-cuda/main.cu",
+          "sha256": "85e69dcfb7f663e6b8b7a4db46f4ebcc2a815ac6a0297f9e6ed8489a4437a57c"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/src/compiler/execution.jl",
+          "sha256": "aa4b93d911a4cbe2e37a913c576748688b16d46134c435c78842a3aebb53aaf8"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/lib/cudadrv/memory.jl",
+          "sha256": "31045810c2eee390b97f08286879d06421f8be5fe5e88fdc4fd755ff4fe0b1bb"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/prefetch-julia-cuda.jl/main.jl",
+          "sha256": "8f61e134e9ab80e192e844f83a292e7dac5332225846d44a02f51639430a3ae3"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_native.cu",
+          "sha256": "9b15731a484ca1d6a47a9954f43b69696daca5bac4b627c1de4cb503d234e936",
+          "findings": [
+            {
+              "line": 10,
+              "text": "int main(){int cma;CK(cudaDeviceGetAttribute(&cma,cudaDevAttrConcurrentManagedAccess,0));if(!cma){puts(\"CMA unsupported\");return 3;}std::vector<Case>cs;std::vector<float>prefix;for(int n:{4099,1048579}){prefix.push_back(float(n));prefix.push_back(7);for(int i=0;i<n;i++)prefix.push_back(n==4099?1.f:float(i%17-8)/16.f);for(int i=0;i<n;i++)prefix.push_back(n==4099?2.f:float((i*5)%23-11)/32.f);for(bool mode:{true,false}){Case c;c.n=n;c.mode=mode;CK(cudaMallocManaged(&c.a,n*4));CK(cudaMallocManaged(&c.b,n*4));init(c);add<<<(n+255)/256,256>>>(n,c.a,c.b);cs.push_back(c);}}CK(cudaDeviceSynchronize());bool all=true;"
+            },
+            {
+              "line": 11,
+              "text": "for(int trial=1;trial<=5;trial++){for(auto&c:cs)init(c);CK(cudaDeviceSynchronize());std::vector<double>times;for(auto&c:cs){auto start=std::chrono::steady_clock::now();for(int r=0;r<7;r++){if(c.mode){cudaMemLocation loc;loc.type=cudaMemLocationTypeDevice;loc.id=0;CK(cudaMemPrefetchAsync(c.a,c.n*4,loc,0));CK(cudaMemPrefetchAsync(c.b,c.n*4,loc,0));}add<<<(c.n+255)/256,256>>>(c.n,c.a,c.b);CK(cudaGetLastError());CK(cudaDeviceSynchronize());}times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/7);}auto out=prefix;bool ok=true;double time=0;for(auto t:times)time+=t;for(auto&c:cs){for(int i=0;i<c.n;i++){float a=c.n==4099?1.f:float(i%17-8)/16.f;float b=c.n==4099?2.f:float((i*5)%23-11)/32.f;ok&=c.a[i]==a&&c.b[i]==b+7*a;out.push_back(c.a[i]);}for(int i=0;i<c.n;i++)out.push_back(c.b[i]);}all&=ok;std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";FILE*f=fopen(path.c_str(),\"wb\");if(!f)return 4;fwrite(out.data(),4,out.size(),f);fclose(f);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"component_seconds\\\":[%.12g,%.12g,%.12g,%.12g],\\\"correct\\\":%s,\\\"checked_values\\\":4210712,\\\"max_abs_error\\\":%d,\\\"max_rel_error\\\":%d,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":7,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,time,times[0],times[1],times[2],times[3],ok?\"true\":\"false\",ok?0:1,ok?0:1,path.c_str(),out.size());}for(auto&c:cs){CK(cudaFree(c.a));CK(cudaFree(c.b));}puts(all?\"PASS\":\"FAIL\");return all?0:1;}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e",
+          "findings": [
+            {
+              "line": 13,
+              "text": "function prefetch_study(launch!)"
+            },
+            {
+              "line": 23,
+              "text": "   da=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},a);db=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},b)"
+            },
+            {
+              "line": 24,
+              "text": "   copyto!(ha,ca);copyto!(hb,cb);launch!(Int32(n),da,db)"
+            },
+            {
+              "line": 25,
+              "text": "   if mode;CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream());end"
+            },
+            {
+              "line": 26,
+              "text": "   CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 30,
+              "text": " CUDA.device_synchronize(blocking=true);allok=true"
+            },
+            {
+              "line": 32,
+              "text": "  # CPU writes every managed page after warmup/last capture; setup outside ROI."
+            },
+            {
+              "line": 33,
+              "text": "  for (n,mode,a,b,ha,hb,da,db,ca,cb) in states;copyto!(ha,ca);copyto!(hb,cb);end"
+            },
+            {
+              "line": 34,
+              "text": "  CUDA.device_synchronize(blocking=true);times=Float64[]"
+            },
+            {
+              "line": 39,
+              "text": "     CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream())"
+            },
+            {
+              "line": 41,
+              "text": "    launch!(Int32(n),da,db);CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "prefetch",
+      "model": "jacc",
+      "configuration_id": "prefetch_cpu_firsttouch_um_two_sizes_both_policies_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Managed A/B are CPU-initialized before the launch loop and inspected after kernel completion, never modified by a live host responder. The kernel updates B+=A, so managed B must be restored before each additional pass.",
+      "qualifications": [
+        "Static state/progress safety does NOT preserve managed page residency. CPU writes every page before timed trials; prefetch changes device placement before each source iteration. Profiler memory backup/restore and cache flushing can change this physical state.",
+        "Current first invocation per name/geometry selects warmup kernels, not a timed CPU-reset/prepared state. Prefetch/no-prefetch modes share name/geometry: the selector does not distinguish them. Native warmup launches add with no prefetch; Julia launches add then optionally prefetches afterward.",
+        "Do not use this raw sample to claim prefetch benefit, migration cost or whole timed ROI compute/memory bound. Device DRAM bytes omit host-link transfer/page-fault work; cache-control all is not a residency-reset protocol.",
+        "Original seven-update full-array result check and no automatic CuArray adaptor prefetch policy remain mandatory."
+      ],
+      "measurement_alternative": "Per-kernel replay only as explicitly labeled instrumented sample. For actual policy comparison use a reviewed timed-state selector plus application/single-pass strategy and validated host\u2192device residency/fault/link instrumentation; retain original full workload, no silent prefetch/no-prefetch rewrite.",
+      "memory_tier_review": "Unified managed memory: device DRAM versus host-resident/migrating pages must be measured, not inferred from pointer type.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/prefetch/jacc/plan.json",
+      "source_plan_sha256": "77b916eefd337e1dbd1065bea39b5fe99cd98849236e6ec0b81a03b721398ec6",
+      "reference_result_sha256": "6427f9d794dc18bd2e4dae5842ab1e4dd888f6b62ec99da3f5ac8789db6c98af",
+      "reference_config_sha256": "9f50c903b5858c550a057eedb0c40f73cf0a83ae3fe25292abe9dd2a36ad0586",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/prefetch-julia-JACC/main.jl",
+          "sha256": "83bf0fdfb94f35abbcf488be7e8ce7f483f36c7c0e81ac8cdfbe8c510707ebb7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-cuda/main.cu",
+          "sha256": "85e69dcfb7f663e6b8b7a4db46f4ebcc2a815ac6a0297f9e6ed8489a4437a57c"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/src/compiler/execution.jl",
+          "sha256": "aa4b93d911a4cbe2e37a913c576748688b16d46134c435c78842a3aebb53aaf8"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/lib/cudadrv/memory.jl",
+          "sha256": "31045810c2eee390b97f08286879d06421f8be5fe5e88fdc4fd755ff4fe0b1bb"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_native.cu",
+          "sha256": "9b15731a484ca1d6a47a9954f43b69696daca5bac4b627c1de4cb503d234e936",
+          "findings": [
+            {
+              "line": 10,
+              "text": "int main(){int cma;CK(cudaDeviceGetAttribute(&cma,cudaDevAttrConcurrentManagedAccess,0));if(!cma){puts(\"CMA unsupported\");return 3;}std::vector<Case>cs;std::vector<float>prefix;for(int n:{4099,1048579}){prefix.push_back(float(n));prefix.push_back(7);for(int i=0;i<n;i++)prefix.push_back(n==4099?1.f:float(i%17-8)/16.f);for(int i=0;i<n;i++)prefix.push_back(n==4099?2.f:float((i*5)%23-11)/32.f);for(bool mode:{true,false}){Case c;c.n=n;c.mode=mode;CK(cudaMallocManaged(&c.a,n*4));CK(cudaMallocManaged(&c.b,n*4));init(c);add<<<(n+255)/256,256>>>(n,c.a,c.b);cs.push_back(c);}}CK(cudaDeviceSynchronize());bool all=true;"
+            },
+            {
+              "line": 11,
+              "text": "for(int trial=1;trial<=5;trial++){for(auto&c:cs)init(c);CK(cudaDeviceSynchronize());std::vector<double>times;for(auto&c:cs){auto start=std::chrono::steady_clock::now();for(int r=0;r<7;r++){if(c.mode){cudaMemLocation loc;loc.type=cudaMemLocationTypeDevice;loc.id=0;CK(cudaMemPrefetchAsync(c.a,c.n*4,loc,0));CK(cudaMemPrefetchAsync(c.b,c.n*4,loc,0));}add<<<(c.n+255)/256,256>>>(c.n,c.a,c.b);CK(cudaGetLastError());CK(cudaDeviceSynchronize());}times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/7);}auto out=prefix;bool ok=true;double time=0;for(auto t:times)time+=t;for(auto&c:cs){for(int i=0;i<c.n;i++){float a=c.n==4099?1.f:float(i%17-8)/16.f;float b=c.n==4099?2.f:float((i*5)%23-11)/32.f;ok&=c.a[i]==a&&c.b[i]==b+7*a;out.push_back(c.a[i]);}for(int i=0;i<c.n;i++)out.push_back(c.b[i]);}all&=ok;std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";FILE*f=fopen(path.c_str(),\"wb\");if(!f)return 4;fwrite(out.data(),4,out.size(),f);fclose(f);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"component_seconds\\\":[%.12g,%.12g,%.12g,%.12g],\\\"correct\\\":%s,\\\"checked_values\\\":4210712,\\\"max_abs_error\\\":%d,\\\"max_rel_error\\\":%d,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":7,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,time,times[0],times[1],times[2],times[3],ok?\"true\":\"false\",ok?0:1,ok?0:1,path.c_str(),out.size());}for(auto&c:cs){CK(cudaFree(c.a));CK(cudaFree(c.b));}puts(all?\"PASS\":\"FAIL\");return all?0:1;}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e",
+          "findings": [
+            {
+              "line": 13,
+              "text": "function prefetch_study(launch!)"
+            },
+            {
+              "line": 23,
+              "text": "   da=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},a);db=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},b)"
+            },
+            {
+              "line": 24,
+              "text": "   copyto!(ha,ca);copyto!(hb,cb);launch!(Int32(n),da,db)"
+            },
+            {
+              "line": 25,
+              "text": "   if mode;CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream());end"
+            },
+            {
+              "line": 26,
+              "text": "   CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 30,
+              "text": " CUDA.device_synchronize(blocking=true);allok=true"
+            },
+            {
+              "line": 32,
+              "text": "  # CPU writes every managed page after warmup/last capture; setup outside ROI."
+            },
+            {
+              "line": 33,
+              "text": "  for (n,mode,a,b,ha,hb,da,db,ca,cb) in states;copyto!(ha,ca);copyto!(hb,cb);end"
+            },
+            {
+              "line": 34,
+              "text": "  CUDA.device_synchronize(blocking=true);times=Float64[]"
+            },
+            {
+              "line": 39,
+              "text": "     CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream())"
+            },
+            {
+              "line": 41,
+              "text": "    launch!(Int32(n),da,db);CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "prefetch",
+      "model": "ka",
+      "configuration_id": "prefetch_cpu_firsttouch_um_two_sizes_both_policies_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Managed A/B are CPU-initialized before the launch loop and inspected after kernel completion, never modified by a live host responder. The kernel updates B+=A, so managed B must be restored before each additional pass.",
+      "qualifications": [
+        "Static state/progress safety does NOT preserve managed page residency. CPU writes every page before timed trials; prefetch changes device placement before each source iteration. Profiler memory backup/restore and cache flushing can change this physical state.",
+        "Current first invocation per name/geometry selects warmup kernels, not a timed CPU-reset/prepared state. Prefetch/no-prefetch modes share name/geometry: the selector does not distinguish them. Native warmup launches add with no prefetch; Julia launches add then optionally prefetches afterward.",
+        "Do not use this raw sample to claim prefetch benefit, migration cost or whole timed ROI compute/memory bound. Device DRAM bytes omit host-link transfer/page-fault work; cache-control all is not a residency-reset protocol.",
+        "Original seven-update full-array result check and no automatic CuArray adaptor prefetch policy remain mandatory."
+      ],
+      "measurement_alternative": "Per-kernel replay only as explicitly labeled instrumented sample. For actual policy comparison use a reviewed timed-state selector plus application/single-pass strategy and validated host\u2192device residency/fault/link instrumentation; retain original full workload, no silent prefetch/no-prefetch rewrite.",
+      "memory_tier_review": "Unified managed memory: device DRAM versus host-resident/migrating pages must be measured, not inferred from pointer type.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/prefetch/ka/plan.json",
+      "source_plan_sha256": "10ec867e0cf514eca7adc50f44441528fcc5e2c290468cffab691586bb45d2e2",
+      "reference_result_sha256": "6427f9d794dc18bd2e4dae5842ab1e4dd888f6b62ec99da3f5ac8789db6c98af",
+      "reference_config_sha256": "9f50c903b5858c550a057eedb0c40f73cf0a83ae3fe25292abe9dd2a36ad0586",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/prefetch-julia-KA/main.jl",
+          "sha256": "c8855fb31890d23240fab813a069084362ab79f87beb0fca515eccb4181a25dc"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-cuda/main.cu",
+          "sha256": "85e69dcfb7f663e6b8b7a4db46f4ebcc2a815ac6a0297f9e6ed8489a4437a57c"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/src/compiler/execution.jl",
+          "sha256": "aa4b93d911a4cbe2e37a913c576748688b16d46134c435c78842a3aebb53aaf8"
+        },
+        {
+          "path": "/home/imo/.julia/packages/CUDACore/NlVPI/lib/cudadrv/memory.jl",
+          "sha256": "31045810c2eee390b97f08286879d06421f8be5fe5e88fdc4fd755ff4fe0b1bb"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_native.cu",
+          "sha256": "9b15731a484ca1d6a47a9954f43b69696daca5bac4b627c1de4cb503d234e936",
+          "findings": [
+            {
+              "line": 10,
+              "text": "int main(){int cma;CK(cudaDeviceGetAttribute(&cma,cudaDevAttrConcurrentManagedAccess,0));if(!cma){puts(\"CMA unsupported\");return 3;}std::vector<Case>cs;std::vector<float>prefix;for(int n:{4099,1048579}){prefix.push_back(float(n));prefix.push_back(7);for(int i=0;i<n;i++)prefix.push_back(n==4099?1.f:float(i%17-8)/16.f);for(int i=0;i<n;i++)prefix.push_back(n==4099?2.f:float((i*5)%23-11)/32.f);for(bool mode:{true,false}){Case c;c.n=n;c.mode=mode;CK(cudaMallocManaged(&c.a,n*4));CK(cudaMallocManaged(&c.b,n*4));init(c);add<<<(n+255)/256,256>>>(n,c.a,c.b);cs.push_back(c);}}CK(cudaDeviceSynchronize());bool all=true;"
+            },
+            {
+              "line": 11,
+              "text": "for(int trial=1;trial<=5;trial++){for(auto&c:cs)init(c);CK(cudaDeviceSynchronize());std::vector<double>times;for(auto&c:cs){auto start=std::chrono::steady_clock::now();for(int r=0;r<7;r++){if(c.mode){cudaMemLocation loc;loc.type=cudaMemLocationTypeDevice;loc.id=0;CK(cudaMemPrefetchAsync(c.a,c.n*4,loc,0));CK(cudaMemPrefetchAsync(c.b,c.n*4,loc,0));}add<<<(c.n+255)/256,256>>>(c.n,c.a,c.b);CK(cudaGetLastError());CK(cudaDeviceSynchronize());}times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/7);}auto out=prefix;bool ok=true;double time=0;for(auto t:times)time+=t;for(auto&c:cs){for(int i=0;i<c.n;i++){float a=c.n==4099?1.f:float(i%17-8)/16.f;float b=c.n==4099?2.f:float((i*5)%23-11)/32.f;ok&=c.a[i]==a&&c.b[i]==b+7*a;out.push_back(c.a[i]);}for(int i=0;i<c.n;i++)out.push_back(c.b[i]);}all&=ok;std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";FILE*f=fopen(path.c_str(),\"wb\");if(!f)return 4;fwrite(out.data(),4,out.size(),f);fclose(f);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"component_seconds\\\":[%.12g,%.12g,%.12g,%.12g],\\\"correct\\\":%s,\\\"checked_values\\\":4210712,\\\"max_abs_error\\\":%d,\\\"max_rel_error\\\":%d,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":7,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,time,times[0],times[1],times[2],times[3],ok?\"true\":\"false\",ok?0:1,ok?0:1,path.c_str(),out.size());}for(auto&c:cs){CK(cudaFree(c.a));CK(cudaFree(c.b));}puts(all?\"PASS\":\"FAIL\");return all?0:1;}"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/prefetch-julia/study_common.jl",
+          "sha256": "b135682d3342c1f9dab1459380149d24aea91aff9cd879a9b0b26a6ce84a681e",
+          "findings": [
+            {
+              "line": 13,
+              "text": "function prefetch_study(launch!)"
+            },
+            {
+              "line": 23,
+              "text": "   da=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},a);db=Base.unsafe_convert(CUDA.CuDeviceArray{Float32,1,CUDA.AS.Global},b)"
+            },
+            {
+              "line": 24,
+              "text": "   copyto!(ha,ca);copyto!(hb,cb);launch!(Int32(n),da,db)"
+            },
+            {
+              "line": 25,
+              "text": "   if mode;CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream());end"
+            },
+            {
+              "line": 26,
+              "text": "   CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 30,
+              "text": " CUDA.device_synchronize(blocking=true);allok=true"
+            },
+            {
+              "line": 32,
+              "text": "  # CPU writes every managed page after warmup/last capture; setup outside ROI."
+            },
+            {
+              "line": 33,
+              "text": "  for (n,mode,a,b,ha,hb,da,db,ca,cb) in states;copyto!(ha,ca);copyto!(hb,cb);end"
+            },
+            {
+              "line": 34,
+              "text": "  CUDA.device_synchronize(blocking=true);times=Float64[]"
+            },
+            {
+              "line": 39,
+              "text": "     CUDA.prefetch(a.data[].mem;stream=CUDA.default_stream());CUDA.prefetch(b.data[].mem;stream=CUDA.default_stream())"
+            },
+            {
+              "line": 41,
+              "text": "    launch!(Int32(n),da,db);CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "streamUM",
+      "model": "cuda",
+      "configuration_id": "streamUM_managed_dynamic4_eighttasks_perprocessorlayout_v2",
+      "kernel_replay_verdict": "unknown",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Full source proves each task owns separate managed A/x/result allocations and is assigned exactly once to CPU if n<100 or GPU otherwise. No kernel waits on live CPU mutation of its OWN buffers. However CPU workers can concurrently write other managed allocations while NCU saves/restores context memory; this review cannot establish active2022.4 replay handling of those concurrent host writes.",
+      "qualifications": [
+        "Do not call this a proven source race or framework limitation: logical task buffers do not alias and original independent full-result checks passed. Unknown concerns profiler memory capture and concurrency fidelity.",
+        "Native OpenMP dynamic scheduling and Julia atomic task dispatch can change worker/stream assignments. Application replay is not automatically safe matching when assignment varies.",
+        "GPU tasks n100/101/127/257/511 have different sizes/states; first-per-geometry may merge distinct task sizes. CPU-only small-task GEMVs produce no GPU arithmetic counters.",
+        "Managed residency and concurrent CPU/GPU memory traffic are a mixed-tier workload; serialized kernel DRAM roofline cannot classify the whole dynamic scheduler."
+      ],
+      "measurement_alternative": "Hold automatic multi-pass kernel replay approval. Establish active-tool capture/restore behavior with source-bound full-output evidence and reviewed bounded instrumentation, or use supported concurrency-aware range/application-range method with actual task/stream matching. Any frozen dispatch or GPU-only subset is a different named diagnostic, never original fullcontract.",
+      "memory_tier_review": "Per-task managed buffers distributed between CPU/GPU with dynamic scheduling; actual residency/link/CPU work must be retained.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/streamUM/cuda/plan.json",
+      "source_plan_sha256": "b4b4e04315c2026fb09b570886d6f4645c3dc0672724f4632f74b1c2a0290679",
+      "reference_result_sha256": "9be62447429a1d890c0a68c7fc85fa0cf76f8387bbc2b76d0fcddffc8325df64",
+      "reference_config_sha256": "0e1d6b8b2582d350acf2c1d0bb725f5ff725ecc3c00aa72a0ebe4dea4a70c264",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_native.cu",
+          "sha256": "a171fca33db7c6a30772e149fa0e41e99da11e2e5ad1fb272174b85a11969d10"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/reference.h",
+          "sha256": "cbe9f1866f387fdeb080c0dca028d43ae1ba765fd0d7955276d84be2890cddbb"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b",
+          "findings": [
+            {
+              "line": 74,
+              "text": "struct Task {"
+            },
+            {
+              "line": 92,
+              "text": "    checkCudaErrors(cudaMallocManaged(&data, sizeof(T) * size * size));"
+            },
+            {
+              "line": 93,
+              "text": "    checkCudaErrors(cudaMallocManaged(&result, sizeof(T) * size));"
+            },
+            {
+              "line": 94,
+              "text": "    checkCudaErrors(cudaMallocManaged(&vector, sizeof(T) * size));"
+            },
+            {
+              "line": 112,
+              "text": "  if (t.size < 100) {"
+            },
+            {
+              "line": 117,
+              "text": "    gemv(t.size, t.size, (T)1.0, t.data, t.vector, (T)0.0, t.result);"
+            },
+            {
+              "line": 125,
+              "text": "    checkCublasErrors(cublasSetStream(handle[tid + 1], stream[tid + 1]));"
+            },
+            {
+              "line": 127,
+              "text": "    checkCublasErrors(cublasDgemv(handle[tid + 1], CUBLAS_OP_N, t.size, t.size,"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_native.cu",
+          "sha256": "a171fca33db7c6a30772e149fa0e41e99da11e2e5ad1fb272174b85a11969d10",
+          "findings": [
+            {
+              "line": 7,
+              "text": "void reset_task(Task<double>&t){for(unsigned j=0;j<t.size;j++){t.vector[j]=double(int((5*j+3*t.id)%17)-8)/16.;t.result[j]=0.;for(unsigned i=0;i<t.size;i++)t.data[j*t.size+i]=double(int((13*i+7*j+3*t.id)%31)-15)/32.;}}"
+            },
+            {
+              "line": 11,
+              "text": " for(int t=0;t<8;t++){tasks[t].allocate(ns[t],t);reset_task(tasks[t]);auto &q=tasks[t];prefix.push_back(q.size);prefix.push_back(q.id);prefix.push_back(q.size<100?0:1);prefix.insert(prefix.end(),q.data,q.data+q.size*q.size);prefix.insert(prefix.end(),q.vector,q.vector+q.size);prefix.insert(prefix.end(),q.result,q.result+q.size);}"
+            },
+            {
+              "line": 14,
+              "text": " #pragma omp parallel for schedule(dynamic)"
+            },
+            {
+              "line": 15,
+              "text": " for(int t=0;t<8;t++){int w=omp_get_thread_num();workers[t]=w;execute(tasks[t],handles,streams,w);}"
+            },
+            {
+              "line": 16,
+              "text": " CK(cudaDeviceSynchronize());};"
+            },
+            {
+              "line": 17,
+              "text": " for(int warm=0;warm<2;warm++){for(auto&t:tasks)reset_task(t);run();}"
+            },
+            {
+              "line": 18,
+              "text": " for(int trial=1;trial<=5;trial++){for(auto&t:tasks)reset_task(t);CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();run();double time=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();auto out=prefix;bool ok=true;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d",
+          "findings": [
+            {
+              "line": 12,
+              "text": "function streamum_study(launch!)"
+            },
+            {
+              "line": 18,
+              "text": "  a=CuArray{Float64,1,CUDA.UnifiedMemory}(undef,n*n);x=similar(a,n);r=similar(a,n)"
+            },
+            {
+              "line": 30,
+              "text": "   copyto!(ha,ca);copyto!(hx,cx);fill!(hr,0)"
+            },
+            {
+              "line": 43,
+              "text": "      k=Threads.atomic_add!(next,1);k>length(states)&&break"
+            },
+            {
+              "line": 45,
+              "text": "      if n<100"
+            },
+            {
+              "line": 46,
+              "text": "       gemv_host!(hr,ha,hx,n)"
+            },
+            {
+              "line": 48,
+              "text": "       launch!(n,dr,da,dx)"
+            },
+            {
+              "line": 54,
+              "text": "  CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 60,
+              "text": "  reset!();prepare_dispatch!();CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "streamUM",
+      "model": "cuda_jl",
+      "configuration_id": "streamUM_managed_dynamic4_eighttasks_perprocessorlayout_v2",
+      "kernel_replay_verdict": "unknown",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Full source proves each task owns separate managed A/x/result allocations and is assigned exactly once to CPU if n<100 or GPU otherwise. No kernel waits on live CPU mutation of its OWN buffers. However CPU workers can concurrently write other managed allocations while NCU saves/restores context memory; this review cannot establish active2022.4 replay handling of those concurrent host writes.",
+      "qualifications": [
+        "Do not call this a proven source race or framework limitation: logical task buffers do not alias and original independent full-result checks passed. Unknown concerns profiler memory capture and concurrency fidelity.",
+        "Native OpenMP dynamic scheduling and Julia atomic task dispatch can change worker/stream assignments. Application replay is not automatically safe matching when assignment varies.",
+        "GPU tasks n100/101/127/257/511 have different sizes/states; first-per-geometry may merge distinct task sizes. CPU-only small-task GEMVs produce no GPU arithmetic counters.",
+        "Managed residency and concurrent CPU/GPU memory traffic are a mixed-tier workload; serialized kernel DRAM roofline cannot classify the whole dynamic scheduler."
+      ],
+      "measurement_alternative": "Hold automatic multi-pass kernel replay approval. Establish active-tool capture/restore behavior with source-bound full-output evidence and reviewed bounded instrumentation, or use supported concurrency-aware range/application-range method with actual task/stream matching. Any frozen dispatch or GPU-only subset is a different named diagnostic, never original fullcontract.",
+      "memory_tier_review": "Per-task managed buffers distributed between CPU/GPU with dynamic scheduling; actual residency/link/CPU work must be retained.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/streamUM/cuda_jl/plan.json",
+      "source_plan_sha256": "5302615a588c2137735838186dd2d0c6a897dab509ca31552ea0d49e8d1fefe0",
+      "reference_result_sha256": "9be62447429a1d890c0a68c7fc85fa0cf76f8387bbc2b76d0fcddffc8325df64",
+      "reference_config_sha256": "0e1d6b8b2582d350acf2c1d0bb725f5ff725ecc3c00aa72a0ebe4dea4a70c264",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/streamUM-julia-cuda.jl/study.jl",
+          "sha256": "e7244218eb57b75735ffab199484ce8f95d8375794b9ca65e8209670a7a44a28"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/reference.h",
+          "sha256": "cbe9f1866f387fdeb080c0dca028d43ae1ba765fd0d7955276d84be2890cddbb"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/streamUM-julia-cuda.jl/main.jl",
+          "sha256": "0170131f0988321f262c4e9f1e718327fe9033aff40e55ec7443958c8b9b898e"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b",
+          "findings": [
+            {
+              "line": 74,
+              "text": "struct Task {"
+            },
+            {
+              "line": 92,
+              "text": "    checkCudaErrors(cudaMallocManaged(&data, sizeof(T) * size * size));"
+            },
+            {
+              "line": 93,
+              "text": "    checkCudaErrors(cudaMallocManaged(&result, sizeof(T) * size));"
+            },
+            {
+              "line": 94,
+              "text": "    checkCudaErrors(cudaMallocManaged(&vector, sizeof(T) * size));"
+            },
+            {
+              "line": 112,
+              "text": "  if (t.size < 100) {"
+            },
+            {
+              "line": 117,
+              "text": "    gemv(t.size, t.size, (T)1.0, t.data, t.vector, (T)0.0, t.result);"
+            },
+            {
+              "line": 125,
+              "text": "    checkCublasErrors(cublasSetStream(handle[tid + 1], stream[tid + 1]));"
+            },
+            {
+              "line": 127,
+              "text": "    checkCublasErrors(cublasDgemv(handle[tid + 1], CUBLAS_OP_N, t.size, t.size,"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_native.cu",
+          "sha256": "a171fca33db7c6a30772e149fa0e41e99da11e2e5ad1fb272174b85a11969d10",
+          "findings": [
+            {
+              "line": 7,
+              "text": "void reset_task(Task<double>&t){for(unsigned j=0;j<t.size;j++){t.vector[j]=double(int((5*j+3*t.id)%17)-8)/16.;t.result[j]=0.;for(unsigned i=0;i<t.size;i++)t.data[j*t.size+i]=double(int((13*i+7*j+3*t.id)%31)-15)/32.;}}"
+            },
+            {
+              "line": 11,
+              "text": " for(int t=0;t<8;t++){tasks[t].allocate(ns[t],t);reset_task(tasks[t]);auto &q=tasks[t];prefix.push_back(q.size);prefix.push_back(q.id);prefix.push_back(q.size<100?0:1);prefix.insert(prefix.end(),q.data,q.data+q.size*q.size);prefix.insert(prefix.end(),q.vector,q.vector+q.size);prefix.insert(prefix.end(),q.result,q.result+q.size);}"
+            },
+            {
+              "line": 14,
+              "text": " #pragma omp parallel for schedule(dynamic)"
+            },
+            {
+              "line": 15,
+              "text": " for(int t=0;t<8;t++){int w=omp_get_thread_num();workers[t]=w;execute(tasks[t],handles,streams,w);}"
+            },
+            {
+              "line": 16,
+              "text": " CK(cudaDeviceSynchronize());};"
+            },
+            {
+              "line": 17,
+              "text": " for(int warm=0;warm<2;warm++){for(auto&t:tasks)reset_task(t);run();}"
+            },
+            {
+              "line": 18,
+              "text": " for(int trial=1;trial<=5;trial++){for(auto&t:tasks)reset_task(t);CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();run();double time=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();auto out=prefix;bool ok=true;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d",
+          "findings": [
+            {
+              "line": 12,
+              "text": "function streamum_study(launch!)"
+            },
+            {
+              "line": 18,
+              "text": "  a=CuArray{Float64,1,CUDA.UnifiedMemory}(undef,n*n);x=similar(a,n);r=similar(a,n)"
+            },
+            {
+              "line": 30,
+              "text": "   copyto!(ha,ca);copyto!(hx,cx);fill!(hr,0)"
+            },
+            {
+              "line": 43,
+              "text": "      k=Threads.atomic_add!(next,1);k>length(states)&&break"
+            },
+            {
+              "line": 45,
+              "text": "      if n<100"
+            },
+            {
+              "line": 46,
+              "text": "       gemv_host!(hr,ha,hx,n)"
+            },
+            {
+              "line": 48,
+              "text": "       launch!(n,dr,da,dx)"
+            },
+            {
+              "line": 54,
+              "text": "  CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 60,
+              "text": "  reset!();prepare_dispatch!();CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "streamUM",
+      "model": "jacc",
+      "configuration_id": "streamUM_managed_dynamic4_eighttasks_perprocessorlayout_v2",
+      "kernel_replay_verdict": "unknown",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Full source proves each task owns separate managed A/x/result allocations and is assigned exactly once to CPU if n<100 or GPU otherwise. No kernel waits on live CPU mutation of its OWN buffers. However CPU workers can concurrently write other managed allocations while NCU saves/restores context memory; this review cannot establish active2022.4 replay handling of those concurrent host writes.",
+      "qualifications": [
+        "Do not call this a proven source race or framework limitation: logical task buffers do not alias and original independent full-result checks passed. Unknown concerns profiler memory capture and concurrency fidelity.",
+        "Native OpenMP dynamic scheduling and Julia atomic task dispatch can change worker/stream assignments. Application replay is not automatically safe matching when assignment varies.",
+        "GPU tasks n100/101/127/257/511 have different sizes/states; first-per-geometry may merge distinct task sizes. CPU-only small-task GEMVs produce no GPU arithmetic counters.",
+        "Managed residency and concurrent CPU/GPU memory traffic are a mixed-tier workload; serialized kernel DRAM roofline cannot classify the whole dynamic scheduler."
+      ],
+      "measurement_alternative": "Hold automatic multi-pass kernel replay approval. Establish active-tool capture/restore behavior with source-bound full-output evidence and reviewed bounded instrumentation, or use supported concurrency-aware range/application-range method with actual task/stream matching. Any frozen dispatch or GPU-only subset is a different named diagnostic, never original fullcontract.",
+      "memory_tier_review": "Per-task managed buffers distributed between CPU/GPU with dynamic scheduling; actual residency/link/CPU work must be retained.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/streamUM/jacc/plan.json",
+      "source_plan_sha256": "0a348196b7a496db83a836bc4bcb6071940e3c687f38857bf345def07fb9d2ee",
+      "reference_result_sha256": "9be62447429a1d890c0a68c7fc85fa0cf76f8387bbc2b76d0fcddffc8325df64",
+      "reference_config_sha256": "0e1d6b8b2582d350acf2c1d0bb725f5ff725ecc3c00aa72a0ebe4dea4a70c264",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/streamUM-julia-JACC/main.jl",
+          "sha256": "2301d463cbf7ea6781ec984481992eef9f7b215a00f4936001902e871478cd6a"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/reference.h",
+          "sha256": "cbe9f1866f387fdeb080c0dca028d43ae1ba765fd0d7955276d84be2890cddbb"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b",
+          "findings": [
+            {
+              "line": 74,
+              "text": "struct Task {"
+            },
+            {
+              "line": 92,
+              "text": "    checkCudaErrors(cudaMallocManaged(&data, sizeof(T) * size * size));"
+            },
+            {
+              "line": 93,
+              "text": "    checkCudaErrors(cudaMallocManaged(&result, sizeof(T) * size));"
+            },
+            {
+              "line": 94,
+              "text": "    checkCudaErrors(cudaMallocManaged(&vector, sizeof(T) * size));"
+            },
+            {
+              "line": 112,
+              "text": "  if (t.size < 100) {"
+            },
+            {
+              "line": 117,
+              "text": "    gemv(t.size, t.size, (T)1.0, t.data, t.vector, (T)0.0, t.result);"
+            },
+            {
+              "line": 125,
+              "text": "    checkCublasErrors(cublasSetStream(handle[tid + 1], stream[tid + 1]));"
+            },
+            {
+              "line": 127,
+              "text": "    checkCublasErrors(cublasDgemv(handle[tid + 1], CUBLAS_OP_N, t.size, t.size,"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_native.cu",
+          "sha256": "a171fca33db7c6a30772e149fa0e41e99da11e2e5ad1fb272174b85a11969d10",
+          "findings": [
+            {
+              "line": 7,
+              "text": "void reset_task(Task<double>&t){for(unsigned j=0;j<t.size;j++){t.vector[j]=double(int((5*j+3*t.id)%17)-8)/16.;t.result[j]=0.;for(unsigned i=0;i<t.size;i++)t.data[j*t.size+i]=double(int((13*i+7*j+3*t.id)%31)-15)/32.;}}"
+            },
+            {
+              "line": 11,
+              "text": " for(int t=0;t<8;t++){tasks[t].allocate(ns[t],t);reset_task(tasks[t]);auto &q=tasks[t];prefix.push_back(q.size);prefix.push_back(q.id);prefix.push_back(q.size<100?0:1);prefix.insert(prefix.end(),q.data,q.data+q.size*q.size);prefix.insert(prefix.end(),q.vector,q.vector+q.size);prefix.insert(prefix.end(),q.result,q.result+q.size);}"
+            },
+            {
+              "line": 14,
+              "text": " #pragma omp parallel for schedule(dynamic)"
+            },
+            {
+              "line": 15,
+              "text": " for(int t=0;t<8;t++){int w=omp_get_thread_num();workers[t]=w;execute(tasks[t],handles,streams,w);}"
+            },
+            {
+              "line": 16,
+              "text": " CK(cudaDeviceSynchronize());};"
+            },
+            {
+              "line": 17,
+              "text": " for(int warm=0;warm<2;warm++){for(auto&t:tasks)reset_task(t);run();}"
+            },
+            {
+              "line": 18,
+              "text": " for(int trial=1;trial<=5;trial++){for(auto&t:tasks)reset_task(t);CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();run();double time=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();auto out=prefix;bool ok=true;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d",
+          "findings": [
+            {
+              "line": 12,
+              "text": "function streamum_study(launch!)"
+            },
+            {
+              "line": 18,
+              "text": "  a=CuArray{Float64,1,CUDA.UnifiedMemory}(undef,n*n);x=similar(a,n);r=similar(a,n)"
+            },
+            {
+              "line": 30,
+              "text": "   copyto!(ha,ca);copyto!(hx,cx);fill!(hr,0)"
+            },
+            {
+              "line": 43,
+              "text": "      k=Threads.atomic_add!(next,1);k>length(states)&&break"
+            },
+            {
+              "line": 45,
+              "text": "      if n<100"
+            },
+            {
+              "line": 46,
+              "text": "       gemv_host!(hr,ha,hx,n)"
+            },
+            {
+              "line": 48,
+              "text": "       launch!(n,dr,da,dx)"
+            },
+            {
+              "line": 54,
+              "text": "  CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 60,
+              "text": "  reset!();prepare_dispatch!();CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "streamUM",
+      "model": "ka",
+      "configuration_id": "streamUM_managed_dynamic4_eighttasks_perprocessorlayout_v2",
+      "kernel_replay_verdict": "unknown",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "Full source proves each task owns separate managed A/x/result allocations and is assigned exactly once to CPU if n<100 or GPU otherwise. No kernel waits on live CPU mutation of its OWN buffers. However CPU workers can concurrently write other managed allocations while NCU saves/restores context memory; this review cannot establish active2022.4 replay handling of those concurrent host writes.",
+      "qualifications": [
+        "Do not call this a proven source race or framework limitation: logical task buffers do not alias and original independent full-result checks passed. Unknown concerns profiler memory capture and concurrency fidelity.",
+        "Native OpenMP dynamic scheduling and Julia atomic task dispatch can change worker/stream assignments. Application replay is not automatically safe matching when assignment varies.",
+        "GPU tasks n100/101/127/257/511 have different sizes/states; first-per-geometry may merge distinct task sizes. CPU-only small-task GEMVs produce no GPU arithmetic counters.",
+        "Managed residency and concurrent CPU/GPU memory traffic are a mixed-tier workload; serialized kernel DRAM roofline cannot classify the whole dynamic scheduler."
+      ],
+      "measurement_alternative": "Hold automatic multi-pass kernel replay approval. Establish active-tool capture/restore behavior with source-bound full-output evidence and reviewed bounded instrumentation, or use supported concurrency-aware range/application-range method with actual task/stream matching. Any frozen dispatch or GPU-only subset is a different named diagnostic, never original fullcontract.",
+      "memory_tier_review": "Per-task managed buffers distributed between CPU/GPU with dynamic scheduling; actual residency/link/CPU work must be retained.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/streamUM/ka/plan.json",
+      "source_plan_sha256": "8d7cc4d559b949e82f473583b64bed56f80773f2f0c1666b72687a75b304e75a",
+      "reference_result_sha256": "9be62447429a1d890c0a68c7fc85fa0cf76f8387bbc2b76d0fcddffc8325df64",
+      "reference_config_sha256": "0e1d6b8b2582d350acf2c1d0bb725f5ff725ecc3c00aa72a0ebe4dea4a70c264",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/streamUM-julia-KA/main.jl",
+          "sha256": "8b137671ad45dad8d0d3c3f18294954276d630d9f280ca7243d6e917b0d57818"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/reference.h",
+          "sha256": "cbe9f1866f387fdeb080c0dca028d43ae1ba765fd0d7955276d84be2890cddbb"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-cuda/main.cu",
+          "sha256": "d234528cfbb7a947ea2b57fdb88b2be6d20262c2204523cb96af5612a9e7555b",
+          "findings": [
+            {
+              "line": 74,
+              "text": "struct Task {"
+            },
+            {
+              "line": 92,
+              "text": "    checkCudaErrors(cudaMallocManaged(&data, sizeof(T) * size * size));"
+            },
+            {
+              "line": 93,
+              "text": "    checkCudaErrors(cudaMallocManaged(&result, sizeof(T) * size));"
+            },
+            {
+              "line": 94,
+              "text": "    checkCudaErrors(cudaMallocManaged(&vector, sizeof(T) * size));"
+            },
+            {
+              "line": 112,
+              "text": "  if (t.size < 100) {"
+            },
+            {
+              "line": 117,
+              "text": "    gemv(t.size, t.size, (T)1.0, t.data, t.vector, (T)0.0, t.result);"
+            },
+            {
+              "line": 125,
+              "text": "    checkCublasErrors(cublasSetStream(handle[tid + 1], stream[tid + 1]));"
+            },
+            {
+              "line": 127,
+              "text": "    checkCublasErrors(cublasDgemv(handle[tid + 1], CUBLAS_OP_N, t.size, t.size,"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_native.cu",
+          "sha256": "a171fca33db7c6a30772e149fa0e41e99da11e2e5ad1fb272174b85a11969d10",
+          "findings": [
+            {
+              "line": 7,
+              "text": "void reset_task(Task<double>&t){for(unsigned j=0;j<t.size;j++){t.vector[j]=double(int((5*j+3*t.id)%17)-8)/16.;t.result[j]=0.;for(unsigned i=0;i<t.size;i++)t.data[j*t.size+i]=double(int((13*i+7*j+3*t.id)%31)-15)/32.;}}"
+            },
+            {
+              "line": 11,
+              "text": " for(int t=0;t<8;t++){tasks[t].allocate(ns[t],t);reset_task(tasks[t]);auto &q=tasks[t];prefix.push_back(q.size);prefix.push_back(q.id);prefix.push_back(q.size<100?0:1);prefix.insert(prefix.end(),q.data,q.data+q.size*q.size);prefix.insert(prefix.end(),q.vector,q.vector+q.size);prefix.insert(prefix.end(),q.result,q.result+q.size);}"
+            },
+            {
+              "line": 14,
+              "text": " #pragma omp parallel for schedule(dynamic)"
+            },
+            {
+              "line": 15,
+              "text": " for(int t=0;t<8;t++){int w=omp_get_thread_num();workers[t]=w;execute(tasks[t],handles,streams,w);}"
+            },
+            {
+              "line": 16,
+              "text": " CK(cudaDeviceSynchronize());};"
+            },
+            {
+              "line": 17,
+              "text": " for(int warm=0;warm<2;warm++){for(auto&t:tasks)reset_task(t);run();}"
+            },
+            {
+              "line": 18,
+              "text": " for(int trial=1;trial<=5;trial++){for(auto&t:tasks)reset_task(t);CK(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();run();double time=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();auto out=prefix;bool ok=true;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/streamUM-julia/study_common.jl",
+          "sha256": "aab530b56536d495d54ced83c3324280cdeb5a88c101298fd44df59988e6b50d",
+          "findings": [
+            {
+              "line": 12,
+              "text": "function streamum_study(launch!)"
+            },
+            {
+              "line": 18,
+              "text": "  a=CuArray{Float64,1,CUDA.UnifiedMemory}(undef,n*n);x=similar(a,n);r=similar(a,n)"
+            },
+            {
+              "line": 30,
+              "text": "   copyto!(ha,ca);copyto!(hx,cx);fill!(hr,0)"
+            },
+            {
+              "line": 43,
+              "text": "      k=Threads.atomic_add!(next,1);k>length(states)&&break"
+            },
+            {
+              "line": 45,
+              "text": "      if n<100"
+            },
+            {
+              "line": 46,
+              "text": "       gemv_host!(hr,ha,hx,n)"
+            },
+            {
+              "line": 48,
+              "text": "       launch!(n,dr,da,dx)"
+            },
+            {
+              "line": 54,
+              "text": "  CUDA.device_synchronize(blocking=true)"
+            },
+            {
+              "line": 60,
+              "text": "  reset!();prepare_dispatch!();CUDA.device_synchronize(blocking=true)"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "blas-gemmEx2",
+      "model": "cuda",
+      "configuration_id": "cublasLt_corrected_AB_27_managed_typed_shape_pipelines_exact_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "All models invoke the same explicit cuBLASLt pipeline with ordered default-stream matmul, input prefetch plus completion before each path, device workspace, and context completion before capture/destruction. No live host response or concurrent host update of active operands exists. KA/JACC are vendor-library integration, not authored alternative matmul kernels.",
+      "qualifications": [
+        "Restore all vendor-written C and workspace state; full27path numerical/input/workspace-guard checks must still pass. Opaque kernel internals are not source-proven by this review, so profile/tool warnings remain binding.",
+        "Selected operands are managed but explicitly prefetched to GPU and synchronized. Device DRAM interpretation can be component-valid only with residency evidence; pointer type alone does not prove migration or host memory access.",
+        "Descriptor setup, heuristic search, synchronization and destruction are part of primary timing but are not GPU kernel counters. Different opaque algorithms/precisions/shape modes may share mangled kernel+geometry; first sample does not cover all27paths.",
+        "Native corrected-reference arithmetic/compute-type qualification and exact loaded12.0.2.224 cuBLASLt identity must remain explicit. Do not attribute vendor algorithm behavior to KA/JACC frontend kernels."
+      ],
+      "measurement_alternative": "Conditional per-vendor-kernel replay counters with full API pipeline checks; source-bound path/precision selectors and algorithm/counter provenance before any cross-model comparison. Application replay if vendor memory restoration fails, keeping same library/algorithm policy.",
+      "memory_tier_review": "Managed operands prefetched to device plus device workspace; allocation placement/migration must be verified independently for fullROI claims.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/blas-gemmEx2/cuda/plan.json",
+      "source_plan_sha256": "08de5576a488863dc3e71176c94c4e76631f6f28532a7a8043ab32ab9c4ff991",
+      "reference_result_sha256": "29fee27a89e3a0deea25c0111bc820c70e57f6312adf66161c630e13f4fc6bee",
+      "reference_config_sha256": "61c32e02756ddb7b81f0eb0c316b59a04d4074301df85eeca5d0473ec2758c6d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_cuda.cu",
+          "sha256": "1ccf794440eb5a857696dd8c818b40f59d4ae899edc4325e1204a8845f04c3b1"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/abi_constants.cpp",
+          "sha256": "992b4da4a8d91f8e749edcf2c49a8a47ea8c102eb6a13ae89cffde8e9e068823"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/corrected_lt_gemm.cuh",
+          "sha256": "20137834ff64818b14f86ac8ef33e4580b5e7d080eda24849bf4ba3fa57be6a7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-cuda/main.cu",
+          "sha256": "a2fb0f6ea8ab5f0e556f7851db49ab8ede347e8f95f69965d6a171a2af980430"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-cuda/utils.h",
+          "sha256": "fbb87f8ced33899a3cfe4416d82706a51f2f6a5a96f17e63f84942962a9c0316"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/generate_study_fixture.py",
+          "sha256": "f625514fde979a2a50bbb75dae36b7047eecd4fbdaa06aeb0021e587b5dd6ec9"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_cuda.cu",
+          "sha256": "1ccf794440eb5a857696dd8c818b40f59d4ae899edc4325e1204a8845f04c3b1",
+          "findings": [
+            {
+              "line": 12,
+              "text": "template<class T>struct Managed{std::vector<T>h;T*base,*d;int lead;Managed(std::vector<double>v){lead=256/sizeof(T);T sentinel=cast<T>(std::is_same<T,int8_t>::value?73:16384);h.assign(v.size()+2*lead,sentinel);for(size_t i=0;i<v.size();i++)h[lead+i]=cast<T>(v[i]);ck(cudaMallocManaged(&base,h.size()*sizeof(T)));d=base+lead;reset();}void reset(){ck(cudaMemcpy(base,h.data(),h.size()*sizeof(T),cudaMemcpyHostToDevice));}void prefetch(){ck(cudaMemPrefetchAsync(base,h.size()*sizeof(T),0,0));}void capture(std::vector<double>&a){std::vector<T>v(h.size());ck(cudaMemcpy(v.data(),base,v.size()*sizeof(T),cudaMemcpyDeviceToHost));for(auto x:v)a.push_back(double(x));}~Managed(){cudaFree(base);}};"
+            },
+            {
+              "line": 18,
+              "text": " for(auto c:cs){printf(\"WARM_PATH kind=%d M=%d N=%d K=%d\\n\",c->kind,c->m,c->n,c->k);c->prefetch();ck(cudaDeviceSynchronize());if(!c->run())return 4;}"
+            },
+            {
+              "line": 19,
+              "text": " for(int trial=1;trial<=5;trial++){auto art=pre;std::vector<double>times;for(auto c:cs){c->reset();c->initial(art);c->prefetch();ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();if(!c->run())return 4;ck(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count());c->capture(art);}std::vector<unsigned char>wg(512);ck(cudaMemcpy(wg.data(),workspace_base,256,cudaMemcpyDeviceToHost));ck(cudaMemcpy(wg.data()+256,workspace_base+256+cublaslt_workspace_size,256,cudaMemcpyDeviceToHost));for(auto x:wg)art.push_back(x);if(art.size()!=pre.size()+gold.size())return 5;bool ok=true;double ma=0;for(size_t i=0;i<gold.size();i++){double e=fabs(art[pre.size()+i]-gold[i]);ok&=std::isfinite(art[pre.size()+i])&&e==0;ma=std::max(ma,e);}std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";std::ofstream f(path,std::ios::binary);f.write((char*)art.data(),art.size()*8);f.close();if(!f)return 6;double total=0;for(auto x:times)total+=x;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/corrected_lt_gemm.cuh",
+          "sha256": "20137834ff64818b14f86ac8ef33e4580b5e7d080eda24849bf4ba3fa57be6a7",
+          "findings": [
+            {
+              "line": 87,
+              "text": "  cublasCheck(cublasLtMatmul(handle, operationDesc,"
+            },
+            {
+              "line": 89,
+              "text": "      C, CLayout, C, CLayout, &heuristic.algo,"
+            },
+            {
+              "line": 93,
+              "text": "  cudaDeviceSynchronize();"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199",
+          "findings": [
+            {
+              "line": 6,
+              "text": "  lead=256\u00f7sizeof(T);sentinel=T==Int8 ? T(73) : bf ? encode_bf(16384) : T(16384);v=bf ? encode_bf.(values) : T.(values);host=vcat(fill(sentinel,lead),v,fill(sentinel,lead));base=Ref{Ptr{Cvoid}}();rtck(ccall((:cudaMallocManaged,RT_LIB),Cint,(Ref{Ptr{Cvoid}},Csize_t,Cuint),base,sizeof(host),1));d=base[]+256"
+            },
+            {
+              "line": 17,
+              "text": "  for a in (c.A,c.B,c.C);rtck(ccall((:cudaMemPrefetchAsync,RT_LIB),Cint,(Ptr{Cvoid},Csize_t,Cint,Ptr{Cvoid}),a.base,a.bytes,0,C_NULL));end"
+            },
+            {
+              "line": 18,
+              "text": "  rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            },
+            {
+              "line": 25,
+              "text": "  println(\"WARM_PATH kind=\",c.code,\" M=\",c.m,\" N=\",c.n,\" K=\",c.k);prefetch(c);pipeline(c,handle[],workspace)"
+            },
+            {
+              "line": 31,
+              "text": "   rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));t=time_ns();pipeline(c,handle[],workspace);rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));push!(times,(time_ns()-t)*1e-9)"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7",
+          "findings": [
+            {
+              "line": 2,
+              "text": "const LT_LIB=\"/usr/lib/x86_64-linux-gnu/libcublasLt.so.12.0.2.224\""
+            },
+            {
+              "line": 22,
+              "text": "function lt_pipeline(c,handle,workspace)"
+            },
+            {
+              "line": 29,
+              "text": "  ltck(ccall((:cublasLtMatmul,LT_LIB),Cint,(Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ref{LtAlgo},Ptr{Cvoid},Csize_t,Ptr{Cvoid}),handle,op[],pointer(c.alpha),c.B.d,la[],c.A.d,lb[],pointer(c.beta),c.C.d,lc[],c.C.d,lc[],algo,workspace,33554432,C_NULL))"
+            },
+            {
+              "line": 31,
+              "text": " rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "blas-gemmEx2",
+      "model": "cuda_jl",
+      "configuration_id": "cublasLt_corrected_AB_27_managed_typed_shape_pipelines_exact_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "All models invoke the same explicit cuBLASLt pipeline with ordered default-stream matmul, input prefetch plus completion before each path, device workspace, and context completion before capture/destruction. No live host response or concurrent host update of active operands exists. KA/JACC are vendor-library integration, not authored alternative matmul kernels.",
+      "qualifications": [
+        "Restore all vendor-written C and workspace state; full27path numerical/input/workspace-guard checks must still pass. Opaque kernel internals are not source-proven by this review, so profile/tool warnings remain binding.",
+        "Selected operands are managed but explicitly prefetched to GPU and synchronized. Device DRAM interpretation can be component-valid only with residency evidence; pointer type alone does not prove migration or host memory access.",
+        "Descriptor setup, heuristic search, synchronization and destruction are part of primary timing but are not GPU kernel counters. Different opaque algorithms/precisions/shape modes may share mangled kernel+geometry; first sample does not cover all27paths.",
+        "Native corrected-reference arithmetic/compute-type qualification and exact loaded12.0.2.224 cuBLASLt identity must remain explicit. Do not attribute vendor algorithm behavior to KA/JACC frontend kernels."
+      ],
+      "measurement_alternative": "Conditional per-vendor-kernel replay counters with full API pipeline checks; source-bound path/precision selectors and algorithm/counter provenance before any cross-model comparison. Application replay if vendor memory restoration fails, keeping same library/algorithm policy.",
+      "memory_tier_review": "Managed operands prefetched to device plus device workspace; allocation placement/migration must be verified independently for fullROI claims.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/blas-gemmEx2/cuda_jl/plan.json",
+      "source_plan_sha256": "3d2dff625e3342f28bd9e86e164da5d28e94b0e6f1c8fd8f260fdd5145432f71",
+      "reference_result_sha256": "29fee27a89e3a0deea25c0111bc820c70e57f6312adf66161c630e13f4fc6bee",
+      "reference_config_sha256": "61c32e02756ddb7b81f0eb0c316b59a04d4074301df85eeca5d0473ec2758c6d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/blas-gemmEx2-julia-cuda.jl/main.jl",
+          "sha256": "18b5c8d0865986eb062a33bfc0bf796c183b48667701cb536a8c855b57e428ec"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/abi_constants.cpp",
+          "sha256": "992b4da4a8d91f8e749edcf2c49a8a47ea8c102eb6a13ae89cffde8e9e068823"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/generate_study_fixture.py",
+          "sha256": "f625514fde979a2a50bbb75dae36b7047eecd4fbdaa06aeb0021e587b5dd6ec9"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_cuda.cu",
+          "sha256": "1ccf794440eb5a857696dd8c818b40f59d4ae899edc4325e1204a8845f04c3b1",
+          "findings": [
+            {
+              "line": 12,
+              "text": "template<class T>struct Managed{std::vector<T>h;T*base,*d;int lead;Managed(std::vector<double>v){lead=256/sizeof(T);T sentinel=cast<T>(std::is_same<T,int8_t>::value?73:16384);h.assign(v.size()+2*lead,sentinel);for(size_t i=0;i<v.size();i++)h[lead+i]=cast<T>(v[i]);ck(cudaMallocManaged(&base,h.size()*sizeof(T)));d=base+lead;reset();}void reset(){ck(cudaMemcpy(base,h.data(),h.size()*sizeof(T),cudaMemcpyHostToDevice));}void prefetch(){ck(cudaMemPrefetchAsync(base,h.size()*sizeof(T),0,0));}void capture(std::vector<double>&a){std::vector<T>v(h.size());ck(cudaMemcpy(v.data(),base,v.size()*sizeof(T),cudaMemcpyDeviceToHost));for(auto x:v)a.push_back(double(x));}~Managed(){cudaFree(base);}};"
+            },
+            {
+              "line": 18,
+              "text": " for(auto c:cs){printf(\"WARM_PATH kind=%d M=%d N=%d K=%d\\n\",c->kind,c->m,c->n,c->k);c->prefetch();ck(cudaDeviceSynchronize());if(!c->run())return 4;}"
+            },
+            {
+              "line": 19,
+              "text": " for(int trial=1;trial<=5;trial++){auto art=pre;std::vector<double>times;for(auto c:cs){c->reset();c->initial(art);c->prefetch();ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();if(!c->run())return 4;ck(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count());c->capture(art);}std::vector<unsigned char>wg(512);ck(cudaMemcpy(wg.data(),workspace_base,256,cudaMemcpyDeviceToHost));ck(cudaMemcpy(wg.data()+256,workspace_base+256+cublaslt_workspace_size,256,cudaMemcpyDeviceToHost));for(auto x:wg)art.push_back(x);if(art.size()!=pre.size()+gold.size())return 5;bool ok=true;double ma=0;for(size_t i=0;i<gold.size();i++){double e=fabs(art[pre.size()+i]-gold[i]);ok&=std::isfinite(art[pre.size()+i])&&e==0;ma=std::max(ma,e);}std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";std::ofstream f(path,std::ios::binary);f.write((char*)art.data(),art.size()*8);f.close();if(!f)return 6;double total=0;for(auto x:times)total+=x;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/corrected_lt_gemm.cuh",
+          "sha256": "20137834ff64818b14f86ac8ef33e4580b5e7d080eda24849bf4ba3fa57be6a7",
+          "findings": [
+            {
+              "line": 87,
+              "text": "  cublasCheck(cublasLtMatmul(handle, operationDesc,"
+            },
+            {
+              "line": 89,
+              "text": "      C, CLayout, C, CLayout, &heuristic.algo,"
+            },
+            {
+              "line": 93,
+              "text": "  cudaDeviceSynchronize();"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199",
+          "findings": [
+            {
+              "line": 6,
+              "text": "  lead=256\u00f7sizeof(T);sentinel=T==Int8 ? T(73) : bf ? encode_bf(16384) : T(16384);v=bf ? encode_bf.(values) : T.(values);host=vcat(fill(sentinel,lead),v,fill(sentinel,lead));base=Ref{Ptr{Cvoid}}();rtck(ccall((:cudaMallocManaged,RT_LIB),Cint,(Ref{Ptr{Cvoid}},Csize_t,Cuint),base,sizeof(host),1));d=base[]+256"
+            },
+            {
+              "line": 17,
+              "text": "  for a in (c.A,c.B,c.C);rtck(ccall((:cudaMemPrefetchAsync,RT_LIB),Cint,(Ptr{Cvoid},Csize_t,Cint,Ptr{Cvoid}),a.base,a.bytes,0,C_NULL));end"
+            },
+            {
+              "line": 18,
+              "text": "  rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            },
+            {
+              "line": 25,
+              "text": "  println(\"WARM_PATH kind=\",c.code,\" M=\",c.m,\" N=\",c.n,\" K=\",c.k);prefetch(c);pipeline(c,handle[],workspace)"
+            },
+            {
+              "line": 31,
+              "text": "   rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));t=time_ns();pipeline(c,handle[],workspace);rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));push!(times,(time_ns()-t)*1e-9)"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7",
+          "findings": [
+            {
+              "line": 2,
+              "text": "const LT_LIB=\"/usr/lib/x86_64-linux-gnu/libcublasLt.so.12.0.2.224\""
+            },
+            {
+              "line": 22,
+              "text": "function lt_pipeline(c,handle,workspace)"
+            },
+            {
+              "line": 29,
+              "text": "  ltck(ccall((:cublasLtMatmul,LT_LIB),Cint,(Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ref{LtAlgo},Ptr{Cvoid},Csize_t,Ptr{Cvoid}),handle,op[],pointer(c.alpha),c.B.d,la[],c.A.d,lb[],pointer(c.beta),c.C.d,lc[],c.C.d,lc[],algo,workspace,33554432,C_NULL))"
+            },
+            {
+              "line": 31,
+              "text": " rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "blas-gemmEx2",
+      "model": "jacc",
+      "configuration_id": "cublasLt_corrected_AB_27_managed_typed_shape_pipelines_exact_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "All models invoke the same explicit cuBLASLt pipeline with ordered default-stream matmul, input prefetch plus completion before each path, device workspace, and context completion before capture/destruction. No live host response or concurrent host update of active operands exists. KA/JACC are vendor-library integration, not authored alternative matmul kernels.",
+      "qualifications": [
+        "Restore all vendor-written C and workspace state; full27path numerical/input/workspace-guard checks must still pass. Opaque kernel internals are not source-proven by this review, so profile/tool warnings remain binding.",
+        "Selected operands are managed but explicitly prefetched to GPU and synchronized. Device DRAM interpretation can be component-valid only with residency evidence; pointer type alone does not prove migration or host memory access.",
+        "Descriptor setup, heuristic search, synchronization and destruction are part of primary timing but are not GPU kernel counters. Different opaque algorithms/precisions/shape modes may share mangled kernel+geometry; first sample does not cover all27paths.",
+        "Native corrected-reference arithmetic/compute-type qualification and exact loaded12.0.2.224 cuBLASLt identity must remain explicit. Do not attribute vendor algorithm behavior to KA/JACC frontend kernels."
+      ],
+      "measurement_alternative": "Conditional per-vendor-kernel replay counters with full API pipeline checks; source-bound path/precision selectors and algorithm/counter provenance before any cross-model comparison. Application replay if vendor memory restoration fails, keeping same library/algorithm policy.",
+      "memory_tier_review": "Managed operands prefetched to device plus device workspace; allocation placement/migration must be verified independently for fullROI claims.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/blas-gemmEx2/jacc/plan.json",
+      "source_plan_sha256": "23df676190541ad05ecc9ba16fc1be1061d77c73a3a506a6dd1a404d3f142e39",
+      "reference_result_sha256": "29fee27a89e3a0deea25c0111bc820c70e57f6312adf66161c630e13f4fc6bee",
+      "reference_config_sha256": "61c32e02756ddb7b81f0eb0c316b59a04d4074301df85eeca5d0473ec2758c6d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/blas-gemmEx2-julia-JACC/main.jl",
+          "sha256": "48b3195a8f6a840151f0afc88c59073c73e8f038dba1e8012fcfe4ab651e72f1"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/abi_constants.cpp",
+          "sha256": "992b4da4a8d91f8e749edcf2c49a8a47ea8c102eb6a13ae89cffde8e9e068823"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/generate_study_fixture.py",
+          "sha256": "f625514fde979a2a50bbb75dae36b7047eecd4fbdaa06aeb0021e587b5dd6ec9"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_cuda.cu",
+          "sha256": "1ccf794440eb5a857696dd8c818b40f59d4ae899edc4325e1204a8845f04c3b1",
+          "findings": [
+            {
+              "line": 12,
+              "text": "template<class T>struct Managed{std::vector<T>h;T*base,*d;int lead;Managed(std::vector<double>v){lead=256/sizeof(T);T sentinel=cast<T>(std::is_same<T,int8_t>::value?73:16384);h.assign(v.size()+2*lead,sentinel);for(size_t i=0;i<v.size();i++)h[lead+i]=cast<T>(v[i]);ck(cudaMallocManaged(&base,h.size()*sizeof(T)));d=base+lead;reset();}void reset(){ck(cudaMemcpy(base,h.data(),h.size()*sizeof(T),cudaMemcpyHostToDevice));}void prefetch(){ck(cudaMemPrefetchAsync(base,h.size()*sizeof(T),0,0));}void capture(std::vector<double>&a){std::vector<T>v(h.size());ck(cudaMemcpy(v.data(),base,v.size()*sizeof(T),cudaMemcpyDeviceToHost));for(auto x:v)a.push_back(double(x));}~Managed(){cudaFree(base);}};"
+            },
+            {
+              "line": 18,
+              "text": " for(auto c:cs){printf(\"WARM_PATH kind=%d M=%d N=%d K=%d\\n\",c->kind,c->m,c->n,c->k);c->prefetch();ck(cudaDeviceSynchronize());if(!c->run())return 4;}"
+            },
+            {
+              "line": 19,
+              "text": " for(int trial=1;trial<=5;trial++){auto art=pre;std::vector<double>times;for(auto c:cs){c->reset();c->initial(art);c->prefetch();ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();if(!c->run())return 4;ck(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count());c->capture(art);}std::vector<unsigned char>wg(512);ck(cudaMemcpy(wg.data(),workspace_base,256,cudaMemcpyDeviceToHost));ck(cudaMemcpy(wg.data()+256,workspace_base+256+cublaslt_workspace_size,256,cudaMemcpyDeviceToHost));for(auto x:wg)art.push_back(x);if(art.size()!=pre.size()+gold.size())return 5;bool ok=true;double ma=0;for(size_t i=0;i<gold.size();i++){double e=fabs(art[pre.size()+i]-gold[i]);ok&=std::isfinite(art[pre.size()+i])&&e==0;ma=std::max(ma,e);}std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";std::ofstream f(path,std::ios::binary);f.write((char*)art.data(),art.size()*8);f.close();if(!f)return 6;double total=0;for(auto x:times)total+=x;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/corrected_lt_gemm.cuh",
+          "sha256": "20137834ff64818b14f86ac8ef33e4580b5e7d080eda24849bf4ba3fa57be6a7",
+          "findings": [
+            {
+              "line": 87,
+              "text": "  cublasCheck(cublasLtMatmul(handle, operationDesc,"
+            },
+            {
+              "line": 89,
+              "text": "      C, CLayout, C, CLayout, &heuristic.algo,"
+            },
+            {
+              "line": 93,
+              "text": "  cudaDeviceSynchronize();"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199",
+          "findings": [
+            {
+              "line": 6,
+              "text": "  lead=256\u00f7sizeof(T);sentinel=T==Int8 ? T(73) : bf ? encode_bf(16384) : T(16384);v=bf ? encode_bf.(values) : T.(values);host=vcat(fill(sentinel,lead),v,fill(sentinel,lead));base=Ref{Ptr{Cvoid}}();rtck(ccall((:cudaMallocManaged,RT_LIB),Cint,(Ref{Ptr{Cvoid}},Csize_t,Cuint),base,sizeof(host),1));d=base[]+256"
+            },
+            {
+              "line": 17,
+              "text": "  for a in (c.A,c.B,c.C);rtck(ccall((:cudaMemPrefetchAsync,RT_LIB),Cint,(Ptr{Cvoid},Csize_t,Cint,Ptr{Cvoid}),a.base,a.bytes,0,C_NULL));end"
+            },
+            {
+              "line": 18,
+              "text": "  rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            },
+            {
+              "line": 25,
+              "text": "  println(\"WARM_PATH kind=\",c.code,\" M=\",c.m,\" N=\",c.n,\" K=\",c.k);prefetch(c);pipeline(c,handle[],workspace)"
+            },
+            {
+              "line": 31,
+              "text": "   rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));t=time_ns();pipeline(c,handle[],workspace);rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));push!(times,(time_ns()-t)*1e-9)"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7",
+          "findings": [
+            {
+              "line": 2,
+              "text": "const LT_LIB=\"/usr/lib/x86_64-linux-gnu/libcublasLt.so.12.0.2.224\""
+            },
+            {
+              "line": 22,
+              "text": "function lt_pipeline(c,handle,workspace)"
+            },
+            {
+              "line": 29,
+              "text": "  ltck(ccall((:cublasLtMatmul,LT_LIB),Cint,(Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ref{LtAlgo},Ptr{Cvoid},Csize_t,Ptr{Cvoid}),handle,op[],pointer(c.alpha),c.B.d,la[],c.A.d,lb[],pointer(c.beta),c.C.d,lc[],c.C.d,lc[],algo,workspace,33554432,C_NULL))"
+            },
+            {
+              "line": 31,
+              "text": " rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    },
+    {
+      "benchmark": "blas-gemmEx2",
+      "model": "ka",
+      "configuration_id": "cublasLt_corrected_AB_27_managed_typed_shape_pipelines_exact_v1",
+      "kernel_replay_verdict": "safe",
+      "scope": "Static kernel-state/live-host-progress criterion only; no unconditional execution or measured bottleneck claim.",
+      "reason": "All models invoke the same explicit cuBLASLt pipeline with ordered default-stream matmul, input prefetch plus completion before each path, device workspace, and context completion before capture/destruction. No live host response or concurrent host update of active operands exists. KA/JACC are vendor-library integration, not authored alternative matmul kernels.",
+      "qualifications": [
+        "Restore all vendor-written C and workspace state; full27path numerical/input/workspace-guard checks must still pass. Opaque kernel internals are not source-proven by this review, so profile/tool warnings remain binding.",
+        "Selected operands are managed but explicitly prefetched to GPU and synchronized. Device DRAM interpretation can be component-valid only with residency evidence; pointer type alone does not prove migration or host memory access.",
+        "Descriptor setup, heuristic search, synchronization and destruction are part of primary timing but are not GPU kernel counters. Different opaque algorithms/precisions/shape modes may share mangled kernel+geometry; first sample does not cover all27paths.",
+        "Native corrected-reference arithmetic/compute-type qualification and exact loaded12.0.2.224 cuBLASLt identity must remain explicit. Do not attribute vendor algorithm behavior to KA/JACC frontend kernels."
+      ],
+      "measurement_alternative": "Conditional per-vendor-kernel replay counters with full API pipeline checks; source-bound path/precision selectors and algorithm/counter provenance before any cross-model comparison. Application replay if vendor memory restoration fails, keeping same library/algorithm policy.",
+      "memory_tier_review": "Managed operands prefetched to device plus device workspace; allocation placement/migration must be verified independently for fullROI claims.",
+      "source_plan_path": "/tmp/roofline-method-review/reviewed_plan_v4_plus_v5_cap512/blas-gemmEx2/ka/plan.json",
+      "source_plan_sha256": "3d4831111ec9ae2733d22cc0200f3638feb68867dee91e3d9722b748be584608",
+      "reference_result_sha256": "29fee27a89e3a0deea25c0111bc820c70e57f6312adf66161c630e13f4fc6bee",
+      "reference_config_sha256": "61c32e02756ddb7b81f0eb0c316b59a04d4074301df85eeca5d0473ec2758c6d",
+      "selected_source_bindings_rehashed": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/blas-gemmEx2-julia-KA/main.jl",
+          "sha256": "35ea3dc5efcacf76eddbded93cee39e31d4529e57fc44fc1931ac5098007e678"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/abi_constants.cpp",
+          "sha256": "992b4da4a8d91f8e749edcf2c49a8a47ea8c102eb6a13ae89cffde8e9e068823"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7"
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/generate_study_fixture.py",
+          "sha256": "f625514fde979a2a50bbb75dae36b7047eecd4fbdaa06aeb0021e587b5dd6ec9"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_cuda.cu",
+          "sha256": "1ccf794440eb5a857696dd8c818b40f59d4ae899edc4325e1204a8845f04c3b1",
+          "findings": [
+            {
+              "line": 12,
+              "text": "template<class T>struct Managed{std::vector<T>h;T*base,*d;int lead;Managed(std::vector<double>v){lead=256/sizeof(T);T sentinel=cast<T>(std::is_same<T,int8_t>::value?73:16384);h.assign(v.size()+2*lead,sentinel);for(size_t i=0;i<v.size();i++)h[lead+i]=cast<T>(v[i]);ck(cudaMallocManaged(&base,h.size()*sizeof(T)));d=base+lead;reset();}void reset(){ck(cudaMemcpy(base,h.data(),h.size()*sizeof(T),cudaMemcpyHostToDevice));}void prefetch(){ck(cudaMemPrefetchAsync(base,h.size()*sizeof(T),0,0));}void capture(std::vector<double>&a){std::vector<T>v(h.size());ck(cudaMemcpy(v.data(),base,v.size()*sizeof(T),cudaMemcpyDeviceToHost));for(auto x:v)a.push_back(double(x));}~Managed(){cudaFree(base);}};"
+            },
+            {
+              "line": 18,
+              "text": " for(auto c:cs){printf(\"WARM_PATH kind=%d M=%d N=%d K=%d\\n\",c->kind,c->m,c->n,c->k);c->prefetch();ck(cudaDeviceSynchronize());if(!c->run())return 4;}"
+            },
+            {
+              "line": 19,
+              "text": " for(int trial=1;trial<=5;trial++){auto art=pre;std::vector<double>times;for(auto c:cs){c->reset();c->initial(art);c->prefetch();ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();if(!c->run())return 4;ck(cudaDeviceSynchronize());times.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count());c->capture(art);}std::vector<unsigned char>wg(512);ck(cudaMemcpy(wg.data(),workspace_base,256,cudaMemcpyDeviceToHost));ck(cudaMemcpy(wg.data()+256,workspace_base+256+cublaslt_workspace_size,256,cudaMemcpyDeviceToHost));for(auto x:wg)art.push_back(x);if(art.size()!=pre.size()+gold.size())return 5;bool ok=true;double ma=0;for(size_t i=0;i<gold.size();i++){double e=fabs(art[pre.size()+i]-gold[i]);ok&=std::isfinite(art[pre.size()+i])&&e==0;ma=std::max(ma,e);}std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\")?getenv(\"STUDY_OUTPUT_DIR\"):\".\")+\"/output_trial\"+std::to_string(trial)+\".bin\";std::ofstream f(path,std::ios::binary);f.write((char*)art.data(),art.size()*8);f.close();if(!f)return 6;double total=0;for(auto x:times)total+=x;"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/corrected_lt_gemm.cuh",
+          "sha256": "20137834ff64818b14f86ac8ef33e4580b5e7d080eda24849bf4ba3fa57be6a7",
+          "findings": [
+            {
+              "line": 87,
+              "text": "  cublasCheck(cublasLtMatmul(handle, operationDesc,"
+            },
+            {
+              "line": 89,
+              "text": "      C, CLayout, C, CLayout, &heuristic.algo,"
+            },
+            {
+              "line": 93,
+              "text": "  cudaDeviceSynchronize();"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/study_common.jl",
+          "sha256": "4ea0d0e3480dbdf94c6bc55c9cabc07c35794b668aff01c27ac5335d2d0db199",
+          "findings": [
+            {
+              "line": 6,
+              "text": "  lead=256\u00f7sizeof(T);sentinel=T==Int8 ? T(73) : bf ? encode_bf(16384) : T(16384);v=bf ? encode_bf.(values) : T.(values);host=vcat(fill(sentinel,lead),v,fill(sentinel,lead));base=Ref{Ptr{Cvoid}}();rtck(ccall((:cudaMallocManaged,RT_LIB),Cint,(Ref{Ptr{Cvoid}},Csize_t,Cuint),base,sizeof(host),1));d=base[]+256"
+            },
+            {
+              "line": 17,
+              "text": "  for a in (c.A,c.B,c.C);rtck(ccall((:cudaMemPrefetchAsync,RT_LIB),Cint,(Ptr{Cvoid},Csize_t,Cint,Ptr{Cvoid}),a.base,a.bytes,0,C_NULL));end"
+            },
+            {
+              "line": 18,
+              "text": "  rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            },
+            {
+              "line": 25,
+              "text": "  println(\"WARM_PATH kind=\",c.code,\" M=\",c.m,\" N=\",c.n,\" K=\",c.k);prefetch(c);pipeline(c,handle[],workspace)"
+            },
+            {
+              "line": 31,
+              "text": "   rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));t=time_ns();pipeline(c,handle[],workspace);rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()));push!(times,(time_ns()-t)*1e-9)"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/blas-gemmEx2-julia/lt_api.jl",
+          "sha256": "ae84fbab27d9abe7e619b5d553017edeb2df77d41dab074c5a25f8a44b1eebb7",
+          "findings": [
+            {
+              "line": 2,
+              "text": "const LT_LIB=\"/usr/lib/x86_64-linux-gnu/libcublasLt.so.12.0.2.224\""
+            },
+            {
+              "line": 22,
+              "text": "function lt_pipeline(c,handle,workspace)"
+            },
+            {
+              "line": 29,
+              "text": "  ltck(ccall((:cublasLtMatmul,LT_LIB),Cint,(Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ptr{Cvoid},Ref{LtAlgo},Ptr{Cvoid},Csize_t,Ptr{Cvoid}),handle,op[],pointer(c.alpha),c.B.d,la[],c.A.d,lb[],pointer(c.beta),c.C.d,lc[],c.C.d,lc[],algo,workspace,33554432,C_NULL))"
+            },
+            {
+              "line": 31,
+              "text": " rtck(ccall((:cudaDeviceSynchronize,RT_LIB),Cint,()))"
+            }
+          ]
+        }
+      ],
+      "GPU_executions": 0,
+      "unconditional_execution_authorized": false
+    }
+  ],
+  "collector_sha256": "b03768b60ed58496b2b8f2bae26be72e0943609c46a494b3e984ad6b98f7600b",
+  "source_edits": false,
+  "compiler_runs": 0,
+  "GPU_runs": 0
+}

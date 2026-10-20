@@ -51,6 +51,8 @@ def truth(value):
 
 
 def exclusion(row):
+    if row.get('dram_roofline_applicability','').startswith('not_applicable_host_mapped'):
+        return 'host_mapped_primary_data_requires_unmeasured_PCIe_tier'
     status=row.get('profiling_status','')
     if status and status!='profile_process_completed':
         return 'profile_process_not_completed'
@@ -79,7 +81,7 @@ def select_points(rows):
     for index, row in enumerate(rows, start=2):
         reason = exclusion(row)
         identity = {key: row.get(key) for key in
-                    ('benchmark', 'model', 'configuration_id', 'kernel_id',
+                    ('benchmark', 'model', 'configuration_id', 'kernel_id', 'process_id','context_id','stream_id',
                      'kernel', 'grid', 'block', 'precision', 'stage',
                      'roi_coverage', 'sample_phase', 'semantic_family_in_primary_ROI', 'evidence_manifest')}
         if reason:
@@ -95,6 +97,7 @@ def select_points(rows):
                    or ';' in stage or 'ambiguous' in stage or 'candidate' in stage
                    or ('semantic_family_in_primary_ROI' in row
                        and not truth(row['semantic_family_in_primary_ROI'])))
+        pending = pending or not truth(row.get('sample_in_primary_timed_invocation'))
         points.append(dict(identity, csv_line=index, normalized_intensity=x,
                            normalized_throughput=y,
                            pending_stage_review=pending,
@@ -143,7 +146,7 @@ def draw(points, output_prefix):
         ax.set_title(TITLES[model], color=COLORS[model], loc='left', fontweight='bold')
         pending_count = sum(p['pending_stage_review'] for p in selected)
         ax.text(.98, .04, f'{len(selected)} scalar projection rows\n'
-                f'{pending_count} pending stage review', transform=ax.transAxes,
+                f'{pending_count} warmup or phase/stage pending', transform=ax.transAxes,
                 ha='right', va='bottom', fontsize=8, color='#555555')
         if not selected:
             ax.text(.5, .5, 'No compatible scalar points', transform=ax.transAxes,
@@ -159,7 +162,7 @@ def draw(points, output_prefix):
         Line2D([], [], marker='o', ls='none', color='#555555', markerfacecolor='none',
                markersize=5, label='Hollow: mixed projection'),
         Line2D([], [], marker='o', ls='none', color='#555555', alpha=.28,
-               markersize=5, label='Faint: stage review pending')])
+               markersize=5, label='Faint: warmup or phase/stage pending')])
     fig.suptitle('V100 kernel observations — normalized scalar rooflines', y=.98, fontsize=13)
     fig.text(.5, .938, 'Partial first-launch / warmup samples; source stages may be unassigned',
              ha='center', fontsize=9, color='#555555')
@@ -223,7 +226,7 @@ def main():
                             'positive_finite_values_only': True, 'clipping_to_roof': False,
                             'excluded_stage_regex': EXCLUDED_STAGE.pattern,
                             'ridge_guide': 1, 'no_near_ridge_classification_added': True},
-        'scope': 'Partial first-launch/warmup/unassigned scalar kernel projections only. No complete-ROI, steady-state, benchmark count, aggregate or causal bottleneck claims.',
+        'scope': 'Kernel precision projections; phase/coverage metadata distinguishes source-counted retained windows, warmup and unassigned samples. No complete elapsed-ROI, benchmark-average or causal bottleneck claims.',
         'counter_scope': 'Conventional add+mul+2FMA; SFU, integer, address/control and atomic costs omitted. Mixed precision remains separate hollow projections.',
         'ceiling_kind': 'modeled_theoretical_clock_adjusted; not empirically calibrated sustained throughput',
         'plotted_points': points, 'excluded_points': exclusions,

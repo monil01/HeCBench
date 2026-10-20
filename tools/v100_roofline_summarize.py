@@ -33,7 +33,11 @@ def freeze(slot, target, root):
     target.mkdir(parents=True, exist_ok=True)
     for name in ('plan.json','profile_provenance.json','counters.csv','derived.json',
                  'execution.log','build.log','profiling_auxiliary_manifest.json',
-                 'collector_source.py','parser_source.py','write_guard_source.py'):
+                 'collector_source.py','parser_source.py','write_guard_source.py',
+                 'plan_diff.json','build_manifest.json','compiler_manifest.json',
+                 'plan_before_interpreters.json','interpreter_plan_diff.json',
+                 'build_outcome.json','counter_snapshot_at_derivation.csv',
+                 'counter_snapshot_recovery.json'):
         source = slot/name
         if not source.is_file():
             continue
@@ -59,6 +63,9 @@ def main():
     ap.add_argument('--raw-root',type=Path,required=True)
     a=ap.parse_args();root=a.source_root.resolve()
     study=root/'ontology/studies/v100_roofline_537'
+    quality_path=study/'profile_quality_reviews.json'
+    quality_reviews=json.loads(quality_path.read_text()).get('profiles',{}) if quality_path.exists() else {}
+    quality_sha=sha(quality_path.read_bytes()) if quality_path.exists() else None
     reviews={};review_hashes={}
     review_path=study/'ROI_REVIEW.json.gz'
     if review_path.exists():
@@ -76,7 +83,7 @@ def main():
             key=(entry['benchmark'],entry['model'])
             if key in reviews:raise RuntimeError('Overlapping ROI review authority: '+str(key))
             reviews[key]=entry;review_hashes[key]=sha(candidate_raw)
-    imported=[]
+    imported=[];best_scores={}
     for provpath in sorted(a.raw_root.glob('batch*/*/*/profile_provenance.json')):
         prov=json.loads(provpath.read_text())
         if not prov.get('finished_at'):
@@ -84,6 +91,10 @@ def main():
         slot=provpath.parent;plan=json.loads((slot/'plan.json').read_text())
         benchmark=plan['benchmark'];model=plan['model'];batch=slot.parent.parent.name
         target=study/'profiles'/benchmark/model/batch
+        quality=quality_reviews.get(str(target.relative_to(root)))
+        if quality and quality['raw_provenance_sha256']!=sha(provpath.read_bytes()):
+            raise RuntimeError('Profile quality review provenance mismatch')
+        effective_status=('profile_completed_quality_unverified' if quality and prov['status']=='profile_process_completed' else prov['status'])
         manifest=freeze(slot,target,root)
         contract=study/'selected_contracts'/benchmark
         contract.mkdir(parents=True,exist_ok=True)
@@ -107,6 +118,8 @@ def main():
                  'selector_scope':prov['selector_scope']}
         if not any(x['profile_id']==attempt['profile_id']for x in attempts):
             attempts.append(attempt)
+        if attempt['finished_at']>=state.get('latest_profile_attempt',{}).get('finished_at',''):
+            state['latest_profile_attempt']=attempt
         observation=slot/'derived.json'
         records=json.loads(observation.read_text())['records'] if observation.exists() else []
         review=reviews.get((benchmark,model))
@@ -145,6 +158,8 @@ def main():
                         if not proved:role['semantic_family_in_primary_ROI']=None
                         role['mapping_status']=('source_closure_membership_proved_sample_phase_unproved' if proved
                                                else 'source_callsite_candidate_ROI_unresolved')
+                if kernel['scope_context'].get('sample_in_primary_timed_invocation') is True and kernel['scope_context'].get('retained_trial'):
+                    role['sample_phase']=kernel['scope_context']['sample_phase']
                 kernel['ROI_annotation']=role
                 stage_label=(';'.join(role['stage_candidates'])or'unassigned')
                 if review.get('_candidate_review_only') and role['semantic_family_in_primary_ROI'] is None and stage_label!='unassigned':
@@ -153,7 +168,7 @@ def main():
                     semantic_family_in_primary_ROI=role['semantic_family_in_primary_ROI'],
                     sample_phase=role['sample_phase'],ROI_review_sha256=review_hashes[(benchmark,model)],
                     sample_in_primary_timed_invocation=(mapping.get('sample_in_primary_timed_invocation')
-                                                       if mapping else None))
+                                                       if mapping else kernel['scope_context'].get('sample_in_primary_timed_invocation')))
                 if same_capture and review.get('supplemental_binding_warning'):
                     kernel['scope_context']['source_capture_binding_qualification']=review['supplemental_binding_warning']
             annotation_doc={'schema_version':1,'records':annotated,'kernel_count':len(annotated),
@@ -165,35 +180,60 @@ def main():
             annotation_path.write_bytes(gzip.compress(annotation_data,mtime=0))
             records=annotated
             annotated_selected = True
+        # Preserve the best qualified capture when a later follow-up fails or
+        # intentionally samples a narrower phase. Latest attempt status is kept
+        # separately; raw attempts are never removed or mixed with selected data.
+        score=(int(effective_status=='profile_process_completed' and not quality),
+               int(bool(prov.get('retained_window_expected_count_confirmed'))),
+               int(bool(prov.get('selection_expected_launch_count_matches'))),
+               int(bool(prov.get('additional_current_profile_input_bindings'))),
+               int(bool(prov.get('filesystem_write_guard'))),
+               int(bool(prov.get('profile_device_identity_verified'))),
+               len(records),batch)
+        key=(benchmark,model)
+        if key in best_scores and score<best_scores[key]:
+            dump(path,ledger)
+            continue
+        best_scores[key]=score
         regimes=collections.Counter()
         for record in records:
             for precision,point in record['scalar_precision_projections'].items():
                 if point['executed_scalar_flops'] is not None and point['executed_scalar_flops']>0:
                     regimes[precision+':'+point['roofline_regime']]+=1
-        state.update(profiling_status=prov['status'],
+        state.update(profiling_status=effective_status,
+            selected_capture_policy='Qualified completion, retained-trial count proof, selector-count proof, source binding, write guard, PCI verification, kernel observations, lexical batch tie-break; latest attempt remains separate.',
+            selected_capture_score=list(score),
+            profile_process_status=prov['status'],
+            profile_quality_review=({'path':str(quality_path.relative_to(root)),'sha256':quality_sha,'entry':quality} if quality else None),
             profile_ids=[str(target.relative_to(root))],
             profile_evidence_manifest=manifest,
             sampled_kernel_count=len(records),
             source_context_bound_before_after=bool(prov.get('additional_current_profile_input_bindings')),
             sampled_kernel_precision_regimes=dict(regimes),
-            sampled_kernel_predicted_resource_limits={key.replace('memory_side','memory_bound_roofline_prediction').replace('compute_side','compute_bound_roofline_prediction').replace('near_ridge','ridge_transition'):count for key,count in regimes.items()},
+            sampled_kernel_predicted_resource_limits=({key.replace('memory_side','memory_bound_roofline_prediction').replace('compute_side','compute_bound_roofline_prediction').replace('near_ridge','ridge_transition'):count for key,count in regimes.items()} if effective_status=='profile_process_completed' and not quality and benchmark not in ('zerocopy','halo-finder') else {}),
+            dram_roofline_applicability=('not_applicable_host_mapped_primary_data_requires_PCIe_tier' if benchmark in ('zerocopy','halo-finder') else 'HBM_tier_projection_only_primary_memory_domain_requires_source_review'),
             roi_coverage=('not_collected_no_derived_counter_report' if not observation.is_file() else
+                          'source_counted_retained_trial2_scientific_family_not_elapsed_ROI' if prov.get('retained_window_expected_count_confirmed') else
                           'partial_source_candidates_only_ROI_unresolved' if review and review.get('_candidate_review_only') else
                           'partial_source_family_reviewed_not_complete_ROI' if review else
                           'partial_first_specialization_geometry_unreviewed'),
             roofline_position=None,roofline_region=None,observed_bottleneck=None,
-            reason='First-per-function/geometry kernel observations; whole-ROI placement and causal bottleneck require separate review.')
+            reason=prov['selector_scope']+'; whole elapsed-ROI placement and causal bottleneck require separate review.')
         if observation.exists():
             selected=target/('annotated.json.gz' if annotated_selected else 'derived.json.gz')
             state['kernel_observations']={'path':str(selected.relative_to(root)),
                 'sha256':sha(selected.read_bytes()),
                 'compression':'gzip','uncompressed_sha256':sha(gzip.decompress(selected.read_bytes()))}
+        else:
+            state.pop('kernel_observations',None)
         dump(path,ledger);imported.append((benchmark,model))
-    slots=[];points=[];kernel_audit=[];hierarchical=[];statuses=collections.Counter();names=set()
+    slots=[];points=[];kernel_audit=[];hierarchical=[];statuses=collections.Counter();latest_statuses=collections.Counter();names=set();attempt_count=0
     for path in sorted((study/'benchmarks').glob('*.json')):
         ledger=json.loads(path.read_text())
         for model,state in ledger['models'].items():
             status=state['profiling_status'];statuses[status]+=1
+            attempt_count+=len(state.get('profile_attempts',[]))
+            if state.get('latest_profile_attempt'):latest_statuses[state['latest_profile_attempt']['status']]+=1
             if state.get('sampled_kernel_count',0)>0:names.add(ledger['benchmark'])
             slots.append({'benchmark':ledger['benchmark'],'model':model,
                 'configuration_id':(ledger.get('accepted_named_contract')or{}).get('configuration_id'),
@@ -203,6 +243,8 @@ def main():
                 'known_native_defect':(ledger.get('accepted_named_contract')or{}).get('known_defect'),
                 'revised_acceptance':(ledger.get('accepted_named_contract')or{}).get('revised_acceptance'),
                 'profiling_status':status,'plan_status':state.get('profile_plan_status'),
+                'latest_attempt_status':state.get('latest_profile_attempt',{}).get('status'),
+                'selected_capture_policy':state.get('selected_capture_policy'),
                 'gpu_uuid':'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d',
                 'primary_unprofiled_mean_seconds':(ledger.get('accepted_named_contract')or{}).get('models',{}).get(model,{}).get('mean'),
                 'kernel_count':state.get('sampled_kernel_count',0),
@@ -217,12 +259,18 @@ def main():
                 common={'benchmark':ledger['benchmark'],'model':model,
                         'configuration_id':slots[-1]['configuration_id'],
                         'profiling_status':status,
+                        'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
                         'gpu_uuid':slots[-1]['gpu_uuid'],
                         'kernel_id':k['identity']['ID'],'kernel':k['identity']['Kernel Name'],
+                        'process_id':k['identity'].get('Process ID'),'context_id':k['identity'].get('Context'),
+                        'stream_id':k['identity'].get('Stream'),
                         'grid':k['identity'].get('Grid Size'),'block':k['identity'].get('Block Size'),
                         'stage':k['scope_context'].get('ROI_stage','unassigned'),
                         'semantic_family_in_primary_ROI':k['scope_context'].get('semantic_family_in_primary_ROI'),
                         'sample_phase':k['scope_context'].get('sample_phase','unreviewed'),
+                        'sample_in_primary_timed_invocation':k['scope_context'].get('sample_in_primary_timed_invocation'),
+                        'retained_trial':k['scope_context'].get('retained_trial'),
+                        'phase_proof':k['scope_context'].get('phase_proof'),
                         'ROI_review_sha256':k['scope_context'].get('ROI_review_sha256'),
                         'roi_coverage':state['roi_coverage'],
                         'duration_seconds':k['duration_seconds'],
@@ -250,12 +298,18 @@ def main():
                     points.append({'benchmark':ledger['benchmark'],'model':model,
                         'configuration_id':slots[-1]['configuration_id'],
                         'profiling_status':status,
+                        'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
                         'kernel_id':k['identity']['ID'],'kernel':k['identity']['Kernel Name'],
+                        'process_id':k['identity'].get('Process ID'),'context_id':k['identity'].get('Context'),
+                        'stream_id':k['identity'].get('Stream'),
                         'grid':k['identity'].get('Grid Size'),'block':k['identity'].get('Block Size'),
                         'precision':precision,'precision_class':k['precision_class'],
                         'stage':k['scope_context'].get('ROI_stage','unassigned'),
                         'semantic_family_in_primary_ROI':k['scope_context'].get('semantic_family_in_primary_ROI'),
                         'sample_phase':k['scope_context'].get('sample_phase','unreviewed'),
+                        'sample_in_primary_timed_invocation':k['scope_context'].get('sample_in_primary_timed_invocation'),
+                        'retained_trial':k['scope_context'].get('retained_trial'),
+                        'phase_proof':k['scope_context'].get('phase_proof'),
                         'ROI_review_sha256':k['scope_context'].get('ROI_review_sha256'),
                         'roi_coverage':state['roi_coverage'],
                         'duration_seconds':k['duration_seconds'],
@@ -273,6 +327,8 @@ def main():
     progress={'schema_version':1,'updated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'status':'active','benchmark_population':537,'model_slots':2148,
         'status_counts':dict(statuses),'names_with_any_kernel_observation':len(names),
+        'status_count_scope':'Best selected qualified capture/status per model slot; latest attempts and all historical failures remain separate.',
+        'latest_attempt_status_counts':dict(latest_statuses),'retained_profile_attempts':attempt_count,
         'scalar_precision_kernel_projection_rows':len(points),
         'kernel_observations':len(kernel_audit),
         'hierarchical_scalar_projection_rows':len(hierarchical),

@@ -22,6 +22,7 @@ import time
 import types
 import sys
 import csv
+import math
 
 UUID = 'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d'
 METRICS = [
@@ -46,6 +47,24 @@ def sha(path):
         for data in iter(lambda: f.read(4 * 1024**2), b''):
             h.update(data)
     return h.hexdigest()
+
+
+def target_path_bindings(command, scratch, env):
+    result={}
+    for index,arg in enumerate(command):
+        if arg.startswith('-'):
+            continue
+        path=Path(arg)
+        if not path.is_absolute():
+            resolved=shutil.which(arg,path=env.get('PATH')) if index==0 else None
+            path=Path(resolved) if resolved else scratch/path
+        try:
+            if path.is_file() and (os.access(path,os.X_OK) or path.suffix in ('.jl','.py','.so')):
+                result[str(path.resolve())]=sha(path)
+        except (OSError,ValueError):
+            # Inline script text and non-path CLI arguments are not filenames.
+            continue
+    return result
 
 
 COLLECTOR_SOURCE = Path(__file__).read_bytes()
@@ -111,13 +130,22 @@ def bindings(plan):
         raise RuntimeError('Bound evidence changed: ' + repr(changed))
 
 
-def idle_snapshot():
-    query = subprocess.run(['nvidia-smi', '--query-compute-apps=gpu_uuid,pid,process_name',
+class GPUBusy(RuntimeError):
+    pass
+
+
+def gpu_processes():
+    query = subprocess.run(['nvidia-smi','-i','6','--query-compute-apps=gpu_uuid,pid,process_name',
                             '--format=csv,noheader,nounits'], text=True,
                            capture_output=True, check=True)
-    processes = query.stdout
-    if any(line.split(',')[0].strip() == UUID for line in processes.splitlines()):
-        raise RuntimeError('GPU6 has an existing compute process; refuse execution: ' + processes)
+    return [{'gpu_uuid':row[0].strip(),'pid':int(row[1].strip()),'name':Path(row[2].strip()).name}
+            for row in csv.reader(query.stdout.splitlines()) if len(row)>=3 and row[0].strip()==UUID]
+
+
+def idle_snapshot():
+    processes=gpu_processes()
+    if processes:
+        raise GPUBusy('GPU6 has an existing compute process; defer execution: '+json.dumps(processes))
     device = subprocess.run(['nvidia-smi', '-i', '6',
         '--query-gpu=uuid,name,driver_version,memory.total,memory.used,clocks.current.sm,clocks.current.memory,power.draw,ecc.mode.current',
         '--format=csv'], text=True, capture_output=True, check=True).stdout
@@ -126,13 +154,45 @@ def idle_snapshot():
     return {'time': utc(), 'gpu': device, 'compute_processes': processes}
 
 
+def wait_idle_snapshot(provenance,slot):
+    waited=False
+    while True:
+        try:
+            snapshot=idle_snapshot()
+            if waited:
+                provenance['idle_wait_finished_at']=utc()
+                provenance['status']='started'
+                dump(slot/'profile_provenance.json',provenance)
+            return snapshot
+        except GPUBusy as error:
+            waited=True
+            provenance.setdefault('idle_wait_started_at',utc())
+            provenance.update(status='waiting_for_idle_gpu',idle_wait_last_checked_at=utc(),
+                              idle_wait_reason=str(error))
+            dump(slot/'profile_provenance.json',provenance)
+            time.sleep(15)
+
+
 def limits():
     # New profiler auxiliary files are bounded. No accepted capture is touched.
     resource.setrlimit(resource.RLIMIT_FSIZE, (1024**3, 1024**3))
 
 
-def run(command, env, cwd, log, timeout, reserve, guard=None):
+def own_session_members(session):
+    members=[]
+    for path in Path('/proc').iterdir():
+        if not path.name.isdigit():continue
+        try:
+            if path.stat().st_uid!=os.getuid() or os.getsid(int(path.name))!=session:continue
+            state=(path/'stat').read_text().split(')')[-1].split()[0]
+            if state!='Z':members.append(int(path.name))
+        except (OSError,ValueError):continue
+    return members
+
+
+def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False):
     began = time.monotonic()
+    started_at=utc()
     executed=list(command)
     if guard:
         executed=[sys.executable,guard['tool']]
@@ -144,13 +204,36 @@ def run(command, env, cwd, log, timeout, reserve, guard=None):
                                    stderr=subprocess.STDOUT, start_new_session=True,
                                    preexec_fn=limits)
         stop_reason = None
+        external_activity=[];last_gpu_check=0
         while process.poll() is None:
             if time.monotonic() - began > timeout:
                 stop_reason = 'wall_timeout'
             elif shutil.disk_usage(cwd).free < reserve:
                 stop_reason = 'scratch_free_space_reserve'
+            if monitor_gpu and not stop_reason and time.monotonic()-last_gpu_check>=2:
+                last_gpu_check=time.monotonic()
+                try:
+                    observed=gpu_processes()
+                except (OSError,ValueError,subprocess.SubprocessError) as error:
+                    observed=[];stop_reason='GPU_activity_monitor_failed'
+                    external_activity.append({'monitor_error':str(error),'observed_at':utc()})
+                for item in observed:
+                    owned=False;pid=item['pid']
+                    try:
+                        owned=os.getsid(pid)==process.pid
+                        ancestor=pid
+                        for _ in range(128):
+                            if owned or ancestor==process.pid:
+                                owned=True;break
+                            if ancestor<=1:break
+                            fields=(Path('/proc')/str(ancestor)/'stat').read_text().split(')')[-1].split()
+                            ancestor=int(fields[1])
+                    except (OSError,ValueError):pass
+                    if not owned:external_activity.append({**item,'observed_at':utc()})
+                if external_activity:stop_reason='external_gpu_activity_detected_own_profile_stopped'
             if stop_reason:
                 # Only the fresh session created above; never discover/kill by name.
+                if process.poll() is not None:break
                 if os.getsid(process.pid) != process.pid:
                     raise RuntimeError('Own child session guard failed')
                 os.killpg(process.pid, signal.SIGTERM)
@@ -163,7 +246,28 @@ def run(command, env, cwd, log, timeout, reserve, guard=None):
                 break
             time.sleep(0.5)
         code = process.wait()
+        # NCU can leave a target/flusher alive after a timeout leader exits.
+        # Do not hash/freeze counters or remove scratch until that own session
+        # is quiescent. No other session, process name or user's work is signaled.
+        quiescence_started=time.monotonic();descendant_cleanup=[]
+        while True:
+            members=own_session_members(process.pid)
+            if not members:break
+            if time.monotonic()-quiescence_started>10:
+                if stop_reason is None:stop_reason='own_descendants_outlived_profile_leader'
+                for pid in members:
+                    try:
+                        path=Path('/proc')/str(pid)
+                        if path.stat().st_uid!=os.getuid() or os.getsid(pid)!=process.pid:
+                            raise RuntimeError('Own session cleanup identity changed')
+                        os.kill(pid,signal.SIGKILL);descendant_cleanup.append(pid)
+                    except ProcessLookupError:pass
+            time.sleep(.5)
     return {'returncode': code, 'stop_reason': stop_reason,
+            'started_at':started_at,'finished_at':utc(),
+            'external_gpu_activity':external_activity,
+            'own_session_quiescence_seconds':time.monotonic()-quiescence_started,
+            'own_descendants_cleaned':sorted(set(descendant_cleanup)),
             'wall_seconds': time.monotonic() - began, 'log_sha256': sha(log),
             'executed_command':executed}
 
@@ -218,10 +322,27 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             scope = selected['coverage']
             selection_override = {'path':str(selection_path),'sha256':sha(selection_path),
                                   'expected_matching_launches':selected['expected_matching_launches']}
+            if selected.get('source_recipe'):
+                proof=selected['source_recipe']
+                if sha(proof['path'])!=proof['sha256']:
+                    raise RuntimeError('Retained-trial source recipe changed')
+                row=next(x for x in selected['source_records'] if x['model']==plan['model'])
+                if row['reference_result']['sha256']!=plan['reference_result_sha256'] or row['raw_config']['sha256']!=plan['raw_config_sha256']:
+                    raise RuntimeError('Retained-trial selected contract mismatch')
+                for binding in row['execution_bindings']+row.get('current_supplemental_sources',[]):
+                    if sha(binding['path'])!=binding['sha256']:
+                        raise RuntimeError('Retained-trial source binding changed')
+                selection_override.update(retained_trial=selected['retained_trial'],source_recipe=proof,
+                                          phase_proof='source_launch_ordinal_not_dynamic_range_trace')
     ncu = ['ncu', '--target-processes', 'all'] + selection + [
            '--clock-control', 'none', '--cache-control', 'all', '--replay-mode','kernel',
            '--metrics', ','.join(METRICS), '--csv', '--page', 'raw',
            '--print-units', 'base', '--log-file', str(csv_path)] + command
+    saved_result=json.loads(Path(plan['reference_result']).read_text())
+    primary_mean=saved_result.get('models',{}).get(plan['model'],{}).get('mean_seconds')
+    requested_timeout=timeout
+    if isinstance(primary_mean,(int,float)) and math.isfinite(primary_mean) and primary_mean>0:
+        timeout=max(timeout,min(3600,math.ceil(120+30*primary_mean)))
     provenance = {'schema_version': 1, 'started_at': utc(), 'plan': str(plan_path),
         'plan_sha256': sha(plan_path), 'collector_sha256': COLLECTOR_SHA256,
         'command': ncu, 'environment_overrides': {**plan['environment_overrides'],
@@ -233,12 +354,20 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         'ROI_coverage': 'unreviewed_partial; warmup/setup/validation may be present',
         'primary_contract_unchanged': True,
         'filesystem_write_guard':guard,
+        'operational_deadline':{'requested_seconds':requested_timeout,'effective_seconds':timeout,
+            'saved_reported_mean_seconds':primary_mean,
+            'rule':'max(requested,min(3600,ceil(120+30*saved_reported_mean))); coarse replay/process deadline, not a timing forecast. Reported time normalization may differ. Idle queue waiting is excluded.'},
         'profiling_auxiliary_retention': 'kept' if retain_auxiliary else
             'Fresh scratch only removed after manifest; not a correctness certificate. Raw counters, logs, provenance retained.',
         'status': 'started'}
     (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
     dump(slot/'profile_provenance.json', provenance)
     try:
+        if plan['benchmark']=='halo-finder' and env.get('HACC_NUM_CUDA_DEV') not in (None,'1'):
+            raise RuntimeError('Reviewed serial Halo-finder requires HACC_NUM_CUDA_DEV unset or1')
+        if plan['benchmark'] == 'streamUM':
+            provenance['status'] = 'not_started_replay_method_blocked'
+            raise RuntimeError('Kernel replay against concurrent CPU writes to other managed allocations and dynamic streams is not yet validated; retain source review and use a separately reviewed concurrency method.')
         if plan['benchmark'] == 'atomicSystemWide':
             provenance['status'] = 'not_started_replay_method_blocked'
             raise RuntimeError('Kernel replay cannot reproduce concurrent CPU/GPU atomics on the same managed allocation; requires separately reviewed application replay or single-pass diagnostics.')
@@ -248,7 +377,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             current_bindings = supplemental_bindings(plan,root)
             provenance['additional_current_profile_input_bindings'] = current_bindings
             provenance['additional_binding_scope'] = 'New profile only; never retroactive certification of historical correctness captures.'
-            provenance['device_before'] = idle_snapshot()
+            provenance['device_before'] = wait_idle_snapshot(provenance,slot)
             if shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
                 raise RuntimeError('Free space below reserve')
             if plan['build_command']:
@@ -257,7 +386,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 if provenance['build']['returncode'] != 0:
                     raise RuntimeError('Isolated build failed; see retained build log')
             # Build may create a GPU context; require a second idle check.
-            provenance['device_immediately_before_profile'] = idle_snapshot()
+            provenance['device_immediately_before_profile'] = wait_idle_snapshot(provenance,slot)
             identity=subprocess.run(['nvidia-smi','-i','6','--query-gpu=uuid,pci.bus_id',
                 '--format=csv,noheader'],capture_output=True,text=True,check=True).stdout
             expected_uuid,pci_text=next(csv.reader(identity.splitlines()))
@@ -267,12 +396,16 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['expected_device_pci']=dict(domain=expected_pci[0],bus=expected_pci[1],device=expected_pci[2])
             provenance['profiler_version'] = subprocess.run(['ncu', '--version'],
                 capture_output=True, text=True, check=True).stdout
+            provenance['profiler_executable'] = str(Path(shutil.which('ncu')).resolve())
+            provenance['profiler_executable_sha256'] = sha(provenance['profiler_executable'])
+            provenance['executed_target_path_bindings']=target_path_bindings(command,scratch,env)
             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
-                                        timeout, reserve_mib*1024**2,guard)
+                                        timeout, reserve_mib*1024**2,guard,monitor_gpu=True)
             bindings(plan)
             check_supplemental(current_bindings)
+            check_supplemental(provenance['executed_target_path_bindings'])
             provenance['binding_recheck_after'] = 'unchanged'
-            provenance['status'] = ('profile_process_completed' if provenance['profile']['returncode'] == 0
+            provenance['status'] = ('profile_process_completed' if provenance['profile']['returncode'] == 0 and provenance['profile']['stop_reason'] is None
                                     else 'profile_process_failed')
             if csv_path.is_file():
                 provenance['counters_sha256'] = sha(csv_path)
@@ -294,6 +427,15 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                                    first_invocation_may_be_warmup=True,
                                    cache_policy='all_cold_replay',clock_control='none',
                                    selector_scope=scope,source_context_bound_before_after=True)
+                    if selection_override and selection_override.get('retained_trial'):
+                        confirmed=len(groups)==selection_override['expected_matching_launches']
+                        provenance['retained_window_expected_count_confirmed']=confirmed
+                        context.update(retained_trial=selection_override['retained_trial'],
+                            phase_proof=selection_override['phase_proof'],source_recipe=selection_override['source_recipe'],
+                            sample_phase='source_counted_retained_trial2_scientific_window' if confirmed else 'retained_window_count_mismatch_phase_unproved',
+                            sample_in_primary_timed_invocation=True if confirmed else None,
+                            first_invocation_may_be_warmup=False if confirmed else True,
+                            ROI_coverage='selected_scientific_family_window_not_elapsed_host_ROI' if confirmed else 'unproved_selector_count_mismatch')
                     calibration = root/'ontology/studies/v100_roofline_537/calibration/v100_sm70_20261020/review.json'
                     proof=json.loads(calibration.read_text())
                     if proof['device_uuid']!=UUID or proof['architecture']!='sm_70':
@@ -317,11 +459,17 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         provenance['selection_expected_launch_count_matches']=(len(records)==selection_override['expected_matching_launches'])
                 except (ValueError, KeyError) as error:
                     provenance['counter_parse_error'] = str(error)
+                    if provenance['status'] == 'profile_process_completed':
+                        provenance['status'] = 'profile_completed_counter_derivation_failed'
     except Exception as error:
         if provenance['status'] != 'not_started_replay_method_blocked':
             provenance['status'] = 'collection_failed'
         provenance['error'] = str(error)
     finally:
+        for name in ('overlay_build_outcome.json','extra_build_outcome.json'):
+            receipt=scratch/name
+            if receipt.is_file():
+                shutil.copy2(receipt,slot/'build_outcome.json')
         manifest = []
         for path in sorted(scratch.rglob('*')):
             if path.is_file() and not path.is_symlink():
