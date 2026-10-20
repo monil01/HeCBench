@@ -1,0 +1,30 @@
+# nbnxm prospective contract (before Julia targets)
+
+## Source and scientific intent
+
+The GROMACS-derived kernel is a cluster-list short-range Lennard–Jones plus Ewald Coulomb/correction force operator with topology masks, warp reductions, block-local reductions and optional shift-force accumulation. It is not a complete GROMACS simulation, reciprocal-space PME solver or integrated molecular trajectory. Source numerical units are retained; no independent SI/chemical-accuracy claim.
+
+The original full input uses3199superclusters,204808atoms,8×8threads/block,56881CJ4entries,4806SCIentries,19205exclusionentries,45shifts,32types/1024paircoefficients,10000launches per each calcShift0/1 phase. **All interaction masks are zero**; positions/shift also place the identical input points beyond cutoff. The full original default exercises loads/barriers/zero-force atomic writes, not nonzero pair arithmetic. In particular, calcShift1 still performs contending zero additions to the shift buffer. Preserve its full footprint/repeats and report this degenerate pair workload explicitly; do not infer physical force throughput from it.
+
+Named supplementary controls must exercise active pairs with mixed charges/types/exclusion bits, central self-pair triangular exclusion, cutoff on/off, independent per-warp masks, and noncentral shift-force accumulation. Suggested small shapes are one/two source superclusters, full8×8blocks, oneCJ4entry perSCI. Bipartite I atoms and J atoms are separated by roughly0.625–1 distance; self control uses8atoms on a0.75-spaced line so diagonal is excluded and no near-singular pairs. No clamp/overflow-region accuracy claim. Factor/coordinate values should be exact binary fractions where possible. Original source bodies remain unchanged.
+
+## Accuracy declared before measurement
+
+- Float32 coordinates/charges/forces/coefficients, Float3 tightly packed12bytes, Float4 16bytes; UInt32imasks/exclusionwords and Int32indices. Record actual layout static_asserts and full input bytes.
+- Full actual-device readbacks of every input allocation, including unused original tails. Unique actual native canonical files are explicit dependencies; every model/trial compares complete actual bytes. Native managed-memory allocation retained across models through C ABI; no inferred-input hash-only claim.
+- Complete outputforce vectors for every atom and all45shift vectors, not checksums/sampling. All non-target/readonly fields unchanged; original allocation sizes retained and no synthetic padding-guard/unrestricted memory-safety claim.
+- Default no-active-pair output must be bit-exact to original inputforce/fShift at every field. Supplementary controls use an independent long-double pair-list oracle, enumerating every active pair occurrence and applying Newton opposing forces and all expected shift updates. Decode actual per-warp masks/exclusionwords; never assume excludedpairs have zero Ewald correction.
+- Scientific pair coefficient: LJ `r^-6*(c12*r^-6-c6)*r^-2*pairMask`; Coulomb `eps*q_i*q_j*(pairMask/r^3 + beta^3*pmeCorrection(beta²r²))`. The analytic correction is `2exp(-z²)/(sqrt(pi)z²) - erf(z)/z³`, stable series at zero. This is the source short-range/reciprocal-exclusion correction, not total PME electrostatics. LJ potential uses c12/12 and c6/6 because sourcecoefficients already contain12/6 factors.
+- Predeclared full force/fShift comparison and independent engineering budget absolute0.002 + relative1e-4*abs(reference). Reject nonfinite; independent Newton residual normalized bymax(1,sumabspairforce) <=5e-5. Exact-bit input prefix and exact no-active-pair output requirements are stronger than this general float budget.
+- Actual dense CPU scalar polynomial/analytic control has100001points over sourcebeta²cutoff range: unfused and explicitFMAFloat32maxabs7.9567471e-7, rel1.0579083e-6; sampled3e-6budgetpasses. This is not a rigorous continuous bound or actual GPU instruction trace. Keep rational approximation and RN-rsqrt arithmetic distinct from analytic oracle precision.
+- Source cutoff is strict r²<cutoffSq; use exact boundary controls or adequate distance margins, no silent boundary-tolerance flip.
+
+## Timing and observations
+
+The comparative timed region is source-shaped kernel launch loops plus whole-context completion, with original10000repeats for both default phases and1launch for each small physical correctness control. Allocate/initialize/readback/canonicalcheck/oracle/serialization outside the ROI. Record each case/phase time separately plus their sum; allfive trials checked and mean2–5, no outlier removal. Whole-study compile warmup precedes the five trials. Preserve original CLI timing as readiness diagnostic only.
+
+Explicitly prefetch managed buffers to the GPU before timing for a named resident-data study; the original second phase may include first-touch migration after host resets. This residency intervention and observation placement must be common across all4models and stated; no unqualified original migration-latency claim. A C ABI phase callback should launch the whole repeat loop in its own Julia model to avoid20000FFI transitions; no native selectedkernel fallback when callbackset. Default original untimed warmup call is retained separately where needed, with exact launch accounting.
+
+KA must use genuine own kernel/localmem/barriers; JACC genuine parallel_for. CUDA backend RN-rsqrt/warp-shuffle/atomic operations are explicit extensions, not claims of backend independence. Native local sharedmemory is2048bytes, block8×8,24privateFloat32Iaccumulators; preserve reduction topology and group geometry, set JACCdynamicshmem0 and cache complete3Dgeometry. Exact machine instruction/register/spill equivalence is unmeasured unless profiled.
+
+GPU6only under shared lock; central verifier owns its lock, no outer nested flock. Bind all source/assets/includes/env files before firstmeasurement. Native readiness→CUDAjl→KA→JACC, separate actual usage windows and candidate/JIT/trial units. No Julia target code authored at this checkpoint.
