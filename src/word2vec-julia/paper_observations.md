@@ -1,0 +1,7 @@
+# word2vec observations
+
+- **RQ1:** All four implementations pass the bounded fullCBOWkernelcases, including48capturedfields and340physicaltailwords. Original generated-corpus training repeats exit0 but differ by0.000138, so this is not complete asynchronous-training numerical identity or embedding quality. Source approximate sigmoid indexing is preserved, not relabeled exact logistic differentiation.
+- **RQ2:** CUDA.jl/KA each one source/program candidate and one device-JIT process; JACC two program evaluations but one reached device JIT. The first JACC host LaunchSpec constructor failed before kernels and was fixed with launch_spec. Shared native-validation oracle output order was corrected separately. Context-inclusive target tokens864,367 /775,221 /1,706,636; no exclusive billed costs or homogeneous full-training calibration.
+- **RQ3:** Native0.105426ms, CUDA.jl0.208804ms, KA0.504835ms, JACC0.364948ms, mean trials2–5. This is four kernel cases plus completion, not original corpus throughput.
+- **RQ4:** Pure own-framework shared-memory/barrier device bodies work in KA/JACC. Extra fullgroup barriers, static/dynamicshared allocation, sourceconstant vs readonlyglobal lookup andJACCtemplatepreload confound causalfrontend interpretation. No hardware-counter/roofline measurements.
+- **RQ5:** Distinguish a faithful GPUoperator port from restoration of asynchronous training/controller/data workflows. Original stochastic/concurrent trajectories require their own contract.
