@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Every declared value, input-bit prefix and independent whole-field budget."""
+import argparse,json,pathlib,hashlib
+import numpy as np
+P=pathlib.Path(__file__).resolve().parent
+M={'pij_indices_device':'input_indices','input_distances':'input_distances','input_indices':'input_indices','input_points':'input_points','normalized_distances':'normalized_distances','pij_nonsymmetric':'pij_nonsymmetric','pij_symmetric_device':'pij_symmetric','attractive_forces_device':'attractive_forces','repulsive_forces_device':'repulsive_forces','gains_device':'gains','old_forces_device':'old_forces','normalization_vec_device':'normalization_vec','pij_workspace_device':'workspace','points_device':'points','point_box_idx_device':'point_box_idx','x_in_box_device':'x_in_box','y_in_box_device':'y_in_box','y_tilde_values':'y_tilde','x_interpolated_values_device':'x_interpolated','y_interpolated_values_device':'y_interpolated','potentialsQij_device':'potentials','w_coefficients_device':'w_coefficients','chargesQij_device':'charges','kernel_tilde_device':'kernel_tilde','fft_input':'fft_input','fft_output':'fft_output','fft_w_coefficients':'fft_product','normalization':'normalization'}
+def main():
+ a=argparse.ArgumentParser();a.add_argument('--artifact',type=pathlib.Path,required=True);a.add_argument('--layout',type=pathlib.Path,required=True);a.add_argument('--oracle',type=pathlib.Path,required=True);a.add_argument('--output',type=pathlib.Path,required=True);z=a.parse_args();man=json.load(open(z.oracle/'oracle_manifest.json'));layout=json.load(open(z.layout));raw=np.memmap(z.artifact,dtype='<f4',mode='r');assert sum(x['count']for x in layout)==raw.size;rows=[];ok=True
+ for f in layout:
+  v=raw[f['offset']:f['offset']+f['count']];assert np.isfinite(v).all(),f['name'];k=M.get(f['name']);r={'name':f['name'],'count':int(v.size),'finite':True,'independent_oracle':k,'accepted':True}
+  if k:
+   spec=man['files'][k];gold=np.fromfile(z.oracle/(k+'.bin'),dtype='<c16'if'complex'in spec['dtype']else'<f8')
+   if k=='fft_output':gold*=780**2
+   if np.iscomplexobj(gold):gold=gold.view('<f8')
+   assert v.size==gold.size,(f['name'],v.size,gold.size)
+   err=float(np.max(np.abs(v.astype(float)-gold)));budget=1e-6+.003*float(np.max(np.abs(gold)));r.update(max_abs_error=err,predeclared_absolute_budget=budget,budget_ratio=err/budget,accepted=err<=budget)
+   if k=='point_box_idx':r.update(integer_indices_exact=np.array_equal(v.astype('<f8'),gold));r['accepted']&=r['integer_indices_exact']
+   if k.startswith('input_'):r.update(bit_exact=np.array_equal(v.view('<u4'),gold.astype('<f4').view('<u4')));r['accepted']&=r['bit_exact']
+  else:r['scope']='Fullfiniteoutput retained for strictGPUdualreferencecomparison; independentformula notclaimed for this internal buffer.'
+  ok&=r['accepted'];rows.append(r)
+ out={'accepted':bool(ok),'artifact':str(z.artifact),'sha256':hashlib.sha256(z.artifact.read_bytes()).hexdigest(),'count':int(raw.size),'fields':rows,'criterion':'Predeclared perfield abs_error<=1e-6+.003*max_abs(oraclecomponent), independentFloat64/complex128 FFToracle; inputbits exact. No full1000trajectory certification.'};z.output.write_text(json.dumps(out,indent=2)+'\n');print(json.dumps({'accepted':bool(ok),'fields':len(rows),'independent_fields':sum(r['independent_oracle']is not None for r in rows),'failed':[r['name']for r in rows if not r['accepted']]}));return 0 if ok else 1
+if __name__=='__main__':raise SystemExit(main())

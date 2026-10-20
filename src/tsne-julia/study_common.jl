@@ -1,0 +1,85 @@
+using CUDA, Printf
+include(joinpath(@__DIR__,"pointwise.jl"))
+const STUDY_SOURCE_ROOT=normpath(joinpath(@__DIR__,"..",".."))
+const SOURCE_DATA=joinpath(STUDY_SOURCE_ROOT,"src","tsne-cuda","data")
+const OUTPUT_NAMES=["pij_indices_device","pij_symmetric_device","attractive_forces_device","repulsive_forces_device","gains_device","old_forces_device","ones_device","normalization_vec_device","pij_workspace_device","points_device","point_box_idx_device","x_in_box_device","y_in_box_device","y_tilde_values","x_interpolated_values_device","y_interpolated_values_device","potentialsQij_device","w_coefficients_device","chargesQij_device","box_lower_bounds_device","box_upper_bounds_device","kernel_tilde_device","fft_kernel_tilde_device","fft_scratchpad_device","fft_input","fft_w_coefficients","fft_output","y_tilde_spacings_device","denominator_device"]
+const OUTPUT_KEYS=[:idx,:sym,:attr,:rep,:gains,:old,:ones,:norm,:workspace,:points,:boxidx,:xin,:yin,:tilde,:xinterp,:yinterp,:potential,:w,:charges,:boxlo,:boxhi,:kernel,:fkernel,:scratch,:fin,:fw,:fout,:spacing,:den]
+function tsne_pipeline(rawdist,rawidx,initial,iterations)
+    N=Int32(60000);K=Int32(32);B=Int32(130);H=3B;F=2H
+    CUDA.stream!(CUDA.legacy_stream());CUDA.device_synchronize(blocking=true)
+    started=time_ns();observer_ns=UInt64(0)
+    z(n)=CUDA.zeros(Float32,Int(n));zi(n)=CUDA.zeros(Int32,Int(n));zc(n)=CUDA.zeros(ComplexF32,Int(n))
+    spacing=Float32[1f0/3f0/2f0,0,0];spacing[2]=spacing[1]+1f0/3f0;spacing[3]=spacing[2]+1f0/3f0
+    den=Float32[prod(spacing[i]-spacing[j] for j in 1:3 if i!=j) for i in 1:3]
+    a=(rawidx=CuArray(rawidx),dist=CuArray(rawdist),idx=zi(N*K),prob=z(N*K),sym=z(N*K),beta=CUDA.ones(Float32,N),lower=CUDA.fill(-floatmax(Float32),N),upper=CUDA.fill(floatmax(Float32),N),rowsum=z(N),entropy=z(N),found=zi(N),points=CuArray(initial),attr=z(2N),rep=z(2N),gains=CUDA.ones(Float32,2N),old=z(2N),ones=CUDA.ones(Float32,2N),norm=z(N),workspace=z(2N*K),boxidx=zi(N),xin=z(N),yin=z(N),tilde=z(4H*H),xinterp=z(3N),yinterp=z(3N),potential=z(4N),w=z(4H*H),charges=z(4N),boxlo=z(2B*B),boxhi=z(2B*B),kernel=z(F*F),fkernel=zc(F*F),scratch=zc(4F*F),fin=z(4F*F),fw=zc(4F*(H+1)),fout=z(4F*F),spacing=CuArray(spacing),den=CuArray(den))
+    CUDA.device_synchronize(blocking=true)
+    t=time_ns();captured=Dict{String,Vector{Float32}}("input_indices"=>Float32.(Array(a.rawidx)),"input_distances"=>Array(a.dist),"input_points"=>Array(a.points));CUDA.device_synchronize(blocking=true);observer_ns+=time_ns()-t
+    c=(N=N,K=K,B=B,H=H,F=F,perplexity=50f0,mincoord=0f0,width=1f0,term=Int32(-1),axis=Int32(0),normalization=1f0,momentum=.5f0,exaggeration=12f0)
+    launch!(Val(1),Int(N*K),a,c);a.dist ./=maximum(abs,a.dist);CUDA.device_synchronize(blocking=true)
+    t=time_ns();captured["normalized_distances"]=Array(a.dist);CUDA.device_synchronize(blocking=true);observer_ns+=time_ns()-t
+    for search in 1:200
+        launch!(Val(2),Int(N*K),a,c);launch!(Val(3),Int(N),a,c);launch!(Val(4),Int(N),a,c);launch!(Val(5),Int(N),a,c)
+        CUDA.device_synchronize(blocking=true)
+        minimum(a.found)!=0 && break
+    end
+    launch!(Val(6),Int(N*K),a,c);CUDA.device_synchronize(blocking=true)
+    t=time_ns();captured["pij_nonsymmetric"]=Array(a.prob);CUDA.device_synchronize(blocking=true);observer_ns+=time_ns()-t
+    launch!(Val(7),Int(N*K),a,c);CUDA.device_synchronize(blocking=true)
+    nblocks=cld(Int(F),16);grid_full=nblocks*nblocks*256;grid_half=nblocks*cld(Int(H+1),16)*256
+    for step in 0:iterations-1
+        fill!(a.w,0f0);fill!(a.potential,0f0)
+        if step==250;c=merge(c,(momentum=.8f0,exaggeration=1f0));end
+        launch!(Val(8),Int(N),a,c)
+        lo=minimum(a.points);hi=maximum(a.points);c=merge(c,(mincoord=lo,width=(hi-lo)/Float32(B)))
+        launch!(Val(9),Int(B*B),a,c);launch!(Val(10),Int(H*H),a,c);CUDA.device_synchronize(blocking=true)
+        c=merge(c,(term=Int32(-1),));launch!(Val(11),grid_full,a,c);CUDA.device_synchronize(blocking=true);launch!(Val(12),grid_half,a,c);CUDA.device_synchronize(blocking=true)
+        launch!(Val(13),Int(N),a,c);CUDA.device_synchronize(blocking=true)
+        c=merge(c,(axis=Int32(0),));launch!(Val(14),Int(3N),a,c);CUDA.device_synchronize(blocking=true)
+        c=merge(c,(axis=Int32(1),));launch!(Val(14),Int(3N),a,c);CUDA.device_synchronize(blocking=true)
+        launch!(Val(15),Int(36N),a,c);CUDA.device_synchronize(blocking=true);launch!(Val(16),Int(4H*H),a,c);CUDA.device_synchronize(blocking=true)
+        for term in Int32(0):Int32(3)
+            c=merge(c,(term=term,));launch!(Val(11),grid_full,a,c);CUDA.device_synchronize(blocking=true);launch!(Val(12),grid_half,a,c);CUDA.device_synchronize(blocking=true)
+        end
+        launch!(Val(17),Int(4F*(H+1)),a,c);CUDA.device_synchronize(blocking=true)
+        for term in Int32(0):Int32(3)
+            c=merge(c,(term=term,));launch!(Val(18),grid_full,a,c);CUDA.device_synchronize(blocking=true);launch!(Val(19),grid_full,a,c);CUDA.device_synchronize(blocking=true)
+        end
+        launch!(Val(20),Int(4H*H),a,c);CUDA.device_synchronize(blocking=true);launch!(Val(21),Int(36N),a,c);CUDA.device_synchronize(blocking=true)
+        launch!(Val(22),Int(N),a,c);CUDA.device_synchronize(blocking=true);c=merge(c,(normalization=sum(a.norm)-Float32(N),))
+        launch!(Val(23),Int(N*K),a,c);launch!(Val(24),Int(N),a,c);CUDA.device_synchronize(blocking=true)
+        launch!(Val(25),Int(N),a,c);CUDA.device_synchronize(blocking=true);gradient_norm=sqrt(sum(abs2,a.old))
+        gradient_norm<0f0 && break
+    end
+    CUDA.device_synchronize(blocking=true)
+    t=time_ns()
+    for (name,key) in zip(OUTPUT_NAMES,OUTPUT_KEYS)
+        v=Array(getproperty(a,key));captured[name]=eltype(v)==ComplexF32 ? collect(reinterpret(Float32,v)) : Float32.(v)
+    end
+    captured["normalization"]=Float32[c.normalization]
+    CUDA.device_synchronize(blocking=true);observer_ns+=time_ns()-t
+    for v in values(a);CUDA.unsafe_free!(v);end
+    CUDA.device_synchronize(blocking=true)
+    seconds=(time_ns()-started-observer_ns)/1e9
+    return captured,seconds
+end
+function main()
+    @assert !CUDA.CUDACore.use_nonblocking_synchronization "Owned blocking-wait preference required"
+    println("STUDY_ENV CUDACore_nonblocking_synchronization=",CUDA.CUDACore.use_nonblocking_synchronization)
+    iterations=length(ARGS)>0 ? parse(Int,ARGS[1]) : 3;oracle=length(ARGS)>1 ? ARGS[2] : "/tmp/tsne_oracle_mnist_i3"
+    rawdist=reinterpret(Float32,read(joinpath(SOURCE_DATA,"mnist_faissed","distances")))|>collect;rawidx=reinterpret(Int64,read(joinpath(SOURCE_DATA,"mnist_faissed","indices")))|>collect;initial=parse.(Float32,split(read(joinpath(SOURCE_DATA,"points.txt"),String)))
+    @assert length(rawdist)==60000*32 && length(rawidx)==60000*32 && length(initial)==120000
+    tsne_pipeline(rawdist,rawidx,initial,iterations) # all device specializations JIT outside selected series
+    out=get(ENV,"STUDY_OUTPUT_DIR",mktempdir());private="/tmp/hecbench-portable-infrastructure-private/tsne/"*MODEL*"/pid"*string(getpid());mkpath(private)
+    for trial in 1:5
+        captured,seconds=tsne_pipeline(rawdist,rawidx,initial,iterations);@assert isfinite(seconds)&&seconds>0
+        prefix=["input_distances","input_indices","input_points"];names=vcat(prefix,sort(setdiff(collect(keys(captured)),prefix)));path=joinpath(out,"trial$(trial).f32");offset=0;rows=String[]
+        open(path,"w")do f
+            for name in names
+                v=captured[name];@assert all(isfinite,v);write(f,v);push!(rows,"{\"name\":\"$name\",\"offset\":$offset,\"count\":$(length(v))}");offset+=length(v)
+            end
+        end
+        layout=joinpath(private,"trial$(trial)_layout.json");write(layout,"["*join(rows,",")*"]\n");audit=joinpath(private,"trial$(trial)_independent_audit.json")
+        cmd=setenv(`python3 $(joinpath(@__DIR__,"audit_native.py")) --artifact $path --layout $layout --oracle $oracle --output $audit`,"PYTHONPATH"=>"/tmp/pasc-julia-plot-tools");pass=success(pipeline(cmd,stdout=stdout,stderr=stderr))
+        println("STUDY_TRIAL {\"trial\":$trial,\"time_seconds\":$seconds,\"correct\":$pass,\"checked_values\":$offset,\"max_abs_error\":null,\"max_rel_error\":null,\"jit_excluded\":true,\"timing_valid\":true,\"timing_region\":\"complete_RunTsne_minus_source_file_IO_and_observer\",\"output_artifact\":{\"path\":\"$path\",\"dtype\":\"float32\",\"count\":$offset},\"independent_audit\":\"$audit\"}");flush(stdout);pass||exit(2)
+    end
+end

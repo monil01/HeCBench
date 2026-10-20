@@ -1,0 +1,22 @@
+#include <chrono>
+#include <thrust/complex.h>
+#include <map>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <iomanip>
+#include <filesystem>
+#include <cmath>
+#include <sstream>
+#include <unistd.h>
+#include "../../src/tsne-cuda/common.h"
+static std::map<std::string,std::vector<float>> captured;
+static double observe_seconds=0;
+template<class T> float scalar_f32(T x){return float(x);}
+template<> float scalar_f32<thrust::complex<float>>(thrust::complex<float>x){return x.real();}
+template<class T> void observe(const std::string&name,const thrust::device_vector<T>&d){auto t=std::chrono::steady_clock::now();thrust::host_vector<T> h=d;auto&v=captured[name];v.clear();v.reserve(h.size());for(auto x:h)v.push_back(float(x));observe_seconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();}
+template<> void observe(const std::string&name,const thrust::device_vector<thrust::complex<float>>&d){auto t=std::chrono::steady_clock::now();thrust::host_vector<thrust::complex<float>>h=d;auto&v=captured[name];v.clear();v.reserve(h.size()*2);for(auto x:h){v.push_back(x.real());v.push_back(x.imag());}observe_seconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();}
+void observe_scalar(const std::string&name,float x){captured[name]={x};}
+#include "observed_fit.inc"
+struct NullBuffer:std::streambuf{int overflow(int c)override{return c;}};
+int main(int argc,char**argv){try{int iterations=argc>1?std::stoi(argv[1]):3;std::string out=getenv("STUDY_OUTPUT_DIR")?getenv("STUDY_OUTPUT_DIR"):"/tmp/tsne-native-capture";std::filesystem::create_directories(out);NullBuffer null;auto*original=std::cout.rdbuf();std::vector<std::string>prefix={"input_distances","input_indices","input_points"};for(int trial=0;trial<=5;trial++){captured.clear();observe_seconds=0;tsne::Options opt(nullptr,60000,50,nullptr);opt.perplexity=50;opt.num_neighbors=32;opt.iterations=iterations;opt.iterations_no_progress=iterations;opt.verbosity=0;opt.initialization=tsne::TSNE_INIT::GAUSSIAN;cudaDeviceSynchronize();std::cout.rdbuf(&null);auto t=std::chrono::steady_clock::now();double io=tsne::RunTsne(opt);cudaDeviceSynchronize();double sec=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count()-io/1000.0-observe_seconds;std::cout.rdbuf(original);if(trial==0)continue;std::string private_dir="/tmp/hecbench-portable-infrastructure-private/tsne/native/pid"+std::to_string(getpid());std::filesystem::create_directories(private_dir);std::string file=out+"/trial"+std::to_string(trial)+".f32";std::ofstream f(file,std::ios::binary);size_t count=0;bool finite=true;std::ostringstream layout;layout<<"[";bool first=true;auto write=[&](const std::string&name){auto&v=captured.at(name);for(float x:v)finite=finite&&std::isfinite(x);f.write(reinterpret_cast<char*>(v.data()),v.size()*4);if(!first)layout<<",";first=false;layout<<"{\"name\":\""<<name<<"\",\"offset\":"<<count<<",\"count\":"<<v.size()<<"}";count+=v.size();};for(auto&name:prefix)write(name);for(auto&kv:captured)if(std::find(prefix.begin(),prefix.end(),kv.first)==prefix.end())write(kv.first);layout<<"]";f.close();std::ofstream lf(private_dir+"/trial"+std::to_string(trial)+"_layout.json");lf<<layout.str()<<"\n";lf.close();std::string oracle=argc>2?argv[2]:"/tmp/tsne_oracle_mnist_i3";std::string audit="PYTHONPATH=/tmp/pasc-julia-plot-tools python3 /home/imo/HeCBench_julia/src/tsne-julia/audit_native.py --artifact "+file+" --layout "+private_dir+"/trial"+std::to_string(trial)+"_layout.json --oracle "+oracle+" --output "+private_dir+"/trial"+std::to_string(trial)+"_independent_audit.json";finite=finite&&(std::system(audit.c_str())==0);std::cout<<std::setprecision(17)<<"STUDY_TRIAL {\"trial\":"<<trial<<",\"time_seconds\":"<<sec<<",\"correct\":"<<(finite?"true":"false")<<",\"checked_values\":"<<count<<",\"max_abs_error\":null,\"max_rel_error\":null,\"jit_excluded\":true,\"timing_valid\":true,\"timing_region\":\"complete_RunTsne_minus_source_file_IO_and_observer\",\"input_contract\":\"original_mnist60000_knn32_initial_points\",\"output_artifact\":{\"path\":\""<<file<<"\",\"dtype\":\"float32\",\"count\":"<<count<<"},\"native_check\":\"fullfinite_capture_and_mandatory_independent_field_audit\"}"<<std::endl;if(!finite||!std::isfinite(sec)||sec<=0)return 2;}return 0;}catch(std::exception&e){std::cerr<<e.what()<<std::endl;return 1;}}
