@@ -1,0 +1,523 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "mriQ",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/mriQ.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_class": "framework_device_kernel",
+    "algorithm": "Two source algorithms: squared complex magnitude then sequential direct Fourier accumulation, same tile and pair order.",
+    "work_item_mapping": "One K per Phi work item; one spatial point per Q work item,256threads,1024K tiles.",
+    "layout": "Separate contiguous Float32 input arrays, flattened AoS4 K tile, separate Qreal/Qimag, payload offset guards.",
+    "storage_precision": "Float32",
+    "compute_precision": "Float32",
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float32 little-endian",
+    "memory_hierarchy": "Native constant-memory K tile; Julia global-memory K tile, each lane reuses spatial coordinates and Q accumulators in registers.",
+    "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+    "resource_policy": "256threads; JACC fresh explicitper-sizeblocks/shmem0; KA CUDABackend allocation, JACC.array CUDAbackend.",
+    "library_boundary": "Framework device kernels, no foreign nativeGPU kernel or vendorlibrary delegation.",
+    "host_control_boundary": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "source_evidence": [
+      {
+        "path": "src/mriQ-julia/mriQ-julia-JACC/main.jl",
+        "sha256": "e585022732d08c94b534c6bba5a9daab8a88b023b3e56aa1578b908e030f573e"
+      }
+    ],
+    "bottleneck_hypothesis": "Mixed hostlaunch/upload and arithmetic; notmeasuredrooflineposition."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Two source algorithms: squared complex magnitude then sequential direct Fourier accumulation, same tile and pair order.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "julia_language_version": "1.12.6",
+    "work_item_mapping": "One K per Phi work item; one spatial point per Q work item,256threads,1024K tiles.",
+    "layout": "Separate contiguous Float32 input arrays, flattened AoS4 K tile, separate Qreal/Qimag, payload offset guards.",
+    "storage_precision": "Float32",
+    "compute_precision": "Float32",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float32 little-endian",
+    "memory_hierarchy_and_access": "Native constant-memory K tile; Julia global-memory K tile, each lane reuses spatial coordinates and Q accumulators in registers.",
+    "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+    "atomics_and_reductions": null,
+    "resource_policy": "256threads; JACC fresh explicitper-sizeblocks/shmem0; KA CUDABackend allocation, JACC.array CUDAbackend.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework device kernels, no foreign nativeGPU kernel or vendorlibrary delegation.",
+    "host_control_boundary": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/mriQ-julia/mriQ-julia-JACC/main.jl",
+        "sha256": "e585022732d08c94b534c6bba5a9daab8a88b023b3e56aa1578b908e030f573e"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "mriQ",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "review_status": "source_reviewed",
+      "scientific_task": "MRI nonuniform k-space Q structure for convolution-based Hessian multiplication",
+      "mathematical_operation": "Compute squared complex Fourier basis magnitude, then weighted direct complex Fourier sum for each spatial sample.",
+      "community_use_case": "Building block for MRI reconstruction with arbitrary k-space trajectories; no complete reconstruction or diagnostic image certificate.",
+      "accuracy_requirements": "Independent Float64 direct Fourier oracle using actual Float32 coordinates/basis; all outputs/intermediate Phi, analytic controls and guards.",
+      "source_evidence": [
+        {
+          "path": "src/mriQ-cuda/main.cu",
+          "sha256": "ac06ff7892a5123bd86bd9d27cf11ed5ed5bc1c38bd6d807897fe347bcfde7f3"
+        },
+        {
+          "path": "src/mriQ-cuda/computeQ.cu",
+          "sha256": "5f97a437d44a65a58031ab739c0f545ef1c119f322163640386fb14be3544d06"
+        }
+      ]
+    },
+    "primary_motif": "complex_direct_fourier_sum",
+    "verification_contract": {
+      "configuration_id": "mriq_phi_and_complexQ_5cases_even_multitile_alignedX_v1",
+      "cases": [
+        [
+          1,
+          256
+        ],
+        [
+          2,
+          256
+        ],
+        [
+          257,
+          512
+        ],
+        [
+          1024,
+          256
+        ],
+        [
+          1026,
+          512
+        ]
+      ],
+      "storage_compute_precision": "Float32",
+      "independent_oracle_precision": "Float64",
+      "input_prefix_count": 32170,
+      "artifact_values": 55100,
+      "guard": 4096.25,
+      "atol": 0.0001,
+      "rtol": 2e-05,
+      "preconditions": "X aligned256 because originalQ kernel has no bounds check. OddK only below1024; no claim for odd multi-tile path, whose source odd-branch/tile pairing requires separate review.",
+      "scope": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+      "controls": "Allarraysactualreadbacks+guards. FullFloat64directFourierweighted sum; zero spatial sample has exactsumPhi and zeroimaginary; singlefrequencyconstantmagnitude and pairedoppositefrequencyimaginarycancellation controls.",
+      "tolerance_basis": "Declaredbeforefirstexecution forFloat32sequential1026terms andnativefasttrig; independentFloat64physicalphase. Originalsourcehasnofullaccuracycheck, so nooriginalthresholdweakened.",
+      "arithmetic_confounds": "NativeMakefile-use_fast_math retained; CUDAconstant tile versus Julia global device tile and frameworkmath path recorded. No causal abstraction or roofline claim."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Two source algorithms: squared complex magnitude then sequential direct Fourier accumulation, same tile and pair order.",
+        "work_item_mapping": "One K per Phi work item; one spatial point per Q work item,256threads,1024K tiles.",
+        "layout": "Separate contiguous Float32 input arrays, flattened AoS4 K tile, separate Qreal/Qimag, payload offset guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant-memory K tile; Julia global-memory K tile, each lane reuses spatial coordinates and Q accumulators in registers.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "256threads; JACC fresh explicitper-sizeblocks/shmem0; KA CUDABackend allocation, JACC.array CUDAbackend.",
+        "library_boundary": "Framework device kernels, no foreign nativeGPU kernel or vendorlibrary delegation.",
+        "host_control_boundary": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "source_evidence": [
+          {
+            "path": "src/mriQ-julia/mriQ-julia-cuda.jl/main.jl",
+            "sha256": "c931b65c3def59cdfe59c9901b246efc6afcfa666ff6752303131f3fbafa554d"
+          }
+        ],
+        "bottleneck_hypothesis": "Mixed hostlaunch/upload and arithmetic; notmeasuredrooflineposition."
+      },
+      "ka": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Two source algorithms: squared complex magnitude then sequential direct Fourier accumulation, same tile and pair order.",
+        "work_item_mapping": "One K per Phi work item; one spatial point per Q work item,256threads,1024K tiles.",
+        "layout": "Separate contiguous Float32 input arrays, flattened AoS4 K tile, separate Qreal/Qimag, payload offset guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant-memory K tile; Julia global-memory K tile, each lane reuses spatial coordinates and Q accumulators in registers.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "256threads; JACC fresh explicitper-sizeblocks/shmem0; KA CUDABackend allocation, JACC.array CUDAbackend.",
+        "library_boundary": "Framework device kernels, no foreign nativeGPU kernel or vendorlibrary delegation.",
+        "host_control_boundary": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "source_evidence": [
+          {
+            "path": "src/mriQ-julia/mriQ-julia-KA/main.jl",
+            "sha256": "92a0fc77e6345bd2a582549f9c8ce3eb0866593ae38f4a4f177cc891b60e8e7f"
+          }
+        ],
+        "bottleneck_hypothesis": "Mixed hostlaunch/upload and arithmetic; notmeasuredrooflineposition."
+      },
+      "jacc": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Two source algorithms: squared complex magnitude then sequential direct Fourier accumulation, same tile and pair order.",
+        "work_item_mapping": "One K per Phi work item; one spatial point per Q work item,256threads,1024K tiles.",
+        "layout": "Separate contiguous Float32 input arrays, flattened AoS4 K tile, separate Qreal/Qimag, payload offset guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant-memory K tile; Julia global-memory K tile, each lane reuses spatial coordinates and Q accumulators in registers.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "256threads; JACC fresh explicitper-sizeblocks/shmem0; KA CUDABackend allocation, JACC.array CUDAbackend.",
+        "library_boundary": "Framework device kernels, no foreign nativeGPU kernel or vendorlibrary delegation.",
+        "host_control_boundary": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "source_evidence": [
+          {
+            "path": "src/mriQ-julia/mriQ-julia-JACC/main.jl",
+            "sha256": "e585022732d08c94b534c6bba5a9daab8a88b023b3e56aa1578b908e030f573e"
+          }
+        ],
+        "bottleneck_hypothesis": "Mixed hostlaunch/upload and arithmetic; notmeasuredrooflineposition."
+      }
+    },
+    "native_to_julia_mapping": {
+      "status": "same_logical_lane_and_tile_order",
+      "reason": "256threads; 1024K-element tile, odd-prefix belowtilewidth/two-at-a-time order; nativeconstant tile versus Julia global tile explicitresource difference."
+    },
+    "key_confounds": [
+      "Named alignedX/safeoddK cases, no missing externalMRI dataset or defaultscale certificate.",
+      "Native-use_fast_math and constant-memory tile versus Julia math/global-memory path.",
+      "Eleven upload/launch/completion fragments; extra per-tile observation synchronization, no uninterrupted original wrapper timing.",
+      "Root windows cross-benchmark coordination, excluded clean cost calibration.",
+      "No actual profiler counters or causal abstraction penalty claim."
+    ],
+    "timing_completion_scope_review": "src/mriQ-julia/completion_scope_review.json"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/mriQ-julia/mriQ-julia-JACC/main.jl",
+    "sha256": "e585022732d08c94b534c6bba5a9daab8a88b023b3e56aa1578b908e030f573e",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        32,
+        33
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        32,
+        33
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "mriq_phi_and_complexQ_5cases_even_multitile_alignedX_v1",
+      "run_id": "20261019T164500181450Z_mriQ",
+      "result": ".porting-state/portable_julia/runs/20261019T164500181450Z_mriQ/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "54595b74ba0d75e1b1a80749b92f67f6b59435ee500d0a3267fc39745e2f52c3",
+      "source_hash": "32e209f782b5e6b7c95c5c1654bda97dadd3023703649db5f8225f1d93df8270",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T164500181450Z_mriQ/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000953598,
+        0.001082641,
+        0.000946729,
+        0.000942621,
+        0.000944549
+      ],
+      "mean_last_four_seconds": 0.0009791350000000001,
+      "contract": {
+        "configuration_id": "mriq_phi_and_complexQ_5cases_even_multitile_alignedX_v1",
+        "cases": [
+          [
+            1,
+            256
+          ],
+          [
+            2,
+            256
+          ],
+          [
+            257,
+            512
+          ],
+          [
+            1024,
+            256
+          ],
+          [
+            1026,
+            512
+          ]
+        ],
+        "storage_compute_precision": "Float32",
+        "independent_oracle_precision": "Float64",
+        "input_prefix_count": 32170,
+        "artifact_values": 55100,
+        "guard": 4096.25,
+        "atol": 0.0001,
+        "rtol": 2e-05,
+        "preconditions": "X aligned256 because originalQ kernel has no bounds check. OddK only below1024; no claim for odd multi-tile path, whose source odd-branch/tile pairing requires separate review.",
+        "scope": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing.",
+        "controls": "Allarraysactualreadbacks+guards. FullFloat64directFourierweighted sum; zero spatial sample has exactsumPhi and zeroimaginary; singlefrequencyconstantmagnitude and pairedoppositefrequencyimaginarycancellation controls.",
+        "tolerance_basis": "Declaredbeforefirstexecution forFloat32sequential1026terms andnativefasttrig; independentFloat64physicalphase. Originalsourcehasnofullaccuracycheck, so nooriginalthresholdweakened.",
+        "arithmetic_confounds": "NativeMakefile-use_fast_math retained; CUDAconstant tile versus Julia global device tile and frameworkmath path recorded. No causal abstraction or roofline claim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "9ade729cefc57b49c5d5",
+        "benchmark_id": "mriQ",
+        "implementation_model": "jacc",
+        "taxonomy_code": "B3",
+        "phase": "device_jit_argument_validation",
+        "origin_model": "jacc",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/mriQ.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "implementation_model": "jacc",
+          "origin_model": "jacc",
+          "taxonomy_code": "B3",
+          "error_tag": "B3",
+          "phase": "device_jit_argument_validation",
+          "is_failure": true,
+          "candidate": 1,
+          "program_evaluation": 1,
+          "device_compilation_reached": true,
+          "cause": "JACC.Array resolves Base.Array host storage; GPUCompiler rejects host Vector-backed SubArray non-isbits arguments. Pinned JACC1.4.0 portable allocation API is lowercase JACC.array.",
+          "resolution": "Change host allocator to JACC.array, unchanged two mathematical device bodies, require fresh full five-trial verification.",
+          "run": ".porting-state/portable_julia/runs/20261019T164249717468Z_mriQ/result.json",
+          "source_sha256": "382155e7e060f46aed116c38cadad42c8058ff5746933ced2fb07e3eae78ce38",
+          "recorded_at": "2026-10-19T16:45:00.120467+00:00"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 2,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 1,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "observed_context_inclusive_activity_window",
+      "input_tokens": 1814282,
+      "cached_input_tokens": 1781376,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5416,
+      "reasoning_output_tokens": 1792,
+      "total_tokens": 1819698,
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/mriQ/jacc_translation.jsonl",
+      "measurement_kind": "observed_harness_cumulative_usage_boundary",
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "marker_lag_begin_seconds": 25.564887,
+      "marker_lag_end_seconds": 12.594157,
+      "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-19T16:27:05.383Z",
+        "scope": "Observed configured identifier; exact serving snapshot/seed/temperature unknown."
+      },
+      "estimates": null,
+      "phase_scope_erratum": "Later-phase root coordination included reference reruns, not exclusive per-target costs. See reuse_configuration_erratum.json."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "159a1d4a22f0423abb2d6105",
+        "begin_event_id": "aeed6e03064a89e224af1365",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T16:46:17.423157+00:00",
+        "usage_event_timestamp": "2026-10-19T16:46:04.829Z",
+        "elapsed_usage_event_start": "2026-10-19T16:42:24.052Z",
+        "delta_usage": {
+          "input_tokens": 1814282,
+          "cached_input_tokens": 1781376,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5416,
+          "reasoning_output_tokens": 1792,
+          "total_tokens": 1819698
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 12.594157,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "d705ec013aca0abf8fcd1b76a22a60dfd4d3dfca6fb1680ddec35bf4e7a0c563",
+        "meter_driver_sha256": "709250f613707c472ae55c56dc50a7f668fc761533d3f97c722a0c0b316348ab",
+        "note": "JACCcandidate2passesall5full55100artifacts dualrefs, exact32170actualinputprefix+Float64oracle. Candidate1B3 hostArray non-isbits GPUargument rejection, candidate2lowercaseJACC.arrayallocator, two mathkernelsunchanged. Rawreference reruns beforecorrectreusekeys preserved; seeerratum. Rootcoordination/LRcommitsinterleaved/excludedclean calibration.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T16:27:05.383Z",
+          "scope": "Observed configured identifier; exact serving snapshot/seed/temperature unknown."
+        },
+        "begin_marker_lag_seconds": 25.564887,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/mriQ/jacc_translation.jsonl",
+        "evidence_sha256": "4b27e002a4538aa29780e71d264f8426bf6a6de3cd859e0a292cdca0819fcc59",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 1
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/mriQ-julia-jacc/manifest.json",
+    "selected_sha256": "7fe01062d6f2aae4170d4562ac9dc68d6578d04059f49b681587fe8e19d8722d",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/mriQ-julia-jacc/manifest.json",
+        "sha256": "7fe01062d6f2aae4170d4562ac9dc68d6578d04059f49b681587fe8e19d8722d"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "a10ba3caa5dbaa35cabad5d0d8282ab9bcc2123e",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261019T164500181450Z_mriQ/result.json",
+    "configuration_id": "mriq_phi_and_complexQ_5cases_even_multitile_alignedX_v1",
+    "unsupported_features": [],
+    "source_scope": "CompletePhi magnitude plus complexQ computation across5 deterministic fixtures. Sum11 host-timed upload/launch/completionfragments:5Phi and6K-tileQ fragments. Qfragments include tileH2D; observations, initialinputs, allocation andhostkValsconstruction excluded uniformly. Notoriginal externalMRI dataset/default scale/CLI I/O or uninterrupted wrapper timing."
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/mriQ.json",
+    "annotation_sha256": "c55c174197bfad93de1908f89efd27400a9431a1cd5b502c5640bb356e0ec863",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

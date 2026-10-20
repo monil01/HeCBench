@@ -1,0 +1,1350 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "streamPriority",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/streamPriority.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Source ML-like synthetic pipeline:256step alternating forward\u2192sin,256step activation/gradient recurrence\u2192sin/cos, SGDupdate,256step integer-like prefetch; default serial and priority event-controlled schedules.",
+    "work_item_mapping": "Four authoredframework kernels,256threads,zero sharedmemory. Allmodels use explicitCUDA.jlhoststreampriority/event/streamselection APIs, isolated as hybridhostcontrol components. Nativepriority streamsnonblocking, actualrangequeried, freshneverrecordedfirst-fetch wait follows source semantics.",
+    "storage_precision": [
+      "Float32 prefetch/weights/gradin/activation/gradout arrays"
+    ],
+    "compute_precision": [
+      "Float32 256step additions, sin/cos and division",
+      "Float32 SGD fused multiply-add",
+      "Int32 thread/index/parity arithmetic"
+    ],
+    "synchronization": [
+      "legacydefault serial kernel order and contextcompletion",
+      "nonblocking hightrain/lowprefetch streams",
+      "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+      "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+    ],
+    "launch_geometry": {
+      "threads": 256,
+      "shared_bytes": 0,
+      "cases": [
+        [
+          1025,
+          4,
+          0
+        ],
+        [
+          8193,
+          5,
+          1
+        ]
+      ],
+      "source_batch_iterations": [
+        4,
+        5
+      ],
+      "kernel_arithmetic_iterations": 256,
+      "percase_kernellaunches": [
+        16,
+        20
+      ],
+      "modes": [
+        "default_contextcompletion",
+        "priority_traincompletion"
+      ]
+    },
+    "resource_policy": "256threads,zero sharedbytes; JACC shmem_size=0explicitforall4kernels.",
+    "backend_extensions": [],
+    "implementation_class": "hybrid_host_control",
+    "source_sha256": "cd962a66b750a079a0713db5f23d69da03cdf2b76a96d22eb2f8dc8b3e6b52fd",
+    "reference_repair": null,
+    "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "authored_device_kernel_definitions": 4,
+    "component_classes": {
+      "authored_device_kernels": "framework_device_kernel",
+      "host_orchestration": "CUDA.jl priority/event/legacy stream control"
+    },
+    "cuda_host_extensions": [
+      "CuStream(nonblocking,priority)",
+      "CuEvent record/wait",
+      "CUDA.stream! currentstreamselection",
+      "blocking stream/contextcompletion"
+    ],
+    "cuda_device_extension_calls": [],
+    "host_oracle_precision": [
+      "Independent Python pairedFloat32recurrence and integerstageclosedform",
+      "Float32trig values referencedto correctlyrounded mathematical target withinoriginal1e-3",
+      "hostlibm fmaf SGSsingle-rounding oracle"
+    ],
+    "artifact_encoding": "Float32 all5buffers and actualpriority/dimension controls",
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "All4sourcekernels,256iterations,256threads,per-modehostsubmission/eventdependencies andtimercompletion boundaries retained. Namedarrays/initialvariedfixture scopeexplicit; nativecode unchanged."
+    },
+    "distinct_device_candidates": 1,
+    "program_validation_checks": 1,
+    "device_jit_processes": 1,
+    "device_candidate_failure_attempts": 0,
+    "shared_host_lifecycle_repairs": 0,
+    "final_prefetch_completion_after_priority_timer": true,
+    "source_dependencies_sha256": {
+      "/home/imo/HeCBench_julia/src/streamPriority-julia/streamPriority-julia-JACC/study_kernels.jl": "88c8f14135be7274801739bb0ad03e9d5bf3ef9c0260e9a52d6a026c28a59e90",
+      "/home/imo/HeCBench_julia/src/streamPriority-julia/study_arithmetic.jl": "d8b9776ded26038d81576298919415a8ec7dc8b69348771a27d731c8ee36fa90",
+      "/home/imo/HeCBench_julia/src/streamPriority-julia/study_common.jl": "3ec08d8f6b022b1f9b327bb211e1c4c010c92095c17e9eb60ef129ad142cfa04"
+    },
+    "actual_stream_completion_evidence": {
+      "priority_range_log": [
+        "STUDY_PRIORITIES least=0 greatest=-5"
+      ],
+      "actual_priorities_log": [
+        "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+      ],
+      "five_trial_prefetch_pending_at_timer_end": [
+        [
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          false,
+          true,
+          false,
+          true
+        ]
+      ],
+      "query_after_timer": true,
+      "priority_prefetch_completion_wait_after_timer": true,
+      "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+    },
+    "shared_validated_host_harness_reused": true,
+    "benchmark_shared_host_lifecycle_event_id": "streamPriority_shared_event_double_destroy",
+    "source_review_status": "source_reviewed"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source ML-like synthetic pipeline:256step alternating forward\u2192sin,256step activation/gradient recurrence\u2192sin/cos, SGDupdate,256step integer-like prefetch; default serial and priority event-controlled schedules.",
+    "implementation_class": "hybrid_host_control",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Four authoredframework kernels,256threads,zero sharedmemory. Allmodels use explicitCUDA.jlhoststreampriority/event/streamselection APIs, isolated as hybridhostcontrol components. Nativepriority streamsnonblocking, actualrangequeried, freshneverrecordedfirst-fetch wait follows source semantics.",
+    "layout": null,
+    "storage_precision": [
+      "Float32 prefetch/weights/gradin/activation/gradout arrays"
+    ],
+    "compute_precision": [
+      "Float32 256step additions, sin/cos and division",
+      "Float32 SGD fused multiply-add",
+      "Int32 thread/index/parity arithmetic"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Independent Python pairedFloat32recurrence and integerstageclosedform",
+      "Float32trig values referencedto correctlyrounded mathematical target withinoriginal1e-3",
+      "hostlibm fmaf SGSsingle-rounding oracle"
+    ],
+    "artifact_encoding": "Float32 all5buffers and actualpriority/dimension controls",
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "legacydefault serial kernel order and contextcompletion",
+      "nonblocking hightrain/lowprefetch streams",
+      "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+      "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "256threads,zero sharedbytes; JACC shmem_size=0explicitforall4kernels.",
+    "launch_geometry": {
+      "threads": 256,
+      "shared_bytes": 0,
+      "cases": [
+        [
+          1025,
+          4,
+          0
+        ],
+        [
+          8193,
+          5,
+          1
+        ]
+      ],
+      "source_batch_iterations": [
+        4,
+        5
+      ],
+      "kernel_arithmetic_iterations": 256,
+      "percase_kernellaunches": [
+        16,
+        20
+      ],
+      "modes": [
+        "default_contextcompletion",
+        "priority_traincompletion"
+      ]
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "cd962a66b750a079a0713db5f23d69da03cdf2b76a96d22eb2f8dc8b3e6b52fd",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "priority_stream_event_dependency_pointwise_compute_prefetch_pipeline",
+    "storage_precision": [
+      "Float32 prefetch/weights/gradin/activation/gradout arrays"
+    ],
+    "compute_precision": [
+      "Float32 256step additions, sin/cos and division",
+      "Float32 SGD fused multiply-add",
+      "Int32 thread/index/parity arithmetic"
+    ],
+    "synchronization": [
+      "legacydefault serial kernel order and contextcompletion",
+      "nonblocking hightrain/lowprefetch streams",
+      "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+      "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "All4sourcekernels,256iterations,256threads,per-modehostsubmission/eventdependencies andtimercompletion boundaries retained. Namedarrays/initialvariedfixture scopeexplicit; nativecode unchanged."
+    },
+    "implementation_class": {
+      "cuda_jl": "hybrid_host_control",
+      "ka": "hybrid_host_control",
+      "jacc": "hybrid_host_control"
+    },
+    "timing_scope": "sum4 full sourcepermodepipelines; no division bybatchcount. Defaultcontextcompletion, prioritytrainingcompletion; finalprefetchwait outsideprioritytimer.",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "primary_family": "hardware_data_movement",
+      "application_domain": "Synthetic priority-stream scheduling and dependency-overlap demonstration",
+      "secondary_families": [
+        "machine_learning"
+      ],
+      "operator": "Four pointwise oscillatory/trigonometric stages and SGD-like weight recurrence under stream/event dependency graph",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/streamPriority-cuda/main.cu",
+          "sha256": "6ad1dd4e636dd9b4fe78556deef5ee26984497fece1b8d98fe63c8ba1e1b8b4b"
+        },
+        {
+          "path": "src/streamPriority-cuda/kernels.h",
+          "sha256": "2d2cb2426a2e6d24bfe12664f108f3165eff6f1a7783229dc5b5de08b0bf2fe6"
+        }
+      ],
+      "scientific_scope": "Source explicitly simulates training/prefetch; no actualnetwork, specifiedlossgradient or learningaccuracy claim. Prefetch is device arithmetic/bufferwrite, not hostI/O. Independentwitness verifies actualrecurrence andstate, not backpropagationtheory.",
+      "classification_reason": "Primary family follows the actual synthetic stream-priority/overlap scheduling workload. Training-like labels and an SGD-like pointwise update do not establish a defined model, loss, or scientific learning operator; machine learning is secondary advertised application context only. No convergence or training-quality claim."
+    },
+    "keyconfounds": [
+      "Prioritytrainingfinish excludesfinalprefetch completion, whiledefaultwaitsall; crossmode throughputcomparison invalid",
+      "Nativepriorityrange/actualpriorities queried, nothardcoded; actualoverlap/prioritycausalityunprofiled",
+      "Wholepipelinesall3hybridCUDAhostcontrol, authoreddevicecomponentspureframework",
+      "NamedN1025/8193 insteadsourceN2^24; synthetic256stepwork retained",
+      "Julia hoststream/task switching and launch overhead included",
+      "ManagedCUDAevent lifecycle misuse causedfirstJuliaprogramexitfailure despitefivePASS, mustnotclaimfirstprogramsuccess"
+    ],
+    "benchmark": "streamPriority",
+    "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T013405125984Z_streamPriority/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/streamPriority-cuda/main.cu",
+      "native_source_sha256": "6ad1dd4e636dd9b4fe78556deef5ee26984497fece1b8d98fe63c8ba1e1b8b4b",
+      "reviewed_at": "2026-10-18T01:35:52.795419+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Source ML-like synthetic pipeline:256step alternating forward\u2192sin,256step activation/gradient recurrence\u2192sin/cos, SGDupdate,256step integer-like prefetch; default serial and priority event-controlled schedules.",
+        "work_item_mapping": "Four authoredframework kernels,256threads,zero sharedmemory. Allmodels use explicitCUDA.jlhoststreampriority/event/streamselection APIs, isolated as hybridhostcontrol components. Nativepriority streamsnonblocking, actualrangequeried, freshneverrecordedfirst-fetch wait follows source semantics.",
+        "storage_precision": [
+          "Float32 prefetch/weights/gradin/activation/gradout arrays"
+        ],
+        "compute_precision": [
+          "Float32 256step additions, sin/cos and division",
+          "Float32 SGD fused multiply-add",
+          "Int32 thread/index/parity arithmetic"
+        ],
+        "synchronization": [
+          "legacydefault serial kernel order and contextcompletion",
+          "nonblocking hightrain/lowprefetch streams",
+          "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+          "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "cases": [
+            [
+              1025,
+              4,
+              0
+            ],
+            [
+              8193,
+              5,
+              1
+            ]
+          ],
+          "source_batch_iterations": [
+            4,
+            5
+          ],
+          "kernel_arithmetic_iterations": 256,
+          "percase_kernellaunches": [
+            16,
+            20
+          ],
+          "modes": [
+            "default_contextcompletion",
+            "priority_traincompletion"
+          ]
+        },
+        "resource_policy": "256threads,zero sharedbytes.",
+        "backend_extensions": [],
+        "implementation_class": "hybrid_host_control",
+        "source_sha256": "7cee874967b2697d476d524b611899efc0a33c04a118d14392b00f423ab5c28f",
+        "reference_repair": {
+          "phase": "reference_correctness_repair_and_host_orchestration",
+          "taxonomy_code": "S1",
+          "finding": "Historical CUDA.jl prints hardcoded priority range, PASS and timings without executing any training/priority pipeline; its timed_dummy helper is unused. Preserve original bytes; new reference implements all four source computations and real default/priority streams, events and dependencies. Native main defines/calls only ML-training simulation; all source device/reference functions audited and unchanged.",
+          "original_main_sha256": "657f593b460317e21c512ce4c00a6768470a41ee5d5057606ad51a99c53301b6",
+          "native_source_sha256": "6ad1dd4e636dd9b4fe78556deef5ee26984497fece1b8d98fe63c8ba1e1b8b4b",
+          "native_kernel_header_sha256": "2d2cb2426a2e6d24bfe12664f108f3165eff6f1a7783229dc5b5de08b0bf2fe6",
+          "native_source_unchanged": true,
+          "all_source_usecases": [
+            "use_case_ml_training"
+          ],
+          "native_default_N": 16777216,
+          "named_N": [
+            1025,
+            8193
+          ],
+          "prior_context_exposure": "Root read oldstub/Makefile and initialnativeusecaseheader only before transfer, no draft/meter; receivingworker BEGIN precedes fullsourceaudit."
+        },
+        "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 4,
+        "component_classes": {
+          "authored_device_kernels": "framework_device_kernel",
+          "host_orchestration": "CUDA.jl priority/event/legacy stream control"
+        },
+        "cuda_host_extensions": [
+          "CuStream(nonblocking,priority)",
+          "CuEvent record/wait",
+          "CUDA.stream! currentstreamselection",
+          "blocking stream/contextcompletion"
+        ],
+        "cuda_device_extension_calls": [],
+        "host_oracle_precision": [
+          "Independent Python pairedFloat32recurrence and integerstageclosedform",
+          "Float32trig values referencedto correctlyrounded mathematical target withinoriginal1e-3",
+          "hostlibm fmaf SGSsingle-rounding oracle"
+        ],
+        "artifact_encoding": "Float32 all5buffers and actualpriority/dimension controls",
+        "native_to_julia_mapping": {
+          "status": "matched",
+          "reason": "All4sourcekernels,256iterations,256threads,per-modehostsubmission/eventdependencies andtimercompletion boundaries retained. Namedarrays/initialvariedfixture scopeexplicit; nativecode unchanged."
+        },
+        "distinct_device_candidates": 1,
+        "program_validation_checks": 2,
+        "device_jit_processes": 2,
+        "device_candidate_failure_attempts": 0,
+        "shared_host_lifecycle_repairs": 1,
+        "final_prefetch_completion_after_priority_timer": true,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_reference_kernels.jl": "8f23c42979e69d4f0722fb98a3eae0a26a06e084dc1bd6f18fd8e31be767a127",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_arithmetic.jl": "d8b9776ded26038d81576298919415a8ec7dc8b69348771a27d731c8ee36fa90",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_common.jl": "3ec08d8f6b022b1f9b327bb211e1c4c010c92095c17e9eb60ef129ad142cfa04"
+        },
+        "actual_stream_completion_evidence": {
+          "priority_range_log": [
+            "STUDY_PRIORITIES least=0 greatest=-5"
+          ],
+          "actual_priorities_log": [
+            "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+          ],
+          "five_trial_prefetch_pending_at_timer_end": [
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ]
+          ],
+          "query_after_timer": true,
+          "priority_prefetch_completion_wait_after_timer": true,
+          "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+        },
+        "shared_validated_host_harness_reused": false,
+        "benchmark_shared_host_lifecycle_event_id": "streamPriority_shared_event_double_destroy",
+        "source_review_status": "source_reviewed"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Source ML-like synthetic pipeline:256step alternating forward\u2192sin,256step activation/gradient recurrence\u2192sin/cos, SGDupdate,256step integer-like prefetch; default serial and priority event-controlled schedules.",
+        "work_item_mapping": "Four authoredframework kernels,256threads,zero sharedmemory. Allmodels use explicitCUDA.jlhoststreampriority/event/streamselection APIs, isolated as hybridhostcontrol components. Nativepriority streamsnonblocking, actualrangequeried, freshneverrecordedfirst-fetch wait follows source semantics.",
+        "storage_precision": [
+          "Float32 prefetch/weights/gradin/activation/gradout arrays"
+        ],
+        "compute_precision": [
+          "Float32 256step additions, sin/cos and division",
+          "Float32 SGD fused multiply-add",
+          "Int32 thread/index/parity arithmetic"
+        ],
+        "synchronization": [
+          "legacydefault serial kernel order and contextcompletion",
+          "nonblocking hightrain/lowprefetch streams",
+          "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+          "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "cases": [
+            [
+              1025,
+              4,
+              0
+            ],
+            [
+              8193,
+              5,
+              1
+            ]
+          ],
+          "source_batch_iterations": [
+            4,
+            5
+          ],
+          "kernel_arithmetic_iterations": 256,
+          "percase_kernellaunches": [
+            16,
+            20
+          ],
+          "modes": [
+            "default_contextcompletion",
+            "priority_traincompletion"
+          ]
+        },
+        "resource_policy": "256threads,zero sharedbytes.",
+        "backend_extensions": [],
+        "implementation_class": "hybrid_host_control",
+        "source_sha256": "29bfe312d398a142c3a13509efece33b4549970dcf66bfbb9df4c09e97c26acf",
+        "reference_repair": null,
+        "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 4,
+        "component_classes": {
+          "authored_device_kernels": "framework_device_kernel",
+          "host_orchestration": "CUDA.jl priority/event/legacy stream control"
+        },
+        "cuda_host_extensions": [
+          "CuStream(nonblocking,priority)",
+          "CuEvent record/wait",
+          "CUDA.stream! currentstreamselection",
+          "blocking stream/contextcompletion"
+        ],
+        "cuda_device_extension_calls": [],
+        "host_oracle_precision": [
+          "Independent Python pairedFloat32recurrence and integerstageclosedform",
+          "Float32trig values referencedto correctlyrounded mathematical target withinoriginal1e-3",
+          "hostlibm fmaf SGSsingle-rounding oracle"
+        ],
+        "artifact_encoding": "Float32 all5buffers and actualpriority/dimension controls",
+        "native_to_julia_mapping": {
+          "status": "matched",
+          "reason": "All4sourcekernels,256iterations,256threads,per-modehostsubmission/eventdependencies andtimercompletion boundaries retained. Namedarrays/initialvariedfixture scopeexplicit; nativecode unchanged."
+        },
+        "distinct_device_candidates": 1,
+        "program_validation_checks": 1,
+        "device_jit_processes": 1,
+        "device_candidate_failure_attempts": 0,
+        "shared_host_lifecycle_repairs": 0,
+        "final_prefetch_completion_after_priority_timer": true,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/streamPriority-julia-KA/study_kernels.jl": "8cea13006763dbd989c0ced1ba81580c914c62c9f18c057a5cbc94a3c41e1a7c",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_arithmetic.jl": "d8b9776ded26038d81576298919415a8ec7dc8b69348771a27d731c8ee36fa90",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_common.jl": "3ec08d8f6b022b1f9b327bb211e1c4c010c92095c17e9eb60ef129ad142cfa04"
+        },
+        "actual_stream_completion_evidence": {
+          "priority_range_log": [
+            "STUDY_PRIORITIES least=0 greatest=-5"
+          ],
+          "actual_priorities_log": [
+            "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+          ],
+          "five_trial_prefetch_pending_at_timer_end": [
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ]
+          ],
+          "query_after_timer": true,
+          "priority_prefetch_completion_wait_after_timer": true,
+          "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+        },
+        "shared_validated_host_harness_reused": true,
+        "benchmark_shared_host_lifecycle_event_id": "streamPriority_shared_event_double_destroy",
+        "source_review_status": "source_reviewed"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Source ML-like synthetic pipeline:256step alternating forward\u2192sin,256step activation/gradient recurrence\u2192sin/cos, SGDupdate,256step integer-like prefetch; default serial and priority event-controlled schedules.",
+        "work_item_mapping": "Four authoredframework kernels,256threads,zero sharedmemory. Allmodels use explicitCUDA.jlhoststreampriority/event/streamselection APIs, isolated as hybridhostcontrol components. Nativepriority streamsnonblocking, actualrangequeried, freshneverrecordedfirst-fetch wait follows source semantics.",
+        "storage_precision": [
+          "Float32 prefetch/weights/gradin/activation/gradout arrays"
+        ],
+        "compute_precision": [
+          "Float32 256step additions, sin/cos and division",
+          "Float32 SGD fused multiply-add",
+          "Int32 thread/index/parity arithmetic"
+        ],
+        "synchronization": [
+          "legacydefault serial kernel order and contextcompletion",
+          "nonblocking hightrain/lowprefetch streams",
+          "fetchdone\u2192nextforward wait; forwarddone\u2192prefetch wait",
+          "priority ROI waits trainonly; prefetch finishesaftertimer forfullchecks"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "shared_bytes": 0,
+          "cases": [
+            [
+              1025,
+              4,
+              0
+            ],
+            [
+              8193,
+              5,
+              1
+            ]
+          ],
+          "source_batch_iterations": [
+            4,
+            5
+          ],
+          "kernel_arithmetic_iterations": 256,
+          "percase_kernellaunches": [
+            16,
+            20
+          ],
+          "modes": [
+            "default_contextcompletion",
+            "priority_traincompletion"
+          ]
+        },
+        "resource_policy": "256threads,zero sharedbytes; JACC shmem_size=0explicitforall4kernels.",
+        "backend_extensions": [],
+        "implementation_class": "hybrid_host_control",
+        "source_sha256": "cd962a66b750a079a0713db5f23d69da03cdf2b76a96d22eb2f8dc8b3e6b52fd",
+        "reference_repair": null,
+        "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "authored_device_kernel_definitions": 4,
+        "component_classes": {
+          "authored_device_kernels": "framework_device_kernel",
+          "host_orchestration": "CUDA.jl priority/event/legacy stream control"
+        },
+        "cuda_host_extensions": [
+          "CuStream(nonblocking,priority)",
+          "CuEvent record/wait",
+          "CUDA.stream! currentstreamselection",
+          "blocking stream/contextcompletion"
+        ],
+        "cuda_device_extension_calls": [],
+        "host_oracle_precision": [
+          "Independent Python pairedFloat32recurrence and integerstageclosedform",
+          "Float32trig values referencedto correctlyrounded mathematical target withinoriginal1e-3",
+          "hostlibm fmaf SGSsingle-rounding oracle"
+        ],
+        "artifact_encoding": "Float32 all5buffers and actualpriority/dimension controls",
+        "native_to_julia_mapping": {
+          "status": "matched",
+          "reason": "All4sourcekernels,256iterations,256threads,per-modehostsubmission/eventdependencies andtimercompletion boundaries retained. Namedarrays/initialvariedfixture scopeexplicit; nativecode unchanged."
+        },
+        "distinct_device_candidates": 1,
+        "program_validation_checks": 1,
+        "device_jit_processes": 1,
+        "device_candidate_failure_attempts": 0,
+        "shared_host_lifecycle_repairs": 0,
+        "final_prefetch_completion_after_priority_timer": true,
+        "source_dependencies_sha256": {
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/streamPriority-julia-JACC/study_kernels.jl": "88c8f14135be7274801739bb0ad03e9d5bf3ef9c0260e9a52d6a026c28a59e90",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_arithmetic.jl": "d8b9776ded26038d81576298919415a8ec7dc8b69348771a27d731c8ee36fa90",
+          "/home/imo/HeCBench_julia/src/streamPriority-julia/study_common.jl": "3ec08d8f6b022b1f9b327bb211e1c4c010c92095c17e9eb60ef129ad142cfa04"
+        },
+        "actual_stream_completion_evidence": {
+          "priority_range_log": [
+            "STUDY_PRIORITIES least=0 greatest=-5"
+          ],
+          "actual_priorities_log": [
+            "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+          ],
+          "five_trial_prefetch_pending_at_timer_end": [
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true
+            ]
+          ],
+          "query_after_timer": true,
+          "priority_prefetch_completion_wait_after_timer": true,
+          "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+        },
+        "shared_validated_host_harness_reused": true,
+        "benchmark_shared_host_lifecycle_event_id": "streamPriority_shared_event_double_destroy",
+        "source_review_status": "source_reviewed"
+      }
+    },
+    "scientific_witness": {
+      "captures_checked": 20,
+      "full5buffer_values": 92180,
+      "input_control_prefix": 92220,
+      "max_abs_error_to_independent_recurrence": 2.384185791015625e-07,
+      "path": ".porting-state/portable_julia/scientific_witnesses_300/streamPriority.json"
+    },
+    "per_component_performance": {
+      "cuda": {
+        "five_trial_seconds": [
+          [
+            6.7691e-05,
+            8.222e-05,
+            6.1521e-05,
+            0.000104261
+          ],
+          [
+            6.326e-05,
+            8.1921e-05,
+            6.2891e-05,
+            0.000103821
+          ],
+          [
+            5.6811e-05,
+            8.1401e-05,
+            6.1341e-05,
+            0.000105681
+          ],
+          [
+            5.661e-05,
+            8.184e-05,
+            6.145e-05,
+            0.000102931
+          ],
+          [
+            5.558e-05,
+            8.074e-05,
+            6.681e-05,
+            0.000108101
+          ]
+        ],
+        "mean_last_four_seconds": [
+          5.806525e-05,
+          8.14755e-05,
+          6.3123e-05,
+          0.00010513349999999999
+        ],
+        "component_order": "N1025/default, N1025/priority, N8193/default, N8193/priority",
+        "crossmode_throughput_comparison_valid": false
+      },
+      "cuda_jl": {
+        "five_trial_seconds": [
+          [
+            7.770100000000001e-05,
+            0.00014388200000000002,
+            8.6841e-05,
+            0.00017924100000000001
+          ],
+          [
+            0.000157591,
+            0.000179192,
+            9.327100000000001e-05,
+            0.00021166200000000002
+          ],
+          [
+            8.9411e-05,
+            0.000152131,
+            9.5111e-05,
+            0.000182792
+          ],
+          [
+            7.974100000000001e-05,
+            0.000144821,
+            8.377100000000001e-05,
+            0.00018355200000000002
+          ],
+          [
+            7.6321e-05,
+            0.000148441,
+            8.7831e-05,
+            0.000180802
+          ]
+        ],
+        "mean_last_four_seconds": [
+          0.000100766,
+          0.00015614625,
+          8.999600000000001e-05,
+          0.000189702
+        ],
+        "component_order": "N1025/default, N1025/priority, N8193/default, N8193/priority",
+        "crossmode_throughput_comparison_valid": false
+      },
+      "ka": {
+        "five_trial_seconds": [
+          [
+            0.00011418100000000001,
+            0.000177452,
+            0.000123401,
+            0.00021281200000000002
+          ],
+          [
+            0.000198072,
+            0.000195572,
+            0.000129001,
+            0.000221852
+          ],
+          [
+            0.000128051,
+            0.000179432,
+            0.000124071,
+            0.000211752
+          ],
+          [
+            0.00012164200000000001,
+            0.00017236200000000001,
+            0.00013228100000000002,
+            0.00021167200000000002
+          ],
+          [
+            0.000125801,
+            0.000182182,
+            0.000125661,
+            0.000212882
+          ]
+        ],
+        "mean_last_four_seconds": [
+          0.00014339150000000002,
+          0.000182387,
+          0.00012775350000000002,
+          0.0002145395
+        ],
+        "component_order": "N1025/default, N1025/priority, N8193/default, N8193/priority",
+        "crossmode_throughput_comparison_valid": false
+      },
+      "jacc": {
+        "five_trial_seconds": [
+          [
+            0.00017377200000000002,
+            0.00023532200000000002,
+            0.00020823100000000002,
+            0.000278873
+          ],
+          [
+            0.00030616300000000003,
+            0.00030006200000000003,
+            0.000200382,
+            0.00028530300000000004
+          ],
+          [
+            0.000188392,
+            0.000240572,
+            0.000196762,
+            0.00029365200000000004
+          ],
+          [
+            0.000179822,
+            0.000227542,
+            0.00019022100000000002,
+            0.000275133
+          ],
+          [
+            0.00017643200000000002,
+            0.00022684200000000002,
+            0.000199742,
+            0.000279283
+          ]
+        ],
+        "mean_last_four_seconds": [
+          0.00021270225000000003,
+          0.0002487545,
+          0.00019677675,
+          0.00028334275000000005
+        ],
+        "component_order": "N1025/default, N1025/priority, N8193/default, N8193/priority",
+        "crossmode_throughput_comparison_valid": false
+      }
+    },
+    "stream_completion_evidence": {
+      "cuda": {
+        "priority_range_log": [
+          "STUDY_PRIORITIES least=0 greatest=-5"
+        ],
+        "actual_priorities_log": [
+          "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+        ],
+        "five_trial_prefetch_pending_at_timer_end": [
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ]
+        ],
+        "query_after_timer": true,
+        "priority_prefetch_completion_wait_after_timer": true,
+        "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+      },
+      "cuda_jl": {
+        "priority_range_log": [
+          "STUDY_PRIORITIES least=0 greatest=-5"
+        ],
+        "actual_priorities_log": [
+          "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+        ],
+        "five_trial_prefetch_pending_at_timer_end": [
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ]
+        ],
+        "query_after_timer": true,
+        "priority_prefetch_completion_wait_after_timer": true,
+        "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+      },
+      "ka": {
+        "priority_range_log": [
+          "STUDY_PRIORITIES least=0 greatest=-5"
+        ],
+        "actual_priorities_log": [
+          "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+        ],
+        "five_trial_prefetch_pending_at_timer_end": [
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ]
+        ],
+        "query_after_timer": true,
+        "priority_prefetch_completion_wait_after_timer": true,
+        "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+      },
+      "jacc": {
+        "priority_range_log": [
+          "STUDY_PRIORITIES least=0 greatest=-5"
+        ],
+        "actual_priorities_log": [
+          "STUDY_ACTUAL_PRIORITIES train=-5 prefetch=0"
+        ],
+        "five_trial_prefetch_pending_at_timer_end": [
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            false,
+            true
+          ]
+        ],
+        "query_after_timer": true,
+        "priority_prefetch_completion_wait_after_timer": true,
+        "semantics": "Defaultcontextcompletion vsprioritytrainonly; query/extra wait excludedfromall4prioritytimers."
+      }
+    },
+    "classification_convention": "Coordinator existing concurrentKernels convention: wholepipelines hybrid_host_control all3; authoreddevicecomponents framework_device_kernel, no CUDAdeviceextensions inKA/JACC.",
+    "prospective_usage_intervals": [
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/streamPriority/jacc_translation.jsonl",
+        "end_event": "3751a4b6d301e1159fdd7eb4",
+        "delta_usage": {
+          "input_tokens": 851175,
+          "cached_input_tokens": 849280,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4376,
+          "reasoning_output_tokens": 1552,
+          "total_tokens": 855551
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/streamPriority/shared_reference_preparation.jsonl",
+        "end_event": "a476e185cc030040d8632413",
+        "delta_usage": {
+          "input_tokens": 2419823,
+          "cached_input_tokens": 2308352,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15192,
+          "reasoning_output_tokens": 7088,
+          "total_tokens": 2435015
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/streamPriority/shared_benchmark_workflow.jsonl",
+        "end_event": "7c0d1baeb30263a7a512418f",
+        "delta_usage": {
+          "input_tokens": 7544057,
+          "cached_input_tokens": 7414528,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 31451,
+          "reasoning_output_tokens": 15276,
+          "total_tokens": 7575508
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/streamPriority/ka_translation.jsonl",
+        "end_event": "f366e299f5bd08557c673054",
+        "delta_usage": {
+          "input_tokens": 836786,
+          "cached_input_tokens": 835712,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3163,
+          "reasoning_output_tokens": 2109,
+          "total_tokens": 839949
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ],
+    "scientific_family_adjudication": {
+      "previous_primary_family": "machine_learning",
+      "current_primary_family": "hardware_data_movement",
+      "reason": "Primary family follows the actual synthetic stream-priority/overlap scheduling workload. Training-like labels and an SGD-like pointwise update do not establish a defined model, loss, or scientific learning operator; machine learning is secondary advertised application context only. No convergence or training-quality claim.",
+      "classification_only": true,
+      "measured_source_and_execution_unchanged": true
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/streamPriority-julia/streamPriority-julia-JACC/main.jl",
+    "sha256": "cd962a66b750a079a0713db5f23d69da03cdf2b76a96d22eb2f8dc8b3e6b52fd",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        7
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "streamPriority_all_native_usecase_two_modes_fullstate_source_completion_v1",
+      "run_id": "20261018T013405125984Z_streamPriority",
+      "result": ".porting-state/portable_julia/runs/20261018T013405125984Z_streamPriority/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "0d4abbd8ac6e214c7c19d1d1071e2738da44349a48995854733801e5fbdf3265",
+      "source_hash": "d4d95e8e63eef4b79e1f93920e19ac8780ce80b8567466b06ec6e4099f5b2d30",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T013405125984Z_streamPriority/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0008961980000000001,
+        0.0010919100000000002,
+        0.0009193780000000001,
+        0.0008727180000000001,
+        0.000882299
+      ],
+      "mean_last_four_seconds": 0.00094157625,
+      "contract": {
+        "source_usecases_audited": [
+          "Only use_case_ml_training is defined/called by native main; all4devicekernels retained"
+        ],
+        "cases": [
+          [
+            1025,
+            4,
+            0
+          ],
+          [
+            8193,
+            5,
+            1
+          ]
+        ],
+        "modes": [
+          "legacy_default",
+          "nonblocking_high_train_low_prefetch"
+        ],
+        "iterations_per_compute_kernel": 256,
+        "threads": 256,
+        "seed0": "Sourceinitialprefetch0,weight1,gradin1; act/gradout fullyinitialized0",
+        "seed1": "Signeddyadicweights/gradin within[-1,1],prefetch0; act/gradout0",
+        "timing": "Defaultcontextcompletion; prioritytrain-streamcompletiononly. Aftertimer completeprefetch beforefullstatechecks. These boundaries matchsourcepermode acrossall4, butcrossmodeelapsednotwholeequalworkthroughput.",
+        "events": "Freshunrecordedfetch firstwait is no-op; subsequent realfetch\u2192nextforward andforward\u2192prefetch eventdependencies. Reusedevents generationorder follows nativehostsubmission.",
+        "outputs": "Completeprefetch,weights,gradin,activation,gradout arrays, notonlysourcegradoutcheck.",
+        "scope": "Namedsmallsynthetic ML-like schedulingpipeline, notfulllearning model/gradient correctnesstheorem, no defaultN2^24performance or prioritybenefitcausalityclaim.",
+        "source_exposure_provenance": "Root read historicalstub/Makefile and initialnativeusecaseheader only before transfer; no draft/meter. Receivingworker prospectiveBEGIN precedes fullsourceaudit."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 154,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/streamPriority-julia/streamPriority-julia-JACC/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "3751a4b6d301e1159fdd7eb4",
+        "begin_event_id": "fd4953dc9127b70494f8f57d",
+        "agent": "/root/maps_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T01:35:52.136675+00:00",
+        "usage_event_timestamp": "2026-10-18T01:35:21.214Z",
+        "elapsed_usage_event_start": "2026-10-18T01:33:32.755Z",
+        "delta_usage": {
+          "input_tokens": 851175,
+          "cached_input_tokens": 849280,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4376,
+          "reasoning_output_tokens": 1552,
+          "total_tokens": 855551
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 30.922675,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "c09e24c7312b154ec1ac6ab062c4d983ddbbec8f5fedbe3f5d6fe0cd0d17002b",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 9.930453,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/streamPriority/jacc_translation.jsonl",
+        "evidence_sha256": "c45fe5b3f8a071b3e33ca9398e69038ed1efc709b05175a2bfcc68c9d6b01c7d",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/streamPriority-julia-jacc/manifest.json",
+    "selected_sha256": "cb3ea0f015de9e10209ff2bf17c7f022d1110c2a159594ad83f77d5b1aeff4ab",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/streamPriority-julia-jacc/manifest.json",
+        "sha256": "cb3ea0f015de9e10209ff2bf17c7f022d1110c2a159594ad83f77d5b1aeff4ab"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "f29a8d7c875d53c76671aa8dfee8b3c3b7fd10ac",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "hybrid_host_control",
+    "annotation_path": ".porting-state/portable_julia/traits/streamPriority.json",
+    "annotation_sha256": "7cf4fd039fb8041823270f47ddfab7b3cc3d6689da1f1bb32def04731e3a36db",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

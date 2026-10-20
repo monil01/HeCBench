@@ -1,0 +1,442 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "attention",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/attention.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Timed normalization reset followed by three kernels:dot/atomicexp_sum,normalize,weighted value reduction.",
+    "mapping": "256-thread groups;4 groups for rows,1 for64 outputfeatures; serial dot and output row sums.",
+    "layout": "Flat row-major Float32 key/value matrices,query,intermediates/output.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 dot,exp,atomic sum,weighted sum"
+    },
+    "implementation_detail": "Inherited three-kernel naiveimpl0, CUDAatomicexp_sum and timedfill! reset.",
+    "memory": "Global arrays only.",
+    "synchronization": [
+      "global atomic normalization",
+      "ordered kernel boundaries"
+    ],
+    "atomic_operations": [
+      "float32 globalexp_sum add"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/attention-julia/attention-julia-cuda.jl/main.jl",
+        "sha256": "80edb38483584b609b2e30c2ac9844f82244ae8217d7d5ce62208454e5b85158",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Timed normalization reset followed by three kernels:dot/atomicexp_sum,normalize,weighted value reduction.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "256-thread groups;4 groups for rows,1 for64 outputfeatures; serial dot and output row sums.",
+    "layout": "Flat row-major Float32 key/value matrices,query,intermediates/output.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 dot,exp,atomic sum,weighted sum",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global arrays only.",
+    "synchronization": [
+      "global atomic normalization",
+      "ordered kernel boundaries"
+    ],
+    "atomics_and_reductions": [
+      "float32 globalexp_sum add"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/attention-julia/attention-julia-cuda.jl/main.jl",
+        "sha256": "80edb38483584b609b2e30c2ac9844f82244ae8217d7d5ce62208454e5b85158",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "attention",
+    "primary_motif": "three_kernel_naive_attention",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "global_atomic"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Naiveimpl0 complete3kernel mapping preserved"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "NativecudaMemset vs Juliafill! timedreset",
+      "Atomicexp_sum order can vary",
+      "Optimizedimpl1/2/3 unported/unmeasured"
+    ],
+    "jacc_shared_memory_policy": "explicit_zero_allthree",
+    "observation": "research/observations/attention.md",
+    "ontology_sha256": "b5b26a00965879551e767b5b45435607bc4f53db8578d5141d5c40bfb6e2c412",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "single_query_dot_product_attention",
+      "scientific_task": "Compute normalized key/query dot-product weights and weighted value output.",
+      "mathematical_operation": "dot_i=sum_j Kij*qj;score_i=exp(dot_i)/sum exp(dot);out_j=sum_i score_i*Vij; no sqrt(d) scaling.",
+      "discretization_or_topology": "1024 key/value rows x64 features, one query.",
+      "invariants": [
+        "Weights positive and approximately sum to1 in finite fixture.",
+        "Output is weighted value combination; no positional/masking stages."
+      ],
+      "accuracy_requirements": [
+        "All1024 dots,1exp_sum,1024scores,64outputs CPU/dualchecked atol1e-3 rtol1e-6."
+      ],
+      "precision_sensitivity": "GlobalFloat32atomic normalization order and exp lowering; no max-subtracted stable softmax in nativeimpl0.",
+      "input_size_regimes": "Naiveimpl0 only,10 repeats; fusedblock/warp/mixedimpl1/2/3 unported/unmeasured.",
+      "community_use_case": "Attention tensor primitive supporting sequence models; no end-to-end model or domain-science application inferred.",
+      "uncertainty": "Single-query unscaled naive attention and bounded fixture, not general multihead masked attention.",
+      "provenance": [
+        {
+          "path": "src/attention-cuda/main.cu",
+          "sha256": "3b1a73442d2a6475ea82618ec4dac1e5e8753e6007964e96a5cb408c1e42f058",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/attention-julia/study_common.jl",
+          "sha256": "54d14186853ddb4558a957eeaab553bf3b2fd1be69de7f4954aed2fb15fc4271",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:19:54.346353+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed normalization reset followed by three kernels:dot/atomicexp_sum,normalize,weighted value reduction.",
+        "mapping": "256-thread groups;4 groups for rows,1 for64 outputfeatures; serial dot and output row sums.",
+        "layout": "Flat row-major Float32 key/value matrices,query,intermediates/output.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 dot,exp,atomic sum,weighted sum"
+        },
+        "implementation_detail": "Inherited three-kernel naiveimpl0, CUDAatomicexp_sum and timedfill! reset.",
+        "memory": "Global arrays only.",
+        "synchronization": [
+          "global atomic normalization",
+          "ordered kernel boundaries"
+        ],
+        "atomic_operations": [
+          "float32 globalexp_sum add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/attention-julia/attention-julia-cuda.jl/main.jl",
+            "sha256": "80edb38483584b609b2e30c2ac9844f82244ae8217d7d5ce62208454e5b85158",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed normalization reset followed by three kernels:dot/atomicexp_sum,normalize,weighted value reduction.",
+        "mapping": "256-thread groups;4 groups for rows,1 for64 outputfeatures; serial dot and output row sums.",
+        "layout": "Flat row-major Float32 key/value matrices,query,intermediates/output.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 dot,exp,atomic sum,weighted sum"
+        },
+        "implementation_detail": "Three globalindex kernels with Atomix normalization sum, same serialfeature loops.",
+        "memory": "Global arrays only.",
+        "synchronization": [
+          "global atomic normalization",
+          "ordered kernel boundaries"
+        ],
+        "atomic_operations": [
+          "float32 globalexp_sum add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/attention-julia/attention-julia-KA/main.jl",
+            "sha256": "ef5fb8d1a2d8ed2827339557ab26083be982c36b51f4acee37f206d3f7466cb7",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed normalization reset followed by three kernels:dot/atomicexp_sum,normalize,weighted value reduction.",
+        "mapping": "256-thread groups;4 groups for rows,1 for64 outputfeatures; serial dot and output row sums.",
+        "layout": "Flat row-major Float32 key/value matrices,query,intermediates/output.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 dot,exp,atomic sum,weighted sum"
+        },
+        "implementation_detail": "Three linearcallbacks, JACC atomic normalization sum, explicitshmem0.",
+        "memory": "Global arrays only, current explicitshmem0.",
+        "synchronization": [
+          "global atomic normalization",
+          "ordered kernel boundaries"
+        ],
+        "atomic_operations": [
+          "float32 globalexp_sum add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/attention-julia/attention-julia-JACC/main.jl",
+            "sha256": "bf3a5440e34d0d83ce5595f963d78168f8941873919358c233852d706b4fc65f",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/attention-julia/attention-julia-cuda.jl/main.jl",
+    "sha256": "80edb38483584b609b2e30c2ac9844f82244ae8217d7d5ce62208454e5b85158",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        72,
+        73,
+        74,
+        98,
+        119
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [
+        30
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_impl0_n1024_d64_reset_three_kernels_allintermediates_repeat10_v1",
+      "run_id": "20261017T001701180361Z_attention",
+      "result": ".porting-state/portable_julia/runs/20261017T001701180361Z_attention/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "37adcbd624bca1221ee781e79d77147fc91326c52ad7e278190bfaed25a5be03",
+      "source_hash": "36959f0eb2df09c7f41835ed789600ee3c59a1b0ebbd8ff98f1c620f5f103155",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T001701180361Z_attention/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0002804273,
+        0.0002842954,
+        0.0002810954,
+        0.0002822674,
+        0.0002816364
+      ],
+      "mean_last_four_seconds": 0.00028232365,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          1024,
+          64
+        ],
+        "fixture": "key=((17*i)%31-15)/128;value=((19*i)%127-63)/64;query=((13*j)%17-8)/64 Float32",
+        "internal_repeats": 10,
+        "implementation": 0,
+        "coverage": "Naiveimpl0 only; fusedblock/warp/mixed impl1/2/3 unported/unmeasured; existingJulia ignores implselector",
+        "timing_operation": "resetexp_sum + dot/exp_atomic + softmaxscores + weightedvalues; reset API differencecudaMemset/fill! included"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "attention-cuda_jl-P1-retrospective-implementation",
+        "benchmark_id": "attention",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/attention.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "attention-cuda_jl-P1-retrospective-implementation",
+          "benchmark": "attention",
+          "model": "cuda_jl",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native timedcudaMemset versus Juliafill!; optimizednativeimpl1/2/3 outside coverage, atomicorder nondeterministic.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/attention-cuda/main.cu",
+              "sha256": "3b1a73442d2a6475ea82618ec4dac1e5e8753e6007964e96a5cb408c1e42f058",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/attention-julia/attention-julia-cuda.jl/main.jl",
+              "sha256": "80edb38483584b609b2e30c2ac9844f82244ae8217d7d5ce62208454e5b85158",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/attention-julia/manifest.json",
+    "selected_sha256": "283cdb461c2cd6db821a92ba5eb3f3062f8bf69e96b38c4cdd3cb91effafca1e",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/attention-julia/manifest.json",
+        "sha256": "283cdb461c2cd6db821a92ba5eb3f3062f8bf69e96b38c4cdd3cb91effafca1e"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/attention.json",
+    "annotation_sha256": "b16c13bd12f944431b4057529db0cfe284f82954307e926a7bca75ad101ba28d",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

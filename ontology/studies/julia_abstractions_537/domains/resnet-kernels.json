@@ -1,0 +1,135 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "resnet-kernels",
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "convolutional_neural_network_operator_kernels",
+    "secondary_domains": [
+      "numerical_linear_algebra",
+      "image_feature_convolution"
+    ],
+    "review_status": "source_reviewed",
+    "scientific_task": "Evaluate fixed-shape ResNet-style channel-preserving Winograd3x3 and channel-reducing/expanding1x1 convolution operators with affine batch-normalization parameters and mode-specific ReLU.",
+    "mathematical_operation": "Winograd F(4x4,3x3): BT*d*B,36 independent channel GEMMs, AT*M*A, then perchannel scale/bias/ReLU. Four1x1 matrix products512->128,128->512,1024->256,256->1024 with affine and ReLU only on reducing paths; output paths intentionally linear.",
+    "discretization": "All six original source modes and full source14x14 feature region; Winograd stores16x16 feature maps and4x4 output tiles with lasttile croppedto2. Named deterministic seed20261018, signed dyadic input/weights/scales/biases, nonzero source padded borders. Original16x16 allocation is extended by34 initializedzero channelvectors for defined source-stride16 patch reads.",
+    "accuracy_requirements": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+    "input_size_regime": "Original feature dimensions and channels, no downscaled proxy; named synthetic parameters rather than original binary files/randomseed. Three complete launches/path for Winograd and one/path for1x1;3 repetitions perpath,5outertrials mean2-5. Does not include six-mode CLI host file IO/allocation/offload timing or full inference graph.",
+    "precision_sensitivity": "Float32GPU inputs/transforms/reductions/affine; independent Float64 CPU matrices/directconvolution. Native defaultO3FMA may differ from Julia expression fusion. Near-zero relative ratios are uninformative; fixed1e-4 absolutecontract and exact guards govern acceptance. No trained-model/task accuracy is inferred.",
+    "community_use_case": "Convolution and bottleneck operators in CNN scientific/image feature models; operator throughput/fidelity may inform implementation choices, without any dataset, trainedResNet, downstreamaccuracy, entireinference or system recommendation claim.",
+    "description": "Original native GPU kernels and launch geometries retained, but a source-proven native allocation OOB is corrected explicitly before measurement. Archived historical Julia elementwise affine/ReLU placeholder is replaced by genuine shared-tile convolution. KA and JACC preserve the channel/tile decompositions and complete three-stage pipeline. Julia outer accumulators are registers rather than native shared output; JACC adds shared template copying and requires fixed-dimension specialization to fit source1024-thread launches.",
+    "provenance": "Native CUDA source four kernel files and original data generator; explicit source-index bounds witness and immutable firsttrialflag/provenance; original Julia+Makefile archived byte-identically. Corrected native allocation stratum excluded from untouched-native aggregates, originalCLI unverified. Newly authored scalar shared helpers attributedonce to reference-repair phase; KA/JACC are marginal ordered reuse costs.",
+    "source_evidence": [
+      {
+        "path": "src/resnet-kernels-cuda/Kernel128_winograd.cu",
+        "sha256": "cce3396c4da96b5ad13f0e44f8910488914a37a91f96326150270c1c8cc28aa8"
+      },
+      {
+        "path": "src/resnet-kernels-cuda/Kernel256_winograd.cu",
+        "sha256": "bfa11555e76293fe052613078e5502c5f733fb49b24b2de02b79b2d2dd0c82b0"
+      },
+      {
+        "path": "src/resnet-kernels-cuda/Kernel128_one.cu",
+        "sha256": "e9b9c77148f7c0c47c99a4b992aa98afe2b73f11d50653b764838d5a85132371"
+      },
+      {
+        "path": "src/resnet-kernels-cuda/Kernel256_one.cu",
+        "sha256": "3adc37fe26c8c927406c4be74e9794f8d57c15ac3c90c1f49a3db8b582cec445"
+      },
+      {
+        "path": "src/resnet-kernels-cuda/data_generator.py",
+        "sha256": "6e6327d6b71c1ce4a3b722e73e2f589c4d4d6dce576cd24dcf094467575da9fb"
+      },
+      {
+        "path": "src/resnet-kernels-julia/reference_history/original_main.jl",
+        "sha256": "9ab1f66bfad88e07447f94b298a47037998601587ee94100c80a945e50a191fe"
+      },
+      {
+        "path": "src/resnet-kernels-julia/input_bounds_witness.json",
+        "sha256": "9f4bdc0486eacb5ec8456b0ecd8aaf8aee8a8c1ce222bcb5f0f7a881408ce235"
+      },
+      {
+        "path": "src/resnet-kernels-julia/reference_correction_provenance.json",
+        "sha256": "bcb1080a5510e6545ac374c2505c5130c150aa1a32ed656451a9943a5c0fdd6b"
+      },
+      {
+        "path": "src/resnet-kernels-julia/independent_artifact_audit.json",
+        "sha256": "ba36ada5b3ec07bc01a897f19e4f771b996c01f138b4012290338fcf0a66472e"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/resnet-kernels.yaml",
+    "frozen_sha256": "ca76a0b5f7d45df32cd86dd5628d6f8373049fa72bc5c4001744def8544cf760",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "numeric_stdout",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "2758f4d01fe564357acf17ca",
+      "begin_event_id": "424084533d034da280f8ca58",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T00:31:19.116354+00:00",
+      "usage_event_timestamp": "2026-10-18T00:30:48.118Z",
+      "elapsed_usage_event_start": "2026-10-18T00:26:13.485Z",
+      "delta_usage": {
+        "input_tokens": 1049912,
+        "cached_input_tokens": 1040128,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11555,
+        "reasoning_output_tokens": 1964,
+        "total_tokens": 1061467
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 30.998354,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "49e042b8242be44273c6a7a7a3e849be4700e822b192d8e8500bc9aedb7756f6",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Full20input/output/guard/border audits anddigestimmutability confirmed; sourcecorrectednativeclassification/provenance, distinctpermodelontology/failures/attempts, perpathfive-times/means, paperobservation andcheckpoint complete. NoGPUreruns. Latermechanicalusage-windowlinkage reportedseparately.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 7.253107,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/shared_annotation.jsonl",
+      "evidence_sha256": "906368860e8e10619d0493796cc95b249e3e8a5ff73b5b2f9a5485bf01799e5a",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "465b2d17f691ecb019143a9b",
+      "begin_event_id": "775f7a213b300233ca1a8fa6",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T00:31:32.427699+00:00",
+      "usage_event_timestamp": "2026-10-18T00:31:19.137Z",
+      "elapsed_usage_event_start": "2026-10-18T00:08:23.165Z",
+      "delta_usage": {
+        "input_tokens": 6746533,
+        "cached_input_tokens": 6637184,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 41628,
+        "reasoning_output_tokens": 10591,
+        "total_tokens": 6788161
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 13.290699,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "ac565708ac631bcfb68cbf1e253cb656f4b843492c284c60a2158278722f0021",
+      "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+      "note": "Allsixpaths/sourceevidence/paper/checkpoint complete, ENDseparateroundafterfinalannotationtoolreply. AnnotationENDwasinthesametoolcallaslastdigest/audithashmetadatawrites: annotationsubwindowrightcensored, wholeworkflowcapturesit. ReferenceENDprecededfinalCPUcomparisonaggregation; wholeworkflowcapturesit. Subsequentusageannexmechanicallinkagenotbackfilled.",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 17.470169,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "c3a5d4e40963e5c57a4d7bddd68bc285bbda5cc384c3211cc79a43ba659399c5",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}

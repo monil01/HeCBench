@@ -1,0 +1,773 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "softmax-online",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/softmax-online.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "softmax-online",
+    "configuration_id": "block_online_kernel4_5shapes_6blocks_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2",
+    "status": "verified",
+    "algorithm": "Same online state/tree, callback global id bitmask/shift, shared1024Float32 template copy and explicit4096B LaunchSpec.",
+    "work_item_mapping": "LaunchSpec threadsW blocksN shared4096; callback global zero-based id >>log2(W) row, id&(W-1) lane.",
+    "layout": "Row-major flatFloat32 logits/probabilities,17 trailing guards; all5 inputframes serialized once, all30 complete outputs retained in fixed shape-major/width-minor order.",
+    "precision": {
+      "storage": [
+        "Float32"
+      ],
+      "compute": [
+        "Float32 online max/sum/exp and normalization",
+        "Float64 independent CPU oracle only"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+      "4096B shared reduction buffer at every width; no atomics.",
+      "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+    ],
+    "resource_policy": {
+      "shared_bytes": 4096,
+      "explicit": true,
+      "register_count": "unprofiled",
+      "template_copy": true,
+      "workgroup_barriers": "2log2(W)+4+1template"
+    },
+    "launch_geometry": "N blocks xW threads; six original widths, only3 blocks for vocabulary50257 case.",
+    "backend_extensions": [
+      "CUDA host allocations/sync/transfers; device code no vendor-library call/inlinePTX/atomics."
+    ],
+    "host_device_boundary": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+    "supported_features": [
+      "Float32 exp",
+      "Perlane online max/sum state",
+      "Workgroup shared max/sum trees",
+      "Six workgroup sizes up to1024",
+      "Full50257column rows"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "Named full source block-online kernel4 across all6 original block sizes and5 shapes including50257columns; modes1..3/default8192rows/fullCLI/modeltaskaccuracy unverified, not framework unsupported.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online",
+    "numerical_contract": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.0020742675,
+      0.0020780815500000003,
+      0.0020737214,
+      0.0020751205,
+      0.00207597755
+    ],
+    "mean_last_four_seconds": 0.00207572525,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/softmax-online-julia/softmax-online-julia-JACC/main.jl",
+        "sha256": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2"
+      },
+      {
+        "path": "src/softmax-online-julia/study_common.jl",
+        "sha256": "b4435587818e5a8b100cecfdc1f40e943e68b3df3cd4b5cdc19c8159e0b27c55"
+      }
+    ],
+    "implementation_source_digest": "811b592a1cc94aba5926eaa8efd4bdc7ea3c19dcde5aa4ac2e2f3cdcc8e5d54c"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Same online state/tree, callback global id bitmask/shift, shared1024Float32 template copy and explicit4096B LaunchSpec.",
+    "implementation_class": "pure_jacc_device_kernel_cuda_benchmark_harness",
+    "declared_environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "LaunchSpec threadsW blocksN shared4096; callback global zero-based id >>log2(W) row, id&(W-1) lane.",
+    "layout": "Row-major flatFloat32 logits/probabilities,17 trailing guards; all5 inputframes serialized once, all30 complete outputs retained in fixed shape-major/width-minor order.",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32 online max/sum/exp and normalization",
+      "Float64 independent CPU oracle only"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+      "4096B shared reduction buffer at every width; no atomics.",
+      "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": 4096,
+      "explicit": true,
+      "register_count": "unprofiled",
+      "template_copy": true,
+      "workgroup_barriers": "2log2(W)+4+1template"
+    },
+    "launch_geometry": "N blocks xW threads; six original widths, only3 blocks for vocabulary50257 case.",
+    "library_backend_boundary": [
+      "CUDA host allocations/sync/transfers; device code no vendor-library call/inlinePTX/atomics."
+    ],
+    "host_control_boundary": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+    "support_boundary": "Named full source block-online kernel4 across all6 original block sizes and5 shapes including50257columns; modes1..3/default8192rows/fullCLI/modeltaskaccuracy unverified, not framework unsupported.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/softmax-online-julia/softmax-online-julia-JACC/main.jl",
+        "sha256": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2"
+      },
+      {
+        "path": "src/softmax-online-julia/study_common.jl",
+        "sha256": "b4435587818e5a8b100cecfdc1f40e943e68b3df3cd4b5cdc19c8159e0b27c55"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "softmax-online",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "rowwise_probability_normalization",
+      "secondary_domains": [
+        "stable_exponential_reductions"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Normalize finite logit rows into probability vectors with a numerically stable two-pass online softmax.",
+      "mathematical_operation": "p_j=exp(x_j-max(x))/sum_k exp(x_k-max(x)); online per-lane maximum/sum state, shared maximum and sum trees, second global scan writes normalized probabilities.",
+      "discretization": "Five (rows,columns) shapes (17,1),(19,31),(33,33),(17,257),(3,50257), each across original32/64/128/256/512/1024thread block sizes; selected nativekernel4 only.",
+      "accuracy_requirements": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+      "community_use_case": "Stable normalization of model logits, including vocabulary-width rows. This is an isolated operator, not model training/inference accuracy or full decoder throughput.",
+      "description": "Genuine historical Julia uses a valid three-pass max/sum/write algorithm rather than requested source online kernel variants. Preserve it, adapt the current reference to original block-online kernel4, translate that same algorithm to KA then JACC. Native GPU body unchanged.",
+      "provenance": "Source reviewed; no application dataset provenance inferred. Seeded dyadic inputs with uniform rows, finite \u00b11000 shifts, outliers and pointmass controls; paired rows are controlled invariance cases, not independent samples.",
+      "source_evidence": [
+        {
+          "path": "src/softmax-online-cuda/main.cu",
+          "sha256": "9a93d5556a3537b7447b9428db8eb77bc81306d9ce638f6548e3e1759c8ecac2"
+        },
+        {
+          "path": "src/softmax-online-julia/reference_history/original_main.jl",
+          "sha256": "4fc0c5459cdaf39321d6d9888863aa3dac3e80465f4aad8b830b7e53b6979968"
+        },
+        {
+          "path": "src/softmax-online-julia/generate_study_fixture.py",
+          "sha256": "8386e6374ec252aeacb20292997fbc9f3c4f551a0d9eee7a49fbd086d3670b75"
+        },
+        {
+          "path": "src/softmax-online-julia/independent_artifact_audit.json",
+          "sha256": "236234e9ed85385ab3156f5eb146247b9d6a78616b4e5f697a9b056d17a6e5a9"
+        }
+      ]
+    },
+    "primary_motif": "online_max_sum_row_reduction_and_normalization",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32 online max/sum/exp and normalization",
+      "Float64 independent CPU oracle only"
+    ],
+    "synchronization": [
+      "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+      "4096B shared reduction buffer at every width; no atomics.",
+      "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same source kernel4 two-pass online per-lane state and max/sum trees, one block per row. Julia one-based arrays; KA physical workgroup/local indices; JACC global id bitmask/shift computes row/lane for power-of-two widths, shared template copy adds overhead. Historical threepass reference archived separately."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_device_kernel",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+    "verification_contract": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+    "keyconfounds": [
+      "Only nativekernel4, not nativebestof4 implementations/default8192row CLI.",
+      "Primary metric sums30 paths rather than best blocksize; shapes/widths are paired paths within one benchmark.",
+      "Vocabulary-width case only3 blocks, not saturatedGPU throughput.",
+      "JACC sharedtemplate copy/globalid arithmetic differs source; actual compiler elimination/instruction/register effects unprofiled.",
+      "Exactshiftrows controlled paired inputs, not independent statistical samples.",
+      "No profiler counters or modeltaskaccuracy; cannot infer roofline/SFU/memory bottleneck.",
+      "Reference online body authored once, KA/JACC ordered reuse; historical valid3pass reference cost unknown."
+    ],
+    "boundary_rounding_policy": "FiniteFloat32 inputs only, dyadic \u00b11000 offset rows exactly representable. Stable online normalization, original absolute tolerance retained; exact shift invariance and guard/input bytes checked independently. NaN/Inf inputs unverified.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "softmax-online",
+        "configuration_id": "block_online_kernel4_5shapes_6blocks_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "94e1bd52a379b501e4f0ec00e026895f3350af4347d00a12474d99e42e2aab97",
+        "status": "verified",
+        "algorithm": "Direct block-online source4 algorithm, CUDA block/thread indices, static shared1024Float32.",
+        "work_item_mapping": "CUDA threadsW blocksN, blockIdx row/threadIdx lane.",
+        "layout": "Row-major flatFloat32 logits/probabilities,17 trailing guards; all5 inputframes serialized once, all30 complete outputs retained in fixed shape-major/width-minor order.",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32 online max/sum/exp and normalization",
+            "Float64 independent CPU oracle only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+          "4096B shared reduction buffer at every width; no atomics.",
+          "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+        ],
+        "resource_policy": {
+          "shared_bytes": 4096,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "template_copy": false,
+          "workgroup_barriers": "2log2(W)+4"
+        },
+        "launch_geometry": "N blocks xW threads; six original widths, only3 blocks for vocabulary50257 case.",
+        "backend_extensions": [
+          "CUDA host allocations/sync/transfers; device code no vendor-library call/inlinePTX/atomics."
+        ],
+        "host_device_boundary": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+        "supported_features": [
+          "Float32 exp",
+          "Perlane online max/sum state",
+          "Workgroup shared max/sum trees",
+          "Six workgroup sizes up to1024",
+          "Full50257column rows"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named full source block-online kernel4 across all6 original block sizes and5 shapes including50257columns; modes1..3/default8192rows/fullCLI/modeltaskaccuracy unverified, not framework unsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online",
+        "numerical_contract": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0017147102000000002,
+          0.00171266655,
+          0.0017125642,
+          0.001710207,
+          0.00171008525
+        ],
+        "mean_last_four_seconds": 0.00171138075,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/softmax-online-julia/softmax-online-julia-cuda.jl/main.jl",
+            "sha256": "94e1bd52a379b501e4f0ec00e026895f3350af4347d00a12474d99e42e2aab97"
+          },
+          {
+            "path": "src/softmax-online-julia/study_common.jl",
+            "sha256": "b4435587818e5a8b100cecfdc1f40e943e68b3df3cd4b5cdc19c8159e0b27c55"
+          }
+        ],
+        "implementation_source_digest": "282b365ac614bf691ff7a7637e15425b434e99cc952cd5ca8cb1769110f9489e"
+      },
+      "ka": {
+        "benchmark_id": "softmax-online",
+        "configuration_id": "block_online_kernel4_5shapes_6blocks_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "ce046ca0d7c06b28b322f188d9200e3f7b01058149058eec62515babe142448f",
+        "status": "verified",
+        "algorithm": "Same online state/tree, pure KA local/group indices, localmem1024Float32, exact ndrange rows*W.",
+        "work_item_mapping": "Cached kernel objects per sixW, workgroupsizeW and ndrangeN*W; KA group/local indices.",
+        "layout": "Row-major flatFloat32 logits/probabilities,17 trailing guards; all5 inputframes serialized once, all30 complete outputs retained in fixed shape-major/width-minor order.",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32 online max/sum/exp and normalization",
+            "Float64 independent CPU oracle only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+          "4096B shared reduction buffer at every width; no atomics.",
+          "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+        ],
+        "resource_policy": {
+          "shared_bytes": 4096,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "template_copy": false,
+          "workgroup_barriers": "2log2(W)+4"
+        },
+        "launch_geometry": "N blocks xW threads; six original widths, only3 blocks for vocabulary50257 case.",
+        "backend_extensions": [
+          "CUDA host allocations/sync/transfers; device code no vendor-library call/inlinePTX/atomics."
+        ],
+        "host_device_boundary": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+        "supported_features": [
+          "Float32 exp",
+          "Perlane online max/sum state",
+          "Workgroup shared max/sum trees",
+          "Six workgroup sizes up to1024",
+          "Full50257column rows"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named full source block-online kernel4 across all6 original block sizes and5 shapes including50257columns; modes1..3/default8192rows/fullCLI/modeltaskaccuracy unverified, not framework unsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online",
+        "numerical_contract": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0017481350000000003,
+          0.0017463459000000001,
+          0.0017465760000000001,
+          0.001750098,
+          0.00174405055
+        ],
+        "mean_last_four_seconds": 0.0017467676125000001,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/softmax-online-julia/softmax-online-julia-KA/main.jl",
+            "sha256": "ce046ca0d7c06b28b322f188d9200e3f7b01058149058eec62515babe142448f"
+          },
+          {
+            "path": "src/softmax-online-julia/study_common.jl",
+            "sha256": "b4435587818e5a8b100cecfdc1f40e943e68b3df3cd4b5cdc19c8159e0b27c55"
+          }
+        ],
+        "implementation_source_digest": "d459309423d8dc5bdf73489ec6469820db0ec39d28236affe299c1f855493cc1"
+      },
+      "jacc": {
+        "benchmark_id": "softmax-online",
+        "configuration_id": "block_online_kernel4_5shapes_6blocks_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2",
+        "status": "verified",
+        "algorithm": "Same online state/tree, callback global id bitmask/shift, shared1024Float32 template copy and explicit4096B LaunchSpec.",
+        "work_item_mapping": "LaunchSpec threadsW blocksN shared4096; callback global zero-based id >>log2(W) row, id&(W-1) lane.",
+        "layout": "Row-major flatFloat32 logits/probabilities,17 trailing guards; all5 inputframes serialized once, all30 complete outputs retained in fixed shape-major/width-minor order.",
+        "precision": {
+          "storage": [
+            "Float32"
+          ],
+          "compute": [
+            "Float32 online max/sum/exp and normalization",
+            "Float64 independent CPU oracle only"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Native/CUDAjl/KA 2log2(W)+4 workgroup barriers per path; JACC templatecopy adds1 barrier.",
+          "4096B shared reduction buffer at every width; no atomics.",
+          "Explicit warmup all30 configurations; reset, allocation, transfers, oracle/artifact outside synchronized timing."
+        ],
+        "resource_policy": {
+          "shared_bytes": 4096,
+          "explicit": true,
+          "register_count": "unprofiled",
+          "template_copy": true,
+          "workgroup_barriers": "2log2(W)+4+1template"
+        },
+        "launch_geometry": "N blocks xW threads; six original widths, only3 blocks for vocabulary50257 case.",
+        "backend_extensions": [
+          "CUDA host allocations/sync/transfers; device code no vendor-library call/inlinePTX/atomics."
+        ],
+        "host_device_boundary": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+        "supported_features": [
+          "Float32 exp",
+          "Perlane online max/sum state",
+          "Workgroup shared max/sum trees",
+          "Six workgroup sizes up to1024",
+          "Full50257column rows"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "Named full source block-online kernel4 across all6 original block sizes and5 shapes including50257columns; modes1..3/default8192rows/fullCLI/modeltaskaccuracy unverified, not framework unsupported.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online",
+        "numerical_contract": "Full941010 probabilities plus510 guards per artifact; exact156936Float32 inputprefix. Original1e-4+eps(Float32)*abs(ref), Float64 oracle, finite/nonnegative/probability bounds, rowmass1e-5, bit-exact pairedrow shift invariance; all20 artifacts.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0020742675,
+          0.0020780815500000003,
+          0.0020737214,
+          0.0020751205,
+          0.00207597755
+        ],
+        "mean_last_four_seconds": 0.00207572525,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/softmax-online-julia/softmax-online-julia-JACC/main.jl",
+            "sha256": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2"
+          },
+          {
+            "path": "src/softmax-online-julia/study_common.jl",
+            "sha256": "b4435587818e5a8b100cecfdc1f40e943e68b3df3cd4b5cdc19c8159e0b27c55"
+          }
+        ],
+        "implementation_source_digest": "811b592a1cc94aba5926eaa8efd4bdc7ea3c19dcde5aa4ac2e2f3cdcc8e5d54c"
+      }
+    },
+    "source_sha256": {
+      "src/softmax-online-julia/softmax-online-julia-cuda.jl/main.jl": "94e1bd52a379b501e4f0ec00e026895f3350af4347d00a12474d99e42e2aab97",
+      "src/softmax-online-julia/softmax-online-julia-KA/main.jl": "ce046ca0d7c06b28b322f188d9200e3f7b01058149058eec62515babe142448f",
+      "src/softmax-online-julia/softmax-online-julia-JACC/main.jl": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2"
+    },
+    "ontology_sha256": "75a2e7ebc9d22b7bbd289127d15686eaba0290cf2118925958f59f94dcb7cecb"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/softmax-online-julia/softmax-online-julia-JACC/main.jl",
+    "sha256": "3a7efa855208e8ea81d105a36f44d2d38d0832ad12f46acd821cf37c5663a6d2",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        35
+      ],
+      "local_storage": [],
+      "barrier": [
+        12,
+        15,
+        17,
+        19,
+        22,
+        24
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "block_online_kernel4_5shapes_6blocks_v1",
+      "run_id": "20261018T012314534260Z_softmax-online",
+      "result": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": {
+        "verification_scope": "Kernel4 only, original1..3/default8192rows/fullCLI unverified; finiteinputs, no modelaccuracyclaim.",
+        "candidate_configuration_distinction": "Six warmed workgroup configurations,30 paths,5 trials are not distincttranslationcandidates; exactlowlevelspecializationcountunmeasured.",
+        "schema_correction": "Originalmetadata-onlycandidatefieldnestedunderallowedscopekey; no rawresult/config/source/tolerance/timingchanged.",
+        "previous_sidecar_sha256": "36fde29237c6157bb8c7cc396796dacc34baba050c0a862ac273f6353b6a63ed",
+        "previous_sidecar_archive": "src/softmax-online-julia/reference_history/adjudications_schema_candidate01.json"
+      },
+      "reference_provenance": null,
+      "configuration_classification_adjudication": {
+        "path": "src/softmax-online-julia/study_adjudications.json",
+        "sha256": "96421c4c3a946a0b515ebfdee9eecbc606f4907c4f241caa9c961bad25a89fd0",
+        "run_id": "20261018T012314534260Z_softmax-online",
+        "reason": "Source-scoped interpretation only; unchanged executions/tolerance/timings.",
+        "recorded_at": null,
+        "updated_fields": [
+          "numerical_evidence_strength",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "510ad262cc9ffd2aadd6fe65d6636e3cc796963fe69b05fc28bdf93269cdefc6",
+      "source_hash": "e2e65efab5f6a67cff416b8a2b865f8e8d679211d425170fe8884c8ddcb0423f",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012314534260Z_softmax-online/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0020742675,
+        0.0020780815500000003,
+        0.0020737214,
+        0.0020751205,
+        0.00207597755
+      ],
+      "mean_last_four_seconds": 0.00207572525,
+      "contract": {
+        "metric": "Sum30independentkernelpathmeans(5shapesx6originalblocksizes32..1024),20internalrepeats/path,5outertrialsmeanlast4; explicitallpathwarmup. Alloutputreset/allocation/H2D/D2H/oracles/artifactsoutsideclocks, kernellaunches+GPUcompletioninside.",
+        "path_order": [
+          "case0_threads32",
+          "case0_threads64",
+          "case0_threads128",
+          "case0_threads256",
+          "case0_threads512",
+          "case0_threads1024",
+          "case1_threads32",
+          "case1_threads64",
+          "case1_threads128",
+          "case1_threads256",
+          "case1_threads512",
+          "case1_threads1024",
+          "case2_threads32",
+          "case2_threads64",
+          "case2_threads128",
+          "case2_threads256",
+          "case2_threads512",
+          "case2_threads1024",
+          "case3_threads32",
+          "case3_threads64",
+          "case3_threads128",
+          "case3_threads256",
+          "case3_threads512",
+          "case3_threads1024",
+          "case4_threads32",
+          "case4_threads64",
+          "case4_threads128",
+          "case4_threads256",
+          "case4_threads512",
+          "case4_threads1024"
+        ],
+        "fixtures": "N,C=(17,1),(19,31),(33,33),(17,257),(3,50257), finiteuniform/mixeddyadic/extreme\u00b180/outlier+40rows; row1pairedwithrow2+1000 androw3-1000exactFloat32offsetswherepresent. Allblockchoices32/64/128/256/512/1024 originalsource. Sameactualinputall4models.",
+        "artifact": "156936actualFloat32inputprefixinclshapes/fullinputs/guards;941520completeFloat32probabilities+17guards/path. Float64independentnormalizedexp1e-4+epsFloat32*abs(ref), exactguards, probabilityrange/rowsum1e-5andexactoffsetpairbitidentity allmodels.",
+        "scope": "SelectednativeCLI kernel4=softmax_forward_online_kernel3 block-online2pass. Othernativekernel1..3/cooperativegroups/warp/CUBmodes andoriginal8192x50257defaultCLI unverified, notunsupported. HistoricalgenuineJulia3-passallmodealiaspreservedandcurrentreferenceadaptedtosameonlinealgorithm; no observednumericfailureclaimed.",
+        "mapping": "Sameoneblockperrow/source4096sharedbytes, serialonlineMaxSumthenmaxtree/rescaled-sumtreeandoutputpass. NativeCUDAdefaultsno-use_fast_math. KA/JACCpreserveall6sourceblocksizes/power2/barriers; JACCextra templatecopy/barrier explicit."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "All20 bitidentical complete30path probabilities/guards with exactinputprefix, independentFloat64 normalization/unitmass/exactshiftpairedoracles."
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "202fc62550f82ac21c67e6dd",
+        "begin_event_id": "40f47c30523227b5cf1abcba",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T01:24:34.938294+00:00",
+        "usage_event_timestamp": "2026-10-18T01:24:04.536Z",
+        "elapsed_usage_event_start": "2026-10-18T01:22:34.733Z",
+        "delta_usage": {
+          "input_tokens": 956161,
+          "cached_input_tokens": 955136,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3351,
+          "reasoning_output_tokens": 2411,
+          "total_tokens": 959512
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 30.402294,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "640f361bff3d0bdbb44561035b15882c679b0b3966f6cad36e5f9a302424e58a",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Firstcandidateall5fullprobability/guard/rowsum/exactshiftchecksagainstbothrefs, all30paths including1024threads. Explicit4096shared+templatecopy/barrier, no runtime/compiler/numericalfailures. Wgsconfigurationsnotseparateprogramcandidates.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 7.702273,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/softmax-online/jacc_translation.jsonl",
+        "evidence_sha256": "11ca738a390d1b72ebf05294c3a575b73680e7d1988de3870d81f316186d4e20",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/softmax-online/measurement_scope_review.json",
+      "sha256": "1fef73d137f5ccd663572b2ac490b3b7a5ef738ebc7ba7e3e8ebd2044f4d53db",
+      "record": {
+        "benchmark_id": "softmax-online",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/softmax-online-julia-jacc/manifest.json",
+    "selected_sha256": "38dd98b68bce2cd5d39c2d95094be2409f2ad64b00441d951df850f0c0bbfb52",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/softmax-online-julia-jacc/manifest.json",
+        "sha256": "38dd98b68bce2cd5d39c2d95094be2409f2ad64b00441d951df850f0c0bbfb52"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "ae4070f300d175ab9eb688d41b80cac1009b806f",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "pure_jacc_device_kernel_cuda_benchmark_harness",
+    "annotation_path": ".porting-state/portable_julia/traits/softmax-online.json",
+    "annotation_sha256": "a63f77e313810d6938a22fa6ca774c02a4e117f3f9f5fac49612bfabd552076e",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

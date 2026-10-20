@@ -1,0 +1,769 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "layernorm",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/layernorm.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "layernorm",
+    "configuration_id": "layernorm_all3alg6width_vector_scalar_bounded_constant6bases_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273",
+    "status": "verified",
+    "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+    "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+    "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+    "precision": {
+      "storage": [
+        "Float32_input_weight_bias_outputs_mean_rstd",
+        "aligned_NTuple4_VecElementFloat32_vector_path"
+      ],
+      "compute": [
+        "Float32_FMA_shuffle_sum_rsqrt"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+      "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+      "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+    ],
+    "resource_policy": {
+      "shared_bytes": "128 dynamic/JACC.shared initialization algorithm0, explicit0 algorithm1/2",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+    "backend_extensions": [
+      "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+      "CUDA.rsqrt Float32",
+      "PTX ld.global.cs.f32/st.global.cs.f32",
+      "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+    ],
+    "host_device_boundary": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm",
+    "numerical_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.002738617900000001,
+      0.0025902926,
+      0.0026426333,
+      0.002616487500000001,
+      0.0026896766
+    ],
+    "mean_last_four_seconds": 0.0026347725000000002,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/layernorm-julia/layernorm-julia-JACC/main.jl",
+        "sha256": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273"
+      },
+      {
+        "path": "src/layernorm-julia/study_common.jl",
+        "sha256": "a460262f91ed2429a5e3568c6f8bea3decd9823ba66f438e449f86eaba6dcfd8"
+      },
+      {
+        "path": "src/layernorm-julia/layernorm_math.jl",
+        "sha256": "8d158ab54d07ac150167a02d81ddd5aa0c60a18af282cff94536dd803c7a1aa3"
+      }
+    ],
+    "implementation_source_digest": "ac506a094252d4cce84b773b4e527b5c2f17ce20522f6f76322e650c368f6b2c",
+    "numerical_agreement_kind": "tolerant_full_layernorm_output_mean_rstd",
+    "source_algorithms": 3,
+    "authored_device_entry_functions": 2,
+    "source_vector_load_store_retained": true,
+    "extra_lifetime_barrier_algorithm0": true,
+    "independent_numerical_audit": "src/layernorm-julia/output_audit.json",
+    "native_reference_repaired": false
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+    "implementation_class": "JACC_index_shared_with_CUDA_shuffle_streaming_rsqrt_hybrid",
+    "declared_environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+    "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+    "storage_precision": [
+      "Float32_input_weight_bias_outputs_mean_rstd",
+      "aligned_NTuple4_VecElementFloat32_vector_path"
+    ],
+    "compute_precision": [
+      "Float32_FMA_shuffle_sum_rsqrt"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+      "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+      "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": "128 dynamic/JACC.shared initialization algorithm0, explicit0 algorithm1/2",
+      "source_reviewed": true,
+      "registers": "unprofiled"
+    },
+    "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+    "library_backend_boundary": [
+      "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+      "CUDA.rsqrt Float32",
+      "PTX ld.global.cs.f32/st.global.cs.f32",
+      "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+    ],
+    "host_control_boundary": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+    "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/layernorm-julia/layernorm-julia-JACC/main.jl",
+        "sha256": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273"
+      },
+      {
+        "path": "src/layernorm-julia/study_common.jl",
+        "sha256": "a460262f91ed2429a5e3568c6f8bea3decd9823ba66f438e449f86eaba6dcfd8"
+      },
+      {
+        "path": "src/layernorm-julia/layernorm_math.jl",
+        "sha256": "8d158ab54d07ac150167a02d81ddd5aa0c60a18af282cff94536dd803c7a1aa3"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "layernorm",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "neural_network_layer_normalization_forward",
+      "review_status": "source_reviewed",
+      "scientific_task": "Normalize each activation row by its channel mean and population variance, then apply channel-wise learned scale and bias",
+      "mathematical_operation": "mean=sum(x)/C; variance=sum((x-mean)^2)/C or mean(x^2)-mean(x)^2; rstd=1/sqrt(variance+Float32(1e-5)); out=(x-mean)*rstd*gamma+beta. Return full output, mean and rstd.",
+      "discretization": "Six Float32 bases with (rows,channels)=(5,256),(7,259),(3,1024), bounded textured and exact constant rows each. Three native algorithms and six block widths32..1024 give108paths, scalar tailC259 and alignedFloat4C256/1024.",
+      "accuracy_requirements": "All out/mean/rstd against independent Decimal80 central-variance oracle using actual Float32 epsilon, predeclared1e-5+2e-6|gold|; full actual input echo and guards exact, constant rows and zero gamma give exact bias outputs; finite positive rstd.",
+      "input_size_regime": "Selected small row counts and channel lengths, partial warp-per-row blocks at all widths; no full trained model or arbitrary large-offset variance conditioning.",
+      "precision_sensitivity": "Float32 reductions, FMA variance/affine arithmetic and reciprocal square root. Moment-variance algorithm has a different cancellation sensitivity than two-pass algorithms; selected bounded and exact constant fixtures all pass unchanged budget. Float4 load/store alignment retained.",
+      "community_use_case": "Repository identifies llm.c/GPT-2 layernorm forward as source context. This checks a neural-network normalization primitive, not trained-model accuracy, perplexity or backward gradients.",
+      "description": "Replace historical Julia affine touch kernel/fabricated success reports with all three real native layernorm algorithms and actual output arrays. Native source remains unchanged. Julia adds a shared-workspace read-lifetime barrier in block algorithm0; native tests pass, so static hazard is not an observed failure.",
+      "provenance": "Native header and reference.h identify layernorm forward/GPT-2; repository README layernorm links https://github.com/karpathy/llm.c . Native rmsnorm-cuda reduce/utils headers and installed CUDA cooperative_groups floating butterfly implementation reviewed. Earlier root RMSNorm helper patterns are reused with explicit provenance, not counted as independent cold framework implementation.",
+      "source_evidence": [
+        {
+          "path": "src/layernorm-cuda/main.cu",
+          "sha256": "d9a7657c3b2ab2579e39bd39d46ed67a51d473a116cc376dd42d7cff8e2b474f"
+        },
+        {
+          "path": "src/layernorm-cuda/reference.h",
+          "sha256": "74f8989ac8615ba193ec09f53527404919b3e0cd3c3c3a93bc770340cabbe3ea"
+        },
+        {
+          "path": "src/rmsnorm-cuda/reduce.cuh",
+          "sha256": "72abde04c81932ad59235c0021d75247b8daba3639378d1cc1665f12b8286df7"
+        },
+        {
+          "path": "src/rmsnorm-cuda/utils.cuh",
+          "sha256": "f470b88ee8e3325a1d19da0a5ed86ca3b23935cd99648247c354ed953080b425"
+        },
+        {
+          "path": "src/layernorm-julia/original_main.jl",
+          "sha256": "2fe867ff6e4aa8d3c0c1ce5e8764ca364d28575564698fd3fb930681c3f84e54"
+        },
+        {
+          "path": "src/layernorm-julia/scientific_witness.json",
+          "sha256": "1f1a7a605cb32067970f98b8a99cb5b004d217e55c843ed95751c4da87492110"
+        }
+      ]
+    },
+    "primary_motif": "rowwise_float_reductions_and_affine_normalization",
+    "storage_precision": [
+      "Float32_input_weight_bias_outputs_mean_rstd",
+      "aligned_NTuple4_VecElementFloat32_vector_path"
+    ],
+    "compute_precision": [
+      "Float32_FMA_shuffle_sum_rsqrt"
+    ],
+    "synchronization": [
+      "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+      "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+      "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "All three source algorithms, vector/scalar paths and block widths preserved; CUDA shuffle/streaming/rsqrt backend extensions explicit. Extra Julia barrier secures shared read lifetime, KA localmem vs JACC shared template initialization adds distinct resource work."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_restored_three_layernorm_algorithms_CUDA_intrinsic_hybrid",
+      "ka": "KA_index_localmem_with_CUDA_shuffle_streaming_rsqrt_hybrid",
+      "jacc": "JACC_index_shared_with_CUDA_shuffle_streaming_rsqrt_hybrid"
+    },
+    "timing_scope": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+    "verification_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+    "keyconfounds": [
+      "CUDA-specific shuffle/streamingPTX/rsqrt device extensions make KA/JACC explicit hybrids, not pure portable device code",
+      "ExtraJulia shared-lifetime barrier vsunchanged nativealgorithm0; staticrisk only, allnativearrays pass",
+      "KA localmem128B vsJACC sharedtemplate128B initialization/copy+entrybarrier; warpvariants explicitly0sharedbytes",
+      "Three algorithms differ in variance identity/work and cancellation; peralgorithm/widthtimings retained, aggregate is a declared sweep not onekernel",
+      "Selected bounded/constant inputs, not arbitraryhugeoffset accuracy, trained-model quality/backwardpass",
+      "Earlier RMSNorm vector/reduction patterns reused; referenceauthoredsharedhelper reusedKAthenJACC, marginal orderedworkflowcost",
+      "Native dynamic kernel switch inside timedwrapper vs cachedJuliafactory closures precreated; hostinclusiveROI not puredeviceprofiling"
+    ],
+    "boundary_rounding_policy": "C259 usesU1, C256/1024 usephysicalFloat4 with16Balignment; no vector-tailoverread. Mean/rstd allvalidrows, wholeinvalidwarps return. Fixed1e-5+2e-6relative oraclebudget; constant/zero-gamma outputsbiasexact, input/guardbytes exact. Momentvariant no clamping or silentlychangedvarianceformula.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "layernorm",
+        "configuration_id": "layernorm_all3alg6width_vector_scalar_bounded_constant6bases_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "fc706e3a529433e17e49827a2de06a400ff40c2b114d7a07b54fe13350d8c2db",
+        "status": "verified",
+        "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+        "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+        "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+        "precision": {
+          "storage": [
+            "Float32_input_weight_bias_outputs_mean_rstd",
+            "aligned_NTuple4_VecElementFloat32_vector_path"
+          ],
+          "compute": [
+            "Float32_FMA_shuffle_sum_rsqrt"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+          "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+          "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+        ],
+        "resource_policy": {
+          "shared_bytes": "128 static algorithm0,0 algorithm1/2",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+        "backend_extensions": [
+          "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+          "CUDA.rsqrt Float32",
+          "PTX ld.global.cs.f32/st.global.cs.f32",
+          "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+        ],
+        "host_device_boundary": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm",
+        "numerical_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0017666879,
+          0.0021426239,
+          0.0017217078000000001,
+          0.0017861306000000003,
+          0.0017920523
+        ],
+        "mean_last_four_seconds": 0.00186062865,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/layernorm-julia/layernorm-julia-cuda.jl/main.jl",
+            "sha256": "fc706e3a529433e17e49827a2de06a400ff40c2b114d7a07b54fe13350d8c2db"
+          },
+          {
+            "path": "src/layernorm-julia/study_common.jl",
+            "sha256": "a460262f91ed2429a5e3568c6f8bea3decd9823ba66f438e449f86eaba6dcfd8"
+          },
+          {
+            "path": "src/layernorm-julia/layernorm_math.jl",
+            "sha256": "8d158ab54d07ac150167a02d81ddd5aa0c60a18af282cff94536dd803c7a1aa3"
+          }
+        ],
+        "implementation_source_digest": "864e7ee2f4e01404abf531fd6cac463ceab9edd29b5cbab25bcf55af29e2d717",
+        "numerical_agreement_kind": "tolerant_full_layernorm_output_mean_rstd",
+        "source_algorithms": 3,
+        "authored_device_entry_functions": 2,
+        "source_vector_load_store_retained": true,
+        "extra_lifetime_barrier_algorithm0": true,
+        "independent_numerical_audit": "src/layernorm-julia/output_audit.json",
+        "native_reference_repaired": false
+      },
+      "ka": {
+        "benchmark_id": "layernorm",
+        "configuration_id": "layernorm_all3alg6width_vector_scalar_bounded_constant6bases_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "869f491baf50679bfe70d8181858185dd718df14fe20aea6ce795520b9fa6732",
+        "status": "verified",
+        "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+        "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+        "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+        "precision": {
+          "storage": [
+            "Float32_input_weight_bias_outputs_mean_rstd",
+            "aligned_NTuple4_VecElementFloat32_vector_path"
+          ],
+          "compute": [
+            "Float32_FMA_shuffle_sum_rsqrt"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+          "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+          "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+        ],
+        "resource_policy": {
+          "shared_bytes": "128 localmem algorithm0,0 algorithm1/2",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+        "backend_extensions": [
+          "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+          "CUDA.rsqrt Float32",
+          "PTX ld.global.cs.f32/st.global.cs.f32",
+          "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+        ],
+        "host_device_boundary": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm",
+        "numerical_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0023709282,
+          0.0024544903000000007,
+          0.0023858952,
+          0.0023728139000000004,
+          0.0023127009
+        ],
+        "mean_last_four_seconds": 0.0023814750750000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/layernorm-julia/layernorm-julia-KA/main.jl",
+            "sha256": "869f491baf50679bfe70d8181858185dd718df14fe20aea6ce795520b9fa6732"
+          },
+          {
+            "path": "src/layernorm-julia/study_common.jl",
+            "sha256": "a460262f91ed2429a5e3568c6f8bea3decd9823ba66f438e449f86eaba6dcfd8"
+          },
+          {
+            "path": "src/layernorm-julia/layernorm_math.jl",
+            "sha256": "8d158ab54d07ac150167a02d81ddd5aa0c60a18af282cff94536dd803c7a1aa3"
+          }
+        ],
+        "implementation_source_digest": "885f785ff222394dd8d1bfad935ba5ac3956addb1f32fa48ef55a353a6e79111",
+        "numerical_agreement_kind": "tolerant_full_layernorm_output_mean_rstd",
+        "source_algorithms": 3,
+        "authored_device_entry_functions": 2,
+        "source_vector_load_store_retained": true,
+        "extra_lifetime_barrier_algorithm0": true,
+        "independent_numerical_audit": "src/layernorm-julia/output_audit.json",
+        "native_reference_repaired": false
+      },
+      "jacc": {
+        "benchmark_id": "layernorm",
+        "configuration_id": "layernorm_all3alg6width_vector_scalar_bounded_constant6bases_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273",
+        "status": "verified",
+        "algorithm": "Algorithm0 one block/row, vector4 or scalar sequential chunks, two block reductions; algorithm1 one warp/row two-pass mean/central variance; algorithm2 one warp/row sum/square-sum moment variance. All affine outputs and statistics stored.",
+        "work_item_mapping": "Algorithm0 gridNrows withBTthreads, warp/lane UNROLL4 mapping whenCdiv4 elseU1. Algorithms1/2 ceil(N*32/BT) blocks, eachwarp one row, whole invalidwarps return beforecollectives.",
+        "layout": "Float32 contiguous row-major activation rows and per-channel gamma/beta, 8guards/side every3input/3outputbuffer. VecElement4 reinterprets aligned16B loads/stores foralgorithm0Cdiv4; scalarstreamingPTX loads/stores forwarpvariants.",
+        "precision": {
+          "storage": [
+            "Float32_input_weight_bias_outputs_mean_rstd",
+            "aligned_NTuple4_VecElementFloat32_vector_path"
+          ],
+          "compute": [
+            "Float32_FMA_shuffle_sum_rsqrt"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Algorithm0 two warp+block reductions with workgroup barriers and one additional Julia read-lifetime barrier",
+          "Algorithms1/2 XOR warp shuffle butterfly with all32lanes active for each valid row",
+          "One hostcompletion per kernel launch, ten internal repetitions per timed region"
+        ],
+        "resource_policy": {
+          "shared_bytes": "128 dynamic/JACC.shared initialization algorithm0, explicit0 algorithm1/2",
+          "source_reviewed": true,
+          "registers": "unprofiled"
+        },
+        "launch_geometry": "All3algorithms x blockwidths32/64/128/256/512/1024 x6bases; oneblock/row orwarpperrowceil grid exactlynative.",
+        "backend_extensions": [
+          "CUDA.shfl_xor_sync fullwarp Float32 reduction",
+          "CUDA.rsqrt Float32",
+          "PTX ld.global.cs.f32/st.global.cs.f32",
+          "CUDA.sync_threads inblockreduction helper; framework owns indexing/dispatch and KA/JACC sharedmemory"
+        ],
+        "host_device_boundary": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "Float32forward all3algorithms/all6blockwidths on6declaredbases, scalar/vector/tail controls. No nativehardwarebarrier or frameworkunsupported claim; no backward gradient, modelaccuracy or cancellation-prone arbitraryinputcertification.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm",
+        "numerical_contract": "All20captures584641Float64losslesslywidenedFloat32words/trial:18505exactprefix +566136fulloutputs/echo.223020outputscalars,332748actualinputecho payloads,10368guardchecks/trial;576physicaluniqueguards reused108paths,116910 exactconstant-row/zero-gamma biascontrols. Allbothrefs andindependentDecimal80centralvarianceoracle; no checksum or fabricated output.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.002738617900000001,
+          0.0025902926,
+          0.0026426333,
+          0.002616487500000001,
+          0.0026896766
+        ],
+        "mean_last_four_seconds": 0.0026347725000000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/layernorm-julia/layernorm-julia-JACC/main.jl",
+            "sha256": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273"
+          },
+          {
+            "path": "src/layernorm-julia/study_common.jl",
+            "sha256": "a460262f91ed2429a5e3568c6f8bea3decd9823ba66f438e449f86eaba6dcfd8"
+          },
+          {
+            "path": "src/layernorm-julia/layernorm_math.jl",
+            "sha256": "8d158ab54d07ac150167a02d81ddd5aa0c60a18af282cff94536dd803c7a1aa3"
+          }
+        ],
+        "implementation_source_digest": "ac506a094252d4cce84b773b4e527b5c2f17ce20522f6f76322e650c368f6b2c",
+        "numerical_agreement_kind": "tolerant_full_layernorm_output_mean_rstd",
+        "source_algorithms": 3,
+        "authored_device_entry_functions": 2,
+        "source_vector_load_store_retained": true,
+        "extra_lifetime_barrier_algorithm0": true,
+        "independent_numerical_audit": "src/layernorm-julia/output_audit.json",
+        "native_reference_repaired": false
+      }
+    },
+    "source_sha256": {
+      "src/layernorm-julia/layernorm-julia-cuda.jl/main.jl": "fc706e3a529433e17e49827a2de06a400ff40c2b114d7a07b54fe13350d8c2db",
+      "src/layernorm-julia/layernorm-julia-KA/main.jl": "869f491baf50679bfe70d8181858185dd718df14fe20aea6ce795520b9fa6732",
+      "src/layernorm-julia/layernorm-julia-JACC/main.jl": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273"
+    },
+    "ontology_sha256": null,
+    "native_reference_repaired": false,
+    "numerical_agreement_kind": "tolerant_full_layernorm_output_mean_rstd",
+    "observed_distinct_primary_artifact_sha256": 1,
+    "all_twenty_artifacts_bitwise_identical": true,
+    "independent_numerical_audit": "src/layernorm-julia/output_audit.json",
+    "native_static_shared_lifetime_risk": "unobserved_no_defect_flag",
+    "source_algorithms": 3,
+    "block_widths": [
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "hardware_mechanism_evidence": "unprofiled"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/layernorm-julia/layernorm-julia-JACC/main.jl",
+    "sha256": "c0cfb036287c576c0735c8c84974b7933466ee15987706d2727bed884753c273",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        18,
+        21
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "layernorm_all3alg6width_vector_scalar_bounded_constant6bases_v1",
+      "run_id": "20261018T075623460818Z_layernorm",
+      "result": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "5ee2299a9bb7dbea960e0cacac7c23f15a76b58437a1f04c6fe343b60d1e0272",
+      "source_hash": "b14b2d9252aa7b1adba5ef40f2742225a849b7225c7ca3dd870d04e65f77fc30",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T075623460818Z_layernorm/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.002738617900000001,
+        0.0025902926,
+        0.0026426333,
+        0.002616487500000001,
+        0.0026896766
+      ],
+      "mean_last_four_seconds": 0.0026347725000000002,
+      "contract": {
+        "inputs": "6fullyinitializedFloat32bases N,C=(5,256),(7,259),(3,1024), eachboundedtextured/exactconstantrows; variedgamma inclzero/negative andbeta. All3nativealgorithmsx6blockwidths32..1024=108paths. ActualGPUinputechoexactbytes; aligned16BvectorpathsC%4==0 otherwiseU1scalar.",
+        "precision": "Float32means/centralvarianceorsecondmoment/logicalnormalization/rsqrt andaffine, FMAexplicitmatchedsource; vectorFloat4physicalmemoryretainedviaVecElement4. IndependentDecimal80idealcentralvariance plus actualFloat32eps, fixed1e-5abs+2e-6rel. Boundedinputclass notcatastrophicsecondmomentcancellationaccuracyclaim.",
+        "operator": "Allnative3forwardlayernormalgorithms: blockperrowtwo-pass/vectorized, warpperrowtwo-pass, warpperrowmomentvariance. Fullnormalizedaffineout, cachedmean/rstd. Nativeunchanged; Juliaaddsoneworkspace-readlifetimebarrierbeforeblocksharedreuse, staticrisk notobservednativefailure.",
+        "metric": "Sum108hostinclusive10singlekernel+completion batches divided10. Onecompletionperlaunch allmodels(nativewrapperhasinternalcudaDeviceSync; Juliaafterlaunch). Copies/reset/JIT/allfactorycreation/readback/oracle/serializationoutside. Fivecheckedtrialsmean2\u20135, peralgorithm/widthtimesretained; nooriginalCLIbandwidth/rooflineclaim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "593290cd759f5796a0705397",
+        "begin_event_id": "9a43445a09b5cc1d01658d2f",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T07:58:14.087373+00:00",
+        "usage_event_timestamp": "2026-10-18T07:58:11.040Z",
+        "elapsed_usage_event_start": "2026-10-18T07:55:47.054Z",
+        "delta_usage": {
+          "input_tokens": 1029965,
+          "cached_input_tokens": 1027328,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5266,
+          "reasoning_output_tokens": 1081,
+          "total_tokens": 1035231
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 3.047373,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "0b6f5e4b5d76747ec939b96a7603abd7c9ed1a736ec3b79246c83eb383635531",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 19.983659,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/layernorm/jacc_translation.jsonl",
+        "evidence_sha256": "59d8e08ede85854248b2fcd3301fa8b68cfaff6a589d70e53f5bbe47095a34c9",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/layernorm/measurement_scope_review.json",
+      "sha256": "55e6abd85c2901233685e019ad4e510eefb5584feac24f444991fdc16f2f5755",
+      "record": {
+        "benchmark_id": "layernorm",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/layernorm-julia-jacc/manifest.json",
+    "selected_sha256": "73aedf9a1c8903cc3f6f7d8dfb2b00486156127cace4a8336ba1b91bd61c0732",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/layernorm-julia-jacc/manifest.json",
+        "sha256": "73aedf9a1c8903cc3f6f7d8dfb2b00486156127cace4a8336ba1b91bd61c0732"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "dac4c1a024b60c3f6ea466b7ed4c07395784219a",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "JACC_index_shared_with_CUDA_shuffle_streaming_rsqrt_hybrid",
+    "annotation_path": ".porting-state/portable_julia/traits/layernorm.json",
+    "annotation_sha256": "995dc3f68def6a33d5044e83a153479ca5b64dfe84deadf6f685b8115ec89c47",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

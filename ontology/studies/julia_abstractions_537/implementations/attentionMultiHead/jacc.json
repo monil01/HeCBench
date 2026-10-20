@@ -1,0 +1,525 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "attentionMultiHead",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/attentionMultiHead.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+    "mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+    "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32"
+    },
+    "memory": "global Q/K/V, shared265Float32; JACC extra template265 preload",
+    "synchronization": [
+      "three explicit workgroup barriers",
+      "one JACC.shared cooperative initialization barrier"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 64,
+      "shared_bytes": 1060,
+      "shared_allocation": "dynamic"
+    },
+    "library_boundary": "CUDA backend/runtime; no vendorattention library",
+    "host_control_boundary": "One host launch per attention evaluation",
+    "fidelity_status": "same_math_defaultshape_reduction_mapping_adapted",
+    "source_shape_boundary": "Local265 scratch fixed for original256feature/head and9tokens; otherCLI shapes not claimed",
+    "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+    "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+    "storage_precision": "float32",
+    "compute_precision": "float32",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "global Q/K/V, shared265Float32; JACC extra template265 preload",
+    "synchronization": [
+      "three explicit workgroup barriers",
+      "one JACC.shared cooperative initialization barrier"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 64,
+      "shared_bytes": 1060,
+      "shared_allocation": "dynamic"
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 64,
+      "shared_bytes": 1060,
+      "shared_allocation": "dynamic"
+    },
+    "library_backend_boundary": "CUDA backend/runtime; no vendorattention library",
+    "host_control_boundary": "One host launch per attention evaluation",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "same_math_defaultshape_reduction_mapping_adapted",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "attentionMultiHead",
+    "primary_motif": "fused_attention_dot_softmax_weighted_sum",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "workgroup_barrier",
+      "kernel_boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "One head/candidate perblock retained; original CUDAjl serial9 softmax differs from native CUB256 block reductions. KA/JACC preserve actual CUDAjl ordering."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "fused attention kernel launch loop per internal repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native CUB blockreduce vs allJulia serial9 softmax; mapping confound, not pureframework overhead",
+      "Native static CUB temporary storage additional to1060B dynamic query/logits",
+      "KA shared265float static vs JACC dynamic1060B with template initialization reads",
+      "Single original defaultshape, not contextlength scaling study"
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "machine_learning",
+      "scientific_task": "Compute multi-head query attention over already-decoded keys and values for each beam candidate",
+      "mathematical_operation": "Perhead QK dot scaled1/sqrt256; thresholdclamped stable softmax; weighted value sum",
+      "discretization_or_topology": "Dense candidate x decoded-token x head-feature tensor axes; no physical mesh/PDE",
+      "invariants": [
+        "Normalized nonnegative attention weights",
+        "Each output component lies within decoded-value component range within roundoff"
+      ],
+      "accuracy_requirements": [
+        "Native Float32 full-output abs1e-3",
+        "Preserve clamp threshold64 and source max initializer-1e-20"
+      ],
+      "precision_sensitivity": "Dot product accumulation, exp normalization and weighted sums; reduction order may change Float32 lowbits",
+      "input_size_regimes": "Original default4 beams,16heads,256features/head,9decodedtokens; no longcontext extrapolation",
+      "community_use_case": "Beam-decoding transformer attention kernel proxy; useful ML primitive but source provides no named domain-science model or dataset",
+      "provenance": [
+        {
+          "path": "src/attentionMultiHead-cuda/main.cu",
+          "sha256": "586147cf2612a410adb376e52c455ca31d8961dbc873fee9eea07e2c4e3bb58a",
+          "source_locations": "mha kernel and comments lines18-170"
+        }
+      ],
+      "uncertainty": "A scientificapplication-specific attention role is not evidenced by this source"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+        "mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+        "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "global Q/K/V, shared265Float32",
+        "synchronization": [
+          "three explicit workgroup barriers"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 64,
+          "shared_bytes": 1060,
+          "shared_allocation": "dynamic"
+        },
+        "library_boundary": "CUDA backend/runtime; no vendorattention library",
+        "host_control_boundary": "One host launch per attention evaluation",
+        "fidelity_status": "same_math_defaultshape_reduction_mapping_adapted",
+        "source_shape_boundary": "Local265 scratch fixed for original256feature/head and9tokens; otherCLI shapes not claimed",
+        "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+        "mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+        "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "global Q/K/V, shared265Float32",
+        "synchronization": [
+          "three explicit workgroup barriers"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 64,
+          "shared_bytes": 1060,
+          "shared_allocation": "static"
+        },
+        "library_boundary": "CUDA backend/runtime; no vendorattention library",
+        "host_control_boundary": "One host launch per attention evaluation",
+        "fidelity_status": "same_math_defaultshape_reduction_mapping_adapted",
+        "source_shape_boundary": "Local265 scratch fixed for original256feature/head and9tokens; otherCLI shapes not claimed",
+        "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "scaled dotproduct, threshold64clamped softmax, weighted value sum",
+        "mapping": "64 blocks256: one candidate/head perblock;9threads do256-term dots, thread0 serial9 softmax,256threads weighted9-term value sums",
+        "layout": "nativeflat candidate/token/feature, contiguous head features; sharedquery256/logits9",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "global Q/K/V, shared265Float32; JACC extra template265 preload",
+        "synchronization": [
+          "three explicit workgroup barriers",
+          "one JACC.shared cooperative initialization barrier"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 64,
+          "shared_bytes": 1060,
+          "shared_allocation": "dynamic"
+        },
+        "library_boundary": "CUDA backend/runtime; no vendorattention library",
+        "host_control_boundary": "One host launch per attention evaluation",
+        "fidelity_status": "same_math_defaultshape_reduction_mapping_adapted",
+        "source_shape_boundary": "Local265 scratch fixed for original256feature/head and9tokens; otherCLI shapes not claimed",
+        "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/attentionMultiHead-julia/attentionMultiHead-julia-JACC/main.jl",
+    "sha256": "09a0c8d6e328e385b8eb1832374e7332025bea568e5b3725163a6752cf4bf599",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        69
+      ],
+      "local_storage": [],
+      "barrier": [
+        19,
+        29,
+        52
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_beam4_head16_dim256_step9_repeat10_v1",
+      "run_id": "20261017T161545216029Z_attentionMultiHead",
+      "result": ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "5a8ee680d453ec27ebac8d5b826d85489684d085016dbe1370a7e20a58304d67",
+      "source_hash": "e632cf7adba1768628f1fbe0d1bf4804adda1c6616bf768824c70a47a584441c",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.83762e-05,
+        3.11272e-05,
+        2.47532e-05,
+        2.40812e-05,
+        2.39082e-05
+      ],
+      "mean_last_four_seconds": 2.596745e-05,
+      "contract": {
+        "precision": "float32",
+        "shape": {
+          "beams": 4,
+          "heads": 16,
+          "features_per_head": 256,
+          "decoded_steps": 9
+        },
+        "fixture": "zero-based i: q=(i%17-8)/16,k=((7*i)%31-15)/32,v=((11*i)%53-26)/32,scale1/16,threshold64",
+        "internal_repeats": 10,
+        "scope": "Original default-shape fused attention kernel; full16384-value output",
+        "mapping": "64 blocks256; eachblock candidate/head; sharedquery/logits; native CUB blockreduce softmax versus preserved CUDAjl/KA/JACC serial9 softmax",
+        "resource_policy": "Native dynamic1060B plus CUB static; CUDAjl dynamic1060B; KA static1060B; JACC dynamic1060B plus explicit cooperative template initialization",
+        "accuracy": "Full finite CPU and dualnative/CUDAjl array checks atol1e-3 rtol0, same sourcecriterion"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "attentionMultiHead-jacc-P1-reductionmapping",
+        "benchmark_id": "attentionMultiHead",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "translation",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHead.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "attentionMultiHead-jacc-P1-reductionmapping",
+          "benchmark": "attentionMultiHead",
+          "model": "jacc",
+          "phase": "translation",
+          "code": "P1",
+          "candidate_id": 1,
+          "check_id": null,
+          "repair_id": null,
+          "is_failed_attempt": false,
+          "symptom": "Native CUB blocksoftmax replaced by preserved CUDA.jl serial9 softmax",
+          "root_cause": "Source mapping adaptation present in historical CUDA.jl; KA/JACC deliberately retain it",
+          "source": "src/attentionMultiHead-julia/attentionMultiHead-julia-JACC/main.jl",
+          "source_sha256": "09a0c8d6e328e385b8eb1832374e7332025bea568e5b3725163a6752cf4bf599",
+          "resolution": "Disclose mapping confound and verify full16384 outputs at originalatol1e-3",
+          "final_outcome": "verified_named_configuration",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "attentionMultiHead-jacc-P1-sharedtemplate",
+        "benchmark_id": "attentionMultiHead",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "translation",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHead.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "attentionMultiHead-jacc-P1-sharedtemplate",
+          "benchmark": "attentionMultiHead",
+          "model": "jacc",
+          "phase": "translation",
+          "code": "P1",
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "is_failed_attempt": false,
+          "symptom": "JACC.shared cooperatively loads265zero elements before query/logit scratch use",
+          "root_cause": "Used installed public JACC.shared(array) scratch convention; not a proof of missing scratch feature",
+          "resolution": "Explicit1060B allocation and disclose extra template reads; measured inside timed kernel",
+          "final_outcome": "verified_with_disclosed_initialization_overhead",
+          "evidence": [
+            "src/attentionMultiHead-julia/attentionMultiHead-julia-JACC/main.jl",
+            ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "attentionMultiHead-jacc-N3-float32drift",
+        "benchmark_id": "attentionMultiHead",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHead.jsonl",
+        "evidence_line": 7,
+        "raw_event": {
+          "event_id": "attentionMultiHead-jacc-N3-float32drift",
+          "benchmark": "attentionMultiHead",
+          "model": "jacc",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "is_failed_attempt": false,
+          "symptom": "Full Float32 outputs differ within tolerance; maxabsoluteerror5.21540641784668e-08",
+          "comparison": "native CUDA artifact",
+          "root_cause": "Floating-point implementation differences observed; exact instruction-level cause not separately diagnosed",
+          "resolution": "Accept explicitly declared tolerance with complete finite output checks; retain raw artifacts",
+          "final_outcome": "verified_tolerated_drift",
+          "max_abs_error": 5.21540641784668e-08,
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json"
+          ],
+          "evidence_sha256": "5a8ee680d453ec27ebac8d5b826d85489684d085016dbe1370a7e20a58304d67"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 4257,
+      "output_tokens": 657,
+      "cached_tokens": null,
+      "total_tokens": 4914,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/attentionMultiHead-cuda/main.cu",
+        "src/attentionMultiHead-cuda/reference.h",
+        "src/attentionMultiHead-julia/attentionMultiHead-julia-cuda.jl/main.jl",
+        "src/attentionMultiHead-julia/attentionMultiHead-julia-KA/main.jl",
+        "src/attentionMultiHead-julia/attentionMultiHead-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/attentionMultiHead-julia-jacc/manifest.json",
+    "selected_sha256": "e6aa326d85a6705a07f8e506b8134a8341ed2276474730a9d8d0c474098af60a",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/attentionMultiHead-julia-jacc/manifest.json",
+        "sha256": "e6aa326d85a6705a07f8e506b8134a8341ed2276474730a9d8d0c474098af60a"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "654db02876e493fa5c79b709c95512e701d78bbb",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "attentionMultiHead",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T161545216029Z_attentionMultiHead/result.json"
+    ],
+    "contract": {
+      "precision": "float32",
+      "shape": {
+        "beams": 4,
+        "heads": 16,
+        "features_per_head": 256,
+        "decoded_steps": 9
+      },
+      "fixture": "zero-based i: q=(i%17-8)/16,k=((7*i)%31-15)/32,v=((11*i)%53-26)/32,scale1/16,threshold64",
+      "internal_repeats": 10,
+      "scope": "Original default-shape fused attention kernel; full16384-value output",
+      "mapping": "64 blocks256; eachblock candidate/head; sharedquery/logits; native CUB blockreduce softmax versus preserved CUDAjl/KA/JACC serial9 softmax",
+      "resource_policy": "Native dynamic1060B plus CUB static; CUDAjl dynamic1060B; KA static1060B; JACC dynamic1060B plus explicit cooperative template initialization",
+      "accuracy": "Full finite CPU and dualnative/CUDAjl array checks atol1e-3 rtol0, same sourcecriterion"
+    },
+    "limitations": [
+      "Native CUB blockreduce vs allJulia serial9 softmax; mapping confound, not pureframework overhead",
+      "Native static CUB temporary storage additional to1060B dynamic query/logits",
+      "KA shared265float static vs JACC dynamic1060B with template initialization reads",
+      "Single original defaultshape, not contextlength scaling study"
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/attentionMultiHead.json",
+    "annotation_sha256": "da0f2f9f2fb2fc104213ba419d4578c589130c5f377301e082e70d506a8e2984",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

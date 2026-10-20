@@ -1,0 +1,698 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "dwconv1d",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/dwconv1d.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Source grouped vector4 forward and backward causal depthwise convolution; perbatch weight derivatives preserved and independently batchsummed outside ROI",
+    "work_item_mapping": "Grid(1,B*C/group), block(T/4); perlane four temporal outputs, shared768 weights and768*group inputs/upstream; BF8 forward BB2 backward",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "One block barrier after shared staging",
+      "Context completion at paired-kernel ROI boundaries"
+    ],
+    "launch_geometry": {
+      "threads": "T/4",
+      "grid": "[1,B*C/(8forward or2backward)]",
+      "Tmax": 768,
+      "BF": 8,
+      "BB": 2,
+      "shared_forward_bytes": 27648,
+      "shared_backward_bytes": 15360,
+      "cases": 3,
+      "timed_kernel_calls_per_trial": 6
+    },
+    "resource_policy": {
+      "shared_forward_bytes": 27648,
+      "shared_backward_bytes": 15360,
+      "shared_allocation": "framework staticshared arrays"
+    },
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "4bd96f9431c8894a470d123e963266c3d22cc86aff9e6c3650b0c05140e636ef",
+    "reference_repair": {
+      "taxonomy_code": "S1",
+      "phase": "reference_missing_backward_restoration",
+      "finding": "Historical Julia forward implements genuine causal convolution but omits native backward gradients and prints hardcoded backward-correctness/profiler measurements. Current study restores actual forward/backward work and full derivative checks. Forward scalar grid mapping also aligned to source vector4/grouped shared-memory work. Native timex.cu and PyTorch wrapper unchanged; no native scientific repair.",
+      "original_source_sha256": "654d1ea53dfb9779f76d9c567c48535d93a9638150be1b0410bfce95e10f4fec",
+      "native_source": {
+        "path": "src/dwconv1d-cuda/src/timex.cu",
+        "sha256": "35cb382cbbc6252dbe0141667f83c4dd03f091f13b9aa129da531f3fccfb7c57"
+      },
+      "original_native_unchanged": true
+    },
+    "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "device_kernel_definitions": 2,
+    "timed_kernel_calls_per_trial": 6,
+    "host_oracle_precision": "Float64 fsum direct convolution and independently differentiated operator, exact dyadic adjoint identity",
+    "artifact_encoding_precision": "Float32 outputs/fixture/guards (not widened metadata precision)",
+    "index_precision": [
+      "Int32 device coordinates"
+    ],
+    "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+    "component_classes": {
+      "authored_kernels": "framework_device_kernel"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source grouped vector4 forward and backward causal depthwise convolution; perbatch weight derivatives preserved and independently batchsummed outside ROI",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Grid(1,B*C/group), block(T/4); perlane four temporal outputs, shared768 weights and768*group inputs/upstream; BF8 forward BB2 backward",
+    "layout": null,
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64 fsum direct convolution and independently differentiated operator, exact dyadic adjoint identity",
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "One block barrier after shared staging",
+      "Context completion at paired-kernel ROI boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_forward_bytes": 27648,
+      "shared_backward_bytes": 15360,
+      "shared_allocation": "framework staticshared arrays"
+    },
+    "launch_geometry": {
+      "threads": "T/4",
+      "grid": "[1,B*C/(8forward or2backward)]",
+      "Tmax": 768,
+      "BF": 8,
+      "BB": 2,
+      "shared_forward_bytes": 27648,
+      "shared_backward_bytes": 15360,
+      "cases": 3,
+      "timed_kernel_calls_per_trial": 6
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "4bd96f9431c8894a470d123e963266c3d22cc86aff9e6c3650b0c05140e636ef",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "review_status": "source_reviewed",
+      "application_domain": "RWKV sequence-model time-mixing primitive / depthwise causal temporal convolution",
+      "scientific_operator": "Per-channel causal convolution plus offset and derivatives with respect to channel weights and batched inputs",
+      "numerical_method": "Float32 shared-memory staged temporal sums, four temporal outputs per lane, BF8/BB2 grouping; independent Float64 direct convolution and symbolic derivatives",
+      "community_use": "Forward/backpropagation operator for sequence models; not a complete language model or training study",
+      "accuracy_requirements": "Full forward/perbatch gradW/gradK at atol2e-5 rtol2e-5, exact inputs and guards; independent bilinear adjoint identity and host batchsum",
+      "source_evidence": [
+        {
+          "path": "src/dwconv1d-cuda/src/timex.cu",
+          "sha256": "35cb382cbbc6252dbe0141667f83c4dd03f091f13b9aa129da531f3fccfb7c57"
+        },
+        {
+          "path": "src/dwconv1d-cuda/run.py",
+          "sha256": "44b478fc9859186d54fe6fbe81aed5e780353e48e1d44036713c7a5498ea25d0"
+        },
+        {
+          "path": "src/dwconv1d-julia/study_fixture_oracle.py",
+          "sha256": "681d3f71ddad59bcdeb67590f9accb422c4b1ba6ef269817493203cbcd212652"
+        }
+      ],
+      "limitations": [
+        "Supplied upstream derivative, not full nonlinear loss/tanh/autograd pipeline",
+        "Original large32x768x768 workload and end-to-end allocations/batchreduce unmeasured",
+        "Only legal grouped B and 4-aligned T<=768 fixtures"
+      ]
+    },
+    "primary_motif": "Grouped depthwise causal convolution and reverse-mode derivatives",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "One block barrier after shared staging",
+      "Context completion at paired-kernel ROI boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Source two-dimensional grid, four temporal outputs per lane and BF8/BB2/shared768 arrays preserved; Julia four scalar memory accesses replace native float4 intrinsics, JACC publicshared initializes template before actual cooperative load"
+    },
+    "implementation_class": {
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+    "verification_contract": "full_forward_perbatch_gradW_gradK_numeric_outputs",
+    "keyconfounds": [
+      "Named kernel-only pipeline excludes source PyTorch autograd/loss/batch reduction and allocation",
+      "Scalar memory instructions for four-lane authored Julia layout vs native float4; no identical instruction claim",
+      "JACC.shared template preload additional work versus native/CUDAjl/KA uninitialized shared staging",
+      "Native fastmath/devicevectorization flags retained; Julia explicit Float32muladd",
+      "Short/mid/legalTmax fixtures, not original fullB32C768large workload"
+    ],
+    "benchmark": "dwconv1d",
+    "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261018T052958761424Z_dwconv1d/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/dwconv1d-cuda/src/timex.cu",
+      "native_source_sha256": "35cb382cbbc6252dbe0141667f83c4dd03f091f13b9aa129da531f3fccfb7c57",
+      "reviewed_at": "2026-10-18T05:31:31.585639+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Source grouped vector4 forward and backward causal depthwise convolution; perbatch weight derivatives preserved and independently batchsummed outside ROI",
+        "work_item_mapping": "Grid(1,B*C/group), block(T/4); perlane four temporal outputs, shared768 weights and768*group inputs/upstream; BF8 forward BB2 backward",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "One block barrier after shared staging",
+          "Context completion at paired-kernel ROI boundaries"
+        ],
+        "launch_geometry": {
+          "threads": "T/4",
+          "grid": "[1,B*C/(8forward or2backward)]",
+          "Tmax": 768,
+          "BF": 8,
+          "BB": 2,
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "cases": 3,
+          "timed_kernel_calls_per_trial": 6
+        },
+        "resource_policy": {
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "shared_allocation": "framework staticshared arrays"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "4bd96f9431c8894a470d123e963266c3d22cc86aff9e6c3650b0c05140e636ef",
+        "reference_repair": {
+          "taxonomy_code": "S1",
+          "phase": "reference_missing_backward_restoration",
+          "finding": "Historical Julia forward implements genuine causal convolution but omits native backward gradients and prints hardcoded backward-correctness/profiler measurements. Current study restores actual forward/backward work and full derivative checks. Forward scalar grid mapping also aligned to source vector4/grouped shared-memory work. Native timex.cu and PyTorch wrapper unchanged; no native scientific repair.",
+          "original_source_sha256": "654d1ea53dfb9779f76d9c567c48535d93a9638150be1b0410bfce95e10f4fec",
+          "native_source": {
+            "path": "src/dwconv1d-cuda/src/timex.cu",
+            "sha256": "35cb382cbbc6252dbe0141667f83c4dd03f091f13b9aa129da531f3fccfb7c57"
+          },
+          "original_native_unchanged": true
+        },
+        "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "timed_kernel_calls_per_trial": 6,
+        "host_oracle_precision": "Float64 fsum direct convolution and independently differentiated operator, exact dyadic adjoint identity",
+        "artifact_encoding_precision": "Float32 outputs/fixture/guards (not widened metadata precision)",
+        "index_precision": [
+          "Int32 device coordinates"
+        ],
+        "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+        "component_classes": {
+          "authored_kernels": "framework_device_kernel"
+        }
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Source grouped vector4 forward and backward causal depthwise convolution; perbatch weight derivatives preserved and independently batchsummed outside ROI",
+        "work_item_mapping": "Grid(1,B*C/group), block(T/4); perlane four temporal outputs, shared768 weights and768*group inputs/upstream; BF8 forward BB2 backward",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "One block barrier after shared staging",
+          "Context completion at paired-kernel ROI boundaries"
+        ],
+        "launch_geometry": {
+          "threads": "T/4",
+          "grid": "[1,B*C/(8forward or2backward)]",
+          "Tmax": 768,
+          "BF": 8,
+          "BB": 2,
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "cases": 3,
+          "timed_kernel_calls_per_trial": 6
+        },
+        "resource_policy": {
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "shared_allocation": "framework staticshared arrays"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "f7f91df5e1d7a3e77081a3c66a6a8a5b04768e41b98b751fa5cf06d3e3956d87",
+        "reference_repair": null,
+        "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "timed_kernel_calls_per_trial": 6,
+        "host_oracle_precision": "Float64 fsum direct convolution and independently differentiated operator, exact dyadic adjoint identity",
+        "artifact_encoding_precision": "Float32 outputs/fixture/guards (not widened metadata precision)",
+        "index_precision": [
+          "Int32 device coordinates"
+        ],
+        "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+        "component_classes": {
+          "authored_kernels": "framework_device_kernel"
+        }
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Source grouped vector4 forward and backward causal depthwise convolution; perbatch weight derivatives preserved and independently batchsummed outside ROI",
+        "work_item_mapping": "Grid(1,B*C/group), block(T/4); perlane four temporal outputs, shared768 weights and768*group inputs/upstream; BF8 forward BB2 backward",
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "synchronization": [
+          "One block barrier after shared staging",
+          "Context completion at paired-kernel ROI boundaries"
+        ],
+        "launch_geometry": {
+          "threads": "T/4",
+          "grid": "[1,B*C/(8forward or2backward)]",
+          "Tmax": 768,
+          "BF": 8,
+          "BB": 2,
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "cases": 3,
+          "timed_kernel_calls_per_trial": 6
+        },
+        "resource_policy": {
+          "shared_forward_bytes": 27648,
+          "shared_backward_bytes": 15360,
+          "shared_allocation": "JACC dynamic explicit byte counts and zero-template preload"
+        },
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "081e3db03ffeea7b4d7a823872a633ce8fae702f362f095ec623aaf099270253",
+        "reference_repair": null,
+        "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "device_kernel_definitions": 2,
+        "timed_kernel_calls_per_trial": 6,
+        "host_oracle_precision": "Float64 fsum direct convolution and independently differentiated operator, exact dyadic adjoint identity",
+        "artifact_encoding_precision": "Float32 outputs/fixture/guards (not widened metadata precision)",
+        "index_precision": [
+          "Int32 device coordinates"
+        ],
+        "timing_scope": "sum3_forward_backward_preallocated_kernel_pipeline_complete",
+        "component_classes": {
+          "authored_kernels": "framework_device_kernel"
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/dwconv1d-julia/dwconv1d-julia-cuda.jl/main.jl",
+    "sha256": "4bd96f9431c8894a470d123e963266c3d22cc86aff9e6c3650b0c05140e636ef",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        59,
+        60
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [
+        12,
+        36
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+      "run_id": "20261018T052958761424Z_dwconv1d",
+      "result": ".porting-state/portable_julia/runs/20261018T052958761424Z_dwconv1d/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "d48f73cf0d27c65ee023a24da645882f587be0042aeed7807ed185c02f2c0ce0",
+      "source_hash": "c4eb82a4cd39f2a9e5ca7c0fb7ae9d09c5287e1504fa94f3e00a7760cbc73bf5",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T052958761424Z_dwconv1d/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0009217380000000001,
+        0.0008678660000000001,
+        0.0008130390000000001,
+        0.000812028,
+        0.0008112670000000001
+      ],
+      "mean_last_four_seconds": 0.00082605,
+      "contract": {
+        "cases": [
+          [
+            8,
+            1,
+            16
+          ],
+          [
+            16,
+            3,
+            64
+          ],
+          [
+            8,
+            1,
+            768
+          ]
+        ],
+        "inputs": "Exact Float32 signed dyadic weights/input/upstream plus impulse case, prefix serialized",
+        "outputs": "Full forward, perbatch gradW, gradK, readonly input and 144 raw guards",
+        "timing": "Sum3 preallocated forward+backward kernel pipeline, context complete; no PyTorch loss/autograd/CPU batch reduction included",
+        "scope": "Tmax768 BF8 BB2, source fastmath/nativevectorizationflags; original largePyTorch CLIunmeasured",
+        "oracle": "Independent direct convolution and symbolic derivatives Float64fsum, same tolerances"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "dwconv1d_shared_harness_generator_space_B2_01",
+        "benchmark_id": "dwconv1d",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B2",
+        "phase": "reference_measurement_adapter_frontend",
+        "origin_model": "shared_infrastructure",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/dwconv1d.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "dwconv1d_shared_harness_generator_space_B2_01",
+          "benchmark_id": "dwconv1d",
+          "implementation_model": "cuda_jl",
+          "origin_model": "shared_infrastructure",
+          "phase": "reference_measurement_adapter_frontend",
+          "taxonomy_code": "B2",
+          "is_failure": true,
+          "failure": true,
+          "symptom": "Shared host harness generator expression lacks space before for, parse failure before any authored device JIT",
+          "source_sha256": "86838bb146a816216c11633b55c1fc789505388e0687be4b4b15f36313c42f13",
+          "log_reference": ".porting-state/portable_julia/runs/20261018T052717463962Z_dwconv1d/cuda_jl_run1.log",
+          "resolution": "Add required whitespace; no kernel arithmetic change"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "dwconv1d_cuda_jl_reference_semantics_01",
+        "benchmark_id": "dwconv1d",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_missing_backward_restoration",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/dwconv1d.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "dwconv1d_cuda_jl_reference_semantics_01",
+          "benchmark_id": "dwconv1d",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_missing_backward_restoration",
+          "taxonomy_code": "S1",
+          "symptom": "Historical Julia forward implements genuine causal convolution but omits native backward gradients and prints hardcoded backward-correctness/profiler measurements. Current study restores actual forward/backward work and full derivative checks. Forward scalar grid mapping also aligned to source vector4/grouped shared-memory work. Native timex.cu and PyTorch wrapper unchanged; no native scientific repair.",
+          "cause": "Historical Julia forward implements genuine causal convolution but omits native backward gradients and prints hardcoded backward-correctness/profiler measurements. Current study restores actual forward/backward work and full derivative checks. Forward scalar grid mapping also aligned to source vector4/grouped shared-memory work. Native timex.cu and PyTorch wrapper unchanged; no native scientific repair.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "taxonomy_code": "S1",
+            "phase": "reference_missing_backward_restoration",
+            "finding": "Historical Julia forward implements genuine causal convolution but omits native backward gradients and prints hardcoded backward-correctness/profiler measurements. Current study restores actual forward/backward work and full derivative checks. Forward scalar grid mapping also aligned to source vector4/grouped shared-memory work. Native timex.cu and PyTorch wrapper unchanged; no native scientific repair.",
+            "original_source_sha256": "654d1ea53dfb9779f76d9c567c48535d93a9638150be1b0410bfce95e10f4fec",
+            "native_source": {
+              "path": "src/dwconv1d-cuda/src/timex.cu",
+              "sha256": "35cb382cbbc6252dbe0141667f83c4dd03f091f13b9aa129da531f3fccfb7c57"
+            },
+            "original_native_unchanged": true
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "654d1ea53dfb9779f76d9c567c48535d93a9638150be1b0410bfce95e10f4fec",
+          "log_reference": "/home/imo/HeCBench_julia/src/dwconv1d-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 2,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 2,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 756,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/dwconv1d-julia/dwconv1d-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "d26da99ac7c1b765f330e8d0",
+        "begin_event_id": "63e1588c91469d1d24a214f9",
+        "agent": "/root/maps_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T05:28:45.852318+00:00",
+        "usage_event_timestamp": "2026-10-18T05:28:38.784Z",
+        "elapsed_usage_event_start": "2026-10-18T05:25:07.442Z",
+        "delta_usage": {
+          "input_tokens": 941584,
+          "cached_input_tokens": 935808,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 6928,
+          "reasoning_output_tokens": 237,
+          "total_tokens": 948512
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "fa52953e198c1470fac608b940e9747e00a441c3af5ae71315d6736de32d81b6",
+        "marker_lag_seconds": 7.068318,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "2033deae0e6592a3dfce1fcd62754dff988976bc91d7a7ca38770c31762d5f64",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 4.759568,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/dwconv1d/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "7306fca2df2b9d56ae3e220572d2df267be41e28a8ac0a7ad57d12564a2eb557",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/dwconv1d-julia-cuda_jl/manifest.json",
+    "selected_sha256": "83661a872f24e5c4128deea3e8cdefe77d18a678e83d0fdc5a88ec60e4b01221",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/dwconv1d-julia-cuda_jl/manifest.json",
+        "sha256": "83661a872f24e5c4128deea3e8cdefe77d18a678e83d0fdc5a88ec60e4b01221"
+      },
+      {
+        "path": ".porting-state/porting_logs/dwconv1d-julia/manifest.json",
+        "sha256": "7862227bc803b09180e9b950f8b7e783d1daf26eb4eb84855ee9f2398c26276d"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "dwconv1d",
+    "implementation_model": "cuda_jl",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261018T052958761424Z_dwconv1d/result.json",
+    "configuration_id": "dwconv1d_source_grouped_forward_backward_3fixtures_v1",
+    "named_scope_only": true,
+    "native_reference_repaired": false,
+    "numerical_contract": "Forward/perbatchgradW/gradK fullvalues; mathematical host batchsummed derivative/adjoint witness in derivative_adjoint_witness.json, no timed GPUbatchsum claim"
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/dwconv1d.json",
+    "annotation_sha256": "0596942084fa55e6438e3c43bd4f2c882c3ec2cd097f9a669374d0f704b4aa8f",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/dwconv1d-julia-cuda_jl/current_reference_effort_300.json",
+      "sha256": "063087fa354b7a27ac1a2202724cd0ba6c4a3d6a04923e2e5ad63c1311bd63ad",
+      "record": {
+        "benchmark_id": "dwconv1d",
+        "implementation_model": "cuda_jl",
+        "phase": "missing_backward_restoration_and_mapping_alignment",
+        "historical_original_translation_cost_known": false,
+        "whole_program_checks": 2,
+        "authored_device_source_candidates": 1,
+        "authored_device_jit_processes": 1,
+        "shared_frontend_B2_repairs": 1,
+        "actual_device_compiler_repairs": 0,
+        "actual_harness_phase_usage": {
+          "input_tokens": 941584,
+          "cached_input_tokens": 935808,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 6928,
+          "reasoning_output_tokens": 237,
+          "total_tokens": 948512
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/dwconv1d/cuda_jl_reference_repair.jsonl",
+        "scope": "Historical forward genuine; hardcoded backward/profile text replaced with real native-equivalent forward/backward grouped computation and independent oracle. No native scientific repair."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/dwconv1d-julia-cuda_jl/current_reference_effort_300.json",
+    "sha256": "063087fa354b7a27ac1a2202724cd0ba6c4a3d6a04923e2e5ad63c1311bd63ad",
+    "record": {
+      "benchmark_id": "dwconv1d",
+      "implementation_model": "cuda_jl",
+      "phase": "missing_backward_restoration_and_mapping_alignment",
+      "historical_original_translation_cost_known": false,
+      "whole_program_checks": 2,
+      "authored_device_source_candidates": 1,
+      "authored_device_jit_processes": 1,
+      "shared_frontend_B2_repairs": 1,
+      "actual_device_compiler_repairs": 0,
+      "actual_harness_phase_usage": {
+        "input_tokens": 941584,
+        "cached_input_tokens": 935808,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6928,
+        "reasoning_output_tokens": 237,
+        "total_tokens": 948512
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/dwconv1d/cuda_jl_reference_repair.jsonl",
+      "scope": "Historical forward genuine; hardcoded backward/profile text replaced with real native-equivalent forward/backward grouped computation and independent oracle. No native scientific repair."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

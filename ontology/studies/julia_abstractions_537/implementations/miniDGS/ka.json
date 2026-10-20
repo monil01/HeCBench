@@ -1,0 +1,888 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "miniDGS",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/miniDGS.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "review_status": "source_audited",
+    "implementation_class": "mixed_kernel_communication_pipeline",
+    "device_component_class": "framework_device_kernel",
+    "whole_pipeline_class_reason": "ActualmeasuredGPUhalo gather\u2192D2H\u2192nonblockinghostMPI\u2192GPUvolume\u2192MPIwait\u2192H2H/H2D\u2192surface/RK is substantivehostcommunication/mixedpipeline; notordinarylaunch/completionalone.",
+    "mapping": "OwnKA@kernel/@index/@localmem/@synchronize/allocate/CUDABackendlaunches. Fourgenuinedevicekernels, noforeignCUDAdeviceintrinsics.",
+    "layout": "Nativefield-major96paddednodes\u00d76fieldsinsideelementAoS; sameflattenedQ/rhs/res/tmp/halo/operatorarrays andInt32gathermap, exactallmodelactualinputprefix. NativeTextureObjectfetch vs targetglobalarrays; VOlumeQ576+metric12F32onepackedworkspace/SURF672F32.",
+    "precision": [
+      "GPUFloat32storage/volume_derivatives_lift_RK",
+      "GPUFloat32jump_products_then_Float64surfaceflux_then_Float32cast",
+      "CPUFloat64geometry/RKcoefficients_toFloat32",
+      "CPUFloat64oracle_and_rawFloat32value_serialization"
+    ],
+    "resource_policy": "Workgroup84/112/256 matchedsource, @localmem588/672F32 andKAallocate guardviews; sameCUDAjlpoolbackend.",
+    "host_integration": "SameCPU-onlyMPI_CABIbinary/hostFloat32sendrecv/IsendIrecv+Waitall+source-statuscalloc/free, MPIfuncDSOresolvedCPUprobe; no CUDA-awareMPIneeded. JuliaaddswholedevicehandofffenceafterGPUgatherD2H.",
+    "timing_boundary": "Allsetup/readbacks/devicecompletion thenuntimedMPIprealignment; clock+originalinitialMPIbarrier+all5communicatedRKstages+wholecontextcompletion; maxrankduration. PrimaryfinalcaptureoutsideROI; separatewarmuptrace.",
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Sourcearithmetic/indexing/layout retainedwithnativeAPIqualification, targetglobalarrayreads, sharedpacking/allocator/hostintegrationcovariates; scopefullsource-defaulttime-loop notgeneralCLIrewrite."
+    },
+    "source_evidence": [
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+        "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+      },
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+        "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+      },
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+        "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+      },
+      {
+        "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+        "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+      },
+      {
+        "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+        "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+      },
+      {
+        "path": "src/miniDGS-julia/independent_oracle_audit.json",
+        "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+      },
+      {
+        "path": "src/miniDGS-julia/mesh_topology_witness.json",
+        "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+      },
+      {
+        "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+        "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+      },
+      {
+        "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+        "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+      },
+      {
+        "path": "src/miniDGS-julia/miniDGS-julia-KA/main.jl",
+        "sha256": "2c80911ed12858e19995ffeaada56af11c71b6595e43dfe62858fb563619eebb"
+      },
+      {
+        "path": "src/miniDGS-julia/study_common.jl",
+        "sha256": "5a5ec19fb52733e9e1687568bb00b8d5e84032324b62ff51bdce4d5f3662b79c"
+      }
+    ],
+    "implementation_components": {
+      "device": "framework_device_kernel",
+      "communication": "vendor_library_interop viaCPU-onlyMPI CABI",
+      "host": "framework allocation/copy/contextcompletion andinteroporchestration"
+    },
+    "classification_review": {
+      "classification_only": true,
+      "prior_preliminary_label": "hybrid_host_control",
+      "reason": "Establishedallreduceprecedent mixed_kernel_communication_pipeline morepreciselydescribesauthoredGPUkernels+actualMPIcommunication; noGPU-result-dependenthostbranchassertion. No source/config/executionchange.",
+      "precedent": ".porting-state/portable_julia/traits/allreduce.json"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "mixed_kernel_communication_pipeline",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "OwnKA@kernel/@index/@localmem/@synchronize/allocate/CUDABackendlaunches. Fourgenuinedevicekernels, noforeignCUDAdeviceintrinsics.",
+    "layout": "Nativefield-major96paddednodes\u00d76fieldsinsideelementAoS; sameflattenedQ/rhs/res/tmp/halo/operatorarrays andInt32gathermap, exactallmodelactualinputprefix. NativeTextureObjectfetch vs targetglobalarrays; VOlumeQ576+metric12F32onepackedworkspace/SURF672F32.",
+    "storage_precision": null,
+    "compute_precision": null,
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": null,
+    "atomics_and_reductions": null,
+    "resource_policy": "Workgroup84/112/256 matchedsource, @localmem588/672F32 andKAallocate guardviews; sameCUDAjlpoolbackend.",
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+        "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+      },
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+        "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+      },
+      {
+        "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+        "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+      },
+      {
+        "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+        "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+      },
+      {
+        "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+        "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+      },
+      {
+        "path": "src/miniDGS-julia/independent_oracle_audit.json",
+        "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+      },
+      {
+        "path": "src/miniDGS-julia/mesh_topology_witness.json",
+        "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+      },
+      {
+        "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+        "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+      },
+      {
+        "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+        "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+      },
+      {
+        "path": "src/miniDGS-julia/miniDGS-julia-KA/main.jl",
+        "sha256": "2c80911ed12858e19995ffeaada56af11c71b6595e43dfe62858fb563619eebb"
+      },
+      {
+        "path": "src/miniDGS-julia/study_common.jl",
+        "sha256": "5a5ec19fb52733e9e1687568bb00b8d5e84032324b62ff51bdce4d5f3662b79c"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "miniDGS",
+    "primary_motif": "element_local_dense_derivative_lift_Maxwell_flux_halo_gather_MPI_lowstorage_RK",
+    "storage_precision": [
+      "GPUFloat32fields_and_operators",
+      "GPUInt32gather_indices",
+      "CPUFloat64geometry/oracle/artifact"
+    ],
+    "compute_precision": [
+      "GPUFloat32storage/volume_derivatives_lift_RK",
+      "GPUFloat32jump_products_then_Float64surfaceflux_then_Float32cast",
+      "CPUFloat64geometry/RKcoefficients_toFloat32",
+      "CPUFloat64oracle_and_rawFloat32value_serialization"
+    ],
+    "synchronization": [
+      "Ownframeworkblockbarriers",
+      "ActualhostMPIIsend/Irecv/Waitall afterD2Hhandoff andbeforeH2Dghostupload",
+      "UntimedMPIsetupalignment+sourceinitialtimedMPIbarrier",
+      "WholeCUDAcontextcompletionatROIboundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "FullsourceGPU/MPIstep withlegacytextureAPIqualifiedandfixedmeasurementboundary, notsourcephysicalarithmeticrepair."
+    },
+    "implementation_class": {
+      "cuda_jl": "mixed_kernel_communication_pipeline",
+      "ka": "mixed_kernel_communication_pipeline",
+      "jacc": "mixed_kernel_communication_pipeline"
+    },
+    "timing_scope": "Allsetup/readbacks/devicecompletion thenuntimedMPIprealignment; clock+originalinitialMPIbarrier+all5communicatedRKstages+wholecontextcompletion; maxrankduration. PrimaryfinalcaptureoutsideROI; separatewarmuptrace.",
+    "verification_contract": "raw_numeric_outputs",
+    "scientific_intent": {
+      "benchmark": "miniDGS",
+      "review_status": "source_audited",
+      "primary_family": "pde_continuum",
+      "primary_domain": "three_dimensional_Maxwell_electromagnetic_wave_nodal_discontinuous_Galerkin_solver",
+      "secondary_domains": [
+        "electromagnetics",
+        "high_order_tetrahedral_FEM",
+        "MPI_domain_decomposition"
+      ],
+      "scientific_task": "Evolve six electromagnetic H/E fields on source1022-tetrahedron mesh with degree6 nodal DG volume curls, normal/penalty numerical surface flux, real MPI halo data and five-stage low-storage RK. Originaldefault FinalTime.0005 performsoneactualstep aftersource.001 override/clamp; this is not a long-trajectory accuracy certificate.",
+      "mathematical_operation": "Dense84x84 reference derivatives transformed byper-element affine metrics; field curls, paired traces withconducting-boundary E reflection, Float64-intermediate linear Maxwell flux projected/lifted tovolume, residual res=a*res+dt*rhs and Q+=b*res. ActualsourceMPIgather/receiveordering preserved.",
+      "discretization_or_topology": "1022 tetrahedra/2ranks511each;84validnodalpoints/element,28facepoints\u00d74faces,6fields,BSIZE96 with12paddingnodes/field;515088validfieldDOFs,588672paddedstatefloats.76cutfaces/2128communicatednodes/12768fieldvaluesperrank.",
+      "invariants": [
+        "All20full6633872F64encodedcaptures passstrictfieldcontract; rawinputprefix/guards/constants exact, all3Juliaversionarraysbitidentical.",
+        "All160actualuntimedstagefields/47093760values independentlychecked byFloat64matrixcurl/flux/RKwithprederivedpropagatedFP32forwarderrorbounds.",
+        "All40actualMPIgather/peerreceivearrays matchpreviousactualGPUstates exactly;4256cutfacenodes physicalcoordinates agree under sourceNODETOL1e-4, normalsunit/fieldorderingvalid.",
+        "Analytic Cartesianlinear-gradientcontrols validate actualderivative/metricconsistency; no mass/energy/timeconvergencecertificate."
+      ],
+      "accuracy_requirements": [
+        "Centralatol.002/rtol2e-6 isinsufficientalone; mandatoryall30pair-trials fullfieldaudit Q/res/gather/received3e-5+2e-6minabs,RHS.002+2e-6minabs, exactprefix/constantbytes/guards.",
+        "Everymodelselfchecksfullfinalstate underindependentpervalueFloat32gamma/absoluteoperatorpropagationbounds, warmupfull5stagewitnessseparatefromtimedoverwrittenintermediates.",
+        "OriginallegacytextureAPIrejectedCUDA12frontend; qualifiedtextureobjectsourceCLIactualall60tracefieldsbitidenticaltomatchednativewarmup. No unchangedlegacyCLIclaim."
+      ],
+      "precision_sensitivity": "GPUstorageFloat32 andInt32map; volume/lift/RKF32withFMA, sourceF32jumpthenFloat64fluxintermediatescastF32. SourceGPU--use_fast_math versus Juliaexplicitmuladd/defaultflags notidenticalcompilerpolicy. Float64serializedactualvalues/oracle areseparateCPUroles; no measuredFP64instructionmix/roofline.",
+      "input_size_regimes": "Fullsource defaultN6,1022tet,2MPIranks/sourceFinalTime.0005(one5stageRKstep); bothrankscudaSetDevice0\u2192onlyvisiblephysicalGPU6. Generalrankcounts/orders/multiGPU/differentmeshesunmeasured.",
+      "community_use_case": "High-order electromagneticDGtime-step kernel+hostMPIcomponent. SourceCPUmeshreading/ParMETISpartitioning/packing cold-regenerated, notrewrittenJuliaCLI. Scalarphysicalunits/materialparametersnotindependentlyvalidated.",
+      "provenance": [
+        {
+          "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+          "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+        },
+        {
+          "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+          "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+        },
+        {
+          "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+          "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+        },
+        {
+          "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+          "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+        },
+        {
+          "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+          "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+        },
+        {
+          "path": "src/miniDGS-julia/independent_oracle_audit.json",
+          "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+        },
+        {
+          "path": "src/miniDGS-julia/mesh_topology_witness.json",
+          "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+        },
+        {
+          "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+          "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+        },
+        {
+          "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+          "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_audited",
+        "implementation_class": "mixed_kernel_communication_pipeline",
+        "device_component_class": "framework_device_kernel",
+        "whole_pipeline_class_reason": "ActualmeasuredGPUhalo gather\u2192D2H\u2192nonblockinghostMPI\u2192GPUvolume\u2192MPIwait\u2192H2H/H2D\u2192surface/RK is substantivehostcommunication/mixedpipeline; notordinarylaunch/completionalone.",
+        "mapping": "OwnCUDAjl@cuda/blockthreadindices/staticshared/sync_threads/CuArrayundef. Fourgenuinedevicekernels, noforeignCUDAdeviceintrinsics.",
+        "layout": "Nativefield-major96paddednodes\u00d76fieldsinsideelementAoS; sameflattenedQ/rhs/res/tmp/halo/operatorarrays andInt32gathermap, exactallmodelactualinputprefix. NativeTextureObjectfetch vs targetglobalarrays; VOlumeQ576+metric12F32onepackedworkspace/SURF672F32.",
+        "precision": [
+          "GPUFloat32storage/volume_derivatives_lift_RK",
+          "GPUFloat32jump_products_then_Float64surfaceflux_then_Float32cast",
+          "CPUFloat64geometry/RKcoefficients_toFloat32",
+          "CPUFloat64oracle_and_rawFloat32value_serialization"
+        ],
+        "resource_policy": "CTA84volume/112surface/256gather-RK; staticshared2352/2688Brequested, pooledCuArrays and128word512Bguards.",
+        "host_integration": "SameCPU-onlyMPI_CABIbinary/hostFloat32sendrecv/IsendIrecv+Waitall+source-statuscalloc/free, MPIfuncDSOresolvedCPUprobe; no CUDA-awareMPIneeded. JuliaaddswholedevicehandofffenceafterGPUgatherD2H.",
+        "timing_boundary": "Allsetup/readbacks/devicecompletion thenuntimedMPIprealignment; clock+originalinitialMPIbarrier+all5communicatedRKstages+wholecontextcompletion; maxrankduration. PrimaryfinalcaptureoutsideROI; separatewarmuptrace.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Sourcearithmetic/indexing/layout retainedwithnativeAPIqualification, targetglobalarrayreads, sharedpacking/allocator/hostintegrationcovariates; scopefullsource-defaulttime-loop notgeneralCLIrewrite."
+        },
+        "source_evidence": [
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+            "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+            "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+            "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+          },
+          {
+            "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+            "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+          },
+          {
+            "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+            "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+          },
+          {
+            "path": "src/miniDGS-julia/independent_oracle_audit.json",
+            "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+          },
+          {
+            "path": "src/miniDGS-julia/mesh_topology_witness.json",
+            "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+          },
+          {
+            "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+            "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+          },
+          {
+            "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+            "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+          },
+          {
+            "path": "src/miniDGS-julia/miniDGS-julia-cuda.jl/main.jl",
+            "sha256": "b3641cdb5a882a57f77329220c9d6c2c68783431e215297a3e3f652c08445633"
+          },
+          {
+            "path": "src/miniDGS-julia/study_common.jl",
+            "sha256": "5a5ec19fb52733e9e1687568bb00b8d5e84032324b62ff51bdce4d5f3662b79c"
+          }
+        ],
+        "implementation_components": {
+          "device": "framework_device_kernel",
+          "communication": "vendor_library_interop viaCPU-onlyMPI CABI",
+          "host": "framework allocation/copy/contextcompletion andinteroporchestration"
+        },
+        "classification_review": {
+          "classification_only": true,
+          "prior_preliminary_label": "hybrid_host_control",
+          "reason": "Establishedallreduceprecedent mixed_kernel_communication_pipeline morepreciselydescribesauthoredGPUkernels+actualMPIcommunication; noGPU-result-dependenthostbranchassertion. No source/config/executionchange.",
+          "precedent": ".porting-state/portable_julia/traits/allreduce.json"
+        }
+      },
+      "ka": {
+        "review_status": "source_audited",
+        "implementation_class": "mixed_kernel_communication_pipeline",
+        "device_component_class": "framework_device_kernel",
+        "whole_pipeline_class_reason": "ActualmeasuredGPUhalo gather\u2192D2H\u2192nonblockinghostMPI\u2192GPUvolume\u2192MPIwait\u2192H2H/H2D\u2192surface/RK is substantivehostcommunication/mixedpipeline; notordinarylaunch/completionalone.",
+        "mapping": "OwnKA@kernel/@index/@localmem/@synchronize/allocate/CUDABackendlaunches. Fourgenuinedevicekernels, noforeignCUDAdeviceintrinsics.",
+        "layout": "Nativefield-major96paddednodes\u00d76fieldsinsideelementAoS; sameflattenedQ/rhs/res/tmp/halo/operatorarrays andInt32gathermap, exactallmodelactualinputprefix. NativeTextureObjectfetch vs targetglobalarrays; VOlumeQ576+metric12F32onepackedworkspace/SURF672F32.",
+        "precision": [
+          "GPUFloat32storage/volume_derivatives_lift_RK",
+          "GPUFloat32jump_products_then_Float64surfaceflux_then_Float32cast",
+          "CPUFloat64geometry/RKcoefficients_toFloat32",
+          "CPUFloat64oracle_and_rawFloat32value_serialization"
+        ],
+        "resource_policy": "Workgroup84/112/256 matchedsource, @localmem588/672F32 andKAallocate guardviews; sameCUDAjlpoolbackend.",
+        "host_integration": "SameCPU-onlyMPI_CABIbinary/hostFloat32sendrecv/IsendIrecv+Waitall+source-statuscalloc/free, MPIfuncDSOresolvedCPUprobe; no CUDA-awareMPIneeded. JuliaaddswholedevicehandofffenceafterGPUgatherD2H.",
+        "timing_boundary": "Allsetup/readbacks/devicecompletion thenuntimedMPIprealignment; clock+originalinitialMPIbarrier+all5communicatedRKstages+wholecontextcompletion; maxrankduration. PrimaryfinalcaptureoutsideROI; separatewarmuptrace.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Sourcearithmetic/indexing/layout retainedwithnativeAPIqualification, targetglobalarrayreads, sharedpacking/allocator/hostintegrationcovariates; scopefullsource-defaulttime-loop notgeneralCLIrewrite."
+        },
+        "source_evidence": [
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+            "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+            "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+            "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+          },
+          {
+            "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+            "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+          },
+          {
+            "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+            "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+          },
+          {
+            "path": "src/miniDGS-julia/independent_oracle_audit.json",
+            "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+          },
+          {
+            "path": "src/miniDGS-julia/mesh_topology_witness.json",
+            "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+          },
+          {
+            "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+            "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+          },
+          {
+            "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+            "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+          },
+          {
+            "path": "src/miniDGS-julia/miniDGS-julia-KA/main.jl",
+            "sha256": "2c80911ed12858e19995ffeaada56af11c71b6595e43dfe62858fb563619eebb"
+          },
+          {
+            "path": "src/miniDGS-julia/study_common.jl",
+            "sha256": "5a5ec19fb52733e9e1687568bb00b8d5e84032324b62ff51bdce4d5f3662b79c"
+          }
+        ],
+        "implementation_components": {
+          "device": "framework_device_kernel",
+          "communication": "vendor_library_interop viaCPU-onlyMPI CABI",
+          "host": "framework allocation/copy/contextcompletion andinteroporchestration"
+        },
+        "classification_review": {
+          "classification_only": true,
+          "prior_preliminary_label": "hybrid_host_control",
+          "reason": "Establishedallreduceprecedent mixed_kernel_communication_pipeline morepreciselydescribesauthoredGPUkernels+actualMPIcommunication; noGPU-result-dependenthostbranchassertion. No source/config/executionchange.",
+          "precedent": ".porting-state/portable_julia/traits/allreduce.json"
+        }
+      },
+      "jacc": {
+        "review_status": "source_audited",
+        "implementation_class": "mixed_kernel_communication_pipeline",
+        "device_component_class": "framework_device_kernel",
+        "whole_pipeline_class_reason": "ActualmeasuredGPUhalo gather\u2192D2H\u2192nonblockinghostMPI\u2192GPUvolume\u2192MPIwait\u2192H2H/H2D\u2192surface/RK is substantivehostcommunication/mixedpipeline; notordinarylaunch/completionalone.",
+        "mapping": "OwnJACCparallel_for/global-to-localindex/shared/sync_workgroup/array(T,n). Fourgenuinedevicekernels, noforeignCUDAdeviceintrinsics.",
+        "layout": "Nativefield-major96paddednodes\u00d76fieldsinsideelementAoS; sameflattenedQ/rhs/res/tmp/halo/operatorarrays andInt32gathermap, exactallmodelactualinputprefix. NativeTextureObjectfetch vs targetglobalarrays; VOlumeQ576+metric12F32onepackedworkspace/SURF672F32.",
+        "precision": [
+          "GPUFloat32storage/volume_derivatives_lift_RK",
+          "GPUFloat32jump_products_then_Float64surfaceflux_then_Float32cast",
+          "CPUFloat64geometry/RKcoefficients_toFloat32",
+          "CPUFloat64oracle_and_rawFloat32value_serialization"
+        ],
+        "resource_policy": "Threads84/112/256 matchedsource, explicitdynamic2352/2688B volume/surface and0Bother; actualzerotemplate588/672F32GPUreadbacksseparatefromcommonprefix, overwrittenreadpositions. SourceAPIrequestsadditionalpreload+barrier; trafficunmeasured.",
+        "host_integration": "SameCPU-onlyMPI_CABIbinary/hostFloat32sendrecv/IsendIrecv+Waitall+source-statuscalloc/free, MPIfuncDSOresolvedCPUprobe; no CUDA-awareMPIneeded. JuliaaddswholedevicehandofffenceafterGPUgatherD2H.",
+        "timing_boundary": "Allsetup/readbacks/devicecompletion thenuntimedMPIprealignment; clock+originalinitialMPIbarrier+all5communicatedRKstages+wholecontextcompletion; maxrankduration. PrimaryfinalcaptureoutsideROI; separatewarmuptrace.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Sourcearithmetic/indexing/layout retainedwithnativeAPIqualification, targetglobalarrayreads, sharedpacking/allocator/hostintegrationcovariates; scopefullsource-defaulttime-loop notgeneralCLIrewrite."
+        },
+        "source_evidence": [
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsKernel3d.cu",
+            "sha256": "6f70e922689a906a602ea88f741ba3783816dc084f7846d61d3b112a5fdcf6fd"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsRun3d.c",
+            "sha256": "992c231e821a970f75454aded1ea30df097571b2652f871c11cd51c1daf31687"
+          },
+          {
+            "path": "src/miniDGS-cuda/src/MaxwellsMPI3d.c",
+            "sha256": "9c8ed32fba5ba9761fe3386342182d2560127987ad3f07e07a0fbf571029409a"
+          },
+          {
+            "path": "src/miniDGS-cuda/Meshes/FS_K01022.neu",
+            "sha256": "6aaac598711f147649a8021c12c212aa6799207765f4a9e716df472236c67065"
+          },
+          {
+            "path": "src/miniDGS-julia/native_compatibility/migration_provenance.json",
+            "sha256": "eed9ca685b92a50675dc8b09913788728f4ab0cf5e1810d1c37a729c5c302bd1"
+          },
+          {
+            "path": "src/miniDGS-julia/independent_oracle_audit.json",
+            "sha256": "54a4d495bea8bf6f100d410c2f429afa0d4848d91335e549529e25dffdc390d5"
+          },
+          {
+            "path": "src/miniDGS-julia/mesh_topology_witness.json",
+            "sha256": "1bf64bc932d43ac2fb7c29301fd1c14a9e4303c3e6123d4451a096a075b5842f"
+          },
+          {
+            "path": "src/miniDGS-julia/auxiliary_full_audit.json",
+            "sha256": "4f5e5c571c97353e2403010cc723297bcac65228e3991bbabe19acb11236ce57"
+          },
+          {
+            "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+            "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7"
+          },
+          {
+            "path": "src/miniDGS-julia/miniDGS-julia-JACC/main.jl",
+            "sha256": "4be07b7481e8c9ae3d7aba6258bffdc1ea179a1a56fff2fcb165673221e3c942"
+          },
+          {
+            "path": "src/miniDGS-julia/study_common.jl",
+            "sha256": "5a5ec19fb52733e9e1687568bb00b8d5e84032324b62ff51bdce4d5f3662b79c"
+          }
+        ],
+        "implementation_components": {
+          "device": "framework_device_kernel",
+          "communication": "vendor_library_interop viaCPU-onlyMPI CABI",
+          "host": "framework allocation/copy/contextcompletion andinteroporchestration"
+        },
+        "classification_review": {
+          "classification_only": true,
+          "prior_preliminary_label": "hybrid_host_control",
+          "reason": "Establishedallreduceprecedent mixed_kernel_communication_pipeline morepreciselydescribesauthoredGPUkernels+actualMPIcommunication; noGPU-result-dependenthostbranchassertion. No source/config/executionchange.",
+          "precedent": ".porting-state/portable_julia/traits/allreduce.json"
+        }
+      }
+    },
+    "keyconfounds": [
+      "TwoMPIranksconcurrentlyshareonephysicalV100 peroriginaldriverGPU0policy; distinctfromsingle-context andtwo-GPUstrata.",
+      "Nativelegacytexture\u2192modernlineartextureobjectqualification; targetordinaryglobalarrayreads, cache/lowering differences unprofiled.",
+      "NativecudaMalloc/sourceCPPvectors versus JuliaCUDApool/views/GC/ffi scaffolding; allsource-sized512Bguards/actualinputreadbacksoutsidealignedROI.",
+      "SourceVOL2352B/SURF2688Bsharedrequests packedinoneJuliaworkspace; JACCrequestszerotemplatepreload+barrier, actualemittedtrafficunknown.",
+      "Native--use_fast_math versus JuliaexplicitFMA/defaultflags andnominalmixedprecision; no instruction/countermeasurement.",
+      "Originalv1timer-before-MPIbarriercouldincludepeeroutside-ROIsetup; bothrefsreplacedbyprospectivev2prealignment, rawalloldtimespreserved/excluded. ActualGCcontributionunknown.",
+      "SourcecomputedCFLdt~.000381 ignoredby.001override/clamp.0005; finitefullsource-stepdiscretefidelitynotstability/applicationcertificate."
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/miniDGS-julia/miniDGS-julia-KA/main.jl",
+    "sha256": "2c80911ed12858e19995ffeaada56af11c71b6595e43dfe62858fb563619eebb",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        2,
+        72,
+        130,
+        139
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        4,
+        74
+      ],
+      "barrier": [
+        8,
+        103
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "miniDGS_N6_full1022tet_2MPIranks_singleGPU6_5stageRK_textureobject_prealigned_v2",
+      "run_id": "20261019T235356970423Z_miniDGS",
+      "result": ".porting-state/portable_julia/runs/20261019T235356970423Z_miniDGS/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": {
+        "mandatory_field_audit": {
+          "path": "src/miniDGS-julia/field_audit_jacc_v2.json",
+          "sha256": "de73ac5b83aa70bf60f14da3e32dcc5c2b5cadc258cd1ede6b56f3d7879c14d7",
+          "pair_trial_checks": 30,
+          "passed": true
+        },
+        "native_integration_adapted": true,
+        "source_ranks_share_one_GPU": true,
+        "pure_frontend_causal_claim": false
+      },
+      "reference_provenance": null,
+      "configuration_classification_adjudication": {
+        "path": "src/miniDGS-julia/study_adjudications.json",
+        "sha256": "538d58536da2c51929fedecd03abaa2da931050627ad646d2beae1093b25f912",
+        "run_id": "20261019T235356970423Z_miniDGS",
+        "reason": "Prospectivefull-fieldcontractstrongerthancentralenvelopepassedallcapturedvalues/trials; nativeAPI-qualifiedMPI-sharingstratumexplicit.",
+        "recorded_at": null,
+        "updated_fields": [
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "6d06ebe52628ba443d057bd1c34a3989c30b36ce194e0dae5b037b892c4a1f21",
+      "source_hash": "571d19e7942fa23f91d94a0678d9b32d2f5c5c2b1c05f39c9bd3b66893ca339d",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T235356970423Z_miniDGS/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.06643859100000027,
+        0.002346251000000521,
+        0.0019828180000001083,
+        0.002328941000000029,
+        0.0021792299999994214
+      ],
+      "mean_last_four_seconds": 0.00220931000000002,
+      "contract": {
+        "benchmark": "miniDGS",
+        "configuration_id": "miniDGS_N6_full1022tet_2MPIranks_singleGPU6_5stageRK_textureobject_prealigned_v2",
+        "ranks": 2,
+        "physical_GPUs": [
+          6
+        ],
+        "source_ranks_share_single_GPU": true,
+        "K_each_rank": 511,
+        "Np": 84,
+        "Nfp": 28,
+        "BSIZE": 96,
+        "fields": 6,
+        "faces": 4,
+        "halo_values_each_rank": 12768,
+        "source_computed_dt_ignored_by_run": true,
+        "actual_time_step": 0.0005,
+        "source_final_time": 0.0005,
+        "RK_stages": 5,
+        "buffers": [
+          {
+            "name": "Q",
+            "count": 294336,
+            "input_file": "initial_Q",
+            "dtype": "float32"
+          },
+          {
+            "name": "rhs",
+            "count": 294336,
+            "input_file": "initial_rhs",
+            "dtype": "float32"
+          },
+          {
+            "name": "res",
+            "count": 294336,
+            "input_file": "initial_res",
+            "dtype": "float32"
+          },
+          {
+            "name": "tmp",
+            "count": 294336,
+            "input_file": null,
+            "dtype": "float32"
+          },
+          {
+            "name": "part",
+            "count": 12768,
+            "input_file": null,
+            "dtype": "float32"
+          },
+          {
+            "name": "D",
+            "count": 36864,
+            "input_file": "DrDsDt",
+            "dtype": "float32"
+          },
+          {
+            "name": "L",
+            "count": 9408,
+            "input_file": "LIFT",
+            "dtype": "float32"
+          },
+          {
+            "name": "G",
+            "count": 6132,
+            "input_file": "vgeo",
+            "dtype": "float32"
+          },
+          {
+            "name": "S",
+            "count": 400624,
+            "input_file": "surfinfo",
+            "dtype": "float32"
+          },
+          {
+            "name": "map",
+            "count": 12768,
+            "input_file": "parmapOUT",
+            "dtype": "int32"
+          }
+        ],
+        "guard_elements_each_side": 128,
+        "Float32_guard": 4096.25,
+        "Int32_guard": 324508639,
+        "prefix_each_rank": 1658468,
+        "outputs_each_rank": 1658468,
+        "input_prefix_count": 3316936,
+        "primary_count": 6633872,
+        "artifact_dtype": "float64",
+        "central_atol": 0.002,
+        "central_rtol": 2e-06,
+        "mandatory_field_audit": {
+          "state_Q_res_gather_received_atol": 3e-05,
+          "rhs_atol": 0.002,
+          "rtol": 2e-06,
+          "initial_prefix_constant_arrays_and_guards": "exact serializedbytes",
+          "every_trial_and_every_native_Julia_pair": true
+        },
+        "central_envelope_alone_insufficient": true,
+        "tolerance_provenance": "Native-onlyindependentdiagnosticbeforeanytargetdraft: maxQ2.34e-7,res9.84e-7,RHS4.22e-4 vsFloat64; strictfieldbudgetsselectedprospectively, plusindependentderivedpervalueFP32gamma/linearoperatorboundselfchecks. No target-result-basedrelaxation.",
+        "timing_region": "two_MPI_ranks_share_GPU6_untimed_setup_prealigned_maxrank_source_halo_volume_surface_RK_5stages_completion",
+        "native_reference_repaired": false,
+        "native_integration_adapted": true,
+        "exclude_untouched_native_aggregates": true,
+        "exclude_single_gpu_aggregates": true,
+        "source_qualification": "LegacytextureAPI\u2192CUDA12lineartextureobjects; GPUarithmetic/indexingunchanged, targetglobalarrays/cachepolicyandhostCABIintegration differ. MPIranks2sameGPU6sourcepolicy, not2GPUperformance.",
+        "source_host_status_allocation_preserved": "MPIrecvstatus/outstatuscalloc/freeinsideeveryRKstage; staticrequests/sharedCABIoverheadsandCPP/Juliaorchestrationcovariates",
+        "untimed_trace": "Eachmodelonecomplete5stagewarmuptrace, everyactualvolume/surface/RK/gather/receivefieldvalidated; nooverwrittentimedintermediateclaim",
+        "no_stability_or_application_certificate": true,
+        "untimed_prealignment": "ExtraMPIbarrierafterallperrankinputreadbacks/setup/devicecompletion,beforeclockstart; originalsourcebarrierremainstimed. PreventpeerexternalpreparationfromenteringROI; noGCpolicychange.",
+        "measurement_contract_revision": {
+          "reason": "S2preparationwaitenterstimedinitialMPIbarrierinoriginalmeasurementharness",
+          "kernel_math_inputs_and_field_tolerances_unchanged": true,
+          "all_old5samples_preserved": true,
+          "no_speed_selection": true,
+          "actual_GC_contribution_unknown": true
+        }
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "observed_context_inclusive_activity_window",
+      "input_tokens": 1582106,
+      "cached_input_tokens": 1572608,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5886,
+      "reasoning_output_tokens": 3077,
+      "total_tokens": 1587992,
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/miniDGS/ka_translation.jsonl",
+      "measurement_kind": "observed_harness_cumulative_usage_boundary",
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "marker_lag_begin_seconds": 6.710871,
+      "marker_lag_end_seconds": 7.456851,
+      "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-19T23:09:39.143Z",
+        "context_event_sha256": "6e9f12596e0dd5c7d31e2d1bc9399ff18e432b597fa3e2888c099256d1a8f08d",
+        "source_snapshot_bytes": 102324564,
+        "lookup_bytes_reviewed": 4194304,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "estimates": null
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "416ef6411009ac2fac3db1c2",
+        "begin_event_id": "b893889a066b3627b5cd85e6",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T23:53:08.241851+00:00",
+        "usage_event_timestamp": "2026-10-19T23:53:00.785Z",
+        "elapsed_usage_event_start": "2026-10-19T23:51:01.131Z",
+        "delta_usage": {
+          "input_tokens": 1582106,
+          "cached_input_tokens": 1572608,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5886,
+          "reasoning_output_tokens": 3077,
+          "total_tokens": 1587992
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 7.456851,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "103af793a0e18f7b0ce4039f1482fb38cdd95e55be2907e2ad86d07e880ea648",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "KAfirstwhole2-rankprogram passed2actualauthoreddeviceJITprocesses/4kernels,5jointtrials,15fullcaptures/all15pair-trialmandatoryfieldchecks. EntireartifactsexactCUDAjl, nativeRHSpartmax1.2207e-4withinpredeclaredstrictcontract. Mean2.209310ms;0repairs, ownKAindex/localmemory/barriers/allocator, fullMPIhostinteroperabilitypreserved. Outcome/auditmetadatawrittenpreviousround.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T23:09:39.143Z",
+          "context_event_sha256": "6e9f12596e0dd5c7d31e2d1bc9399ff18e432b597fa3e2888c099256d1a8f08d",
+          "source_snapshot_bytes": 102324564,
+          "lookup_bytes_reviewed": 4194304,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 6.710871,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/miniDGS/ka_translation.jsonl",
+        "evidence_sha256": "9d84e1a6e542ade5ac55210d1d15aa65e1994062bc18b19def98f407f51fee7a",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/miniDGS-julia-ka/manifest.json",
+    "selected_sha256": "6d6b7d9014805005343fa804c590985ca1a87dc6b0319e853ec9c5d95d469016",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/miniDGS-julia-ka/manifest.json",
+        "sha256": "6d6b7d9014805005343fa804c590985ca1a87dc6b0319e853ec9c5d95d469016"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "ac4be9a2044db91aba22aa06051e2fcbd575455d",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "miniDGS",
+    "implementation_model": "ka",
+    "status": "verified",
+    "result": ".porting-state/portable_julia/runs/20261019T235154904931Z_miniDGS/result.json",
+    "configuration_id": "miniDGS_N6_full1022tet_2MPIranks_singleGPU6_5stageRK_textureobject_prealigned_v2",
+    "mandatory_field_audit": "src/miniDGS-julia/field_audit_ka_v2.json",
+    "native_integration_adapted": true,
+    "exclude_untouched_native_aggregates": true,
+    "exclude_single_gpu_aggregates": true,
+    "source_commit": "ac4be9a2044db91aba22aa06051e2fcbd575455d",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "ac4be9a2044db91aba22aa06051e2fcbd575455d",
+      "source": "src/miniDGS-julia/miniDGS-julia-KA/main.jl",
+      "source_sha256": "2c80911ed12858e19995ffeaada56af11c71b6595e43dfe62858fb563619eebb",
+      "phase": "KA",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/miniDGS-julia/reference_history/accounting_original_delivery_20261020/ka_status_before_commit_join_91727c561e1c.json",
+      "recorded_at": "2026-10-20T15:23:45.126869+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "mixed_kernel_communication_pipeline",
+    "annotation_path": ".porting-state/portable_julia/traits/miniDGS.json",
+    "annotation_sha256": "5442a00fd4664e81ffcbe1eab3916928be65d73a510ba01aea5a0016534d215b",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

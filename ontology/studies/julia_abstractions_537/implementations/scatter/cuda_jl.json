@@ -1,0 +1,591 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "scatter",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/scatter.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+    "work_item_mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+    "storage_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64"
+    ],
+    "synchronization": [
+      "atomic_compare_exchange_retry",
+      "host_device_perkernel"
+    ],
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16
+    },
+    "resource_policy": "no shared memory",
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "819185194bad517a0be77e27caa9c46edcc0d39abbc7e2e13c807619d79615e4",
+    "reference_repair": {
+      "finding": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+      "original_path": "/home/imo/HeCBench_julia/src/scatter-julia/scatter-julia-cuda.jl/original_main.jl",
+      "original_sha256": "04d91de81cbba5a2ddba2ed4cb76a01b1e11e93c785c59a332effa89d327e627",
+      "original_preserved": true,
+      "phase": "reference_correctness",
+      "historical_compiler_attempts": null
+    },
+    "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+    "layout": null,
+    "storage_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "atomic_compare_exchange_retry",
+      "host_device_perkernel"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "no shared memory",
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "819185194bad517a0be77e27caa9c46edcc0d39abbc7e2e13c807619d79615e4",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "irregular_scatter_reduction",
+    "storage_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64",
+      "UInt32",
+      "UInt64"
+    ],
+    "compute_precision": [
+      "Int32",
+      "Int64",
+      "Float32",
+      "Float64"
+    ],
+    "synchronization": [
+      "atomic_compare_exchange_retry",
+      "host_device_perkernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native hardwareatomicorCAS peroperation replaced withall-CAScomposition; genericTensorInfo specializedto1D"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "sum_twenty_individually_synchronized_kernel_means_excluding_reset",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "All-CASmappingchoice vsnative hardwareatomics",
+      "\u00b11order-independentfixture",
+      "LosslessFloat64export onlygivenboundedfixture"
+    ],
+    "scientific_intent": {
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "irregular numerical reduction primitive",
+      "scientific_task": "Combine sourcevalues at indexed destinations",
+      "governing_method": "Atomic scatter withfive reductionoperators",
+      "discretization": "Irregularindexmap, no scientificmesh represented",
+      "accuracy_needs": [
+        "no lostupdates",
+        "identity preservation",
+        "integerdivision semantics",
+        "floatingorderdependence explicitlyscoped"
+      ],
+      "input_regime": "4096sources,2048destinations,exactly2collisions each",
+      "precision_sensitivity": "\u00b11fixture avoidsorder-dependentrounding; broaderinputsemantics unmeasured",
+      "community_use_case": "Indexedaccumulation in graph or particlemeshcodes; no specificapplication dataset",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/scatter-cuda/main.cu",
+          "sha256": "21edd46691a5c988e100918b87f605a17f8df5716f7667f24fc3322d248df6b6"
+        }
+      ]
+    },
+    "benchmark": "scatter",
+    "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T163607327472Z_scatter/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/scatter-cuda/main.cu",
+      "native_source_sha256": "21edd46691a5c988e100918b87f605a17f8df5716f7667f24fc3322d248df6b6",
+      "reviewed_at": "2026-10-17T16:37:18.691311+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+        "work_item_mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+        "storage_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64"
+        ],
+        "synchronization": [
+          "atomic_compare_exchange_retry",
+          "host_device_perkernel"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16
+        },
+        "resource_policy": "no shared memory",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "819185194bad517a0be77e27caa9c46edcc0d39abbc7e2e13c807619d79615e4",
+        "reference_repair": {
+          "finding": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+          "original_path": "/home/imo/HeCBench_julia/src/scatter-julia/scatter-julia-cuda.jl/original_main.jl",
+          "original_sha256": "04d91de81cbba5a2ddba2ed4cb76a01b1e11e93c785c59a332effa89d327e627",
+          "original_preserved": true,
+          "phase": "reference_correctness",
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+        "work_item_mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+        "storage_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64"
+        ],
+        "synchronization": [
+          "atomic_compare_exchange_retry",
+          "host_device_perkernel"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16
+        },
+        "resource_policy": "no shared memory",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "895b2dcac069f8006e9bf26e24b77c6bd8dae464f8d2c4dcb497a424250c1080",
+        "reference_repair": null,
+        "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Contended scatter mul/div/sum/min/max across Int32/Int64/Float32/Float64 using raw-bit CAS retries",
+        "work_item_mapping": "One work item per source,256threads,16blocks; indexmetadata specialized to1Dcontiguouscase",
+        "storage_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64",
+          "UInt32",
+          "UInt64"
+        ],
+        "compute_precision": [
+          "Int32",
+          "Int64",
+          "Float32",
+          "Float64"
+        ],
+        "synchronization": [
+          "atomic_compare_exchange_retry",
+          "host_device_perkernel"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16
+        },
+        "resource_policy": "JACC explicit dynamic_shared=0",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "4447613069e88b85bf52f9f7048e39591ae38a8a2e37e975eb55722dc7254d22",
+        "reference_repair": null,
+        "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/scatter-julia/scatter-julia-cuda.jl/main.jl",
+    "sha256": "819185194bad517a0be77e27caa9c46edcc0d39abbc7e2e13c807619d79615e4",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        18
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [
+        11
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+      "run_id": "20261017T163607327472Z_scatter",
+      "result": ".porting-state/portable_julia/runs/20261017T163607327472Z_scatter/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "60c4119bfa3a962b5d421248939a39e51aa0e33b377705897b6ed399c509dff9",
+      "source_hash": "55177d24a6f7a012856b84c3a65fce106a0a702b4fc9e1fba314d56430c5c7c6",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T163607327472Z_scatter/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0006752752999999999,
+        0.0006475757000000001,
+        0.0006290097000000001,
+        0.0006238378,
+        0.0006255243
+      ],
+      "mean_last_four_seconds": 0.0006314868750000001,
+      "contract": {
+        "precision": [
+          "int32",
+          "int64",
+          "float32",
+          "float64"
+        ],
+        "size": 4096,
+        "out_size": 2048,
+        "internal_repeats": 10,
+        "fixture": "zero-based idx=(17i+3)%2048, src=-1 if i%3==0 else1; eachoutputhas2contributions",
+        "reductions": [
+          "mul",
+          "div",
+          "sum",
+          "min",
+          "max"
+        ],
+        "checked_outputs": "all2048outputs for20cases convertedtoFloat64; fixtureoutputsintegers[-2,2]exact",
+        "acceptance": "exactCPU equality stricterthannativeone-sided1e-3",
+        "reset": "identityH2D outside eachindividually synchronizedtimedkernel",
+        "mapping_adaptation": "Julia alloperations use rawbitCAS retries; nativeusesmixedhardwareatomics/CAS; indexmetadata specializedcontiguous1D"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "scatter_cuda_jl_B2_case_fixture_01",
+        "benchmark_id": "scatter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B2",
+        "phase": "measurement",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/scatter.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "scatter_cuda_jl_B2_case_fixture_01",
+          "benchmark_id": "scatter",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+          "phase": "measurement",
+          "taxonomy_code": "B2",
+          "source_candidate_id": 1,
+          "check_id": 1,
+          "repair_id": 1,
+          "error": "ParseError: Expected space before for in generator",
+          "minimal_trigger": "[(T,op)for T in(...)for op in1:5]",
+          "cause": "Shared host case fixture syntax; not a framework device capability",
+          "resolution": "Add required spaces before comprehensions",
+          "source_sha256_before": "ab1edca4c78f8ecbcbdd108cbd093452c204a823c741d0c1d607181afbf91368",
+          "source_sha256_after": "742cb1ddfb3ee62c89c383b2cb4e59e2a2092a83af8ea7139b437b2ababcd4b4",
+          "log_reference": ".porting-state/portable_julia/runs/20261017T163151165990Z_scatter/cuda_jl_run1.log",
+          "final_outcome": "resolved",
+          "shared_phase_id": "scatter_shared_measurement_adapter",
+          "attribution_note": "Same shared host defect observed separately in model processes; do not infer independent development effort.",
+          "verified_result": ".porting-state/portable_julia/runs/20261017T163607327472Z_scatter/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "scatter_cuda_jl_R1_host_reset_02",
+        "benchmark_id": "scatter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "R1",
+        "phase": "measurement",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/scatter.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "scatter_cuda_jl_R1_host_reset_02",
+          "benchmark_id": "scatter",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+          "phase": "measurement",
+          "taxonomy_code": "R1",
+          "source_candidate_id": 1,
+          "check_id": 2,
+          "repair_id": 2,
+          "error": "Scalar indexing is disallowed: setindex! fallback from copyto!(CuArray,ReinterpretArray)",
+          "minimal_trigger": "H2D reset from host Base.ReinterpretArray rather than dense Vector",
+          "cause": "Host array wrapper does not select the bulk CuArray copy path; all20 device warmup specializations succeeded",
+          "resolution": "collect(reinterpret(U,init)) materializes dense host buffer for bulk H2D copy",
+          "source_sha256_before": "742cb1ddfb3ee62c89c383b2cb4e59e2a2092a83af8ea7139b437b2ababcd4b4",
+          "source_sha256_after": "2a115567e8ddcf01c15e6b0699f330bcab07c47f6e2d23917a271227fc52aa56",
+          "log_reference": ".porting-state/portable_julia/runs/20261017T163317819168Z_scatter/cuda_jl_run1.log",
+          "final_outcome": "resolved",
+          "shared_phase_id": "scatter_shared_measurement_adapter",
+          "attribution_note": "Same shared host defect observed separately in model processes; do not infer independent development effort.",
+          "verified_result": ".porting-state/portable_julia/runs/20261017T163607327472Z_scatter/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "scatter_cuda_jl_reference_semantics_01",
+        "benchmark_id": "scatter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/scatter.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "scatter_cuda_jl_reference_semantics_01",
+          "benchmark_id": "scatter",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_repair",
+          "taxonomy_code": "S1",
+          "symptom": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+          "cause": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "finding": "Historical CUDA.jl scatter_touch! merely increments output slots and prints PASS for all twenty labels; it neither reads source indices nor computes reductions. Study reference implements genuine contended CAS reductions.",
+            "original_path": "/home/imo/HeCBench_julia/src/scatter-julia/scatter-julia-cuda.jl/original_main.jl",
+            "original_sha256": "04d91de81cbba5a2ddba2ed4cb76a01b1e11e93c785c59a332effa89d327e627",
+            "original_preserved": true,
+            "phase": "reference_correctness",
+            "historical_compiler_attempts": null
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "04d91de81cbba5a2ddba2ed4cb76a01b1e11e93c785c59a332effa89d327e627",
+          "log_reference": "/home/imo/HeCBench_julia/src/scatter-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "scatter_cuda_jl_P1_cas_mapping",
+        "benchmark_id": "scatter",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/scatter.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "scatter_cuda_jl_P1_cas_mapping",
+          "benchmark_id": "scatter",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "scatter_all20_n4096_collision2_signedunit_r10_v1",
+          "phase": "reference_repair",
+          "taxonomy_code": "P1",
+          "failure": false,
+          "symptom": "All five operations use raw-bit CAS composition instead of native mix of hardware atomics and CAS.",
+          "cause": "Explicit agent mapping choice; no unsupported framework capability established.",
+          "resolution": "Preserve arithmetic correctness and disclose mapping in performance interpretation.",
+          "final_outcome": "documented_algorithm_adaptation",
+          "log_reference": "src/scatter-julia/study_notes.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 3,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 3,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 149,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/scatter-julia/scatter-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 3
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/scatter-julia-cuda_jl/manifest.json",
+    "selected_sha256": "08b3b1efcb2d8f5c81752d0ffb5fef29ec94b31b42bed7a1a306b91661e33393",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/scatter-julia-cuda_jl/manifest.json",
+        "sha256": "08b3b1efcb2d8f5c81752d0ffb5fef29ec94b31b42bed7a1a306b91661e33393"
+      },
+      {
+        "path": ".porting-state/porting_logs/scatter-julia/manifest.json",
+        "sha256": "c4e6be13e6206c42ece9e1e655273cd22b9c2dadd5bc4adc60a9bacd066902d8"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null
+}

@@ -1,0 +1,1039 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "srad",
+  "implementation_model": "jacc",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/srad.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "srad",
+    "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+    "implementation_model": "jacc",
+    "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+    "source_revision": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8",
+    "status": "verified",
+    "algorithm": "ExtractpositiveimageoutsidecomputeROI; periterationprepareimage/image\u00b2, hierarchyreducesinplace atphysicalstride256^level withcorrectpartialremainder, D2Htotals+CPUF32mean/variance/q0, coefficient/derivativeskernel thenpointwiseconservativestencilupdate. CompressoutsideROI. Captureallfullfinalworkspaces/precompress/extractedinitial andall10iterationstats.",
+    "work_item_mapping": "Pointwiseonegloballane/pixelcolmajor; row=idx%nr,col=idx/nr withreflectingmaplookups. Reduction256lanes/block, pairedsums512F32sharedwords, binarytreeendinglastlanes, partialdf=floorpow2(nf), correctedserialremainderbylane df-1. nf1leavesinplaceleafunchanged identity; mul256/65536 exercised. Noalternativewarp/shufflereduction.",
+    "layout": "Columnmajorimageidx=col*nr+row.8NFloat32devicearrays I,sums,sums\u00b2,dN,dS,dE,dW,c; fourInt32mapsiN/iS/jE/jW. Each12buffers8typedleading/trailingguards. Artifactalsoactualraw/extractedinitial/precompress states andall5FP32stats periteration; exactCPU/GPUrawinputbits/maps. Sharedreduction2logical256planes.",
+    "precision": {
+      "storage": [
+        "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+        "Int32_reflecting_neighbor_maps",
+        "Float64_lossless_F32_artifact_encoding_only"
+      ],
+      "compute": [
+        "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+        "Float32_CPUmean_variance_q0_summaries",
+        "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+      "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+      "Coefficientkernel beforeupdatekernel onownedstream",
+      "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+    ],
+    "resource_policy": {
+      "shared_bytes_reduction": 2048,
+      "shared_bytes_other_kernels": 0,
+      "shared_storage": "dynamic512template",
+      "authored_device_kernel_entrypoints": 6,
+      "JACC_extra_shared_copy_and_entry_barrier": true,
+      "source_reviewed": true,
+      "registers_occupancy_instructions": "unprofiled",
+      "kernel_dispatch_cached_outside_ROI": true
+    },
+    "launch_geometry": "Allkernels256threads, pointblocks1/3/4/259; reducegridchains1;3\u21921;4\u21921;259\u21922\u21921.51computeGPUlaunches+20D2Hscalarcopies/trial,8extraextract/compresslaunchesoutsideprimaryROI. SixauthoredentrypointsperJulia variant. Kernel/LaunchSpecobjects cachedbeforeROI, JACC2048Bonlyreduce/allothers0.",
+    "backend_extensions": [
+      "CUDAhostdeviceallocation/copy/completion andF32CPUstatisticsharness; CUDAbackendonlytested",
+      "Framework-ownedindices/shared/barriers andordinaryJuliaFloat32arithmetic/exp/log; noCUDA-specificdeviceintrinsics"
+    ],
+    "host_device_boundary": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+    "supported_features": [],
+    "fidelity_status": "conditional_reference_repaired",
+    "support_boundary": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality. Conditionalcorrectednativeonly. FullrawimageIO/resize/PGMwriteandclinicaldenoisingnotcertified; zero/nearzero-variance/longiterations andotherlambdascopes outsidecontract.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad",
+    "numerical_contract": "Full20artifacts815311Float64losslesswords:69310prefix+746001states; exactactualrawinput/maps/768guards/boundaryzeroderivatives; allcompressed/precompress/initialextracted/fullpartialworkspaces/derivs/coefficients/all50stats. Fixed1e-4+1e-5relativeF64operatorbudget,maxfraction.3363, compressedmaxabs.0004484, actualfinalmassrel1.95e-9. Fullactualintermediateimagepathsnotcaptured. Secondarytruncationall4identical butupto5pixelsdiffF64floorboundary, notPGMIOcertification.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.00116892,
+      0.0011395110000000002,
+      0.001207271,
+      0.0012163590000000002,
+      0.0011188600000000002
+    ],
+    "mean_last_four_seconds": 0.0011705002500000002,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": null,
+    "source_evidence": [
+      {
+        "path": "src/srad-julia/srad-julia-JACC/main.jl",
+        "sha256": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8"
+      },
+      {
+        "path": "src/srad-julia/study_common.jl",
+        "sha256": "1c3f5ec5d6fdf0edaed0ce5b2a3149406c52455148038c1b0a7a68786eb8df24"
+      },
+      {
+        "path": "src/srad-julia/srad_device.jl",
+        "sha256": "32f87e409dfaf0365db56164297ec07cf966f553b0f539b066040fa30a567241"
+      }
+    ],
+    "implementation_source_digest": "60484791bda7924d14c129aaf6fd5761bb3856f560770d23a29b4646a1b49dd9",
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "native_reference_repaired": true,
+      "configuration_role": "corrected_reference_secondary",
+      "original_source": {
+        "path": "src/srad-cuda/reduce_kernel.cu",
+        "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+      },
+      "corrected_source": {
+        "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+        "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+      },
+      "patch": {
+        "path": "src/srad-julia/native_correction.patch",
+        "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+      },
+      "independent_GPU_full_stage_witness": {
+        "path": "src/srad-julia/reduction_witness_audit.json",
+        "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+      },
+      "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+      "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+    },
+    "configuration_role": "corrected_reference_secondary",
+    "untouched_native_agreement_claim": false,
+    "full_original_program_coverage": false,
+    "authored_device_kernel_entrypoints": 6,
+    "all_actual_GPU_intermediate_images_captured": false,
+    "all_iteration_scalar_statistics_captured": true,
+    "verification_output_audit": {
+      "path": "src/srad-julia/output_audit.json",
+      "sha256": "939063de082385d903d86153765298e5c9e3287f310d23ec06779ef06cc126ca"
+    },
+    "PGM_IO_certified": false,
+    "tiny_component_uniform_relative_accuracy_claim": false,
+    "implementation_class": "mixed_host_device_pipeline_pureJACC_devicekernels",
+    "device_component_class": "pure_JACC",
+    "shared_pointwise_helper_authorship_phase": "referenceonce_reusedKAthenJACC_ownreductions",
+    "measurement_class": "mixed_host_device_pipeline",
+    "statistics_observer_stores_inside_ROI": 50
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "ExtractpositiveimageoutsidecomputeROI; periterationprepareimage/image\u00b2, hierarchyreducesinplace atphysicalstride256^level withcorrectpartialremainder, D2Htotals+CPUF32mean/variance/q0, coefficient/derivativeskernel thenpointwiseconservativestencilupdate. CompressoutsideROI. Captureallfullfinalworkspaces/precompress/extractedinitial andall10iterationstats.",
+    "implementation_class": "mixed_host_device_pipeline_pureJACC_devicekernels",
+    "declared_environment": {
+      "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+        "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+        "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Pointwiseonegloballane/pixelcolmajor; row=idx%nr,col=idx/nr withreflectingmaplookups. Reduction256lanes/block, pairedsums512F32sharedwords, binarytreeendinglastlanes, partialdf=floorpow2(nf), correctedserialremainderbylane df-1. nf1leavesinplaceleafunchanged identity; mul256/65536 exercised. Noalternativewarp/shufflereduction.",
+    "layout": "Columnmajorimageidx=col*nr+row.8NFloat32devicearrays I,sums,sums\u00b2,dN,dS,dE,dW,c; fourInt32mapsiN/iS/jE/jW. Each12buffers8typedleading/trailingguards. Artifactalsoactualraw/extractedinitial/precompress states andall5FP32stats periteration; exactCPU/GPUrawinputbits/maps. Sharedreduction2logical256planes.",
+    "storage_precision": [
+      "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+      "Int32_reflecting_neighbor_maps",
+      "Float64_lossless_F32_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+      "Float32_CPUmean_variance_q0_summaries",
+      "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+      "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+      "Coefficientkernel beforeupdatekernel onownedstream",
+      "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes_reduction": 2048,
+      "shared_bytes_other_kernels": 0,
+      "shared_storage": "dynamic512template",
+      "authored_device_kernel_entrypoints": 6,
+      "JACC_extra_shared_copy_and_entry_barrier": true,
+      "source_reviewed": true,
+      "registers_occupancy_instructions": "unprofiled",
+      "kernel_dispatch_cached_outside_ROI": true
+    },
+    "launch_geometry": "Allkernels256threads, pointblocks1/3/4/259; reducegridchains1;3\u21921;4\u21921;259\u21922\u21921.51computeGPUlaunches+20D2Hscalarcopies/trial,8extraextract/compresslaunchesoutsideprimaryROI. SixauthoredentrypointsperJulia variant. Kernel/LaunchSpecobjects cachedbeforeROI, JACC2048Bonlyreduce/allothers0.",
+    "library_backend_boundary": [
+      "CUDAhostdeviceallocation/copy/completion andF32CPUstatisticsharness; CUDAbackendonlytested",
+      "Framework-ownedindices/shared/barriers andordinaryJuliaFloat32arithmetic/exp/log; noCUDA-specificdeviceintrinsics"
+    ],
+    "host_control_boundary": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+    "support_boundary": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality. Conditionalcorrectednativeonly. FullrawimageIO/resize/PGMwriteandclinicaldenoisingnotcertified; zero/nearzero-variance/longiterations andotherlambdascopes outsidecontract.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "conditional_reference_repaired",
+    "source_review_evidence": [
+      {
+        "path": "src/srad-julia/srad-julia-JACC/main.jl",
+        "sha256": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8"
+      },
+      {
+        "path": "src/srad-julia/study_common.jl",
+        "sha256": "1c3f5ec5d6fdf0edaed0ce5b2a3149406c52455148038c1b0a7a68786eb8df24"
+      },
+      {
+        "path": "src/srad-julia/srad_device.jl",
+        "sha256": "32f87e409dfaf0365db56164297ec07cf966f553b0f539b066040fa30a567241"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "srad",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "signal_image",
+      "primary_domain": "ultrasound_radar_speckle_reducing_anisotropic_diffusion_image_operator",
+      "secondary_families": [
+        "pde_continuum"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Denoise a positive image through global intensity-variance statistics and nonlinear anisotropic diffusion while preserving reflecting boundaries and bounded intensity evolution.",
+      "mathematical_operation": "J=exp(raw/255); eachstepq0\u00b2=(mean(J\u00b2)-mean(J)\u00b2)/mean(J)\u00b2, normalizedlocalgradient/Laplacian defines clippedc\u2208[0,1], Jnew=J+(lambda/4)*div(c*gradJ), withsymmetricedgecoefficients andreflectingmaps; final255log(J). SourceglobalROIwholeimage.",
+      "discretization": "Fourcolmajorimages16x16/19x27/3x257/257x257,steps2/3/2/3,lambda.5/.5/.125/.75.256threadshierarchicalreduction1/2/2/3levels,partialnf1/mul256remainder>1,51timedcompute launches+8extract/compress outsideROI; allscalars/fields checked.",
+      "accuracy_requirements": "All20full815311words with69310exactprefix, fullcompressed/precompress/actualextractedinitial/images, allsumworkspaces/derivative/coefficientfields/alliterationstatistics, actualrawinputs/maps/768guards. IndependentFloat64globalmath.fsum+conservativeedgeflux/levelsumoracle, engineering1e-4+1e-5relative. Exactinput/guards/reflectingzero derivatives, finalmass/maxprinciple/coefficientrange.",
+      "input_size_regime": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality.",
+      "precision_sensitivity": "Float32GPUexp/prepare/treereductions/nonlinearcoeff/update/log plusCPUFloat32statistics. F64conservativeoracle differssourceFMA/reductionrounding. Pixelmaxabs.0004484, precompress3.20e-6; summedworkspace/statisticmaxabs.02733 atlarge totals, notpixelerror. Derivativetinycomponentrelativeupto.0727 despite3.89e-6abs; no uniformrelativeaccuracy. Inputzero/nearzero-variancedivisiondomainnotcertified.",
+      "community_use_case": "NativeREADMEidentifiesPDE-basedspecklereductionforultrasound/radar anditsroleinaHeartWallpipeline. These syntheticoperatorcontracts establish numericalconsistency/invariants, notnoisequality/featurepreservation/clinicalimageinterpretation/fullhearttrackingvalidation.",
+      "description": "Actualunchangednative513valuereduction returns8075/168161 vs exact8089/168441; fullstagecaptures prove wrongunscaledremainderread. Conditional2indexreadcorrection only, all5othernativekernelsunchanged. Restorefull6kernelroles/nativehierarchicalwork ratherthanCUDA.sum. HistoricalJulia genuinecoremath,butPGMtokenoffset andfixedprintedtimings preserved; commonbinaryfixtures/realclocktelemetry used.",
+      "provenance": "SourceREADMEincludesYu/Acton Specklereducinganisotropicdiffusion,IEEE TIP11(11),1260-1270(2002), andRodiniaHeartWallcontext; sourcefunctions giveoperator/equationreferences. IndependentexactsumGPUwitness establishesstridefix; independentF64edgeassembly/mass/maxprinciple oracle supportsboundedPDE operator. Noexternalclinical/performanceclaim.",
+      "source_evidence": [
+        {
+          "path": "src/srad-cuda/README",
+          "sha256": "78298162e3fa1fedb9a4e66f22be02b5e688a2a7b14373b07fd8ad189c8d42a6"
+        },
+        {
+          "path": "src/srad-cuda/main.cu",
+          "sha256": "3592177ac050c9f410230238d291fbd3dcdce66322c5c1305982d60372fd6066"
+        },
+        {
+          "path": "src/srad-cuda/reduce_kernel.cu",
+          "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+        },
+        {
+          "path": "src/srad-cuda/srad_kernel.cu",
+          "sha256": "ef809dff15a1e08f84337367532a594af7e069d7f6d9bb671c52aba582ad2992"
+        },
+        {
+          "path": "src/srad-cuda/srad2_kernel.cu",
+          "sha256": "3a458a040f1ae3ecfb79a657c79e6550ba7f224c6aae4930ea57cbaa929db534"
+        },
+        {
+          "path": "src/srad-julia/reference_history/original_main.jl",
+          "sha256": "da24452cf12541b60bc21a2e12fca2f0adf8161789e3f8b27d144fdc255f1367"
+        }
+      ]
+    },
+    "primary_motif": "hybrid_global_reduction_statistics_nonlinear_four_neighbor_diffusion_stencil",
+    "storage_precision": [
+      "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+      "Int32_reflecting_neighbor_maps",
+      "Float64_lossless_F32_artifact_encoding_only"
+    ],
+    "compute_precision": [
+      "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+      "Float32_CPUmean_variance_q0_summaries",
+      "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+    ],
+    "synchronization": [
+      "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+      "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+      "Coefficientkernel beforeupdatekernel onownedstream",
+      "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Scientificallycorrectednativeonly2globalremainderindices*i_mul; all5othernativebodiesunchanged. All3Juliarestorefullsource6roles/256threadtree/hoststats/globalworkspace, samepointwisehelpers authoredreferencephase. Juliaone512F32sharedarray split2planes vsnative2x256staticarrays; JACCdynamic2048B+templatecopy/extrabarrier. Samealgorithm/sourceROI nothighlevelCUDA.sum."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "mixed_host_device_pipeline_CUDAjl_devicekernels",
+      "ka": "mixed_host_device_pipeline_pureKA_devicekernels",
+      "jacc": "mixed_host_device_pipeline_pureJACC_devicekernels"
+    },
+    "timing_scope": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+    "verification_contract": "Full20artifacts815311Float64losslesswords:69310prefix+746001states; exactactualrawinput/maps/768guards/boundaryzeroderivatives; allcompressed/precompress/initialextracted/fullpartialworkspaces/derivs/coefficients/all50stats. Fixed1e-4+1e-5relativeF64operatorbudget,maxfraction.3363, compressedmaxabs.0004484, actualfinalmassrel1.95e-9. Fullactualintermediateimagepathsnotcaptured. Secondarytruncationall4identical butupto5pixelsdiffF64floorboundary, notPGMIOcertification.",
+    "keyconfounds": [
+      "Conditionalnative2indexreadfix excludeduntouchedCUDAaggregate; originalGPU8075vs8089exactsumcounterexample preserved",
+      "SourceCOMPUTEregion is mixedhostdevice, includes2D2Hscalars/CPUstatsperstep; notpurekernel-only/roofline time",
+      "Same50preallocatedFP32observerstoresinsideROIall4 explicitinstrumentationcovariate, noextraGPUlaunch/sync forstatsobservation",
+      "Extract/compressexecutedandcheckedbutoutsideprimaryCOMPUTEtime, theirtimingsseparate; notsumfullCLIendtoend",
+      "F32sumlargeworkspaceabsoluteerror.0273 notpixelerror; compressedmaxabs.0004484, tinygradientrelative7.27%no uniformrelativeaccuracy",
+      "Nonzero-varianceinputdomain guarded; uniformimagesq0div0unhandled, nofakeconstantimagepass/frameworkunsupported",
+      "HistoricalPGMloaderincludesmax255token asfirstpixel127 expected; inputshift retrospectiveexactsourceemulation204163differences, notobservedoldGPUsmoke",
+      "HistoricalJulia literalshown_s/shown_pct/totaltime fakeperformance preservedandnotused; newstructuredclocksonly",
+      "JACCcopieswhole512floattemplate/extrabarrier perreduceblock; native2staticarrays/Juliaonesplitstatic/JACCdynamiccapacity2048B, resourcesunprofiled",
+      "N/step/lambda/inputcontent differacross4namedcases, percasetimesarenotcontrolledstrongscalingsweep",
+      "Allfinalfields/alliterationstatscaptured, notallactualintermediateGPUimages; F64trajectoryoracle independent",
+      "Sharedpointwisehelper/math/fixtures/nativecorrection authoredreferencephaseonce; KA/JACCownreduce/dispatch phasesmarginalcachedcontextnotcoldframeworkcost"
+    ],
+    "boundary_rounding_policy": "ReflectingclampedN/S/E/Wmaps, c clipped[0,1], lambda<=.75 soidealdiscreteedgeupdateconvex/massconserving. Sourceexp(raw/255)/255log(F32) retained, nonzeroglobalvariance. Partialreductionnf1inplaceidentityretained; remaindercorrectlyscaled. Actualinputs/guards/exactzerooutwardderivatives separatefromtolerantpayload. PGMintegertruncationsecondarynotfullIOverification.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "srad",
+        "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "4431b9149bc1b4d76d235d3f6eb735e82a035fa0e8481219f25f4a93d224a29c",
+        "status": "verified",
+        "algorithm": "ExtractpositiveimageoutsidecomputeROI; periterationprepareimage/image\u00b2, hierarchyreducesinplace atphysicalstride256^level withcorrectpartialremainder, D2Htotals+CPUF32mean/variance/q0, coefficient/derivativeskernel thenpointwiseconservativestencilupdate. CompressoutsideROI. Captureallfullfinalworkspaces/precompress/extractedinitial andall10iterationstats.",
+        "work_item_mapping": "Pointwiseonegloballane/pixelcolmajor; row=idx%nr,col=idx/nr withreflectingmaplookups. Reduction256lanes/block, pairedsums512F32sharedwords, binarytreeendinglastlanes, partialdf=floorpow2(nf), correctedserialremainderbylane df-1. nf1leavesinplaceleafunchanged identity; mul256/65536 exercised. Noalternativewarp/shufflereduction.",
+        "layout": "Columnmajorimageidx=col*nr+row.8NFloat32devicearrays I,sums,sums\u00b2,dN,dS,dE,dW,c; fourInt32mapsiN/iS/jE/jW. Each12buffers8typedleading/trailingguards. Artifactalsoactualraw/extractedinitial/precompress states andall5FP32stats periteration; exactCPU/GPUrawinputbits/maps. Sharedreduction2logical256planes.",
+        "precision": {
+          "storage": [
+            "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+            "Int32_reflecting_neighbor_maps",
+            "Float64_lossless_F32_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+            "Float32_CPUmean_variance_q0_summaries",
+            "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+          "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+          "Coefficientkernel beforeupdatekernel onownedstream",
+          "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes_reduction": 2048,
+          "shared_bytes_other_kernels": 0,
+          "shared_storage": "static512split2planes",
+          "authored_device_kernel_entrypoints": 6,
+          "JACC_extra_shared_copy_and_entry_barrier": false,
+          "source_reviewed": true,
+          "registers_occupancy_instructions": "unprofiled",
+          "kernel_dispatch_cached_outside_ROI": true
+        },
+        "launch_geometry": "Allkernels256threads, pointblocks1/3/4/259; reducegridchains1;3\u21921;4\u21921;259\u21922\u21921.51computeGPUlaunches+20D2Hscalarcopies/trial,8extraextract/compresslaunchesoutsideprimaryROI. SixauthoredentrypointsperJulia variant. Kernel/LaunchSpecobjects cachedbeforeROI, JACC2048Bonlyreduce/allothers0.",
+        "backend_extensions": [
+          "CUDAhostdeviceallocation/copy/completion andF32CPUstatisticsharness; CUDAbackendonlytested",
+          "CUDAdeviceindices/shared/barriers"
+        ],
+        "host_device_boundary": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+        "supported_features": [],
+        "fidelity_status": "conditional_reference_repaired",
+        "support_boundary": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality. Conditionalcorrectednativeonly. FullrawimageIO/resize/PGMwriteandclinicaldenoisingnotcertified; zero/nearzero-variance/longiterations andotherlambdascopes outsidecontract.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad",
+        "numerical_contract": "Full20artifacts815311Float64losslesswords:69310prefix+746001states; exactactualrawinput/maps/768guards/boundaryzeroderivatives; allcompressed/precompress/initialextracted/fullpartialworkspaces/derivs/coefficients/all50stats. Fixed1e-4+1e-5relativeF64operatorbudget,maxfraction.3363, compressedmaxabs.0004484, actualfinalmassrel1.95e-9. Fullactualintermediateimagepathsnotcaptured. Secondarytruncationall4identical butupto5pixelsdiffF64floorboundary, notPGMIOcertification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0006949580000000001,
+          0.000680897,
+          0.000653646,
+          0.000677376,
+          0.000645506
+        ],
+        "mean_last_four_seconds": 0.00066435625,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/srad-julia/srad-julia-cuda.jl/main.jl",
+            "sha256": "4431b9149bc1b4d76d235d3f6eb735e82a035fa0e8481219f25f4a93d224a29c"
+          },
+          {
+            "path": "src/srad-julia/study_common.jl",
+            "sha256": "1c3f5ec5d6fdf0edaed0ce5b2a3149406c52455148038c1b0a7a68786eb8df24"
+          },
+          {
+            "path": "src/srad-julia/srad_device.jl",
+            "sha256": "32f87e409dfaf0365db56164297ec07cf966f553b0f539b066040fa30a567241"
+          }
+        ],
+        "implementation_source_digest": "8a8a5e14d949bd694e0b56ed3a6c9c439a517bcabdf70a9c6cd738a406cc4b6b",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "path": "src/srad-cuda/reduce_kernel.cu",
+            "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+          },
+          "corrected_source": {
+            "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+            "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+          },
+          "patch": {
+            "path": "src/srad-julia/native_correction.patch",
+            "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+          },
+          "independent_GPU_full_stage_witness": {
+            "path": "src/srad-julia/reduction_witness_audit.json",
+            "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+          },
+          "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+          "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+        },
+        "configuration_role": "corrected_reference_secondary",
+        "untouched_native_agreement_claim": false,
+        "full_original_program_coverage": false,
+        "authored_device_kernel_entrypoints": 6,
+        "all_actual_GPU_intermediate_images_captured": false,
+        "all_iteration_scalar_statistics_captured": true,
+        "verification_output_audit": {
+          "path": "src/srad-julia/output_audit.json",
+          "sha256": "939063de082385d903d86153765298e5c9e3287f310d23ec06779ef06cc126ca"
+        },
+        "PGM_IO_certified": false,
+        "tiny_component_uniform_relative_accuracy_claim": false,
+        "implementation_class": "mixed_host_device_pipeline_CUDAjl_devicekernels",
+        "device_component_class": "CUDAjl",
+        "shared_pointwise_helper_authorship_phase": "referenceonce_reusedKAthenJACC_ownreductions",
+        "measurement_class": "mixed_host_device_pipeline",
+        "statistics_observer_stores_inside_ROI": 50
+      },
+      "ka": {
+        "benchmark_id": "srad",
+        "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "00ad8df11d68c1c3fa1456b79fae9a01e212a34ea5f5423cea656801ca827960",
+        "status": "verified",
+        "algorithm": "ExtractpositiveimageoutsidecomputeROI; periterationprepareimage/image\u00b2, hierarchyreducesinplace atphysicalstride256^level withcorrectpartialremainder, D2Htotals+CPUF32mean/variance/q0, coefficient/derivativeskernel thenpointwiseconservativestencilupdate. CompressoutsideROI. Captureallfullfinalworkspaces/precompress/extractedinitial andall10iterationstats.",
+        "work_item_mapping": "Pointwiseonegloballane/pixelcolmajor; row=idx%nr,col=idx/nr withreflectingmaplookups. Reduction256lanes/block, pairedsums512F32sharedwords, binarytreeendinglastlanes, partialdf=floorpow2(nf), correctedserialremainderbylane df-1. nf1leavesinplaceleafunchanged identity; mul256/65536 exercised. Noalternativewarp/shufflereduction.",
+        "layout": "Columnmajorimageidx=col*nr+row.8NFloat32devicearrays I,sums,sums\u00b2,dN,dS,dE,dW,c; fourInt32mapsiN/iS/jE/jW. Each12buffers8typedleading/trailingguards. Artifactalsoactualraw/extractedinitial/precompress states andall5FP32stats periteration; exactCPU/GPUrawinputbits/maps. Sharedreduction2logical256planes.",
+        "precision": {
+          "storage": [
+            "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+            "Int32_reflecting_neighbor_maps",
+            "Float64_lossless_F32_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+            "Float32_CPUmean_variance_q0_summaries",
+            "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+          "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+          "Coefficientkernel beforeupdatekernel onownedstream",
+          "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes_reduction": 2048,
+          "shared_bytes_other_kernels": 0,
+          "shared_storage": "static512split2planes",
+          "authored_device_kernel_entrypoints": 6,
+          "JACC_extra_shared_copy_and_entry_barrier": false,
+          "source_reviewed": true,
+          "registers_occupancy_instructions": "unprofiled",
+          "kernel_dispatch_cached_outside_ROI": true
+        },
+        "launch_geometry": "Allkernels256threads, pointblocks1/3/4/259; reducegridchains1;3\u21921;4\u21921;259\u21922\u21921.51computeGPUlaunches+20D2Hscalarcopies/trial,8extraextract/compresslaunchesoutsideprimaryROI. SixauthoredentrypointsperJulia variant. Kernel/LaunchSpecobjects cachedbeforeROI, JACC2048Bonlyreduce/allothers0.",
+        "backend_extensions": [
+          "CUDAhostdeviceallocation/copy/completion andF32CPUstatisticsharness; CUDAbackendonlytested",
+          "Framework-ownedindices/shared/barriers andordinaryJuliaFloat32arithmetic/exp/log; noCUDA-specificdeviceintrinsics"
+        ],
+        "host_device_boundary": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+        "supported_features": [],
+        "fidelity_status": "conditional_reference_repaired",
+        "support_boundary": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality. Conditionalcorrectednativeonly. FullrawimageIO/resize/PGMwriteandclinicaldenoisingnotcertified; zero/nearzero-variance/longiterations andotherlambdascopes outsidecontract.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad",
+        "numerical_contract": "Full20artifacts815311Float64losslesswords:69310prefix+746001states; exactactualrawinput/maps/768guards/boundaryzeroderivatives; allcompressed/precompress/initialextracted/fullpartialworkspaces/derivs/coefficients/all50stats. Fixed1e-4+1e-5relativeF64operatorbudget,maxfraction.3363, compressedmaxabs.0004484, actualfinalmassrel1.95e-9. Fullactualintermediateimagepathsnotcaptured. Secondarytruncationall4identical butupto5pixelsdiffF64floorboundary, notPGMIOcertification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0009271500000000001,
+          0.0009029380000000002,
+          0.0008794270000000001,
+          0.0008683079999999999,
+          0.0008607790000000001
+        ],
+        "mean_last_four_seconds": 0.0008778630000000001,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/srad-julia/srad-julia-KA/main.jl",
+            "sha256": "00ad8df11d68c1c3fa1456b79fae9a01e212a34ea5f5423cea656801ca827960"
+          },
+          {
+            "path": "src/srad-julia/study_common.jl",
+            "sha256": "1c3f5ec5d6fdf0edaed0ce5b2a3149406c52455148038c1b0a7a68786eb8df24"
+          },
+          {
+            "path": "src/srad-julia/srad_device.jl",
+            "sha256": "32f87e409dfaf0365db56164297ec07cf966f553b0f539b066040fa30a567241"
+          }
+        ],
+        "implementation_source_digest": "d9212a5b53523d3a1e13316344f95ef11d1887bf68c05ae070a1933c6332210a",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "path": "src/srad-cuda/reduce_kernel.cu",
+            "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+          },
+          "corrected_source": {
+            "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+            "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+          },
+          "patch": {
+            "path": "src/srad-julia/native_correction.patch",
+            "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+          },
+          "independent_GPU_full_stage_witness": {
+            "path": "src/srad-julia/reduction_witness_audit.json",
+            "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+          },
+          "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+          "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+        },
+        "configuration_role": "corrected_reference_secondary",
+        "untouched_native_agreement_claim": false,
+        "full_original_program_coverage": false,
+        "authored_device_kernel_entrypoints": 6,
+        "all_actual_GPU_intermediate_images_captured": false,
+        "all_iteration_scalar_statistics_captured": true,
+        "verification_output_audit": {
+          "path": "src/srad-julia/output_audit.json",
+          "sha256": "939063de082385d903d86153765298e5c9e3287f310d23ec06779ef06cc126ca"
+        },
+        "PGM_IO_certified": false,
+        "tiny_component_uniform_relative_accuracy_claim": false,
+        "implementation_class": "mixed_host_device_pipeline_pureKA_devicekernels",
+        "device_component_class": "pure_KA",
+        "shared_pointwise_helper_authorship_phase": "referenceonce_reusedKAthenJACC_ownreductions",
+        "measurement_class": "mixed_host_device_pipeline",
+        "statistics_observer_stores_inside_ROI": 50
+      },
+      "jacc": {
+        "benchmark_id": "srad",
+        "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8",
+        "status": "verified",
+        "algorithm": "ExtractpositiveimageoutsidecomputeROI; periterationprepareimage/image\u00b2, hierarchyreducesinplace atphysicalstride256^level withcorrectpartialremainder, D2Htotals+CPUF32mean/variance/q0, coefficient/derivativeskernel thenpointwiseconservativestencilupdate. CompressoutsideROI. Captureallfullfinalworkspaces/precompress/extractedinitial andall10iterationstats.",
+        "work_item_mapping": "Pointwiseonegloballane/pixelcolmajor; row=idx%nr,col=idx/nr withreflectingmaplookups. Reduction256lanes/block, pairedsums512F32sharedwords, binarytreeendinglastlanes, partialdf=floorpow2(nf), correctedserialremainderbylane df-1. nf1leavesinplaceleafunchanged identity; mul256/65536 exercised. Noalternativewarp/shufflereduction.",
+        "layout": "Columnmajorimageidx=col*nr+row.8NFloat32devicearrays I,sums,sums\u00b2,dN,dS,dE,dW,c; fourInt32mapsiN/iS/jE/jW. Each12buffers8typedleading/trailingguards. Artifactalsoactualraw/extractedinitial/precompress states andall5FP32stats periteration; exactCPU/GPUrawinputbits/maps. Sharedreduction2logical256planes.",
+        "precision": {
+          "storage": [
+            "Float32_images_sumworkspaces_derivatives_coefficient_CPUstats",
+            "Int32_reflecting_neighbor_maps",
+            "Float64_lossless_F32_artifact_encoding_only"
+          ],
+          "compute": [
+            "Float32_GPUexp_log_hierarchicalsum_plus_squares_nonlinearstencil",
+            "Float32_CPUmean_variance_q0_summaries",
+            "Float64_independentmathematicalsum_and_conservativeedgeflux_oracle"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "256threadsharedmemoryhierarchicalreduction withload/stagebarriers",
+          "Eachiteration2D2HFloat32scalarcopies forceGPUreductioncompletion beforeCPUstats/nextstencil",
+          "Coefficientkernel beforeupdatekernel onownedstream",
+          "Wholedevice/currentownedstreamcompletionaftereachcompute case; extract/compresscompletedseparatelyoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes_reduction": 2048,
+          "shared_bytes_other_kernels": 0,
+          "shared_storage": "dynamic512template",
+          "authored_device_kernel_entrypoints": 6,
+          "JACC_extra_shared_copy_and_entry_barrier": true,
+          "source_reviewed": true,
+          "registers_occupancy_instructions": "unprofiled",
+          "kernel_dispatch_cached_outside_ROI": true
+        },
+        "launch_geometry": "Allkernels256threads, pointblocks1/3/4/259; reducegridchains1;3\u21921;4\u21921;259\u21922\u21921.51computeGPUlaunches+20D2Hscalarcopies/trial,8extraextract/compresslaunchesoutsideprimaryROI. SixauthoredentrypointsperJulia variant. Kernel/LaunchSpecobjects cachedbeforeROI, JACC2048Bonlyreduce/allothers0.",
+        "backend_extensions": [
+          "CUDAhostdeviceallocation/copy/completion andF32CPUstatisticsharness; CUDAbackendonlytested",
+          "Framework-ownedindices/shared/barriers andordinaryJuliaFloat32arithmetic/exp/log; noCUDA-specificdeviceintrinsics"
+        ],
+        "host_device_boundary": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5.",
+        "supported_features": [],
+        "fidelity_status": "conditional_reference_repaired",
+        "support_boundary": "Fourdeterministicnonuniformimages upto66049pixels,<=3steps/variance\u2265.0647,q0\u00b2\u2265.0223 oracle. Notoriginal502x4581000step/PGMload-resize-save/perceptualorclinicalimagequality. Conditionalcorrectednativeonly. FullrawimageIO/resize/PGMwriteandclinicaldenoisingnotcertified; zero/nearzero-variance/longiterations andotherlambdascopes outsidecontract.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad",
+        "numerical_contract": "Full20artifacts815311Float64losslesswords:69310prefix+746001states; exactactualrawinput/maps/768guards/boundaryzeroderivatives; allcompressed/precompress/initialextracted/fullpartialworkspaces/derivs/coefficients/all50stats. Fixed1e-4+1e-5relativeF64operatorbudget,maxfraction.3363, compressedmaxabs.0004484, actualfinalmassrel1.95e-9. Fullactualintermediateimagepathsnotcaptured. Secondarytruncationall4identical butupto5pixelsdiffF64floorboundary, notPGMIOcertification.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00116892,
+          0.0011395110000000002,
+          0.001207271,
+          0.0012163590000000002,
+          0.0011188600000000002
+        ],
+        "mean_last_four_seconds": 0.0011705002500000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/srad-julia/srad-julia-JACC/main.jl",
+            "sha256": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8"
+          },
+          {
+            "path": "src/srad-julia/study_common.jl",
+            "sha256": "1c3f5ec5d6fdf0edaed0ce5b2a3149406c52455148038c1b0a7a68786eb8df24"
+          },
+          {
+            "path": "src/srad-julia/srad_device.jl",
+            "sha256": "32f87e409dfaf0365db56164297ec07cf966f553b0f539b066040fa30a567241"
+          }
+        ],
+        "implementation_source_digest": "60484791bda7924d14c129aaf6fd5761bb3856f560770d23a29b4646a1b49dd9",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "path": "src/srad-cuda/reduce_kernel.cu",
+            "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+          },
+          "corrected_source": {
+            "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+            "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+          },
+          "patch": {
+            "path": "src/srad-julia/native_correction.patch",
+            "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+          },
+          "independent_GPU_full_stage_witness": {
+            "path": "src/srad-julia/reduction_witness_audit.json",
+            "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+          },
+          "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+          "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+        },
+        "configuration_role": "corrected_reference_secondary",
+        "untouched_native_agreement_claim": false,
+        "full_original_program_coverage": false,
+        "authored_device_kernel_entrypoints": 6,
+        "all_actual_GPU_intermediate_images_captured": false,
+        "all_iteration_scalar_statistics_captured": true,
+        "verification_output_audit": {
+          "path": "src/srad-julia/output_audit.json",
+          "sha256": "939063de082385d903d86153765298e5c9e3287f310d23ec06779ef06cc126ca"
+        },
+        "PGM_IO_certified": false,
+        "tiny_component_uniform_relative_accuracy_claim": false,
+        "implementation_class": "mixed_host_device_pipeline_pureJACC_devicekernels",
+        "device_component_class": "pure_JACC",
+        "shared_pointwise_helper_authorship_phase": "referenceonce_reusedKAthenJACC_ownreductions",
+        "measurement_class": "mixed_host_device_pipeline",
+        "statistics_observer_stores_inside_ROI": 50
+      }
+    },
+    "source_sha256": {
+      "src/srad-julia/srad-julia-cuda.jl/main.jl": "4431b9149bc1b4d76d235d3f6eb735e82a035fa0e8481219f25f4a93d224a29c",
+      "src/srad-julia/srad-julia-KA/main.jl": "00ad8df11d68c1c3fa1456b79fae9a01e212a34ea5f5423cea656801ca827960",
+      "src/srad-julia/srad-julia-JACC/main.jl": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8"
+    },
+    "ontology_sha256": null,
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "native_reference_repaired": true,
+      "configuration_role": "corrected_reference_secondary",
+      "original_source": {
+        "path": "src/srad-cuda/reduce_kernel.cu",
+        "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+      },
+      "corrected_source": {
+        "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+        "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+      },
+      "patch": {
+        "path": "src/srad-julia/native_correction.patch",
+        "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+      },
+      "independent_GPU_full_stage_witness": {
+        "path": "src/srad-julia/reduction_witness_audit.json",
+        "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+      },
+      "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+      "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+    },
+    "configuration_role": "corrected_reference_secondary",
+    "fidelity_status": "conditional_reference_repaired",
+    "untouched_native_agreement_claim": false,
+    "full_original_program_coverage": false,
+    "authored_device_kernel_entrypoints": 6,
+    "all_actual_GPU_intermediate_images_captured": false,
+    "all_iteration_scalar_statistics_captured": true,
+    "verification_output_audit": {
+      "path": "src/srad-julia/output_audit.json",
+      "sha256": "939063de082385d903d86153765298e5c9e3287f310d23ec06779ef06cc126ca"
+    },
+    "PGM_IO_certified": false,
+    "tiny_component_uniform_relative_accuracy_claim": false
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/srad-julia/srad-julia-JACC/main.jl",
+    "sha256": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        29,
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "local_storage": [],
+      "barrier": [
+        13,
+        19
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+      "run_id": "20261018T123238739468Z_srad",
+      "result": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad/result.json",
+      "configuration_role": "corrected_reference_secondary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_reference_repaired": true,
+        "configuration_role": "corrected_reference_secondary",
+        "original_source": {
+          "path": "src/srad-cuda/reduce_kernel.cu",
+          "sha256": "bd9c5a82d4307d5612a77430e438ca8dc5d2905bad6eda5d7f332b0228b93daf"
+        },
+        "corrected_source": {
+          "path": "src/srad-julia/corrected_reduce_kernel.cuh",
+          "sha256": "390bc92e506469005ad1333616e0d22ca965968ddf8704697abafa439ecee579"
+        },
+        "patch": {
+          "path": "src/srad-julia/native_correction.patch",
+          "sha256": "48871bd97c69ba8d448168eec7d9b945b0ad483d248ce26097cbe091ba6f69b9"
+        },
+        "independent_GPU_full_stage_witness": {
+          "path": "src/srad-julia/reduction_witness_audit.json",
+          "sha256": "5ed1816ccf9d30a2061e0df4935755cd7b36edff5b3fe442bf7f94d1b22d2506"
+        },
+        "justification": "Lastpartialblockremainder reads physicalindexi insteadof i*d_mul. N513secondlevelno3/mul256 readsinputpixel2(value3) insteadofpartial512(value17), sumerror\u221214/squaredsum\u2212280. Allvalues/partialsumsexactFloat32integers, notroundoff.",
+        "scope": "Onlytwo partialreductionremainder physicalindices multiplybyd_mul; originaltree/barriers/inplaceworkspace/nf1identity retained. Allotherextract/prepare/srad/srad2/compressnativebodiesunchanged. FullsourceCOMPUTEloop restored, scientificpositivevariancefixtures/reflectingdiffusionoracle; no1000step/PGMIO/imagequalityclaim. Conditionalcorrectednativeonly/excludeuntouchedCUDAaggregates."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "f27cd9eb2d66cab89cf01cadc53c2539d1d582c7cf1f8f0dd6a03c8896876f38",
+      "source_hash": "826c907310614d6d7f84d5346b11d213774720e7d571960efa97c64132804a56",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00116892,
+        0.0011395110000000002,
+        0.001207271,
+        0.0012163590000000002,
+        0.0011188600000000002
+      ],
+      "mean_last_four_seconds": 0.0011705002500000002,
+      "contract": {
+        "inputs": "Fourcolmajorimages16x16/19x27/3x257/257x257,N256/513/771/66049,steps2/3/2/3,lambda.5/.5/.125/.75. DeterministicrawF32gray15..240, reflectingclampedneighborIDs, nonzerovariance/q0>1e-3;sourceROIwholeimage. Native256threadreduction1/2/2/3levels,partialnf1andmultiplier256tail>1cases.",
+        "precision": "F32GPUextract/prepare/sourcehierarchicaltree/coeff/update/compress andCPUF32statistics; independentFloat64math.fsum/PDEconservativeedgeflux/fullworkspaceoracle. Fixedengineering1e-4+1e-5relative, notformalroundoffbound. Actualrawinput/neighborbits/192guardspercase exact; allfieldsfull, errorsperfieldretained.",
+        "operator": "Conditionaltwo-readindexfix inreducepartialremainder(i*d_mul), original5othernativekernelbodiesunchanged. Restoreprepare/exp/log/fulltree+hostD2Hstats andbothdiffusionstencilsall4. NativeglobalimageROIvariance, clampedreflectingboundaries/coefficient0..1; uniformzero-variance/smallvarianceunsupportedbythiscontract, notframeworklimitation.",
+        "metric": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "srad:jacc:20261018T123238739468Z_srad:N3:accepted",
+        "benchmark_id": "srad",
+        "implementation_model": "jacc",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/srad.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "srad:jacc:20261018T123238739468Z_srad:N3:accepted",
+          "benchmark_id": "srad",
+          "configuration_id": "srad_corrected_reduce_stride_four_nonuniform_reflecting_images_v1",
+          "implementation_model": "jacc",
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "source_revision": "10783e4504c69c4a0fc478e9d66048c1dcc3b49801729cfed272d694bdd65dc8",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 0.0001068115234375; unchangedtolerance 0.0001+1e-05*abs(ref).",
+          "minimal_trigger": {
+            "inputs": "Fourcolmajorimages16x16/19x27/3x257/257x257,N256/513/771/66049,steps2/3/2/3,lambda.5/.5/.125/.75. DeterministicrawF32gray15..240, reflectingclampedneighborIDs, nonzerovariance/q0>1e-3;sourceROIwholeimage. Native256threadreduction1/2/2/3levels,partialnf1andmultiplier256tail>1cases.",
+            "precision": "F32GPUextract/prepare/sourcehierarchicaltree/coeff/update/compress andCPUF32statistics; independentFloat64math.fsum/PDEconservativeedgeflux/fullworkspaceoracle. Fixedengineering1e-4+1e-5relative, notformalroundoffbound. Actualrawinput/neighborbits/192guardspercase exact; allfieldsfull, errorsperfieldretained.",
+            "operator": "Conditionaltwo-readindexfix inreducepartialremainder(i*d_mul), original5othernativekernelbodiesunchanged. Restoreprepare/exp/log/fulltree+hostD2Hstats andbothdiffusionstencilsall4. NativeglobalimageROIvariance, clampedreflectingboundaries/coefficient0..1; uniformzero-variance/smallvarianceunsupportedbythiscontract, notframeworklimitation.",
+            "metric": "OriginalCOMPUTEstage: sum4regions eachalliterationsprepare/reducelevels/twoD2HFP32sums/CPUstatistics/coefficient+updatekernels/endcompletion,51GPUlaunches and20D2Hscalarcopies/trial.50preallocatedFP32statistics-observerstores insideROI all4, explicitinstrumentationcovariate. Extract/compressfullstagesexecuted+checkedoutsideprimaryROI,separatetimesretained. Allocation/reset/fullreadbacks/oracles/serialization/warmupoutside;fivecheckedtrialsmean2-5."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T123238739468Z_srad/result.json",
+              "sha256": "f27cd9eb2d66cab89cf01cadc53c2539d1d582c7cf1f8f0dd6a03c8896876f38"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "4c0595330a740b723c4213a7",
+        "begin_event_id": "968b1b9d015e6512d324ae59",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T12:33:45.076506+00:00",
+        "usage_event_timestamp": "2026-10-18T12:33:37.109Z",
+        "elapsed_usage_event_start": "2026-10-18T12:31:41.598Z",
+        "delta_usage": {
+          "input_tokens": 884674,
+          "cached_input_tokens": 883712,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3651,
+          "reasoning_output_tokens": 2068,
+          "total_tokens": 888325
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 7.967506,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "4fbd77e12b987be675fc9d3f8bef4a874ad2bb7d972762d75a9da318b4a063d1",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 6.750422,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/srad/jacc_translation.jsonl",
+        "evidence_sha256": "4105ef8a9f48542ebe005d8ca7d5a63dbc8108107fe158e59dbfc7b6ab716755",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/srad/measurement_scope_review.json",
+      "sha256": "286dd433818274b7398d816b43986607cae180eded5ab34c45519577595035ca",
+      "record": {
+        "benchmark_id": "srad",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repair_rounds": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repair_rounds": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/srad-julia-jacc/manifest.json",
+    "selected_sha256": "be1f5d8a82b7a725ef3fc5235b13a0174bdf59ff8cf3d35b6854f4524d8f8276",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/srad-julia-jacc/manifest.json",
+        "sha256": "be1f5d8a82b7a725ef3fc5235b13a0174bdf59ff8cf3d35b6854f4524d8f8276"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "a8d1991201406c86b74c600b94b1976b63df91ba",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "mixed_host_device_pipeline_pureJACC_devicekernels",
+    "annotation_path": ".porting-state/portable_julia/traits/srad.json",
+    "annotation_sha256": "8e7ed7637884420e730054ab5d03314a7c8ee531d5434a7d223a0534f5f25f08",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

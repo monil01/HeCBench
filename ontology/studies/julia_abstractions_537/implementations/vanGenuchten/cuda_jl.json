@@ -1,0 +1,495 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "vanGenuchten",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/vanGenuchten.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+    "work_item_mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "synchronization": [
+      "host_device_synchronization_at_timing_boundaries"
+    ],
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "cells": 4096
+    },
+    "resource_policy": "no shared memory",
+    "backend_extensions": [],
+    "implementation_class": "framework_device_kernel",
+    "source_sha256": "61d718684a972db3273b2639760ac83290ef2eee1b3874cc82c838a0aa7c1e8f",
+    "reference_repair": {
+      "finding": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+      "original_path": "/home/imo/HeCBench_julia/src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/original_main.jl",
+      "original_sha256": "422b90032a340ab4b9f07bf9b1bd94bbbb0b1e900c279e86846ee5b283be8e39",
+      "original_preserved": true,
+      "phase": "reference_correctness",
+      "historical_compiler_attempts": null
+    },
+    "configuration_id": "soil_fp64_16x16x16_r10_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "scientific_witness": {
+      "path": ".porting-state/portable_julia/scientific_witnesses_300/vanGenuchten.json",
+      "method": "Postprocess existing immutable full artifacts; no new GPU execution/timing. Independent Float64 central differences of mathematical scalar function, plus domain/algebraic invariants.",
+      "all_model_trials_pass": true,
+      "scope": "Configured values only; does not validate full physical model or all parameter/input regimes."
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+    "layout": null,
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "host_device_synchronization_at_timing_boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "no shared memory",
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "cells": 4096
+    },
+    "library_backend_boundary": [],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "61d718684a972db3273b2639760ac83290ef2eee1b3874cc82c838a0aa7c1e8f",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "elementwise_transcendental_map",
+    "storage_precision": [
+      "Float64"
+    ],
+    "compute_precision": [
+      "Float64"
+    ],
+    "synchronization": [
+      "host_device_synchronization_at_timing_boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "identical per-cell equations, layout,256-thread launch geometry and FP64"
+    },
+    "implementation_class": {
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "synchronized_kernel_loop_mean",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Shared CPU equation oracle is not independent physical validation",
+      "One named4096cell study case only"
+    ],
+    "scientific_intent": {
+      "primary_domain": "PDE/continuum simulation",
+      "secondary_domains": [
+        "hydrology",
+        "porous-media flow"
+      ],
+      "scientific_task": "Convert pressure head to water content, hydraulic conductivity and specific moisture capacity",
+      "governing_method": "van Genuchten constitutive water-retention law and Mualem conductivity closure",
+      "discretization": "independent constitutive evaluations; no spatial derivative, mesh or PDE solver in benchmark",
+      "accuracy_needs": [
+        "saturation branch psi>=0",
+        "finite conductivity and moisture capacity",
+        "nonlinear power sensitivity"
+      ],
+      "input_regime": "4096cells; pressure head -100 to +1, including saturated cells",
+      "precision_sensitivity": "FP64 native/reference; powers near saturation may amplify rounding",
+      "community_use_case": "Constitutive coefficient evaluation within a Richards-equation soil-water simulator",
+      "evidence": [
+        "src/vanGenuchten-cuda/main.cu",
+        "src/vanGenuchten-cuda/reference.h"
+      ],
+      "confidence": "source_reviewed",
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/vanGenuchten-cuda/main.cu",
+          "sha256": "5f08cba30fea68322254ef6a2e21d5ec85bd919c92de99ac596900a4d6d58205"
+        },
+        {
+          "path": "src/vanGenuchten-cuda/reference.h",
+          "sha256": "9633ec5693aca77ad1b1bedee75f08253c63cadce2254776c2d0c5af9c82d748"
+        }
+      ]
+    },
+    "benchmark": "vanGenuchten",
+    "configuration_id": "soil_fp64_16x16x16_r10_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T160605690412Z_vanGenuchten/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/vanGenuchten-cuda/main.cu",
+      "native_source_sha256": "5f08cba30fea68322254ef6a2e21d5ec85bd919c92de99ac596900a4d6d58205",
+      "reviewed_at": "2026-10-17T16:08:26.062031+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+        "work_item_mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64"
+        ],
+        "synchronization": [
+          "host_device_synchronization_at_timing_boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "cells": 4096
+        },
+        "resource_policy": "no shared memory",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "61d718684a972db3273b2639760ac83290ef2eee1b3874cc82c838a0aa7c1e8f",
+        "reference_repair": {
+          "finding": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+          "original_path": "/home/imo/HeCBench_julia/src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/original_main.jl",
+          "original_sha256": "422b90032a340ab4b9f07bf9b1bd94bbbb0b1e900c279e86846ee5b283be8e39",
+          "original_preserved": true,
+          "phase": "reference_correctness",
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "soil_fp64_16x16x16_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "scientific_witness": {
+          "path": ".porting-state/portable_julia/scientific_witnesses_300/vanGenuchten.json",
+          "method": "Postprocess existing immutable full artifacts; no new GPU execution/timing. Independent Float64 central differences of mathematical scalar function, plus domain/algebraic invariants.",
+          "all_model_trials_pass": true,
+          "scope": "Configured values only; does not validate full physical model or all parameter/input regimes."
+        }
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+        "work_item_mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64"
+        ],
+        "synchronization": [
+          "host_device_synchronization_at_timing_boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "cells": 4096
+        },
+        "resource_policy": "no shared memory",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "98dffaac357dd56b8bed32cb4603ce1921a4aae4c353854c8480df76c644e959",
+        "reference_repair": null,
+        "configuration_id": "soil_fp64_16x16x16_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "scientific_witness": {
+          "path": ".porting-state/portable_julia/scientific_witnesses_300/vanGenuchten.json",
+          "method": "Postprocess existing immutable full artifacts; no new GPU execution/timing. Independent Float64 central differences of mathematical scalar function, plus domain/algebraic invariants.",
+          "all_model_trials_pass": true,
+          "scope": "Configured values only; does not validate full physical model or all parameter/input regimes."
+        }
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "van Genuchten water retention and Mualem conductivity per independent soil cell, original constants alpha=.02 n=1.8 thetaS=.45 thetaR=.1",
+        "work_item_mapping": "one work item per cell, coalesced five structure-of-arrays vectors, native256 threads/block retained",
+        "storage_precision": [
+          "Float64"
+        ],
+        "compute_precision": [
+          "Float64"
+        ],
+        "synchronization": [
+          "host_device_synchronization_at_timing_boundaries"
+        ],
+        "launch_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "cells": 4096
+        },
+        "resource_policy": "JACC explicit dynamic_shared=0",
+        "backend_extensions": [],
+        "implementation_class": "framework_device_kernel",
+        "source_sha256": "14121f446e1a123dcd1a7a6c8736e0be6e7f506a503a62e1ac01c8dfb00b926f",
+        "reference_repair": null,
+        "configuration_id": "soil_fp64_16x16x16_r10_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "scientific_witness": {
+          "path": ".porting-state/portable_julia/scientific_witnesses_300/vanGenuchten.json",
+          "method": "Postprocess existing immutable full artifacts; no new GPU execution/timing. Independent Float64 central differences of mathematical scalar function, plus domain/algebraic invariants.",
+          "all_model_trials_pass": true,
+          "scope": "Configured values only; does not validate full physical model or all parameter/input regimes."
+        }
+      }
+    },
+    "scientific_witness": {
+      "path": ".porting-state/portable_julia/scientific_witnesses_300/vanGenuchten.json",
+      "method": "Postprocess existing immutable full artifacts; no new GPU execution/timing. Independent Float64 central differences of mathematical scalar function, plus domain/algebraic invariants.",
+      "all_model_trials_pass": true,
+      "scope": "Configured values only; does not validate full physical model or all parameter/input regimes."
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/main.jl",
+    "sha256": "61d718684a972db3273b2639760ac83290ef2eee1b3874cc82c838a0aa7c1e8f",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        17
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "soil_fp64_16x16x16_r10_v1",
+      "run_id": "20261017T160605690412Z_vanGenuchten",
+      "result": ".porting-state/portable_julia/runs/20261017T160605690412Z_vanGenuchten/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "13337faf5d436eb0bba7643240c295b0f484a6172701d31f3993e0e27861552b",
+      "source_hash": "a4b2bf419bf17fb68069c5e7a757b77c84357a59ec27bf69e0c5ec0cff049a17",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T160605690412Z_vanGenuchten/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.08331e-05,
+        1.3335200000000002e-05,
+        9.9641e-06,
+        9.645e-06,
+        9.5931e-06
+      ],
+      "mean_last_four_seconds": 1.0634350000000001e-05,
+      "contract": {
+        "precision": "float64",
+        "size": 4096,
+        "internal_repeats": 10,
+        "fixture": "native Ksat=1e-6+(1-1e-6)*i/4096; psi=-100+101*i/4096; includes negative and saturated positive pressure",
+        "checked_outputs": "full C,theta,K arrays concatenated",
+        "acceptance": "native abs<=1e-3; all finite required"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "vanGenuchten_cuda_jl_reference_semantics_01",
+        "benchmark_id": "vanGenuchten",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_repair",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/vanGenuchten.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "vanGenuchten_cuda_jl_reference_semantics_01",
+          "benchmark_id": "vanGenuchten",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "soil_fp64_16x16x16_r10_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_repair",
+          "taxonomy_code": "S1",
+          "symptom": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+          "cause": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "finding": "Historical CUDA.jl smoke_kernel writes one integer marker then prints hardcoded PASS; no van Genuchten constitutive equations or scientific outputs. Replaced only study entrypoint with genuine per-cell FP64 equations.",
+            "original_path": "/home/imo/HeCBench_julia/src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/original_main.jl",
+            "original_sha256": "422b90032a340ab4b9f07bf9b1bd94bbbb0b1e900c279e86846ee5b283be8e39",
+            "original_preserved": true,
+            "phase": "reference_correctness",
+            "historical_compiler_attempts": null
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "422b90032a340ab4b9f07bf9b1bd94bbbb0b1e900c279e86846ee5b283be8e39",
+          "log_reference": "/home/imo/HeCBench_julia/src/vanGenuchten-julia/study_notes.json",
+          "historical_observed_failure_attempt": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 171,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/vanGenuchten-julia/vanGenuchten-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/vanGenuchten-julia-cuda_jl/manifest.json",
+    "selected_sha256": "b31238c0c99d70dd23209e585f174d0d0e9c9211a93789a7627a704ff6b72732",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/vanGenuchten-julia-cuda_jl/manifest.json",
+        "sha256": "b31238c0c99d70dd23209e585f174d0d0e9c9211a93789a7627a704ff6b72732"
+      },
+      {
+        "path": ".porting-state/porting_logs/vanGenuchten-julia/manifest.json",
+        "sha256": "495eee9bf1bf4ff1c360cb76ddd3656ad548f808777269681140dc25edeb0d7b"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "measured_profile_evidence": {
+    "profile_id": "vanGenuchten_20261017T173527Z_cuda_jl",
+    "benchmark": "vanGenuchten",
+    "implementation_model": "cuda_jl",
+    "kernel_name": "kernel_(CuDeviceArray<Float64, (int)1, (int)1>, CuDeviceArray<Float64, (int)1, (int)1>, CuDeviceArray<Float64, (int)1, (int)1>, CuDeviceArray<Float64, (int)1, (int)1>, CuDeviceArray<Float64, (int)1, (int)1>, Int32)",
+    "target_identity_reviewed": true,
+    "source_hash": "a4b2bf419bf17fb68069c5e7a757b77c84357a59ec27bf69e0c5ec0cff049a17",
+    "reference_run_id": "20261017T160605690412Z_vanGenuchten",
+    "configuration_id": "soil_fp64_16x16x16_r10_v1",
+    "counter_path": ".porting-state/portable_julia/profiles/vanGenuchten/20261017T173527Z/cuda_jl/counters.csv",
+    "counter_sha256": "e9b898ab9ec48ca20bc18686d5ade61fe8365c5d136c85c75b58a8b52dae9468",
+    "provenance_path": ".porting-state/portable_julia/profiles/vanGenuchten/20261017T173527Z/cuda_jl/provenance.json",
+    "provenance_sha256": "e897a5a4aa18f58030f8e2b6171ca0e06e67293ff919e7c3fce70f087cb1698b",
+    "profile_duration_seconds": 1.0336e-05,
+    "dram_read_bytes": 65856.0,
+    "dram_write_bytes": 0.0,
+    "l2_transaction_bytes": 238016.0,
+    "registers_per_thread": 36.0,
+    "static_shared_bytes": 0.0,
+    "dynamic_shared_bytes": 0.0,
+    "interpretation": "First matching study kernel, normally warmup invocation, under Nsight replay/defaultcachepolicy. Duration differs from required host-clock trial means; no subtraction/decomposition or sustained-DRAM bound inference. DRAMwrite0 can reflect cache residency; L2 transactions are a distinct memory level. FP64 transcendental work is not fully described by ordinary-FLOP roofline counters.",
+    "unprofiled_primary_mean_seconds": 1.0634350000000001e-05
+  }
+}

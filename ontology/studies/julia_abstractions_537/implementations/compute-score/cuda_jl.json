@@ -1,0 +1,463 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "compute-score",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/compute-score.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Bloomfilteredgather andsplitintegerweightmultiply,8-lane linepartial reduction, perdocumentserialline reduction.",
+    "mapping": "160groups8threads;eachlane8itemsfromeachDIMM; secondkernel1group64threads,onedocumentperlane.",
+    "layout": "TwoUInt32packedtermarrays;twoindependentread-onlyUInt64profilecopies;UInt32Bloom,UInt64packedline-ranges,splitUInt32partials,UInt64scores.",
+    "precision": {
+      "storage": [
+        "uint32",
+        "uint64"
+      ],
+      "compute": "uint32hash/splitproducts,uint64sums",
+      "artifact": "losslessInt64wideningwithinboundedfixture"
+    },
+    "implementation_detail": "Genuineexistingkernels preserved; static8UInt64scratch,serial8sum insteadnativeulong4vectorreduction.",
+    "memory": "64Bstaticsharedlinepartials; globalprofilegathers.",
+    "synchronization": [
+      "linepartialwritebarrier",
+      "orderedtwokernelboundary"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/compute-score-julia/compute-score-julia-cuda.jl/main.jl",
+        "sha256": "03e44cbfc520183b3c4e6c76ab2be99b33701b67231629b724b47854cdeee3be",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "configuration_id": "u64_docs64_vocabulary16384_ragged128_512_bloom_multicomponent_weights_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Bloomfilteredgather andsplitintegerweightmultiply,8-lane linepartial reduction, perdocumentserialline reduction.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "160groups8threads;eachlane8itemsfromeachDIMM; secondkernel1group64threads,onedocumentperlane.",
+    "layout": "TwoUInt32packedtermarrays;twoindependentread-onlyUInt64profilecopies;UInt32Bloom,UInt64packedline-ranges,splitUInt32partials,UInt64scores.",
+    "storage_precision": [
+      "uint32",
+      "uint64"
+    ],
+    "compute_precision": "uint32hash/splitproducts,uint64sums",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "64Bstaticsharedlinepartials; globalprofilegathers.",
+    "synchronization": [
+      "linepartialwritebarrier",
+      "orderedtwokernelboundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/compute-score-julia/compute-score-julia-cuda.jl/main.jl",
+        "sha256": "03e44cbfc520183b3c4e6c76ab2be99b33701b67231629b724b47854cdeee3be",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "compute-score",
+    "primary_motif": "bloom_filter_indirect_integer_document_scoring",
+    "storage_precision": [
+      "uint32_packed_term_frequency",
+      "uint64_weights_and_scores"
+    ],
+    "compute_precision": [
+      "uint32_hash_and_splitmultiply",
+      "uint64_accumulation"
+    ],
+    "synchronization": [
+      "workgroup_partial_barrier",
+      "ordered_document_reduction"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same8thread per128-wordline,8termsperlanepertwoDIMMs,64threaddocumentreduction; nativeulong4finalsum vs serial8Juliasum and nativevectorarrays vs directscalarloop."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Named64documents and16384entry vocabulary; original262144documents/2^24entryprofile unmeasured.",
+      "Small~410KiBworkingdata fitsV100L2; noDRAMcapacity/bandwidth/applicationthroughput claim.",
+      "Source mulfp useslow20bits andnext16bitsatbit24, ignoresbits20..23; fixture usesonlysupportedparts, no generalUInt64multiplyclaim.",
+      "JACC adds8UInt64zero-template preload/barrier; nativeloadarrays/ulong4sum vsJuliascalarloop.",
+      "Documentcontentprofileartificial; no retrievalquality corpus."
+    ],
+    "jacc_shared_memory_policy": "compute64bytesrequired,reduction0",
+    "observation": "research/observations/compute-score.md",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "graph_irregular",
+      "primary_domain": "document_profile_weighted_term_scoring",
+      "scientific_task": "Score ragged documents against sparse profileweights withBloomfilterprechecks.",
+      "mathematical_operation": "score[d]=sum(validtermsin d) profileweight[term]*frequency, via perline partials then documentrange reduction.",
+      "discretization_or_topology": "64variablelengthdocuments,160padded128wordlines splitacrosstwoDIMMarrays;24bittermid/8bitfrequencyencoding,selected16384term vocabulary.",
+      "invariants": [
+        "Endtag0xffffffff skipped.",
+        "Bloomfalsepositives contributezero ifprofileweightzero.",
+        "64bitline total split intohigh/low32bits and reassembled exactly."
+      ],
+      "accuracy_requirements": [
+        "All64documentscores plus160high and160lowpartials exactInt64 against independentfullUInt64weightedCPU sum andbothreferences everyfive trials."
+      ],
+      "precision_sensitivity": "Source splitmultiply ignoresbits20..23 and upperbits40+; fixtureweights avoidthese unsupportedbitpositions and32bitpartialproductoverflow. NoFloat32roundoff.",
+      "input_size_regimes": "64docs,len121..505,10repeats,16384profileentries and16384UInt32Bloomwords; original2^24profile and262144docs unmeasured.",
+      "community_use_case": "OriginalAltera source explicitly constructsDocuments/Profile and computesprofileweights*frequencies; informationretrieval/data-analytics primitive, not aclaimed physicalscience simulator.",
+      "uncertainty": "Noapplicationcorpus,relevancegroundtruth,rankingquality or representativeprofilecachemissdistribution established.",
+      "provenance": [
+        {
+          "path": "src/compute-score-cuda/main.cu",
+          "sha256": "05a9571f095c82ea5ccfbc2607f5644b95f0565169f5ab6997e02b4e5709dc43",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/compute-score-julia/study_common.jl",
+          "sha256": "a07b5e42a73b015465f92279423a4fb6b6a25464f696742f7287b839d9b2b729",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:27:18.745010+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Bloomfilteredgather andsplitintegerweightmultiply,8-lane linepartial reduction, perdocumentserialline reduction.",
+        "mapping": "160groups8threads;eachlane8itemsfromeachDIMM; secondkernel1group64threads,onedocumentperlane.",
+        "layout": "TwoUInt32packedtermarrays;twoindependentread-onlyUInt64profilecopies;UInt32Bloom,UInt64packedline-ranges,splitUInt32partials,UInt64scores.",
+        "precision": {
+          "storage": [
+            "uint32",
+            "uint64"
+          ],
+          "compute": "uint32hash/splitproducts,uint64sums",
+          "artifact": "losslessInt64wideningwithinboundedfixture"
+        },
+        "implementation_detail": "Genuineexistingkernels preserved; static8UInt64scratch,serial8sum insteadnativeulong4vectorreduction.",
+        "memory": "64Bstaticsharedlinepartials; globalprofilegathers.",
+        "synchronization": [
+          "linepartialwritebarrier",
+          "orderedtwokernelboundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/compute-score-julia/compute-score-julia-cuda.jl/main.jl",
+            "sha256": "03e44cbfc520183b3c4e6c76ab2be99b33701b67231629b724b47854cdeee3be",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "configuration_id": "u64_docs64_vocabulary16384_ragged128_512_bloom_multicomponent_weights_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Bloomfilteredgather andsplitintegerweightmultiply,8-lane linepartial reduction, perdocumentserialline reduction.",
+        "mapping": "160groups8threads;eachlane8itemsfromeachDIMM; secondkernel1group64threads,onedocumentperlane.",
+        "layout": "TwoUInt32packedtermarrays;twoindependentread-onlyUInt64profilecopies;UInt32Bloom,UInt64packedline-ranges,splitUInt32partials,UInt64scores.",
+        "precision": {
+          "storage": [
+            "uint32",
+            "uint64"
+          ],
+          "compute": "uint32hash/splitproducts,uint64sums",
+          "artifact": "losslessInt64wideningwithinboundedfixture"
+        },
+        "implementation_detail": "Same8laneand64lanekernels viaexplicitgroup/globalindices; static8UInt64localtile.",
+        "memory": "64Bstaticlocalpartials; globalprofilegathers.",
+        "synchronization": [
+          "linepartialwritebarrier",
+          "orderedtwokernelboundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/compute-score-julia/compute-score-julia-KA/main.jl",
+            "sha256": "824255bde4185ef8cedfe049eeb1484e5bfcaa047b90329101c1f051f1516fb9",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "configuration_id": "u64_docs64_vocabulary16384_ragged128_512_bloom_multicomponent_weights_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Bloomfilteredgather andsplitintegerweightmultiply,8-lane linepartial reduction, perdocumentserialline reduction.",
+        "mapping": "160groups8threads;eachlane8itemsfromeachDIMM; secondkernel1group64threads,onedocumentperlane.",
+        "layout": "TwoUInt32packedtermarrays;twoindependentread-onlyUInt64profilecopies;UInt32Bloom,UInt64packedline-ranges,splitUInt32partials,UInt64scores.",
+        "precision": {
+          "storage": [
+            "uint32",
+            "uint64"
+          ],
+          "compute": "uint32hash/splitproducts,uint64sums",
+          "artifact": "losslessInt64wideningwithinboundedfixture"
+        },
+        "implementation_detail": "Linearcallbackrecover8lanegroups,JACC.sharedzero8template thenoverwritepartials, serial8sum; separate64lanereduction.",
+        "memory": "64Bdynamicsharedplus8UInt64globalzero-template; docreductionexplicit0shared.",
+        "synchronization": [
+          "linepartialwritebarrier",
+          "orderedtwokernelboundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/compute-score-julia/compute-score-julia-JACC/main.jl",
+            "sha256": "bd1e8e05ea764de384dfaa1274eccb11596e43224acd46c9d4808b7d21d4e15a",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "configuration_id": "u64_docs64_vocabulary16384_ragged128_512_bloom_multicomponent_weights_v1"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/compute-score-julia/compute-score-julia-cuda.jl/main.jl",
+    "sha256": "03e44cbfc520183b3c4e6c76ab2be99b33701b67231629b724b47854cdeee3be",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        276,
+        277
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        131
+      ],
+      "barrier": [
+        167
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "u64_docs64_vocabulary16384_ragged128_512_bloom_multicomponent_weights_v1",
+      "run_id": "20261017T172626744608Z_compute-score",
+      "result": ".porting-state/portable_julia/runs/20261017T172626744608Z_compute-score/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "ef7ce29f5624e548c8d60bab38621fabb6ccb2dd97fbc4d6d323dd7b38bf23e9",
+      "source_hash": "649c7feb575ad0934bbc882de9819b6dd48d2a4a436c1dff2d37a0d0acf5cae6",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T172626744608Z_compute-score/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.24621e-05,
+        1.29641e-05,
+        1.10551e-05,
+        1.1028e-05,
+        1.0981e-05
+      ],
+      "mean_last_four_seconds": 1.150705e-05,
+      "contract": "64raggeddocuments of121..505packedterm/frequencies,64docs160lines;twoDIMMarrays;16384entryprofile (original2^24unmeasured),weights withlow20+upper16atbit24, nounsupportedgapbits;Bloomfilteractualsource;all64scores+320splitpartialsInt64exact.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "compute-score-cuda_jl-P1-retrospective-implementation",
+        "benchmark_id": "compute-score",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/compute-score.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "compute-score-cuda_jl-P1-retrospective-implementation",
+          "benchmark": "compute-score",
+          "model": "cuda_jl",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Nativeulong4vectorfinalsum/manual8elementlocalarrays vsJuliafamilyserial8sum/scalarloops; JACCadditionaltemplatepreload; smallprofilefixtureisresourceconfound.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/compute-score-cuda/main.cu",
+              "sha256": "05a9571f095c82ea5ccfbc2607f5644b95f0565169f5ab6997e02b4e5709dc43",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/compute-score-julia/compute-score-julia-cuda.jl/main.jl",
+              "sha256": "03e44cbfc520183b3c4e6c76ab2be99b33701b67231629b724b47854cdeee3be",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/compute-score-julia/manifest.json",
+    "selected_sha256": "e4682bd2479b51a3cc69595367ff523a49e14a23918fba9d34ac7030fcf177cd",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/compute-score-julia/manifest.json",
+        "sha256": "e4682bd2479b51a3cc69595367ff523a49e14a23918fba9d34ac7030fcf177cd"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "compute-score",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T172626744608Z_compute-score/result.json"
+    ],
+    "contract": "64raggeddocuments of121..505packedterm/frequencies,64docs160lines;twoDIMMarrays;16384entryprofile (original2^24unmeasured),weights withlow20+upper16atbit24, nounsupportedgapbits;Bloomfilteractualsource;all64scores+320splitpartialsInt64exact.",
+    "limitations": [
+      "Named64documents and16384entry vocabulary; original262144documents/2^24entryprofile unmeasured.",
+      "Small~410KiBworkingdata fitsV100L2; noDRAMcapacity/bandwidth/applicationthroughput claim.",
+      "Source mulfp useslow20bits andnext16bitsatbit24, ignoresbits20..23; fixture usesonlysupportedparts, no generalUInt64multiplyclaim.",
+      "JACC adds8UInt64zero-template preload/barrier; nativeloadarrays/ulong4sum vsJuliascalarloop.",
+      "Documentcontentprofileartificial; no retrievalquality corpus."
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/compute-score.json",
+    "annotation_sha256": "beaa3f78a5fa68e9b18b99a821452a168102f0f2fc57b6585b6089b1088636d3",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

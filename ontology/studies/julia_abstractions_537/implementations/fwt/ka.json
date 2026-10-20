@@ -1,0 +1,633 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "fwt",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/fwt.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Three unnormalized Walsh transforms with normalized pointwise modulation; inherited Julia radix2 pair stages.",
+    "mapping": "128 blocks256 threads for each32768-pair stage;256 blocks256 for65536-item modulation;16 stages pertransform and49 kernels perpipeline.",
+    "layout": "Two contiguous Float32 arrays, no shared scratch in Julia family; in-place disjoint butterfly pairs perstage.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 butterfly add/subtract and modulation",
+      "CPU oracle": "independent float64 direct XOR-product sums cast to float32"
+    },
+    "implementation_detail": "Same selected pair ownership via global index, one kernel perstage, explicit stage ordering on backend stream.",
+    "memory": "512KiB device data/kernel; no local scratch.",
+    "synchronization": [
+      "ordered stream kernel boundaries",
+      "one synchronized timer endpoint"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "One complete forward(data)+forward(paddedkernel)+normalizedmodulation+inverse pipeline per timed trial; host reset/H2D and all CPU checks/readback outside. Five warm in-process trials, mean last4.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/fwt-julia/fwt-julia-KA/main.jl",
+        "sha256": "21eed62fec2181436eee742be2c4588963a36cbd278eefbc4d0b2832159854e4",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "resource_geometry": {
+      "stage_blocks": 128,
+      "stage_threads": 256,
+      "modulation_blocks": 256,
+      "modulation_threads": 256,
+      "shared_bytes": 0,
+      "kernels_per_pipeline": 49,
+      "registers": null
+    },
+    "reference_current_semantic_repair": false,
+    "configuration_id": "fwt_dyadic_float32_n65536_kernel128_onecomplete_pipeline_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Three unnormalized Walsh transforms with normalized pointwise modulation; inherited Julia radix2 pair stages.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "128 blocks256 threads for each32768-pair stage;256 blocks256 for65536-item modulation;16 stages pertransform and49 kernels perpipeline.",
+    "layout": "Two contiguous Float32 arrays, no shared scratch in Julia family; in-place disjoint butterfly pairs perstage.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 butterfly add/subtract and modulation",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "512KiB device data/kernel; no local scratch.",
+    "synchronization": [
+      "ordered stream kernel boundaries",
+      "one synchronized timer endpoint"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": {
+      "stage_blocks": 128,
+      "stage_threads": 256,
+      "modulation_blocks": 256,
+      "modulation_threads": 256,
+      "shared_bytes": 0,
+      "kernels_per_pipeline": 49,
+      "registers": null
+    },
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "One complete forward(data)+forward(paddedkernel)+normalizedmodulation+inverse pipeline per timed trial; host reset/H2D and all CPU checks/readback outside. Five warm in-process trials, mean last4.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/fwt-julia/fwt-julia-KA/main.jl",
+        "sha256": "21eed62fec2181436eee742be2c4588963a36cbd278eefbc4d0b2832159854e4",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "fwt",
+    "primary_motif": "walsh_hadamard_dyadic_convolution",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32_add_subtract_multiply"
+    ],
+    "synchronization": [
+      "kernel_stage_boundaries",
+      "native_only_shared_transform_barriers"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same unnormalized natural-order Walsh transform and XOR-convolution identity; source fused radix4/shared transforms replaced inherited per-stage global radix2 kernels."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native radix4/global+shared passes versus inherited Julia-family global radix2 stages; measured time differences confound mapping and framework.",
+      "Native13 kernels versus Julia-family49 kernels per complete dyadic convolution at log2N16; launch count is source-established, actual bottleneck unprofiled.",
+      "Named65536-data/128-kernel case is512KiB for two devicearrays and fits V100 L2; original log2N23/64MiB pair and DRAM scaling unmeasured.",
+      "JACC first host program reused one mutable LaunchSpec for two extents and failed; repaired separate explicit grids, callbacks unchanged.",
+      "JACC reuses reviewed CUDA.jl/KA arithmetic; sequential feedback and cached context affect consumed-token windows."
+    ],
+    "jacc_shared_memory_policy": "explicit_zero_bytes_separate_extent_specs",
+    "observation": "research/observations/fwt.md",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "signal_image",
+      "primary_domain": "walsh_hadamard_xor_dyadic_convolution",
+      "scientific_task": "Convolve a data sequence with a short kernel under XOR index addition using Walsh transforms.",
+      "mathematical_operation": "y[i]=sum_(j=0)^127 x[i XOR j]*k[j]; compute H((Hx).*(Hk)/N), with unnormalized naturally ordered Walsh-Hadamard H and H\u00b2=NI.",
+      "discretization_or_topology": "One65536-element Float32 sequence and128-element kernel padded with zeros to65536.",
+      "invariants": [
+        "H\u00b2x=Nx and normalization applied in pointwise modulation.",
+        "Final XOR convolution agrees with independent direct sum for every output.",
+        "Kernel outside first128 entries is exactly zero."
+      ],
+      "accuracy_requirements": [
+        "All65536 Float32 outputs exact on selected nonconstant dyadic fixture vs direct Float64 CPU sum and both references; original relativeL2<1e-6 also enforced; elementwiseatol1e-5."
+      ],
+      "precision_sensitivity": "Float32 butterfly order and modulation association can round differently for general non-dyadic inputs; exact selected fixture does not prove all input distributions.",
+      "input_size_regimes": "log2N16,log2kernel7, one complete pipeline pertrial with input resets outside timer. Original log2N23 and random positive fixtures unmeasured.",
+      "community_use_case": "Source explicitly identifies generalized Fourier/Walsh transforms and electrical-engineering/numeric-theory applications, demonstrated through dyadic convolution; no specific scientific instrument or dataset.",
+      "uncertainty": "XOR-index convolution differs from ordinary shift-invariant spatial convolution; no physical signal or application accuracy requirement supplied.",
+      "provenance": [
+        {
+          "path": "src/fwt-cuda/main.cu",
+          "sha256": "2b2cffece6d11ebea2b99ff3232e497c35d085197c7702b74fb621c39cece7d0",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/fwt-julia/study_common.jl",
+          "sha256": "d8ad9d65aa720c466278c35766fad73100a2c85cbfe9113e58cdc7735d994457",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T18:35:04.664033+00:00",
+      "review_phase": "prospective post-verification annotation"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Three unnormalized Walsh transforms with normalized pointwise modulation; inherited Julia radix2 pair stages.",
+        "mapping": "128 blocks256 threads for each32768-pair stage;256 blocks256 for65536-item modulation;16 stages pertransform and49 kernels perpipeline.",
+        "layout": "Two contiguous Float32 arrays, no shared scratch in Julia family; in-place disjoint butterfly pairs perstage.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 butterfly add/subtract and modulation",
+          "CPU oracle": "independent float64 direct XOR-product sums cast to float32"
+        },
+        "implementation_detail": "Original genuine global radix2 kernels unchanged; entrypoint guarded and study enforces native1e-6 relativeL2 rather than historical relaxed1e-5.",
+        "memory": "512KiB device data/kernel; no explicitshared.",
+        "synchronization": [
+          "ordered stream kernel boundaries",
+          "one synchronized timer endpoint"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One complete forward(data)+forward(paddedkernel)+normalizedmodulation+inverse pipeline per timed trial; host reset/H2D and all CPU checks/readback outside. Five warm in-process trials, mean last4.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fwt-julia/fwt-julia-cuda.jl/main.jl",
+            "sha256": "e2e8a7fdd545169a01c21a8c4e023644257888dc2f4ef6cd16aacae68ccad930",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "stage_blocks": 128,
+          "stage_threads": 256,
+          "modulation_blocks": 256,
+          "modulation_threads": 256,
+          "shared_bytes": 0,
+          "kernels_per_pipeline": 49,
+          "registers": null
+        },
+        "reference_current_semantic_repair": false,
+        "configuration_id": "fwt_dyadic_float32_n65536_kernel128_onecomplete_pipeline_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Three unnormalized Walsh transforms with normalized pointwise modulation; inherited Julia radix2 pair stages.",
+        "mapping": "128 blocks256 threads for each32768-pair stage;256 blocks256 for65536-item modulation;16 stages pertransform and49 kernels perpipeline.",
+        "layout": "Two contiguous Float32 arrays, no shared scratch in Julia family; in-place disjoint butterfly pairs perstage.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 butterfly add/subtract and modulation",
+          "CPU oracle": "independent float64 direct XOR-product sums cast to float32"
+        },
+        "implementation_detail": "Same selected pair ownership via global index, one kernel perstage, explicit stage ordering on backend stream.",
+        "memory": "512KiB device data/kernel; no local scratch.",
+        "synchronization": [
+          "ordered stream kernel boundaries",
+          "one synchronized timer endpoint"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One complete forward(data)+forward(paddedkernel)+normalizedmodulation+inverse pipeline per timed trial; host reset/H2D and all CPU checks/readback outside. Five warm in-process trials, mean last4.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fwt-julia/fwt-julia-KA/main.jl",
+            "sha256": "21eed62fec2181436eee742be2c4588963a36cbd278eefbc4d0b2832159854e4",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "stage_blocks": 128,
+          "stage_threads": 256,
+          "modulation_blocks": 256,
+          "modulation_threads": 256,
+          "shared_bytes": 0,
+          "kernels_per_pipeline": 49,
+          "registers": null
+        },
+        "reference_current_semantic_repair": false,
+        "configuration_id": "fwt_dyadic_float32_n65536_kernel128_onecomplete_pipeline_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Three unnormalized Walsh transforms with normalized pointwise modulation; inherited Julia radix2 pair stages.",
+        "mapping": "128 blocks256 threads for each32768-pair stage;256 blocks256 for65536-item modulation;16 stages pertransform and49 kernels perpipeline.",
+        "layout": "Two contiguous Float32 arrays, no shared scratch in Julia family; in-place disjoint butterfly pairs perstage.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 butterfly add/subtract and modulation",
+          "CPU oracle": "independent float64 direct XOR-product sums cast to float32"
+        },
+        "implementation_detail": "Same callbacks/49 kernels with separate LaunchSpecs:128 stage blocks and256 modulation blocks, eachshmem0. First single-spec program failed from cached128 blocks.",
+        "memory": "512KiB device data/kernel; explicit0 dynamic shared and distinct extent-specific grids.",
+        "synchronization": [
+          "ordered stream kernel boundaries",
+          "one synchronized timer endpoint"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "One complete forward(data)+forward(paddedkernel)+normalizedmodulation+inverse pipeline per timed trial; host reset/H2D and all CPU checks/readback outside. Five warm in-process trials, mean last4.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/fwt-julia/fwt-julia-JACC/main.jl",
+            "sha256": "417250c37e39f0e1f90d0cbae71248e3d7eb5cfdfc8087df5bc6408da38212fa",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+        "resource_geometry": {
+          "stage_blocks": 128,
+          "stage_threads": 256,
+          "modulation_blocks": 256,
+          "modulation_threads": 256,
+          "shared_bytes": 0,
+          "kernels_per_pipeline": 49,
+          "registers": null
+        },
+        "reference_current_semantic_repair": false,
+        "launch_policy_repair": {
+          "program_candidates": 2,
+          "checks": 2,
+          "device_kernel_candidates": 1,
+          "numerical_repairs": 1,
+          "cause": "Mutable LaunchSpec caches blocks on first extent; separate specs restore full modulation extent.",
+          "failure_event": "fwt-jacc-N1-mutable-LaunchSpec-extent"
+        },
+        "configuration_id": "fwt_dyadic_float32_n65536_kernel128_onecomplete_pipeline_v1"
+      }
+    },
+    "native_resource_geometry": {
+      "global_transform_passes": 3,
+      "global_grid_blocks": 64,
+      "global_threads": 256,
+      "elementary_blocks": 64,
+      "elementary_threads": 256,
+      "elementary_size": 1024,
+      "elementary_dynamic_shared_bytes": 4096,
+      "modulation_blocks": 128,
+      "modulation_threads": 256,
+      "total_kernels_per_pipeline": 13
+    },
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          4.667e-05,
+          4.5661e-05,
+          4.62e-05,
+          4.6291e-05
+        ],
+        "minimum": 4.5661e-05,
+        "maximum": 4.667e-05,
+        "sample_standard_deviation": 4.1616543184972196e-07,
+        "coefficient_of_variation": 0.009006837537732995,
+        "max_to_min_ratio": 1.0220976325529445,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          0.000219692,
+          0.000159922,
+          0.000153511,
+          0.000158601
+        ],
+        "minimum": 0.000153511,
+        "maximum": 0.000219692,
+        "sample_standard_deviation": 3.12959555480683e-05,
+        "coefficient_of_variation": 0.18097313414888727,
+        "max_to_min_ratio": 1.4311156855209073,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.000415134,
+          0.000283533,
+          0.000274942,
+          0.000273863
+        ],
+        "minimum": 0.000273863,
+        "maximum": 0.000415134,
+        "sample_standard_deviation": 6.897982430150621e-05,
+        "coefficient_of_variation": 0.2211827577741423,
+        "max_to_min_ratio": 1.5158455139978748,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.000594076,
+          0.000411843,
+          0.000415814,
+          0.000411553
+        ],
+        "minimum": 0.000411553,
+        "maximum": 0.000594076,
+        "sample_standard_deviation": 9.052387416403845e-05,
+        "coefficient_of_variation": 0.19751173393357818,
+        "max_to_min_ratio": 1.4434981642704585,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/fwt-julia/fwt-julia-KA/main.jl",
+    "sha256": "21eed62fec2181436eee742be2c4588963a36cbd278eefbc4d0b2832159854e4",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        12
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fwt_dyadic_float32_n65536_kernel128_onecomplete_pipeline_v1",
+      "run_id": "20261017T183238460827Z_fwt",
+      "result": ".porting-state/portable_julia/runs/20261017T183238460827Z_fwt/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "ba24675de1efc07f44ca1817d53d18ad1f5f6ea11d87efca24adf27ea28e1a97",
+      "source_hash": "4d4fcd7827e951d53676b76a015f7c5e96da5e572f874be3b732033a74db2747",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T183238460827Z_fwt/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000265382,
+        0.000415134,
+        0.000283533,
+        0.000274942,
+        0.000273863
+      ],
+      "mean_last_four_seconds": 0.000311868,
+      "contract": "Shared nonconstant dyadic Float32 input65536 and zero-padded kernel128; one complete forward(data)+forward(kernel)+normalized modulation+inverse FWT pipeline pertrial; same device kernel region all4, reset/copies outside. Source log23 and other size regimes unmeasured. Native radix4 global+shared vs inheritedJulia radix2 global-stage mapping disclosed.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "fwt-ka-P1-retrospective-implementation",
+        "benchmark_id": "fwt",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/fwt.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "fwt-ka-P1-retrospective-implementation",
+          "benchmark": "fwt",
+          "model": "ka",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native3 globalradix4+1sharedradix4 transform kernels vs Julia16globalradix2 kernels pertransform; native shared4096B and modulation128blocks versus Julia no scratch and256modulationblocks.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/fwt-cuda/main.cu",
+              "sha256": "2b2cffece6d11ebea2b99ff3232e497c35d085197c7702b74fb621c39cece7d0",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/fwt-julia/fwt-julia-KA/main.jl",
+              "sha256": "21eed62fec2181436eee742be2c4588963a36cbd278eefbc4d0b2832159854e4",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 3809,
+      "output_tokens": 245,
+      "cached_tokens": null,
+      "total_tokens": 4054,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/fwt-cuda/kernels.cu",
+        "src/fwt-cuda/reference.cu",
+        "src/fwt-cuda/main.cu",
+        "src/fwt-julia/fwt-julia-cuda.jl/main.jl",
+        "src/fwt-julia/fwt-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/fwt/ka_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "23cbee1f455e4efccb2fb2b6",
+        "begin_event_id": "dbe72462701a11d83b9d087f",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T18:30:01.655576+00:00",
+        "usage_event_timestamp": "2026-10-17T18:29:55.554Z",
+        "elapsed_usage_event_start": "2026-10-17T18:28:52.817Z",
+        "delta_usage": {
+          "input_tokens": 385759,
+          "cached_input_tokens": 382592,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1837,
+          "reasoning_output_tokens": 357,
+          "total_tokens": 387596
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 6.101576,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "420657b83d2557e0f27bf30e54e16f4c9508f29496cd6fdb8f66ac4d782c678e",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "First KA candidate/check passed all65536 outputs with both refs and directCPU; actual phase record saved prior tool round.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 6.48398,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/fwt/ka_translation.jsonl",
+        "evidence_sha256": "06ecd7f815f40b90eb90576e63330545663ccba300e4a535e5a7d5b7bc1b4626",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/fwt-julia-ka/manifest.json",
+    "selected_sha256": "04e25289d87d46f84de4ee1cf13d406c41f76cf4f28affede81bbea7c4c39e21",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/fwt-julia-ka/manifest.json",
+        "sha256": "04e25289d87d46f84de4ee1cf13d406c41f76cf4f28affede81bbea7c4c39e21"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "3b49cdde7a749aea14129f11b64017b27d6a48fd",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "fwt",
+    "model": "ka",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T183238460827Z_fwt/result.json"
+    ],
+    "contract": "Shared nonconstant dyadic Float32 input65536 and zero-padded kernel128; one complete forward(data)+forward(kernel)+normalized modulation+inverse FWT pipeline pertrial; same device kernel region all4, reset/copies outside. Source log23 and other size regimes unmeasured. Native radix4 global+shared vs inheritedJulia radix2 global-stage mapping disclosed.",
+    "limitations": [
+      "Native radix4/global+shared passes versus inherited Julia-family global radix2 stages; measured time differences confound mapping and framework.",
+      "Native13 kernels versus Julia-family49 kernels per complete dyadic convolution at log2N16; launch count is source-established, actual bottleneck unprofiled.",
+      "Named65536-data/128-kernel case is512KiB for two devicearrays and fits V100 L2; original log2N23/64MiB pair and DRAM scaling unmeasured.",
+      "JACC first host program reused one mutable LaunchSpec for two extents and failed; repaired separate explicit grids, callbacks unchanged.",
+      "JACC reuses reviewed CUDA.jl/KA arithmetic; sequential feedback and cached context affect consumed-token windows."
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/fwt.json",
+    "annotation_sha256": "ff82fdd539e9c62dd3d741b129334ba2a61ee945e7be8297cdadecde80cfc820",
+    "field": "implementation_class.julia-ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

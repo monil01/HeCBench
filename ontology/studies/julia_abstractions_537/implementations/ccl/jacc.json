@@ -1,0 +1,609 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "ccl",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/ccl.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "review_status": "source_reviewed",
+    "implementation_class": "vendor_library_interop",
+    "implementation_components": {
+      "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+      "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+    },
+    "authored_kernel_definitions": 0,
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "vendor_dependencies": [
+      "CUDA on V100 sm70",
+      "NCCL2.18.5+CUDA12.0",
+      "OpenMPI host bootstrap"
+    ],
+    "backend_extensions": [
+      "CUDA array pointer/device/context setup required"
+    ],
+    "unsupported_features": [],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+    },
+    "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+    "verification_contract": "raw_numeric_outputs",
+    "source_evidence": [
+      {
+        "path": "src/ccl-julia/ccl-julia-JACC/main.jl",
+        "sha256": "ace271f047f5e64b4dfc62f60a820a9d21028c81b1c345a74a1e934d8a122966"
+      },
+      {
+        "path": "src/ccl-julia/study_common.jl",
+        "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+      }
+    ],
+    "resources": {
+      "authored_threads": null,
+      "authored_shared_memory_bytes": null,
+      "library_internal_launch_geometry": "not measured; no invented geometry"
+    },
+    "MPI_ranks": 2,
+    "physical_devices": [
+      5,
+      6
+    ],
+    "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+    "pure_backend_portable_collective_claim": false,
+    "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+    "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "vendor_library_interop",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": null,
+    "layout": null,
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": null,
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": [
+      "CUDA array pointer/device/context setup required"
+    ],
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/ccl-julia/ccl-julia-JACC/main.jl",
+        "sha256": "ace271f047f5e64b4dfc62f60a820a9d21028c81b1c345a74a1e934d8a122966"
+      },
+      {
+        "path": "src/ccl-julia/study_common.jl",
+        "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "ccl",
+    "scientific_intent": {
+      "benchmark_id": "ccl",
+      "primary_family": "hardware_data_movement",
+      "review_status": "source_reviewed",
+      "application_domain": "Domain-neutral distributed vector reduction and scientific-workflow collective aggregation",
+      "scientific_operator": "Two-rank pointwise Float32 sum implemented by actual NCCL ncclAllReduce; MPI host bootstrap",
+      "community_use": "Reusable communication component for distributed numerical workflows; no particular simulation, training convergence or multinode application validated.",
+      "accuracy_requirements": "Exact complete two-rank dyadic sums, actual device input/initial receive/read-only readbacks and guards; independent Float64 sum from saved actual inputs.",
+      "source_evidence": [
+        {
+          "path": "src/ccl-cuda/main.cu",
+          "sha256": "2e7d18de27c61c398abef56a0d654bdddc67ffe41184efac2553beec7d489e94"
+        },
+        {
+          "path": "src/ccl-julia/study_nccl.cpp",
+          "sha256": "6b85392eda9b9ba6dfe76f5e9dbc6a549a3987c5b4dbdda00366ebef4589e9db"
+        }
+      ],
+      "limitations": [
+        "Two same-host V100 devices5,6 and NCCL2.18.5 only; no single-device aggregate.",
+        "Primary up-to10M counts and50 repeats; original100M/1B R1 diagnostic is separate, not accepted full capture or performance.",
+        "Vendor collective has zero authored source device kernels; KA/JACC allocation and host orchestration do not establish portable collectives.",
+        "Default-pool KA stalled and pool-none diagnostic passed; specific allocator failure cause not proved.",
+        "Guard offset changes buffer alignment equally across four versions."
+      ]
+    },
+    "primary_motif": "vendor collective vector reduction",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32"
+    ],
+    "synchronization": [
+      "explicit native NCCL stream completion",
+      "whole-context setup completion outside timing",
+      "MPI barriers and maximum reductions outside timing"
+    ],
+    "verification_contract": "raw_numeric_outputs",
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+    },
+    "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+    "implementation_class": {
+      "cuda_jl": "vendor_library_interop",
+      "ka": "vendor_library_interop",
+      "jacc": "vendor_library_interop"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "review_status": "source_reviewed",
+        "implementation_class": "vendor_library_interop",
+        "implementation_components": {
+          "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+          "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+        },
+        "authored_kernel_definitions": 0,
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "vendor_dependencies": [
+          "CUDA on V100 sm70",
+          "NCCL2.18.5+CUDA12.0",
+          "OpenMPI host bootstrap"
+        ],
+        "backend_extensions": [
+          "CUDA array pointer/device/context setup required"
+        ],
+        "unsupported_features": [],
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+        },
+        "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/ccl-julia/ccl-julia-cuda.jl/main.jl",
+            "sha256": "d0baa2fd8773cf3ed234f2fd3339011e6d2cbac2f29036af2f566167aa23f528"
+          },
+          {
+            "path": "src/ccl-julia/study_common.jl",
+            "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+          }
+        ],
+        "resources": {
+          "authored_threads": null,
+          "authored_shared_memory_bytes": null,
+          "library_internal_launch_geometry": "not measured; no invented geometry"
+        },
+        "MPI_ranks": 2,
+        "physical_devices": [
+          5,
+          6
+        ],
+        "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+        "pure_backend_portable_collective_claim": false,
+        "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+        "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+      },
+      "ka": {
+        "review_status": "source_reviewed",
+        "implementation_class": "vendor_library_interop",
+        "implementation_components": {
+          "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+          "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+        },
+        "authored_kernel_definitions": 0,
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "vendor_dependencies": [
+          "CUDA on V100 sm70",
+          "NCCL2.18.5+CUDA12.0",
+          "OpenMPI host bootstrap"
+        ],
+        "backend_extensions": [
+          "CUDA array pointer/device/context setup required"
+        ],
+        "unsupported_features": [],
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+        },
+        "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/ccl-julia/ccl-julia-KA/main.jl",
+            "sha256": "5fab37d586962e3949066bfefca6c72b5ca1ca06ed86c86ef6e4b78c8896ab9c"
+          },
+          {
+            "path": "src/ccl-julia/study_common.jl",
+            "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+          }
+        ],
+        "resources": {
+          "authored_threads": null,
+          "authored_shared_memory_bytes": null,
+          "library_internal_launch_geometry": "not measured; no invented geometry"
+        },
+        "MPI_ranks": 2,
+        "physical_devices": [
+          5,
+          6
+        ],
+        "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+        "pure_backend_portable_collective_claim": false,
+        "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+        "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+      },
+      "jacc": {
+        "review_status": "source_reviewed",
+        "implementation_class": "vendor_library_interop",
+        "implementation_components": {
+          "host": "Julia per-call NCCL loop, framework array allocation and C ABI bootstrap/capture",
+          "device": "NCCL vendor collectives; zero authored benchmark device kernels"
+        },
+        "authored_kernel_definitions": 0,
+        "storage_precision": [
+          "Float32"
+        ],
+        "compute_precision": [
+          "Float32"
+        ],
+        "vendor_dependencies": [
+          "CUDA on V100 sm70",
+          "NCCL2.18.5+CUDA12.0",
+          "OpenMPI host bootstrap"
+        ],
+        "backend_extensions": [
+          "CUDA array pointer/device/context setup required"
+        ],
+        "unsupported_features": [],
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "Julia owns per-call NCCL host loop and framework allocation; source library operator, Float32 sum and explicit stream completion preserved. Named inputs/guard alignment and allocator policy disclosed."
+        },
+        "timing_scope": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+        "verification_contract": "raw_numeric_outputs",
+        "source_evidence": [
+          {
+            "path": "src/ccl-julia/ccl-julia-JACC/main.jl",
+            "sha256": "ace271f047f5e64b4dfc62f60a820a9d21028c81b1c345a74a1e934d8a122966"
+          },
+          {
+            "path": "src/ccl-julia/study_common.jl",
+            "sha256": "a04fe4dae9c9f520e7c6f17d9ca2d93bef7665c43c3ddddd95245637f5ab4013"
+          }
+        ],
+        "resources": {
+          "authored_threads": null,
+          "authored_shared_memory_bytes": null,
+          "library_internal_launch_geometry": "not measured; no invented geometry"
+        },
+        "MPI_ranks": 2,
+        "physical_devices": [
+          5,
+          6
+        ],
+        "allocation_policy": "JULIA_CUDA_MEMORY_POOL=none; fresh symmetric v2 series",
+        "pure_backend_portable_collective_claim": false,
+        "raw_configuration_class_label": "vendor_library_interop_host_orchestration",
+        "class_scope": "Canonical vendor_library_interop class; raw measured config uses a descriptive host-orchestration label. No measured source/contract changed."
+      }
+    },
+    "keyconfounds": [
+      "Two devices and communication pipeline, not pure Julia kernel lowering.",
+      "Common NCCL library executes collective GPU kernels; none authored in any benchmark version.",
+      "Julia host/C ABI call overhead, allocation policy, buffer alignment, topology and library versions are covariates.",
+      "Single five-trial block per model; no causal allocator or framework speed ranking."
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/ccl-julia/ccl-julia-JACC/main.jl",
+    "sha256": "ace271f047f5e64b4dfc62f60a820a9d21028c81b1c345a74a1e934d8a122966",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": true
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "ccl_NCCL21805_twoRanks_GPU5_6_F32_17_1M_10M_R50_poolnone_v2",
+      "run_id": "20261019T175747855384Z_ccl",
+      "result": ".porting-state/portable_julia/runs/20261019T175747855384Z_ccl/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "5,6",
+      "hardware_stratum": "multiple_or_other_devices",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "81623d3c021e5c34095ee251ecd0215ca069f9e2e277dc0642eb0a238283c0a7",
+      "source_hash": "ee981d3a6597c05c15ecc2519d4b7b25e69c72beb7a473e962aa6986fb0bd5c3",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T175747855384Z_ccl/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00518148694,
+        0.00516715742,
+        0.00518128134,
+        0.0051777373,
+        0.00518273174
+      ],
+      "mean_last_four_seconds": 0.00517722695,
+      "contract": {
+        "ranks": 2,
+        "physical_devices": [
+          5,
+          6
+        ],
+        "sizes": [
+          17,
+          1048576,
+          10485760
+        ],
+        "cases": [
+          "zero sum",
+          "original all-one control",
+          "nonconstant dyadic rank-dependent sum"
+        ],
+        "repeats": 50,
+        "guard": 4096.25,
+        "initial_output": -777,
+        "input_prefix_count": 46137436,
+        "artifact_values": 92274872,
+        "precision": "Float32 exact dyadic two-rank sum",
+        "timing": "sum3 maxrank(mean50 NCCL calls+explicit stream wait); MPI barrier before and max reduction after timer; allocations/transfers/capture outside",
+        "implementation_class": "vendor_library_interop_host_orchestration",
+        "authored_device_kernel_count": 0,
+        "scope": "MPI host-bootstrap plus actual NCCL ncclAllReduce, no CUDA-aware MPI requirement. Named up-to10M counts, original100M/1B R1 diagnostic passed but not primary timed. CUDA allocation guard offset1 changes alignment equally across4. Not singleGPU/pureportable collective support or fullCLI timing.",
+        "allocation_policy": "JuliaCUDAmemorypooldisabled forlibraryinterop; nativecudaMalloc; all4newseries/boundedlauncher90seconds. Original defaultpoolCUDAjlpassed/KAstalled preserved, noalgorithm/tolerancechange."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 728009,
+      "cached_input_tokens": 720768,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1853,
+      "reasoning_output_tokens": 697,
+      "total_tokens": 729862,
+      "status": "observed_context_inclusive_activity_window",
+      "measurement_kind": "observed_harness_cumulative_usage_boundary",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/ccl/jacc_translation.jsonl",
+      "marker_lag_end_seconds": 12.078114,
+      "marker_lag_begin_seconds": 22.636709,
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-19T17:33:14.722Z",
+        "context_event_sha256": "013d58c76546513a79afd98ea97541e08ebf8c6d9078b7ef3db833e7636e1aa5",
+        "source_snapshot_bytes": 118869876,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+      "scope": "Declared translation activity window, repeated/cached context and notifications included. Cached input and reasoning are subsets; no exclusive billing/historical recovery. Shared native, measurement repair, verification and annotation windows separate and may overlap."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "5897244bae4e0c2784795088",
+        "begin_event_id": "3d0a13c17adf41a54993ae0d",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T17:59:05.988114+00:00",
+        "usage_event_timestamp": "2026-10-19T17:58:53.910Z",
+        "elapsed_usage_event_start": "2026-10-19T17:57:25.114Z",
+        "delta_usage": {
+          "input_tokens": 728009,
+          "cached_input_tokens": 720768,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1853,
+          "reasoning_output_tokens": 697,
+          "total_tokens": 729862
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 12.078114,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "49c03d1e0808aaa25ed1255d8a9fae96de5e01dd6a765b06a905b054aed87eea",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "FirstJACC allocation/hostloop candidate, one2rankMPIjob full5captures exact bothrefs andKA underpoolnone_v2. ZeroauthoredGPUkernels/deviceJIT; sharedFloat64actualprefix audit prepared duringthisphase, incomingotherworkerupdates only. Noteligiblecostcalibration twoGPUNCCLinterop.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T17:33:14.722Z",
+          "context_event_sha256": "013d58c76546513a79afd98ea97541e08ebf8c6d9078b7ef3db833e7636e1aa5",
+          "source_snapshot_bytes": 118869876,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 22.636709,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/ccl/jacc_translation.jsonl",
+        "evidence_sha256": "86eafcea94fa0c648f91a0cd7dfc13cc5e9484b6665b04af21328d4107da8f9a",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/ccl-julia-jacc/manifest.json",
+    "selected_sha256": "386e3aefa631d0f98205ae72fa45f2330668cf3163952be52de06e49297d32e1",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/ccl-julia-jacc/manifest.json",
+        "sha256": "386e3aefa631d0f98205ae72fa45f2330668cf3163952be52de06e49297d32e1"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "6eb0bdefaddbcf418c1cd297931a0bbc931b455f",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "ccl",
+    "implementation_model": "jacc",
+    "status": "verified_named_two_gpu_NCCL_configuration",
+    "result": ".porting-state/portable_julia/runs/20261019T175747855384Z_ccl/result.json",
+    "configuration_id": "ccl_NCCL21805_twoRanks_GPU5_6_F32_17_1M_10M_R50_poolnone_v2",
+    "implementation_class": "vendor_library_interop",
+    "native_reference_repaired": false,
+    "exclude_single_gpu_aggregates": true,
+    "exclude_untouched_native_aggregates": true,
+    "unsupported_features": [],
+    "numerical_evidence_strength": "full_two_rank_actual_inputs_full_outputs_guards_independent_exact_sum",
+    "raw_configuration_class_label": "vendor_library_interop_host_orchestration"
+  },
+  "declared_model_implementation_class": {
+    "value": "vendor_library_interop",
+    "annotation_path": ".porting-state/portable_julia/traits/ccl.json",
+    "annotation_sha256": "bfa1c7bacef626ee9c982460d1ff0ea65f564a5622490f49f9a9c051a2343809",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/ccl-julia-jacc/current_reference_effort_300.json",
+      "sha256": "d45e1e2bde62ddb7e82dabd849cb5b10baf6b7bcd2725086e561c9e59f1c915d",
+      "record": {
+        "benchmark": "ccl",
+        "model": "jacc",
+        "native_readiness_window": ".porting-state/portable_julia/usage_boundaries_300/ccl/shared_native_readiness.jsonl",
+        "measurement_repair_window": ".porting-state/portable_julia/usage_boundaries_300/ccl/shared_measurement_repair.jsonl",
+        "scope": "Shared preparation/measurement phases, not original target translation and not additive exclusive costs."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/ccl-julia-jacc/current_reference_effort_300.json",
+    "sha256": "d45e1e2bde62ddb7e82dabd849cb5b10baf6b7bcd2725086e561c9e59f1c915d",
+    "record": {
+      "benchmark": "ccl",
+      "model": "jacc",
+      "native_readiness_window": ".porting-state/portable_julia/usage_boundaries_300/ccl/shared_native_readiness.jsonl",
+      "measurement_repair_window": ".porting-state/portable_julia/usage_boundaries_300/ccl/shared_measurement_repair.jsonl",
+      "scope": "Shared preparation/measurement phases, not original target translation and not additive exclusive costs."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

@@ -1,0 +1,1497 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "simpleSpmv",
+  "implementation_model": "cuda_jl",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/simpleSpmv.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "conditionally_verified_native_reference_repaired",
+    "review_status": "source_audited",
+    "source_revision": {
+      "path": "src/simpleSpmv-julia/simpleSpmv-julia-cuda.jl/main.jl",
+      "sha256": "7c189dcba8a58ea7a9b1f7f9dde00bdbd862e3338ffbd6a659e436bd8c80bdb3"
+    },
+    "configuration_id": "simpleSpmv_defined_lane0_vector_N512_five_source_densities_all6blocks_3methods_R100",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "actual_algorithm": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+    "work_item_mapping": "Dense/scalarCSRone row/thread; vectorTlanes/row,T2..32, totalBS32..1024, source2Dflattenedto1Dsamephysicalthreadordering",
+    "data_layout": "RowmajordenseflatFP32 plusCSRUInt64row/colindices, sameinputsallmodels",
+    "storage_precision": [
+      "float32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "float32",
+      "uint64",
+      "int32"
+    ],
+    "synchronization": [
+      "CUDAjlwarpshuffletree",
+      "Noautomatictemplatecopy",
+      "Solelane0vectoroutputwriter",
+      "Blockingdevicewidewarmup/ROIcompletion"
+    ],
+    "resource_policy": {
+      "block_sizes": [
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ],
+      "threads_per_row": [
+        2,
+        4,
+        8,
+        16,
+        32
+      ],
+      "vector_shared_bytes": 0,
+      "shared_kind": "none",
+      "registers": null,
+      "spills": null,
+      "measured_traffic_bytes": null
+    },
+    "implementation_class": "framework_device_kernel",
+    "backend_extensions": [
+      "CUDAhostallocation/completion",
+      "CUDAjlownwarpshuffle"
+    ],
+    "native_to_model_mapping": {
+      "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+      "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+    },
+    "host_device_boundary": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+    "support_boundary": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.00379951104,
+      0.00379865743,
+      0.00379906124,
+      0.00385937652,
+      0.00379944468
+    ],
+    "mean_last_four_seconds": 0.0038141349675,
+    "profile_ids": [],
+    "keyconfounds": [
+      "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+      "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+      "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+      "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+      "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+      "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+      "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+      "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+    ],
+    "attempt_accounting": {
+      "historical_translation_counts": null,
+      "phase": "reference_restoration",
+      "current_program_candidates": 1,
+      "current_process_evaluations": 1,
+      "current_device_candidates": 1,
+      "actual_device_jit_checks": 1,
+      "device_JIT_check_unit": "Oneprogramprocessevaluatesall3kerneldefinitions and6blocks/5subgroupwidths, notcompilerinternalspecializationcount",
+      "frontend_rejections": 0,
+      "device_compiler_feedback_repairs": 0,
+      "current_numerical_repairs": 0,
+      "source_kernel_definitions": 3,
+      "copied_original_genuine_definitions": 2,
+      "newly_authored_current_reference_definitions": 1,
+      "vector_static_BS_T_combinations": 30,
+      "numerical_cases": 5,
+      "timed_component_paths": 90,
+      "trials_per_configuration": 5,
+      "first_verified_run": "20261018T012213763138Z_simpleSpmv",
+      "native_reference_intervention": "Oneoriginaldiagnosticprocessall5PASS, onesolewriterstudyrepairprocessall5PASS; sourcehazardnotobservedfailure, repairseparatefromtargetcompilerfeedback",
+      "definition": "Firstnewcandidateeachpasses. 5densities/6blocks/3methods/100repeats/5trials arenottranslationattempts. Initialunmeteredreadexplicit."
+    },
+    "failure_history": {
+      "historical_counts": null,
+      "path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+    "package_versions": {
+      "CUDA.jl": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "julia_language_version": "1.12.6",
+    "work_item_mapping": "Dense/scalarCSRone row/thread; vectorTlanes/row,T2..32, totalBS32..1024, source2Dflattenedto1Dsamephysicalthreadordering",
+    "layout": "RowmajordenseflatFP32 plusCSRUInt64row/colindices, sameinputsallmodels",
+    "storage_precision": [
+      "float32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "float32",
+      "uint64",
+      "int32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "CUDAjlwarpshuffletree",
+      "Noautomatictemplatecopy",
+      "Solelane0vectoroutputwriter",
+      "Blockingdevicewidewarmup/ROIcompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "block_sizes": [
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ],
+      "threads_per_row": [
+        2,
+        4,
+        8,
+        16,
+        32
+      ],
+      "vector_shared_bytes": 0,
+      "shared_kind": "none",
+      "registers": null,
+      "spills": null,
+      "measured_traffic_bytes": null
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": [
+      "CUDAhostallocation/completion",
+      "CUDAjlownwarpshuffle"
+    ],
+    "host_control_boundary": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+    "support_boundary": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+    "native_to_model_mapping": {
+      "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+      "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "conditionally_verified_native_reference_repaired",
+    "source_review_evidence": {
+      "path": "src/simpleSpmv-julia/simpleSpmv-julia-cuda.jl/main.jl",
+      "sha256": "7c189dcba8a58ea7a9b1f7f9dde00bdbd862e3338ffbd6a659e436bd8c80bdb3"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "simpleSpmv",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "primary_domain": "sparse_linear_operator",
+      "scientific_task": "Compute the same square matrix-vector product by dense scanning, scalar CSR rows and subgroup-cooperative CSR rows",
+      "mathematical_method": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+      "input_size_regime": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+      "accuracy_requirements": [
+        "Full47520output/guardvalues per capture, independentFP64 math.fsum rowdotproducts fromactualFP32fixture, atol1e-5/rtol1e-5",
+        "1437701losslesslyserializedactualGPUinputs including64bitrow/columnindices exactprefix",
+        "All1440sentinelguards checkedexact independently, primarytolerantcomparisonaloneisnotexactguardproof",
+        "Conditionalnativevectorsolewritercorrection; originalall5independentPASS preserved despite source-levelalllaneconflict, nooriginalnumericalfailureinvented"
+      ],
+      "precision_sensitivity": "FP32storage/products/accumulation, FP64hostoracle and losslessartifactencoding distinct fromGPUprecision; reductionorder/FMA covariates",
+      "community_use_case": "Reusable sparse operator and storage/reduction alternatives for iterative scientificsolvers. No PDEsystem, Krylovconvergence, conditionnumberor time-to-solution guarantee fromoneSpMVfixture.",
+      "review_status": "source_audited",
+      "evidence": [
+        {
+          "path": "src/simpleSpmv-cuda/kernels.cu",
+          "sha256": "2e25324d3971145c30d43cccf8d5d3b3579953472e49a5d3ff6298710be93cda"
+        },
+        {
+          "path": "src/simpleSpmv-cuda/utils.cpp",
+          "sha256": "4a543306cc9400c18d55e88e056bc2eed91a756b738ffd363e762c8b2f6594fb"
+        },
+        {
+          "path": "src/simpleSpmv-julia/generate_oracle.py",
+          "sha256": "29032fc4a0d1df3604d278edabb51b49b814611a1c2858b9d3cf687a9bf20ea3"
+        },
+        {
+          "path": "src/simpleSpmv-julia/independent_artifact_audit.py",
+          "sha256": "ad52c1b935138de056f90cf61c0055f5859f4aa5cfc04d6fe9e5f23d6d5fc3f9"
+        }
+      ]
+    },
+    "primary_motif": "dense_and_CSR_sparse_matrix_vector_products",
+    "storage_precision": [
+      "float32",
+      "uint64"
+    ],
+    "compute_precision": [
+      "float32",
+      "uint64",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "uint64",
+      "int32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float64_lossless_widening_FP32_and_small_UInt64"
+    ],
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "native_reference_repaired": true,
+    "native_to_julia_mapping": {
+      "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+      "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+    },
+    "timing_scope": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+    "verification_contract": "All20full47520outputs/guards +1437701exactactualinputprefix, independentmatrix/CSRdotproducts, exactguards; conditionalnativevectorsolewriter",
+    "numerical_evidence_strength": "complete_recorded_output_arrays",
+    "keyconfounds": [
+      "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+      "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+      "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+      "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+      "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+      "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+      "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+      "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+    ],
+    "scientific_witness": "src/simpleSpmv-julia/independent_artifact_audit.json",
+    "input_dependent_descriptors": [
+      {
+        "case": 0,
+        "rows": 512,
+        "nnz": 1536,
+        "mean_nnz_per_row": 3.0,
+        "source_prevPowerOf2_threads_per_row": 2,
+        "row_lengths": {
+          "min": 0,
+          "max": 8,
+          "empty_rows": 24,
+          "histogram": {
+            "4": 92,
+            "2": 115,
+            "3": 110,
+            "5": 56,
+            "1": 76,
+            "8": 3,
+            "0": 24,
+            "6": 24,
+            "7": 12
+          }
+        },
+        "blocksizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "methods": [
+          "dense",
+          "csr",
+          "vector_csr"
+        ],
+        "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+        "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+      },
+      {
+        "case": 1,
+        "rows": 512,
+        "nnz": 3584,
+        "mean_nnz_per_row": 7.0,
+        "source_prevPowerOf2_threads_per_row": 4,
+        "row_lengths": {
+          "min": 1,
+          "max": 17,
+          "empty_rows": 0,
+          "histogram": {
+            "10": 38,
+            "4": 56,
+            "8": 74,
+            "7": 60,
+            "14": 3,
+            "5": 52,
+            "2": 15,
+            "9": 53,
+            "15": 3,
+            "6": 79,
+            "3": 26,
+            "11": 24,
+            "12": 17,
+            "1": 6,
+            "13": 3,
+            "16": 2,
+            "17": 1
+          }
+        },
+        "blocksizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "methods": [
+          "dense",
+          "csr",
+          "vector_csr"
+        ],
+        "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+        "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+      },
+      {
+        "case": 2,
+        "rows": 512,
+        "nnz": 7680,
+        "mean_nnz_per_row": 15.0,
+        "source_prevPowerOf2_threads_per_row": 8,
+        "row_lengths": {
+          "min": 6,
+          "max": 28,
+          "empty_rows": 0,
+          "histogram": {
+            "16": 54,
+            "11": 37,
+            "12": 42,
+            "20": 20,
+            "13": 43,
+            "14": 52,
+            "26": 2,
+            "21": 15,
+            "10": 26,
+            "17": 35,
+            "9": 22,
+            "15": 45,
+            "22": 12,
+            "18": 33,
+            "7": 5,
+            "23": 5,
+            "19": 41,
+            "28": 1,
+            "8": 12,
+            "24": 4,
+            "6": 2,
+            "25": 2,
+            "27": 2
+          }
+        },
+        "blocksizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "methods": [
+          "dense",
+          "csr",
+          "vector_csr"
+        ],
+        "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+        "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+      },
+      {
+        "case": 3,
+        "rows": 512,
+        "nnz": 15872,
+        "mean_nnz_per_row": 31.0,
+        "source_prevPowerOf2_threads_per_row": 16,
+        "row_lengths": {
+          "min": 17,
+          "max": 48,
+          "empty_rows": 0,
+          "histogram": {
+            "27": 37,
+            "25": 24,
+            "34": 32,
+            "32": 42,
+            "37": 17,
+            "26": 33,
+            "35": 28,
+            "28": 28,
+            "30": 28,
+            "24": 21,
+            "29": 36,
+            "33": 29,
+            "39": 15,
+            "44": 5,
+            "21": 12,
+            "36": 25,
+            "45": 4,
+            "41": 10,
+            "42": 4,
+            "23": 10,
+            "31": 34,
+            "38": 13,
+            "20": 3,
+            "48": 1,
+            "19": 3,
+            "43": 4,
+            "18": 2,
+            "22": 5,
+            "40": 4,
+            "17": 1,
+            "46": 2
+          }
+        },
+        "blocksizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "methods": [
+          "dense",
+          "csr",
+          "vector_csr"
+        ],
+        "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+        "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+      },
+      {
+        "case": 4,
+        "rows": 512,
+        "nnz": 32256,
+        "mean_nnz_per_row": 63.0,
+        "source_prevPowerOf2_threads_per_row": 32,
+        "row_lengths": {
+          "min": 41,
+          "max": 88,
+          "empty_rows": 0,
+          "histogram": {
+            "64": 24,
+            "65": 21,
+            "67": 27,
+            "69": 16,
+            "70": 19,
+            "58": 29,
+            "50": 6,
+            "55": 20,
+            "62": 20,
+            "59": 25,
+            "74": 12,
+            "61": 21,
+            "54": 17,
+            "48": 5,
+            "57": 20,
+            "66": 23,
+            "56": 10,
+            "86": 1,
+            "83": 3,
+            "51": 12,
+            "72": 21,
+            "52": 10,
+            "68": 19,
+            "60": 26,
+            "76": 6,
+            "71": 10,
+            "63": 33,
+            "49": 6,
+            "79": 2,
+            "77": 7,
+            "73": 10,
+            "53": 13,
+            "47": 3,
+            "85": 1,
+            "78": 2,
+            "80": 1,
+            "75": 6,
+            "81": 3,
+            "41": 1,
+            "88": 1
+          }
+        },
+        "blocksizes": [
+          32,
+          64,
+          128,
+          256,
+          512,
+          1024
+        ],
+        "methods": [
+          "dense",
+          "csr",
+          "vector_csr"
+        ],
+        "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+        "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+      }
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "conditionally_verified_native_reference_repaired",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/simpleSpmv-julia/simpleSpmv-julia-cuda.jl/main.jl",
+          "sha256": "7c189dcba8a58ea7a9b1f7f9dde00bdbd862e3338ffbd6a659e436bd8c80bdb3"
+        },
+        "configuration_id": "simpleSpmv_defined_lane0_vector_N512_five_source_densities_all6blocks_3methods_R100",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+        "work_item_mapping": "Dense/scalarCSRone row/thread; vectorTlanes/row,T2..32, totalBS32..1024, source2Dflattenedto1Dsamephysicalthreadordering",
+        "data_layout": "RowmajordenseflatFP32 plusCSRUInt64row/colindices, sameinputsallmodels",
+        "storage_precision": [
+          "float32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "float32",
+          "uint64",
+          "int32"
+        ],
+        "synchronization": [
+          "CUDAjlwarpshuffletree",
+          "Noautomatictemplatecopy",
+          "Solelane0vectoroutputwriter",
+          "Blockingdevicewidewarmup/ROIcompletion"
+        ],
+        "resource_policy": {
+          "block_sizes": [
+            32,
+            64,
+            128,
+            256,
+            512,
+            1024
+          ],
+          "threads_per_row": [
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "vector_shared_bytes": 0,
+          "shared_kind": "none",
+          "registers": null,
+          "spills": null,
+          "measured_traffic_bytes": null
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocation/completion",
+          "CUDAjlownwarpshuffle"
+        ],
+        "native_to_model_mapping": {
+          "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+          "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+        },
+        "host_device_boundary": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+        "support_boundary": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00379951104,
+          0.00379865743,
+          0.00379906124,
+          0.00385937652,
+          0.00379944468
+        ],
+        "mean_last_four_seconds": 0.0038141349675,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+          "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+          "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+          "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+          "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+          "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+          "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+          "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "reference_restoration",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogramprocessevaluatesall3kerneldefinitions and6blocks/5subgroupwidths, notcompilerinternalspecializationcount",
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "source_kernel_definitions": 3,
+          "copied_original_genuine_definitions": 2,
+          "newly_authored_current_reference_definitions": 1,
+          "vector_static_BS_T_combinations": 30,
+          "numerical_cases": 5,
+          "timed_component_paths": 90,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T012213763138Z_simpleSpmv",
+          "native_reference_intervention": "Oneoriginaldiagnosticprocessall5PASS, onesolewriterstudyrepairprocessall5PASS; sourcehazardnotobservedfailure, repairseparatefromtargetcompilerfeedback",
+          "definition": "Firstnewcandidateeachpasses. 5densities/6blocks/3methods/100repeats/5trials arenottranslationattempts. Initialunmeteredreadexplicit."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl"
+        }
+      },
+      "ka": {
+        "status": "conditionally_verified_native_reference_repaired",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/simpleSpmv-julia/simpleSpmv-julia-KA/main.jl",
+          "sha256": "9553e43bfeab87ac51eb92ad143c736c5dbe9347a23b09590b9dd809d961992b"
+        },
+        "configuration_id": "simpleSpmv_defined_lane0_vector_N512_five_source_densities_all6blocks_3methods_R100",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+        "work_item_mapping": "Dense/scalarCSRone row/thread; vectorTlanes/row,T2..32, totalBS32..1024, source2Dflattenedto1Dsamephysicalthreadordering",
+        "data_layout": "RowmajordenseflatFP32 plusCSRUInt64row/colindices, sameinputsallmodels",
+        "storage_precision": [
+          "float32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "float32",
+          "uint64",
+          "int32"
+        ],
+        "synchronization": [
+          "Initialscratchbarrier+log2(T)workgroupbarriers",
+          "Noautomatictemplatecopy",
+          "Solelane0vectoroutputwriter",
+          "Blockingdevicewidewarmup/ROIcompletion"
+        ],
+        "resource_policy": {
+          "block_sizes": [
+            32,
+            64,
+            128,
+            256,
+            512,
+            1024
+          ],
+          "threads_per_row": [
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "vector_shared_bytes": "4*BS",
+          "shared_kind": "static",
+          "registers": null,
+          "spills": null,
+          "measured_traffic_bytes": null
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocation/completion"
+        ],
+        "native_to_model_mapping": {
+          "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+          "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+        },
+        "host_device_boundary": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+        "support_boundary": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00414305717,
+          0.0041387576,
+          0.00437049608,
+          0.00452249719,
+          0.00444311479
+        ],
+        "mean_last_four_seconds": 0.004368716415,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+          "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+          "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+          "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+          "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+          "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+          "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+          "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogramprocessevaluatesall3kerneldefinitions and6blocks/5subgroupwidths, notcompilerinternalspecializationcount",
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "source_kernel_definitions": 3,
+          "copied_original_genuine_definitions": 0,
+          "newly_authored_current_reference_definitions": 0,
+          "vector_static_BS_T_combinations": 30,
+          "numerical_cases": 5,
+          "timed_component_paths": 90,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T012353664661Z_simpleSpmv",
+          "native_reference_intervention": "Oneoriginaldiagnosticprocessall5PASS, onesolewriterstudyrepairprocessall5PASS; sourcehazardnotobservedfailure, repairseparatefromtargetcompilerfeedback",
+          "definition": "Firstnewcandidateeachpasses. 5densities/6blocks/3methods/100repeats/5trials arenottranslationattempts. Initialunmeteredreadexplicit."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl"
+        }
+      },
+      "jacc": {
+        "status": "conditionally_verified_native_reference_repaired",
+        "review_status": "source_audited",
+        "source_revision": {
+          "path": "src/simpleSpmv-julia/simpleSpmv-julia-JACC/main.jl",
+          "sha256": "31ea2131e6daf547fab5a862b0920e400cedfd422679af700f4d8ee9f07bd5fd"
+        },
+        "configuration_id": "simpleSpmv_defined_lane0_vector_N512_five_source_densities_all6blocks_3methods_R100",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_cuda12.0",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA.jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "actual_algorithm": "y=A*x; CSR row ranges and original subgroup-strided partial sums followed by power-of-two tree reduction",
+        "work_item_mapping": "Dense/scalarCSRone row/thread; vectorTlanes/row,T2..32, totalBS32..1024, source2Dflattenedto1Dsamephysicalthreadordering",
+        "data_layout": "RowmajordenseflatFP32 plusCSRUInt64row/colindices, sameinputsallmodels",
+        "storage_precision": [
+          "float32",
+          "uint64"
+        ],
+        "compute_precision": [
+          "float32",
+          "uint64",
+          "int32"
+        ],
+        "synchronization": [
+          "Initialscratchbarrier+log2(T)workgroupbarriers",
+          "JACCpublictemplateinitialization/barriervectorpath",
+          "Solelane0vectoroutputwriter",
+          "Blockingdevicewidewarmup/ROIcompletion"
+        ],
+        "resource_policy": {
+          "block_sizes": [
+            32,
+            64,
+            128,
+            256,
+            512,
+            1024
+          ],
+          "threads_per_row": [
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "vector_shared_bytes": "4*BS",
+          "shared_kind": "dynamic",
+          "registers": null,
+          "spills": null,
+          "measured_traffic_bytes": null
+        },
+        "implementation_class": "framework_device_kernel",
+        "backend_extensions": [
+          "CUDAhostallocation/completion"
+        ],
+        "native_to_model_mapping": {
+          "status": "same_three_algorithms_with_declared_subgroup_to_shared_tree_and_index_mapping_adaptations",
+          "reason": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded"
+        },
+        "host_device_boundary": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+        "support_boundary": "Five N512 original C-generator fixtures with mean3/7/15/31/63 nonzeros/row, all6sourceblock sizes32..1024, all3methods,R100. OriginalN10240/nnz16777216 unmeasured. Complete rowgroups avoid original partial-warp/full-mask ambiguity; rpr<=1/zero launch-width cases unverified.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00452004452,
+          0.0049864203,
+          0.00423820726,
+          0.0042342668,
+          0.00423455527
+        ],
+        "mean_last_four_seconds": 0.0044233624075,
+        "profile_ids": [],
+        "keyconfounds": [
+          "Originalvector all lanesstore differentpartialsumsto samey[m]; concretefirstrowwrites2.2827138900756836vs3.5703067779541016. Actualoriginalnative5/5fullindependentPASS, not observednumericalfailure. Minimal ifthreadIdx.x==0solewritercorrection is conditionalnative stratum; dense/scalarCSRnativebodiesunchanged",
+          "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+          "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenalty",
+          "Native64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+          "JACCvectorpublicshared initializesBSFloat32template/addsbarrier, dynamic4*BSbytes; KAsamecapacitystaticwithouttemplatecopy, CUDAjlnosharedsubgroupreduction. Noactualregister/trafficprofile, no sourcecopybytesasmeasuredDRAMtraffic",
+          "OriginalN10240/nnz16777216/R100default unmeasured; namedN512fiveCsourcegenerator densities andall6blocksmethods. Fullrowgroupschosenbeforemeasurement toavoid originalfullmaskpartialwarp ambiguity. Largefloatmarkergeneratoruniqueness notclaimed; noassertiondefaultsourcefails",
+          "Primaryself/cross-check toleranceappliedtoguardswouldaccept+1corruptionatlargeguardvalue; independentlyall20savedguardpositions checkedexact, noobservedguardfailure orretiming. Completeartifactauditstrongerthantolerantselfcheck",
+          "Sharedfixtures/newsubgroupreference/oracleonce; KAthenJACCconditionalreuse, phaseactivityincludespaper/commits/audits/context/cache. InitialhistoricalJulia/MakefilereadprecededworkflowBEGIN; explicitunmeteredprefix, nohistorical/exclusive/billedcostclaim"
+        ],
+        "attempt_accounting": {
+          "historical_translation_counts": null,
+          "phase": "translation",
+          "current_program_candidates": 1,
+          "current_process_evaluations": 1,
+          "current_device_candidates": 1,
+          "actual_device_jit_checks": 1,
+          "device_JIT_check_unit": "Oneprogramprocessevaluatesall3kerneldefinitions and6blocks/5subgroupwidths, notcompilerinternalspecializationcount",
+          "frontend_rejections": 0,
+          "device_compiler_feedback_repairs": 0,
+          "current_numerical_repairs": 0,
+          "source_kernel_definitions": 3,
+          "copied_original_genuine_definitions": 0,
+          "newly_authored_current_reference_definitions": 0,
+          "vector_static_BS_T_combinations": 30,
+          "numerical_cases": 5,
+          "timed_component_paths": 90,
+          "trials_per_configuration": 5,
+          "first_verified_run": "20261018T012546283227Z_simpleSpmv",
+          "native_reference_intervention": "Oneoriginaldiagnosticprocessall5PASS, onesolewriterstudyrepairprocessall5PASS; sourcehazardnotobservedfailure, repairseparatefromtargetcompilerfeedback",
+          "definition": "Firstnewcandidateeachpasses. 5densities/6blocks/3methods/100repeats/5trials arenottranslationattempts. Initialunmeteredreadexplicit."
+        },
+        "failure_history": {
+          "historical_counts": null,
+          "path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl"
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/simpleSpmv-julia/simpleSpmv-julia-cuda.jl/main.jl",
+    "sha256": "7c189dcba8a58ea7a9b1f7f9dde00bdbd862e3338ffbd6a659e436bd8c80bdb3",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        22,
+        24,
+        26
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "simpleSpmv_defined_lane0_vector_N512_five_source_densities_all6blocks_3methods_R100",
+      "run_id": "20261018T012546283227Z_simpleSpmv",
+      "result": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "reason": "Originalvectorlaneswrite distinctshufflepartials tosameoutput. Actualoriginal5/5fulloraclePASS preserved, so noobservednumericalfailureclaimed. Solewriterlane0guardmakesdefinedintendedrowdotproduct; dense/scalarCSRbodiesunchanged.",
+        "original_gpu_result": ".porting-state/portable_julia/runs/20261018T011959158673Z_simpleSpmv/result.json",
+        "correction": "Onlyif(threadIdx.x==0) aroundy[m]=temp inrenamedtemplate. Samewarp reduction/launch/inputs/tolerance.",
+        "original_source": "src/simpleSpmv-cuda/kernels.cu",
+        "corrected_template": "src/simpleSpmv-julia/vector_defined.cuh",
+        "independent_contract": "ExactdenseandCSRFP64math.fsum rowdotproducts ofsharedactualFP32inputs; originalpassesnotfalse failures."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "c8ef2fa77a2a2fc59b6eb7d85b6851b81811616becac8e302e2fb402594d7ee0",
+      "source_hash": "f582db2f9444c744e5e35d9624ec3027efdd1827cae1ae78ffc7a22c58adc59c",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00379951104,
+        0.00379865743,
+        0.00379906124,
+        0.00385937652,
+        0.00379944468
+      ],
+      "mean_last_four_seconds": 0.0038141349675,
+      "contract": {
+        "cases": [
+          {
+            "case": 0,
+            "rows": 512,
+            "nnz": 1536,
+            "mean_nnz_per_row": 3.0,
+            "source_prevPowerOf2_threads_per_row": 2,
+            "row_lengths": {
+              "min": 0,
+              "max": 8,
+              "empty_rows": 24,
+              "histogram": {
+                "4": 92,
+                "2": 115,
+                "3": 110,
+                "5": 56,
+                "1": 76,
+                "8": 3,
+                "0": 24,
+                "6": 24,
+                "7": 12
+              }
+            },
+            "blocksizes": [
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024
+            ],
+            "methods": [
+              "dense",
+              "csr",
+              "vector_csr"
+            ],
+            "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+            "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+          },
+          {
+            "case": 1,
+            "rows": 512,
+            "nnz": 3584,
+            "mean_nnz_per_row": 7.0,
+            "source_prevPowerOf2_threads_per_row": 4,
+            "row_lengths": {
+              "min": 1,
+              "max": 17,
+              "empty_rows": 0,
+              "histogram": {
+                "10": 38,
+                "4": 56,
+                "8": 74,
+                "7": 60,
+                "14": 3,
+                "5": 52,
+                "2": 15,
+                "9": 53,
+                "15": 3,
+                "6": 79,
+                "3": 26,
+                "11": 24,
+                "12": 17,
+                "1": 6,
+                "13": 3,
+                "16": 2,
+                "17": 1
+              }
+            },
+            "blocksizes": [
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024
+            ],
+            "methods": [
+              "dense",
+              "csr",
+              "vector_csr"
+            ],
+            "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+            "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+          },
+          {
+            "case": 2,
+            "rows": 512,
+            "nnz": 7680,
+            "mean_nnz_per_row": 15.0,
+            "source_prevPowerOf2_threads_per_row": 8,
+            "row_lengths": {
+              "min": 6,
+              "max": 28,
+              "empty_rows": 0,
+              "histogram": {
+                "16": 54,
+                "11": 37,
+                "12": 42,
+                "20": 20,
+                "13": 43,
+                "14": 52,
+                "26": 2,
+                "21": 15,
+                "10": 26,
+                "17": 35,
+                "9": 22,
+                "15": 45,
+                "22": 12,
+                "18": 33,
+                "7": 5,
+                "23": 5,
+                "19": 41,
+                "28": 1,
+                "8": 12,
+                "24": 4,
+                "6": 2,
+                "25": 2,
+                "27": 2
+              }
+            },
+            "blocksizes": [
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024
+            ],
+            "methods": [
+              "dense",
+              "csr",
+              "vector_csr"
+            ],
+            "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+            "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+          },
+          {
+            "case": 3,
+            "rows": 512,
+            "nnz": 15872,
+            "mean_nnz_per_row": 31.0,
+            "source_prevPowerOf2_threads_per_row": 16,
+            "row_lengths": {
+              "min": 17,
+              "max": 48,
+              "empty_rows": 0,
+              "histogram": {
+                "27": 37,
+                "25": 24,
+                "34": 32,
+                "32": 42,
+                "37": 17,
+                "26": 33,
+                "35": 28,
+                "28": 28,
+                "30": 28,
+                "24": 21,
+                "29": 36,
+                "33": 29,
+                "39": 15,
+                "44": 5,
+                "21": 12,
+                "36": 25,
+                "45": 4,
+                "41": 10,
+                "42": 4,
+                "23": 10,
+                "31": 34,
+                "38": 13,
+                "20": 3,
+                "48": 1,
+                "19": 3,
+                "43": 4,
+                "18": 2,
+                "22": 5,
+                "40": 4,
+                "17": 1,
+                "46": 2
+              }
+            },
+            "blocksizes": [
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024
+            ],
+            "methods": [
+              "dense",
+              "csr",
+              "vector_csr"
+            ],
+            "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+            "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+          },
+          {
+            "case": 4,
+            "rows": 512,
+            "nnz": 32256,
+            "mean_nnz_per_row": 63.0,
+            "source_prevPowerOf2_threads_per_row": 32,
+            "row_lengths": {
+              "min": 41,
+              "max": 88,
+              "empty_rows": 0,
+              "histogram": {
+                "64": 24,
+                "65": 21,
+                "67": 27,
+                "69": 16,
+                "70": 19,
+                "58": 29,
+                "50": 6,
+                "55": 20,
+                "62": 20,
+                "59": 25,
+                "74": 12,
+                "61": 21,
+                "54": 17,
+                "48": 5,
+                "57": 20,
+                "66": 23,
+                "56": 10,
+                "86": 1,
+                "83": 3,
+                "51": 12,
+                "72": 21,
+                "52": 10,
+                "68": 19,
+                "60": 26,
+                "76": 6,
+                "71": 10,
+                "63": 33,
+                "49": 6,
+                "79": 2,
+                "77": 7,
+                "73": 10,
+                "53": 13,
+                "47": 3,
+                "85": 1,
+                "78": 2,
+                "80": 1,
+                "75": 6,
+                "81": 3,
+                "41": 1,
+                "88": 1
+              }
+            },
+            "blocksizes": [
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024
+            ],
+            "methods": [
+              "dense",
+              "csr",
+              "vector_csr"
+            ],
+            "original_full_CLI": "nnz16777216,n10240,R100 unmeasured",
+            "scope": "NamedN512fiveoriginalgenerator densities3/7/15/31/63; sameRAND/drand48sourcefixtures, allrowgroupscompleteavoidnativepartialwarpfullmaskambiguity. ScalarCSR/dense scopeincludesemptyrows wheregenerated; vectorrpr<=1/BS0undefinedcasesunverified."
+          }
+        ],
+        "source_fixture": "UnchangedCutils.cpp init_matrix/init_vector/init_csr withsrand48(4096)andinternalrand123 resetpercase; sourcefloatmarkers exact at512\u00b2",
+        "fixture_sha256": "7b8716cc979b056214d940eaee08b02e97631bc6955bbe257579275b924a5247",
+        "input_prefix_count": 1437701,
+        "output_values": 47520,
+        "physical_output_guard_values": 1440,
+        "independent_oracle": "Pythonmath.fsum ofexactFP32products, independentdensevsCSRtraversals checked; FP64referencecomparisonbudget atol1e-5,rtol1e-5; allmodels same. Guards16777215 exact.",
+        "native_vector_source_defect": "Everylane writesdifferentpartialsum tosamey[m] aftershuffle; minimalcorrectionlane0singlewriter requiresconditionalnativeflag. Originaldiagnosticretainedbeforecorrection.",
+        "timing": "90pathsum, eachR100kernelloopmeanwithblockingdevicewidecompletion, alloc/inputupload/guards/JIT/readback/oracleoutsideROI",
+        "precision": "FP32storage/compute, native64bitsize_tindices, Float64losslessartifactencoding/CPUoracle NOTFP64GPUwork"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "simpleSpmv-historical-vector-alias",
+        "benchmark_id": "simpleSpmv",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "simpleSpmv-historical-vector-alias",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "S1",
+          "phase": "reference_audit",
+          "is_failure": true,
+          "cause": "HistoricalgenuineJulia dense/scalarCSR2kernelbodiesbytepreserved, but vectornamedpathaliasedscalarCSR; missingcooperativealgorithm wasperformanceworkmappingissue, notobservednumericalwronganswer",
+          "resolution": "Keeporiginal2kernelbodies/newgenuinecooperativetree; nohistoricalGPUwronganswerclaim",
+          "evidence": {
+            "path": "src/simpleSpmv-julia/reference_history/main.jl",
+            "sha256": "346ec0b6d3ea3620f69d178f4a2d14ac8df2eb59ae52d26572e3e9c33bc74278"
+          }
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "simpleSpmv-mapping-cuda_jl",
+        "benchmark_id": "simpleSpmv",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/simpleSpmv.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "simpleSpmv-mapping-cuda_jl",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "Native/CUDAjlsubgroupwarp-shuffle vsKA/JACCBSFloat32sharedscratchandblockbarriers. SameBS2/4/8/16/32stride/treewinninglane; native2Dthreadblockflattenedto1DJuliaBS preservinglogicalrow/subgrouplane. Resource/sync adaptations explicit, noframework-onlycausalpenaltyNative64bitsize_tindices, JuliaUInt64CSRstorage/indexloops butInt32outerrow/densearithmetic atN512; Float64captureslosslesslyencodeFP32values/indices, notFP64devicecomputation. NativeFMA vsJuliaordinarymultiply/addbudget recorded",
+          "resolution": "Recordactualgeometry/reduction/resources/precision, no unsupportedAPIorcausalframeworkpenaltyclaim"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "status": "prospective_activity_windows_with_unmetered_prefix_and_unknown_history",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/cuda_jl_reference_restoration.jsonl",
+          "model": "cuda_jl",
+          "phase": "reference_restoration",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1982098,
+            "cached_input_tokens": 1940352,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 13317,
+            "reasoning_output_tokens": 5599,
+            "total_tokens": 1995415
+          },
+          "scope": "Actualoriginalnative5/5complete47,520output/guard independentdotproductchecks PASS, source-levelalllanewritehazardnotobservednumericalfailure. Minimal lane0solewritercorrectednative andCUDAjl reference all5pass final012213763138Z, N512fiveoriginalsourcegenerator densities3/7/15/31/63,all6blocks/all3methods,R100. GenuineoldJulia2bodiesbytepreserved; newgenuinewarpreductionreplacesaliasedscalarCSR. Initialreadunmeteredprefix disclosed, sharedfixture/repair/oracleauthoredonce. Interleavedpaper/audits/commits."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/jacc_translation.jsonl",
+          "model": "jacc",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1068005,
+            "cached_input_tokens": 1064832,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3472,
+            "reasoning_output_tokens": 905,
+            "total_tokens": 1071477
+          },
+          "scope": "Actualfinal012546283227Z allfourmatchedperformancevalid, firstJACCcandidate5fullcorrect dualreferencecaptures, exact1,437,701inputprefix+47,520outputs/guards.3definitions and30vectorBS/Tspecializations notseparatetranslationattempts. PublicsharedBSFloat32copy/barriers vsnative/CUDAjlshuffles, scalarpathsnoscratch. Conditionalnative solewriterrepair(originalall5PASSnotfailure). Interleavedpaper/audits/othercommits."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/ka_translation.jsonl",
+          "model": "ka",
+          "phase": "translation",
+          "boundary": "end",
+          "delta_usage": {
+            "input_tokens": 1020010,
+            "cached_input_tokens": 1010304,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3814,
+            "reasoning_output_tokens": 1117,
+            "total_tokens": 1023824
+          },
+          "scope": "ActualKAfirstcandidate012353664661Z all5complete dualdirect-artifactPASS with1,437,701exactinputprefix+47,520output/guardvalues; conditionalnative lane0solewriterreference, originalnativeall5PASSpreserved ascontrarydiagnostic. Dense/scalarCSR+sharedsubgroupreduction3defs, all6blocks/all5densities/R100. No frontend/JIT/runtime/numericalrepair, actualspecializationsnotseparateprogramattempts. Interleavedpaperintegration/audits/sourcecommits."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/shared_annotation.jsonl",
+          "model": "shared",
+          "phase": "annotation",
+          "boundary": "begin",
+          "delta_usage": null,
+          "scope": "Before fullsavedartifactindependentPythonmatrix/CSRdotproductaudit, source-conflictwitness withactualoriginalall5PASS, permodelontology/failures/attempt/tokencoverage/trialcomponents; preserveconditionalnativeflag andunverifiedoriginal10k/FP32markerlarge-indexscope."
+        },
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/shared_benchmark_workflow.jsonl",
+          "model": "shared",
+          "phase": "benchmark_workflow",
+          "boundary": "begin",
+          "delta_usage": null,
+          "scope": "Prospective boundary before further audit/drafting. One initialread ofhistoricalJulia/Makefiles occurredbeforethisboundary, unmeteredprefixexplicit; no code draftedbeforebegin. Fullsource3dense/CSR/warpvec kernels should beaudited, fixedcorpus no substitution."
+        }
+      ],
+      "estimated_saved_source_tokens": 254,
+      "method": "Sourcechars/4proxy notconsumption; phasecounters includecontext/cache/interleaving, nonexclusive/nonadditive/notbilling. Initialhistoricalsource/MakefilereadbeforeBEGIN unmetered, nohistoricalreconstruction."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "bd3ff11c43a9d90b1d2feeb4",
+        "begin_event_id": "cd7afbbe4af945ecfe52d5c4",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_restoration",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T01:23:17.025854+00:00",
+        "usage_event_timestamp": "2026-10-18T01:23:03.903Z",
+        "elapsed_usage_event_start": "2026-10-18T01:16:40.182Z",
+        "delta_usage": {
+          "input_tokens": 1982098,
+          "cached_input_tokens": 1940352,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 13317,
+          "reasoning_output_tokens": 5599,
+          "total_tokens": 1995415
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 13.122854,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "664fc9ab539af4c767f9a2ea0da694236f52eedb9aa28ac9e3f051b71793a90c",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Actualoriginalnative5/5complete47,520output/guard independentdotproductchecks PASS, source-levelalllanewritehazardnotobservednumericalfailure. Minimal lane0solewritercorrectednative andCUDAjl reference all5pass final012213763138Z, N512fiveoriginalsourcegenerator densities3/7/15/31/63,all6blocks/all3methods,R100. GenuineoldJulia2bodiesbytepreserved; newgenuinewarpreductionreplacesaliasedscalarCSR. Initialreadunmeteredprefix disclosed, sharedfixture/repair/oracleauthoredonce. Interleavedpaper/audits/commits.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 33.206462,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/simpleSpmv/cuda_jl_reference_restoration.jsonl",
+        "evidence_sha256": "cbc13cfa3192713785b629f7727c8a5d95e83976e2c884caddb0d6aa7c5e94a6",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/simpleSpmv-julia-cuda/manifest.json",
+    "selected_sha256": "f59dc7d6371495d2120660ea8e4ac2c1bf49fbdd8fe03444653c25c0b8c27b69",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/simpleSpmv-julia-cuda/manifest.json",
+        "sha256": "f59dc7d6371495d2120660ea8e4ac2c1bf49fbdd8fe03444653c25c0b8c27b69"
+      },
+      {
+        "path": ".porting-state/porting_logs/simpleSpmv-julia/manifest.json",
+        "sha256": "e62b18e46b6c694dfada378d58e6e887f0d2addedfe705d53d2b803900343390"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "simpleSpmv",
+    "model": "cuda_jl",
+    "status": "conditionally_verified_native_reference_repaired",
+    "result": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv/result.json",
+    "evidence": [
+      {
+        "path": "src/simpleSpmv-julia/simpleSpmv-julia-cuda.jl/main.jl",
+        "sha256": "7c189dcba8a58ea7a9b1f7f9dde00bdbd862e3338ffbd6a659e436bd8c80bdb3"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261018T012546283227Z_simpleSpmv/result.json",
+        "sha256": "c8ef2fa77a2a2fc59b6eb7d85b6851b81811616becac8e302e2fb402594d7ee0"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/simpleSpmv.json",
+    "annotation_sha256": "b3f2b64e25c91dda03c1ace7aa0603f7bf7f6b9e556b1dfd6f674619a731255d",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

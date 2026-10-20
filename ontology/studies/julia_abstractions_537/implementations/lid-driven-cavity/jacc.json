@@ -1,0 +1,724 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "lid-driven-cavity",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/lid-driven-cavity.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_audited",
+    "actual_algorithm": "11source-faithful FP64 predictor/pressure-boundary/redblackSOR/residual/velocity/maximum/velocity-BC kernels with host-controlled normalized residual convergence",
+    "work_item_mapping": "16x1threads; momentum grid2x32, pressure grid1x32, boundary grids2x1/1x1; no partial threads in named divisible geometry",
+    "data_layout": "Padded row-major34x34 u/v/F/G and34x18 separate red/black pressures;32partial scalars per reduction",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "memory_access": "Global neighbor stencils; static128B shared16lane trees for sum/residual/max, zero shared for other kernels; JACC128Bdynamic template shared on four reductions",
+    "synchronization": [
+      "Explicit shared tree barriers",
+      "Same-stream ordered kernels",
+      "Blocking fullpartial D2H/host checks per SOR iteration"
+    ],
+    "resource_policy": {
+      "threads": [
+        16,
+        1
+      ],
+      "momentum_blocks": [
+        2,
+        32
+      ],
+      "pressure_blocks": [
+        1,
+        32
+      ],
+      "shared_bytes_per_reduction": 128,
+      "shared_bytes_other_kernels": 0,
+      "registers": null,
+      "spills": null,
+      "JACC_spec": "Distinctfixed (rows,cols,shared) specifications and zero shared for nonreductions"
+    },
+    "launch_geometry": "Matches native dimension specialization exactly",
+    "library_boundary": "CUDA runtime allocation/copies only; no PDE/solver library or custom device intrinsic",
+    "host_control_boundary": "Shared source-faithful transient/SOR driver with host Float64 sequential scalar sums; actual periteration D2H and output reporting timed",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "source_algorithm_preserved",
+      "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+    },
+    "fidelity_scope": "Named transient source algorithm, same boundary/stopping choices; no steady-state/physical validation or default512 numerical certification",
+    "source_evidence": {
+      "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-JACC/main.jl",
+      "sha256": "a0f83b473785127b52d9a2064b9b306c603e831d4c7bf96e21eefa6248a10054"
+    },
+    "study_entrypoint": null,
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "profiling_status": "No traffic/register/occupancy counters; no memory-bound or dispatch-bottleneck attribution",
+    "keyconfounds": [
+      "Named grid32/block16 replaces compile-time512/128; native kernel bodies are otherwise byte-preserved. t_end.02 rather than sourceCLI.001 chosen before GPU to exercise post-rest advection; all4 share it",
+      "Full coupled loop includes per-SOR D2H and host scalar sums/progress, not kernel-only roofline or steady CFD time to solution",
+      "Native C++ host/runtime versus Julia host/runtime and transient host allocations are part of measured orchestration",
+      "Source pressure boundary ghosts updated before each SOR iteration; reported residual uses those old ghosts after last update. Divergence requires fresh-Neumann residual, not a direct stopping-norm bound",
+      "Native initial host corner order and final GPU corner overwrites preserved; corner policy not silently replaced by idealized no-slip conditions",
+      "JACC reduction kernels initialize16Float64 template elements and add a backend barrier; same128B logical storage, extra operations disclosed; no profiled causal attribution",
+      "First passing reference series warmed device kernels but not report=true host specialization. Separate instrumentation repair remeasured all5 after warming same full pathway; oldseries retained, no fastest selection"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "11source-faithful FP64 predictor/pressure-boundary/redblackSOR/residual/velocity/maximum/velocity-BC kernels with host-controlled normalized residual convergence",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "16x1threads; momentum grid2x32, pressure grid1x32, boundary grids2x1/1x1; no partial threads in named divisible geometry",
+    "layout": "Padded row-major34x34 u/v/F/G and34x18 separate red/black pressures;32partial scalars per reduction",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global neighbor stencils; static128B shared16lane trees for sum/residual/max, zero shared for other kernels; JACC128Bdynamic template shared on four reductions",
+    "synchronization": [
+      "Explicit shared tree barriers",
+      "Same-stream ordered kernels",
+      "Blocking fullpartial D2H/host checks per SOR iteration"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": [
+        16,
+        1
+      ],
+      "momentum_blocks": [
+        2,
+        32
+      ],
+      "pressure_blocks": [
+        1,
+        32
+      ],
+      "shared_bytes_per_reduction": 128,
+      "shared_bytes_other_kernels": 0,
+      "registers": null,
+      "spills": null,
+      "JACC_spec": "Distinctfixed (rows,cols,shared) specifications and zero shared for nonreductions"
+    },
+    "launch_geometry": "Matches native dimension specialization exactly",
+    "library_backend_boundary": "CUDA runtime allocation/copies only; no PDE/solver library or custom device intrinsic",
+    "host_control_boundary": "Shared source-faithful transient/SOR driver with host Float64 sequential scalar sums; actual periteration D2H and output reporting timed",
+    "support_boundary": null,
+    "native_to_model_mapping": {
+      "status": "source_algorithm_preserved",
+      "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named transient source algorithm, same boundary/stopping choices; no steady-state/physical validation or default512 numerical certification",
+    "source_review_evidence": {
+      "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-JACC/main.jl",
+      "sha256": "a0f83b473785127b52d9a2064b9b306c603e831d4c7bf96e21eefa6248a10054"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "lid-driven-cavity",
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "application_domain": "Incompressible fluid dynamics",
+      "scientific_task": "Advance a moving-lid square cavity transient with staggered velocity and pressure projection",
+      "mathematical_method": "FP64 finite differences with donor-cell convection gamma.9, explicit momentum predictor, red-black SOR pressure solve and pressure-gradient velocity correction; Re1000",
+      "accuracy_requirements": [
+        "Full defined velocity/predictor/packed-pressure fields, reduction partials and iteration metadata against independent physical-grid oracle",
+        "Same310/278/289pressure iterations and native normalized residual stopping tolerance.001",
+        "Divergence equals timestep times fresh-Neumann equation residual, distinct from source stale-ghost stopping norm",
+        "No steadyRe1000 solution or continuum/grid-convergence accuracy claim"
+      ],
+      "community_use_case": "Reusable end-to-end projection-method fidelity contract linking boundaries, host convergence, solver iterations and divergence; helps CFD developers separate arithmetic portability from flow accuracy and synchronization overhead",
+      "review_status": "source_audited",
+      "input_size_regime": "Named32square/B16, t_end.02, three adaptive timesteps; original512square/B128,t_end.001 unmeasured in modern study",
+      "evidence": [
+        {
+          "path": "src/lid-driven-cavity-cuda/main.cu",
+          "sha256": "4c0328f3cf149d77d1feac9027ca6ca07faa42a76e7a7beca58ae63601a45ed2"
+        },
+        {
+          "path": "src/lid-driven-cavity-julia/native_dimension_specialization.cuh",
+          "sha256": "e081400cd8e3cfe628c07cc1c1df532e3d1079876366f6d2f494124c7d261053"
+        },
+        {
+          "path": "src/lid-driven-cavity-julia/scientific_operator_witness.py",
+          "sha256": "80482e2c9838c0e60b78fb010dee8f4aac89b3b9dc95606b28ab975168b1fa3a"
+        }
+      ]
+    },
+    "primary_motif": "coupled_staggered_projection_redblack_SOR",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "synchronization": [
+      "Ordered11kernel stages",
+      "Blocking residual D2H per SOR iteration",
+      "Host pressure scale/velocity maximum transfers",
+      "Shared16lane tree barriers"
+    ],
+    "native_to_julia_mapping": {
+      "status": "source_algorithm_preserved",
+      "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Full adaptive3-step transient including host convergence/progress and partial reductions transfers; setup/JIT/reset/finalfullcopy/oracles excluded",
+    "verification_contract": "5980 defined state/partials/control values plus5856 exactinputprefix; all20 independentfullgrid audit, strict1e-9+1e-10rel",
+    "keyconfounds": [
+      "Named grid32/block16 replaces compile-time512/128; native kernel bodies are otherwise byte-preserved. t_end.02 rather than sourceCLI.001 chosen before GPU to exercise post-rest advection; all4 share it",
+      "Full coupled loop includes per-SOR D2H and host scalar sums/progress, not kernel-only roofline or steady CFD time to solution",
+      "Native C++ host/runtime versus Julia host/runtime and transient host allocations are part of measured orchestration",
+      "Source pressure boundary ghosts updated before each SOR iteration; reported residual uses those old ghosts after last update. Divergence requires fresh-Neumann residual, not a direct stopping-norm bound",
+      "Native initial host corner order and final GPU corner overwrites preserved; corner policy not silently replaced by idealized no-slip conditions",
+      "JACC reduction kernels initialize16Float64 template elements and add a backend barrier; same128B logical storage, extra operations disclosed; no profiled causal attribution",
+      "First passing reference series warmed device kernels but not report=true host specialization. Separate instrumentation repair remeasured all5 after warming same full pathway; oldseries retained, no fastest selection"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "11source-faithful FP64 predictor/pressure-boundary/redblackSOR/residual/velocity/maximum/velocity-BC kernels with host-controlled normalized residual convergence",
+        "work_item_mapping": "16x1threads; momentum grid2x32, pressure grid1x32, boundary grids2x1/1x1; no partial threads in named divisible geometry",
+        "data_layout": "Padded row-major34x34 u/v/F/G and34x18 separate red/black pressures;32partial scalars per reduction",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global neighbor stencils; static128B shared16lane trees for sum/residual/max, zero shared for other kernels; JACC128Bdynamic template shared on four reductions",
+        "synchronization": [
+          "Explicit shared tree barriers",
+          "Same-stream ordered kernels",
+          "Blocking fullpartial D2H/host checks per SOR iteration"
+        ],
+        "resource_policy": {
+          "threads": [
+            16,
+            1
+          ],
+          "momentum_blocks": [
+            2,
+            32
+          ],
+          "pressure_blocks": [
+            1,
+            32
+          ],
+          "shared_bytes_per_reduction": 128,
+          "shared_bytes_other_kernels": 0,
+          "registers": null,
+          "spills": null,
+          "JACC_spec": null
+        },
+        "launch_geometry": "Matches native dimension specialization exactly",
+        "library_boundary": "CUDA runtime allocation/copies only; no PDE/solver library or custom device intrinsic",
+        "host_control_boundary": "Shared source-faithful transient/SOR driver with host Float64 sequential scalar sums; actual periteration D2H and output reporting timed",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "source_algorithm_preserved",
+          "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+        },
+        "fidelity_scope": "Named transient source algorithm, same boundary/stopping choices; no steady-state/physical validation or default512 numerical certification",
+        "source_evidence": {
+          "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-cuda.jl/main.jl",
+          "sha256": "f6710bd315494f439ffcd0b5b68ca29c51a9541cf09e4b717d24f01ca543848f"
+        },
+        "study_entrypoint": {
+          "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-cuda.jl/study.jl",
+          "sha256": "b0123ee813069f82852ff6db3f532a898ef259010fb0581cb85bb51f3a29a332"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "No traffic/register/occupancy counters; no memory-bound or dispatch-bottleneck attribution",
+        "keyconfounds": [
+          "Named grid32/block16 replaces compile-time512/128; native kernel bodies are otherwise byte-preserved. t_end.02 rather than sourceCLI.001 chosen before GPU to exercise post-rest advection; all4 share it",
+          "Full coupled loop includes per-SOR D2H and host scalar sums/progress, not kernel-only roofline or steady CFD time to solution",
+          "Native C++ host/runtime versus Julia host/runtime and transient host allocations are part of measured orchestration",
+          "Source pressure boundary ghosts updated before each SOR iteration; reported residual uses those old ghosts after last update. Divergence requires fresh-Neumann residual, not a direct stopping-norm bound",
+          "Native initial host corner order and final GPU corner overwrites preserved; corner policy not silently replaced by idealized no-slip conditions",
+          "JACC reduction kernels initialize16Float64 template elements and add a backend barrier; same128B logical storage, extra operations disclosed; no profiled causal attribution",
+          "First passing reference series warmed device kernels but not report=true host specialization. Separate instrumentation repair remeasured all5 after warming same full pathway; oldseries retained, no fastest selection"
+        ]
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "11source-faithful FP64 predictor/pressure-boundary/redblackSOR/residual/velocity/maximum/velocity-BC kernels with host-controlled normalized residual convergence",
+        "work_item_mapping": "16x1threads; momentum grid2x32, pressure grid1x32, boundary grids2x1/1x1; no partial threads in named divisible geometry",
+        "data_layout": "Padded row-major34x34 u/v/F/G and34x18 separate red/black pressures;32partial scalars per reduction",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global neighbor stencils; static128B shared16lane trees for sum/residual/max, zero shared for other kernels; JACC128Bdynamic template shared on four reductions",
+        "synchronization": [
+          "Explicit shared tree barriers",
+          "Same-stream ordered kernels",
+          "Blocking fullpartial D2H/host checks per SOR iteration"
+        ],
+        "resource_policy": {
+          "threads": [
+            16,
+            1
+          ],
+          "momentum_blocks": [
+            2,
+            32
+          ],
+          "pressure_blocks": [
+            1,
+            32
+          ],
+          "shared_bytes_per_reduction": 128,
+          "shared_bytes_other_kernels": 0,
+          "registers": null,
+          "spills": null,
+          "JACC_spec": null
+        },
+        "launch_geometry": "Matches native dimension specialization exactly",
+        "library_boundary": "CUDA runtime allocation/copies only; no PDE/solver library or custom device intrinsic",
+        "host_control_boundary": "Shared source-faithful transient/SOR driver with host Float64 sequential scalar sums; actual periteration D2H and output reporting timed",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "source_algorithm_preserved",
+          "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+        },
+        "fidelity_scope": "Named transient source algorithm, same boundary/stopping choices; no steady-state/physical validation or default512 numerical certification",
+        "source_evidence": {
+          "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-KA/main.jl",
+          "sha256": "0253b0a57c1d955e2ba3c0333201b37c2e4bc0b8741a57c199c26ff9cfbd939a"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "No traffic/register/occupancy counters; no memory-bound or dispatch-bottleneck attribution",
+        "keyconfounds": [
+          "Named grid32/block16 replaces compile-time512/128; native kernel bodies are otherwise byte-preserved. t_end.02 rather than sourceCLI.001 chosen before GPU to exercise post-rest advection; all4 share it",
+          "Full coupled loop includes per-SOR D2H and host scalar sums/progress, not kernel-only roofline or steady CFD time to solution",
+          "Native C++ host/runtime versus Julia host/runtime and transient host allocations are part of measured orchestration",
+          "Source pressure boundary ghosts updated before each SOR iteration; reported residual uses those old ghosts after last update. Divergence requires fresh-Neumann residual, not a direct stopping-norm bound",
+          "Native initial host corner order and final GPU corner overwrites preserved; corner policy not silently replaced by idealized no-slip conditions",
+          "JACC reduction kernels initialize16Float64 template elements and add a backend barrier; same128B logical storage, extra operations disclosed; no profiled causal attribution",
+          "First passing reference series warmed device kernels but not report=true host specialization. Separate instrumentation repair remeasured all5 after warming same full pathway; oldseries retained, no fastest selection"
+        ]
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_audited",
+        "actual_algorithm": "11source-faithful FP64 predictor/pressure-boundary/redblackSOR/residual/velocity/maximum/velocity-BC kernels with host-controlled normalized residual convergence",
+        "work_item_mapping": "16x1threads; momentum grid2x32, pressure grid1x32, boundary grids2x1/1x1; no partial threads in named divisible geometry",
+        "data_layout": "Padded row-major34x34 u/v/F/G and34x18 separate red/black pressures;32partial scalars per reduction",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global neighbor stencils; static128B shared16lane trees for sum/residual/max, zero shared for other kernels; JACC128Bdynamic template shared on four reductions",
+        "synchronization": [
+          "Explicit shared tree barriers",
+          "Same-stream ordered kernels",
+          "Blocking fullpartial D2H/host checks per SOR iteration"
+        ],
+        "resource_policy": {
+          "threads": [
+            16,
+            1
+          ],
+          "momentum_blocks": [
+            2,
+            32
+          ],
+          "pressure_blocks": [
+            1,
+            32
+          ],
+          "shared_bytes_per_reduction": 128,
+          "shared_bytes_other_kernels": 0,
+          "registers": null,
+          "spills": null,
+          "JACC_spec": "Distinctfixed (rows,cols,shared) specifications and zero shared for nonreductions"
+        },
+        "launch_geometry": "Matches native dimension specialization exactly",
+        "library_boundary": "CUDA runtime allocation/copies only; no PDE/solver library or custom device intrinsic",
+        "host_control_boundary": "Shared source-faithful transient/SOR driver with host Float64 sequential scalar sums; actual periteration D2H and output reporting timed",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "source_algorithm_preserved",
+          "reason": "All11native kernel formulas/geometry specialized N32 B16; actual coupled predictor/SOR/projection/control restored instead of historical surrogate"
+        },
+        "fidelity_scope": "Named transient source algorithm, same boundary/stopping choices; no steady-state/physical validation or default512 numerical certification",
+        "source_evidence": {
+          "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-JACC/main.jl",
+          "sha256": "a0f83b473785127b52d9a2064b9b306c603e831d4c7bf96e21eefa6248a10054"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "No traffic/register/occupancy counters; no memory-bound or dispatch-bottleneck attribution",
+        "keyconfounds": [
+          "Named grid32/block16 replaces compile-time512/128; native kernel bodies are otherwise byte-preserved. t_end.02 rather than sourceCLI.001 chosen before GPU to exercise post-rest advection; all4 share it",
+          "Full coupled loop includes per-SOR D2H and host scalar sums/progress, not kernel-only roofline or steady CFD time to solution",
+          "Native C++ host/runtime versus Julia host/runtime and transient host allocations are part of measured orchestration",
+          "Source pressure boundary ghosts updated before each SOR iteration; reported residual uses those old ghosts after last update. Divergence requires fresh-Neumann residual, not a direct stopping-norm bound",
+          "Native initial host corner order and final GPU corner overwrites preserved; corner policy not silently replaced by idealized no-slip conditions",
+          "JACC reduction kernels initialize16Float64 template elements and add a backend barrier; same128B logical storage, extra operations disclosed; no profiled causal attribution",
+          "First passing reference series warmed device kernels but not report=true host specialization. Separate instrumentation repair remeasured all5 after warming same full pathway; oldseries retained, no fastest selection"
+        ]
+      }
+    },
+    "numerical_evidence_strength": "complete_defined_staggered_state_partials_and_control",
+    "scientific_witness": ".porting-state/portable_julia/scientific_witnesses_300/lid-driven-cavity.json",
+    "input_dependent_descriptors": [
+      {
+        "time": 0.0078125,
+        "dt": 0.0078125,
+        "sor_iterations": 310,
+        "relative_residual": 0.0009896169822523665,
+        "pressure_scale": 1.0,
+        "divergence_rms": 7.876319485620368e-06,
+        "fresh_Neumann_residual_rms": 0.0010081688941594856,
+        "source_stale_ghost_residual_rms": 0.0009896169822523665,
+        "discrete_projection_identity_error": 6.132518538121134e-19
+      },
+      {
+        "time": 0.015625,
+        "dt": 0.0078125,
+        "sor_iterations": 278,
+        "relative_residual": 0.0009864599165326138,
+        "pressure_scale": 0.023802755259693886,
+        "divergence_rms": 1.8688370779165347e-07,
+        "fresh_Neumann_residual_rms": 2.39211145973608e-05,
+        "source_stale_ghost_residual_rms": 2.3480463966723865e-05,
+        "discrete_projection_identity_error": 2.277724534726017e-19
+      },
+      {
+        "time": 0.02,
+        "dt": 0.004375,
+        "sor_iterations": 289,
+        "relative_residual": 0.0009943431670563893,
+        "pressure_scale": 0.023515903484932897,
+        "divergence_rms": 1.0421921020932481e-07,
+        "fresh_Neumann_residual_rms": 2.3821533762116792e-05,
+        "source_stale_ghost_residual_rms": 2.3382877947400558e-05,
+        "discrete_projection_identity_error": 6.383187350949204e-20
+      }
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-JACC/main.jl",
+    "sha256": "a0f83b473785127b52d9a2064b9b306c603e831d4c7bf96e21eefa6248a10054",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        570,
+        572,
+        574,
+        576,
+        578,
+        580,
+        582,
+        584,
+        586,
+        588,
+        590
+      ],
+      "local_storage": [],
+      "barrier": [
+        189,
+        198,
+        357,
+        366,
+        438,
+        447,
+        540,
+        549
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp64_n32_block16_tend002_full_transient_projection_v1",
+      "run_id": "20261017T203617730691Z_lid-driven-cavity",
+      "result": ".porting-state/portable_julia/runs/20261017T203617730691Z_lid-driven-cavity/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "7457dfa5e62038bb607b53660c7e1875a47b10ffa52e344d4eac0a5d975af423",
+      "source_hash": "b4e0ed4c99a17a9577940900252d3382a06b04bcc643cffccaf5be3aa6d9b578",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T203617730691Z_lid-driven-cavity/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.084503092,
+        0.084061777,
+        0.083949746,
+        0.083935395,
+        0.084026227
+      ],
+      "mean_last_four_seconds": 0.08399328625,
+      "contract": {
+        "grid": 32,
+        "block_size": 16,
+        "time_end": 0.02,
+        "source_CLI_time_end": 0.001,
+        "reason": "Named longer transient exercises post-rest advection on smaller grid, chosen before GPU; all native device bodies unchanged except compile-time NUM/BLOCK geometry specialization",
+        "precision": "Float64 native DOUBLE branch and allJulia state/compute",
+        "Re": 1000,
+        "omega": 1.7,
+        "donor_cell_gamma": 0.9,
+        "tau": 0.5,
+        "pressure_relative_tolerance": 0.001,
+        "comparison_atol": 1e-09,
+        "comparison_rtol": 1e-10,
+        "prefix_values": 5856,
+        "defined_state_partials_control_values": 5980,
+        "artifact_values": 11836,
+        "ROI": "Full adaptive transient loop including F/G, pressure scale, both BCs/redblackSOR, periteration residual D2H/host sums, velocity/max reductions and D2H, finalvelocityBC/hostprogress/finalsync; setup/reset/JIT/finalfullD2H/oracles excluded",
+        "science": "Independent Python fullphysical pressure grid with redblackSOR and explicit projection divergence/freshNeumann residual identity; original ghostlag stopping residual preserved; no steadyRe1000 benchmark or wholephysicalvalidation claim"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "4ede23b1a5acf1fab53d",
+        "benchmark_id": "lid-driven-cavity",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "scope_mapping_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/lid-driven-cavity.jsonl",
+        "evidence_line": 12,
+        "raw_event": {
+          "implementation_model": "jacc",
+          "origin_model": "jacc",
+          "error_tag": "P1",
+          "phase": "scope_mapping_review",
+          "is_failure": false,
+          "cause": "Named N32/B16 and longer.02 transient, full host/SOR orchestration; source.default512/.001 unmeasured",
+          "outcome": "Source algorithm preserved, configuration scope explicit",
+          "result": ".porting-state/portable_julia/runs/20261017T203617730691Z_lid-driven-cavity/result.json"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "prospective_activity_windows_plus_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/lid-driven-cavity/jacc_translation_verification.jsonl",
+          "event_id": "418c7cef34e5fc6e3d2a2e80",
+          "delta_usage": {
+            "input_tokens": 649317,
+            "cached_input_tokens": 645632,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2467,
+            "reasoning_output_tokens": 506,
+            "total_tokens": 651784
+          },
+          "note": "JACCcandidate1/check1 all5strictfullstatechecks andwholeartifactbyteidenticalCUDAjl/KA; native1.04e-13drift. Explicitnative16x1mapping, reductions128Btemplatecopy+barrier disclosed, nonreductions0B. Includes IScommit/manifestexportercoordination."
+        }
+      ],
+      "coordination_preparation_windows_not_translation": [],
+      "estimated_saved_source_tokens": 3630,
+      "method": "Sourcechars/4 partial proxy, historical effort unknown. Prospective processed-counter deltas include repeatedcachedcontext and substantial root team commits/ontology coordination. Cached input/reasoning subsets, overlapping windows not summed; not exclusive or billed cost.",
+      "reuse_condition": "New source-formula11kernel translation and independent fullphysical-grid oracle authored once reference phase; KA then JACC marginal on shared work and reference repairs. Shared full-loop measurement repair separate."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "418c7cef34e5fc6e3d2a2e80",
+        "begin_event_id": "232ca20ac43e598314d8a350",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation_verification",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T20:37:14.843945+00:00",
+        "usage_event_timestamp": "2026-10-17T20:36:51.855Z",
+        "elapsed_usage_event_start": "2026-10-17T20:35:30.327Z",
+        "delta_usage": {
+          "input_tokens": 649317,
+          "cached_input_tokens": 645632,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2467,
+          "reasoning_output_tokens": 506,
+          "total_tokens": 651784
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 22.988945,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "592be9902ef96e75e1be058d634f7b3123e8d32469e4acdf2401676546ea412c",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "JACCcandidate1/check1 all5strictfullstatechecks andwholeartifactbyteidenticalCUDAjl/KA; native1.04e-13drift. Explicitnative16x1mapping, reductions128Btemplatecopy+barrier disclosed, nonreductions0B. Includes IScommit/manifestexportercoordination.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 12.577708,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lid-driven-cavity/jacc_translation_verification.jsonl",
+        "evidence_sha256": "787624a9728f704d3ab4eb07fc18a4010dfadcdb1be172b2d8f390ede0999d6e",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/lid-driven-cavity/measurement_scope_review.json",
+      "sha256": "eafbd0f0fba89213ffb5aefed12f94ad48e3e3cedb072eae79c2296617fe6e79",
+      "record": {
+        "benchmark": "lid-driven-cavity",
+        "preparation_interval_not_translation": "5db3d67aee38fa7ba999d6d4",
+        "actual_KA_interval_end": "e7bbcfe44c658724320c2d0b",
+        "scope": "All root windows include team commits/metadata coordination; separate reference/sharedmeasurement/target windows are marginal and overlap broad workflow. Preparation-only firstKA interval excluded from translation comparisons.",
+        "early_failed_capture_gap": "Native correct:false runs and earlier Julia nonzero exits did not retain binaries through runner temp cleanup; process logs/metrics/sourcecandidates/old CPUoracle bytes retained. Do not claim recovered failed arrays."
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/lid-driven-cavity-julia-jacc/manifest.json",
+    "selected_sha256": "19c5a5cdee37c052e3b40d30c18601545692b30f98d1830520fc20ffddff7c63",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/lid-driven-cavity-julia-jacc/manifest.json",
+        "sha256": "19c5a5cdee37c052e3b40d30c18601545692b30f98d1830520fc20ffddff7c63"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "c9972621cba30fcbbaa09325fe9bbbe81119a9fe",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "lid-driven-cavity",
+    "model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T203617730691Z_lid-driven-cavity/result.json",
+    "evidence": [
+      {
+        "path": "src/lid-driven-cavity-julia/lid-driven-cavity-julia-JACC/main.jl",
+        "sha256": "a0f83b473785127b52d9a2064b9b306c603e831d4c7bf96e21eefa6248a10054"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T203617730691Z_lid-driven-cavity/result.json",
+        "sha256": "7457dfa5e62038bb607b53660c7e1875a47b10ffa52e344d4eac0a5d975af423"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/lid-driven-cavity.json",
+    "annotation_sha256": "05a8f3d6131916e523ca81d4538d13d8bcff054f4010657db8d703f0216c51c0",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

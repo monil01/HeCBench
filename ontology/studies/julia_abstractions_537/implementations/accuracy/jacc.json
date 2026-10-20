@@ -1,0 +1,508 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "accuracy",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/accuracy.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Blockwise per-row rank reduction, block-local correct count, one global atomic addition per block.",
+    "mapping": "1024blocks256, four rows/block;128 active score lanes, explicit256-lane reduction tree.",
+    "layout": "Flat Float32 scores, Int32 labels and scalar counter.",
+    "precision": {
+      "storage": [
+        "float32 scores",
+        "int32 labels/count"
+      ],
+      "compute": "float32 comparisons and int32 count/reduction"
+    },
+    "implementation_detail": "JACC.shared256Int32 zero-template initialization, dynamic1024B scratch and JACC.@atomic, timed fill! reset.",
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 1024,
+      "shared_bytes": 1024
+    },
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+    "provenance": [
+      {
+        "path": "src/accuracy-julia/accuracy-julia-JACC/main.jl",
+        "sha256": "2476c5ed1590a4e312e225ed71c2b5959e0fd63e7b4edbd8c38ebee233b6f9b5",
+        "source_locations": "actual kernel, precision stages and launch policy"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+    "memory": "Dynamic1024B shared rankpartials plus globalzero template",
+    "synchronization": [
+      "per-row shared tree barriers",
+      "one globalatomic perblock"
+    ],
+    "atomic_operations": [
+      "int32 atomic add"
+    ],
+    "timing_scope": "counter reset plus complete accuracy kernel per internalrepeat"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Blockwise per-row rank reduction, block-local correct count, one global atomic addition per block.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "1024blocks256, four rows/block;128 active score lanes, explicit256-lane reduction tree.",
+    "layout": "Flat Float32 scores, Int32 labels and scalar counter.",
+    "storage_precision": [
+      "float32 scores",
+      "int32 labels/count"
+    ],
+    "compute_precision": "float32 comparisons and int32 count/reduction",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Dynamic1024B shared rankpartials plus globalzero template",
+    "synchronization": [
+      "per-row shared tree barriers",
+      "one globalatomic perblock"
+    ],
+    "atomics_and_reductions": [
+      "int32 atomic add"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 1024,
+      "shared_bytes": 1024
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 1024,
+      "shared_bytes": 1024
+    },
+    "library_backend_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "counter reset plus complete accuracy kernel per internalrepeat",
+    "fidelity_status_and_scope": "Verified named scope; model-specific adaptation disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/accuracy-julia/accuracy-julia-JACC/main.jl",
+        "sha256": "2476c5ed1590a4e312e225ed71c2b5959e0fd63e7b4edbd8c38ebee233b6f9b5",
+        "source_locations": "actual kernel, precision stages and launch policy"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "accuracy",
+    "primary_motif": "comparison_rank_reduction",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32_comparisons",
+      "int32_counts"
+    ],
+    "synchronization": [
+      "workgroup_tree_barriers",
+      "global_atomic_per_block"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "NativeCUB vs inherited explicit256thread reductiontree; samegrid1024 and4rows/block"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Timed counterreset cudaMemsetAsync vs Julia fill! implementation",
+      "JACC sharedzero-template load adds traffic before partialoverwrite",
+      "Only nativeaccuracy_kernel/top5/gridN/4 namedcase; optimizedkernel2unmeasured"
+    ],
+    "jacc_shared_memory_policy": "explicit_required_1024_bytes",
+    "observation": "research/observations/accuracy.md",
+    "ontology_sha256": "40e26e52985e30f6ba9781618f58a644a8a1f2bf1df585441794b4b3d897b347",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "topk_classification_metric",
+      "scientific_task": "Count samples whose true class is in the top5 scores under a deterministic tie rule.",
+      "mathematical_operation": "Rank=true-score exceedance count plus equal-score class indices<=label; count rows with rank<=5.",
+      "discretization_or_topology": "4096 independent128-class score rows and one label per row; scalar Int32 count.",
+      "invariants": [
+        "Count lies between0 and4096.",
+        "Tie-breaking includes the label itself and prefers smaller class indices."
+      ],
+      "accuracy_requirements": [
+        "Exact finite Int32 count, full CPU/dual-reference check; repeated operation resets counter inside timed operation."
+      ],
+      "precision_sensitivity": "Float32 comparisons determine ranks; count and atomics are Int32, not floating-point accumulation.",
+      "input_size_regimes": "N4096,D128,top5,grid1024,256threads,four rows per block,ten repeats; optimizednativekernel2 unmeasured.",
+      "community_use_case": "Classification evaluation primitive; no source-evidenced model, dataset or scientific prediction task.",
+      "uncertainty": "Measured scalar is a correct-label count, not a normalized accuracy fraction; comparisons are not conventional FLOP work.",
+      "provenance": [
+        {
+          "path": "src/accuracy-cuda/main.cu",
+          "sha256": "46d2cc2925307f91715575a6a91167ccef665ea294385d4ec4ae8f016e4fdb12",
+          "source_locations": "native operation, launch and original scope"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:13:28.209022+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Blockwise per-row rank reduction, block-local correct count, one global atomic addition per block.",
+        "mapping": "1024blocks256, four rows/block;128 active score lanes, explicit256-lane reduction tree.",
+        "layout": "Flat Float32 scores, Int32 labels and scalar counter.",
+        "precision": {
+          "storage": [
+            "float32 scores",
+            "int32 labels/count"
+          ],
+          "compute": "float32 comparisons and int32 count/reduction"
+        },
+        "implementation_detail": "Static256Int32 scratch, explicit binary tree and CUDA.atomic_add!, timed fill! counter reset.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 1024
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/accuracy-julia/accuracy-julia-cuda.jl/main.jl",
+            "sha256": "6d4c5c5c6c7dc3caacab7e8a8037155dad022c630104ccefd0b9f375ba5859ef",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Static1024B shared rankpartials",
+        "synchronization": [
+          "per-row shared tree barriers",
+          "one globalatomic perblock"
+        ],
+        "atomic_operations": [
+          "int32 atomic add"
+        ],
+        "timing_scope": "counter reset plus complete accuracy kernel per internalrepeat"
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Blockwise per-row rank reduction, block-local correct count, one global atomic addition per block.",
+        "mapping": "1024blocks256, four rows/block;128 active score lanes, explicit256-lane reduction tree.",
+        "layout": "Flat Float32 scores, Int32 labels and scalar counter.",
+        "precision": {
+          "storage": [
+            "float32 scores",
+            "int32 labels/count"
+          ],
+          "compute": "float32 comparisons and int32 count/reduction"
+        },
+        "implementation_detail": "Static256Int32 scratch, explicit binary tree and Atomix.@atomic, timed fill! reset.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 1024
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/accuracy-julia/accuracy-julia-KA/main.jl",
+            "sha256": "b8d4dcd6fbd6e9fb7cf729905651d25463672bfa84807d36baa75e5f4b60d032",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Static1024B shared rankpartials",
+        "synchronization": [
+          "per-row shared tree barriers",
+          "one globalatomic perblock"
+        ],
+        "atomic_operations": [
+          "int32 atomic add"
+        ],
+        "timing_scope": "counter reset plus complete accuracy kernel per internalrepeat"
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Blockwise per-row rank reduction, block-local correct count, one global atomic addition per block.",
+        "mapping": "1024blocks256, four rows/block;128 active score lanes, explicit256-lane reduction tree.",
+        "layout": "Flat Float32 scores, Int32 labels and scalar counter.",
+        "precision": {
+          "storage": [
+            "float32 scores",
+            "int32 labels/count"
+          ],
+          "compute": "float32 comparisons and int32 count/reduction"
+        },
+        "implementation_detail": "JACC.shared256Int32 zero-template initialization, dynamic1024B scratch and JACC.@atomic, timed fill! reset.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 1024,
+          "shared_bytes": 1024
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/accuracy-julia/accuracy-julia-JACC/main.jl",
+            "sha256": "2476c5ed1590a4e312e225ed71c2b5959e0fd63e7b4edbd8c38ebee233b6f9b5",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Dynamic1024B shared rankpartials plus globalzero template",
+        "synchronization": [
+          "per-row shared tree barriers",
+          "one globalatomic perblock"
+        ],
+        "atomic_operations": [
+          "int32 atomic add"
+        ],
+        "timing_scope": "counter reset plus complete accuracy kernel per internalrepeat"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/accuracy-julia/accuracy-julia-JACC/main.jl",
+    "sha256": "2476c5ed1590a4e312e225ed71c2b5959e0fd63e7b4edbd8c38ebee233b6f9b5",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        57
+      ],
+      "local_storage": [],
+      "barrier": [
+        29,
+        35,
+        44
+      ],
+      "atomic": [
+        50
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_n4096_d128_top5_grid1024_reset_plus_kernel_repeat10_v1",
+      "run_id": "20261016T235251857085Z_accuracy",
+      "result": ".porting-state/portable_julia/runs/20261016T235251857085Z_accuracy/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "6df1915c9792b4ecef55c9eea6cfe583e57cd3712b935dd14d84f972b113adea",
+      "source_hash": "a5817ca80dafe758b26a04ea0e512c3faa58220d1c942fc8d8a4d67962ad9ada",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T235251857085Z_accuracy/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0029333303,
+        0.0001002729,
+        8.47868e-05,
+        8.46278e-05,
+        9.71889e-05
+      ],
+      "mean_last_four_seconds": 9.17191e-05,
+      "contract": {
+        "precision": "float32 inputs/int32 ranks-count",
+        "shape": [
+          4096,
+          128
+        ],
+        "fixture": "prediction=(17*i+13*div(i,128))%23; label=(7*row)%128, zero-based indices",
+        "internal_repeats": 10,
+        "grid": 1024,
+        "coverage": "accuracy_kernel only; optimizedaccuracy_kernel2 unported/unmeasured, native grid sweeps restricted namedN/4",
+        "timing_operation": "zero_counter_then_accuracy; native cudaMemsetAsync vs Julia-family fill! initialization launches"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "accuracy-jacc-P1-retrospective-implementation",
+        "benchmark_id": "accuracy",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/accuracy.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "accuracy-jacc-P1-retrospective-implementation",
+          "benchmark": "accuracy",
+          "model": "jacc",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native CUB reduction versus inherited explicit tree; timed nativecudaMemsetAsync versus Julia fill!, plus extra JACC template initialization.",
+          "root_cause": "Source-established implementation differences; not a newly observed compiler failure.",
+          "resolution": "Preserve verified evidence, expose the adaptation when interpreting performance.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/accuracy-cuda/main.cu",
+              "sha256": "46d2cc2925307f91715575a6a91167ccef665ea294385d4ec4ae8f016e4fdb12",
+              "source_locations": "native operation, launch and original scope"
+            },
+            {
+              "path": "src/accuracy-julia/accuracy-julia-JACC/main.jl",
+              "sha256": "2476c5ed1590a4e312e225ed71c2b5959e0fd63e7b4edbd8c38ebee233b6f9b5",
+              "source_locations": "actual kernel, precision stages and launch policy"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2851,
+      "output_tokens": 415,
+      "cached_tokens": null,
+      "total_tokens": 3266,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/accuracy-cuda/main.cu",
+        "src/accuracy-cuda/reference.h",
+        "src/accuracy-julia/accuracy-julia-cuda.jl/main.jl",
+        "src/accuracy-julia/accuracy-julia-KA/main.jl",
+        "src/accuracy-julia/accuracy-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/accuracy-julia-jacc/manifest.json",
+    "selected_sha256": "b14a377916159c703abb8b5a5f0a42d1f48f9e105ad8849fb42f35fcb7fb8378",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/accuracy-julia-jacc/manifest.json",
+        "sha256": "b14a377916159c703abb8b5a5f0a42d1f48f9e105ad8849fb42f35fcb7fb8378"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "1a3a0e9011e2003e25ee7c4883ffb015b9ce96d6",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/accuracy.json",
+    "annotation_sha256": "2c4e908392afbf93dc804535e7afdbf40a5ca743b99a06145ed8b4b5e742231d",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

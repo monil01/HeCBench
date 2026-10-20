@@ -1,0 +1,952 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "nms",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/nms.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Same source pair predicate; existing Julia local32-partition fold then128-lane binary AND tree, not native32-vote reduction",
+    "mapping": "Map16\u00d716 CTA/256\u00d7256 grid, reduce128 lanes/4096 CTAs, uniform block guard",
+    "layout": "SoA Float32 x/y/width/scores; row-major UInt8 pair bitmap, contiguous keep flags",
+    "precision": {
+      "storage": "Float32 detections, UInt8 bitmap/keep, Int32 logical indices",
+      "compute": "Float32 min/max/intersection/area/division, UInt8 AND tree",
+      "oracle": "Independent Float64 pair predicates, source threshold promoted exactly, rowwise AND"
+    },
+    "implementation_detail": "JACC 2D callback map, linear reduction callback recovers group/lane, shared UInt8 template and sync_workgroup; explicit0/128 shared bytes.",
+    "memory": "64KiB input fields,16MiB pair bitmap,4KiB keep mask; reduction scratch128 bytes; actual cache/DRAM traffic unknown",
+    "synchronization": "Map no block barrier; reduce32 per-lane loads+initial barrier and7 tree barriers, one writer per keep flag; device-wide host completion",
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Own framework kernels/shared/barriers; no operator vendor library or foreign CUDA device call. CUDA host allocation/completion only tested NVIDIA.",
+    "host_control_boundary": "Selected map/reduce stage10 launches and device-wide completion inside timer, other stage/initialization/checks outside",
+    "resource_policy": {
+      "map_threads": [
+        16,
+        16
+      ],
+      "map_blocks": [
+        256,
+        256
+      ],
+      "map_shared_bytes": 0,
+      "reduce_threads": 128,
+      "reduce_blocks": 4096,
+      "reduce_shared_bytes": 128,
+      "jacc_template_initialization": true,
+      "registers_spills_occupancy": "unknown"
+    },
+    "fidelity_status": "Full fixture outputs exact versus unchanged native and independent oracle; existing layout/reduction adaptations documented, no whole original CLI/detector accuracy claim",
+    "configuration_traits": {
+      "nms_full4096_positive_cluster_ties_map_v1": {
+        "timed_stage": "map",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "nms_full4096_positive_cluster_ties_reduce_v1": {
+        "timed_stage": "reduce",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      }
+    },
+    "provenance": [
+      {
+        "path": "src/nms-julia/nms-julia-JACC/main.jl",
+        "sha256": "de4c1d2a4cb61bac4ea740213db1d948e9a7b66a690893957035a845eed30619",
+        "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+      }
+    ],
+    "attempt_count_policy": "Two timing configurations, one numerical fixture, five trials; actual process/frontend/device-JIT counts separate. Existing reference bodies unchanged; target first candidates2 JIT check commands each.",
+    "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Same source pair predicate; existing Julia local32-partition fold then128-lane binary AND tree, not native32-vote reduction",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Map16\u00d716 CTA/256\u00d7256 grid, reduce128 lanes/4096 CTAs, uniform block guard",
+    "layout": "SoA Float32 x/y/width/scores; row-major UInt8 pair bitmap, contiguous keep flags",
+    "storage_precision": "Float32 detections, UInt8 bitmap/keep, Int32 logical indices",
+    "compute_precision": "Float32 min/max/intersection/area/division, UInt8 AND tree",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "64KiB input fields,16MiB pair bitmap,4KiB keep mask; reduction scratch128 bytes; actual cache/DRAM traffic unknown",
+    "synchronization": "Map no block barrier; reduce32 per-lane loads+initial barrier and7 tree barriers, one writer per keep flag; device-wide host completion",
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "map_threads": [
+        16,
+        16
+      ],
+      "map_blocks": [
+        256,
+        256
+      ],
+      "map_shared_bytes": 0,
+      "reduce_threads": 128,
+      "reduce_blocks": 4096,
+      "reduce_shared_bytes": 128,
+      "jacc_template_initialization": true,
+      "registers_spills_occupancy": "unknown"
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Own framework kernels/shared/barriers; no operator vendor library or foreign CUDA device call. CUDA host allocation/completion only tested NVIDIA.",
+    "host_control_boundary": "Selected map/reduce stage10 launches and device-wide completion inside timer, other stage/initialization/checks outside",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Full fixture outputs exact versus unchanged native and independent oracle; existing layout/reduction adaptations documented, no whole original CLI/detector accuracy claim",
+    "source_review_evidence": [
+      {
+        "path": "src/nms-julia/nms-julia-JACC/main.jl",
+        "sha256": "de4c1d2a4cb61bac4ea740213db1d948e9a7b66a690893957035a845eed30619",
+        "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "nms",
+    "primary_motif": "pairwise_detection_overlap_bitmap_and_rowwise_logical_reduction",
+    "storage_precision": [
+      "float32 coordinates/width/scores",
+      "uint8 pair bitmap and keep flags"
+    ],
+    "compute_precision": [
+      "float32 overlap arithmetic",
+      "uint8 logical AND",
+      "float64 independent predicate oracle"
+    ],
+    "synchronization": [
+      "ordered map/reduce stages",
+      "native32 collective vote rounds",
+      "Julia local32 fold then8 block barriers",
+      "device-wide completion per timed launch loop"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Existing genuine Julia SoA map and associative local-fold/tree reduction differ from native AoS and32 collective votes; all full outputs exact."
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Separate source map/reduce configurations, mean per selected kernel launch over10 repeats",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "The source implements simultaneous higher-score pairwise suppression using intersection divided by the higher-score square area, not intersection-over-union or a score-sorted greedy acceptance loop. A higher-score box can suppress another even if itself suppressed. These are operator boundaries, not an imposed alternative correctness target.",
+      "Source README identifies face-detector window postprocessing, but the provided image/sample detections are absent here. The named fixture is synthetic: 512 separated clusters of eight positive-width boxes, four dyadic score levels with ties, full MAX_DETECTIONS=4096. No detection precision/recall or trained-model accuracy claim.",
+      "Native AoS float4 versus existing Julia and portable SoA arrays is a real layout adaptation. Native reduction has 32 collective __syncthreads_and rounds/global-byte updates; existing Julia folds 32 partitions locally then uses one 128-lane shared AND tree. Algebraic equivalence is verified, but timing gaps cannot be assigned solely to frontend abstraction.",
+      "Original native reduction has all threads store the same global byte after each vote. This static concurrent-writer pattern is retained and disclosed; no sanitizer race witness or universal race-free guarantee is claimed. All named five-trial outputs match the independent full oracle. Native source is unchanged, not silently repaired.",
+      "All 16777216 pairwise UInt8 values and all 4096 keep flags are checked; 65536 actual Float32 input bytes are compared exactly separately. Inputs finite; strict threshold margin at least0.00864196 supports this fixture, not arbitrary near-threshold floating-point cases.",
+      "The two original timer regions remain separate configurations: ten map launches then completion, or ten reduction launches then completion. Other stage preparation/validation is outside the selected timer. Both stages execute for correctness in every trial; no stage is omitted from the port.",
+      "Buffer initialization/reset, input transfer, CPU oracle and serialization are outside timing. Blocking device-wide completion matches native cudaDeviceSynchronize, including warmup/pre/post timing. Five outer trials, mean last four, no outlier selection. Original Makefile1000 repetitions is named-study10, same full input extent.",
+      "Native and Julia map use 16\u00d716 blocks and256\u00d7256 grid, reduce uses128 lanes and4096 blocks. KA/JACC preserve selected geometry and existing Julia local-fold/tree strategy. Backend bounds/index lowering and memory code generation may differ.",
+      "JACC uses explicit zero dynamic shared memory for map and128 bytes for reduction, stages a128-byte zero template and an extra barrier. CUDA.jl/KA use uninitialized static/local128-byte scratch overwritten before use. Register/spill/occupancy/cache effects remain unknown.",
+      "Map gap and JACC-versus-KA reduction gap are observed without profiles; template staging alone is not established as their cause. Nominal memory size or source operations do not establish measured roofline position or DRAM traffic. Comparisons, min/max, division and logical AND require an explicit operation convention.",
+      "All tested kernels use their own framework index/shared/barrier APIs; CUDA allocation/completion host glue is tested only on NVIDIA. No cross-vendor portability conclusion.",
+      "Existing CUDA.jl device bodies are byte-preserved; current work is adapter/entry guard plus full numerical verification. One host closure named map shadowed Base.map inside CUDA launch macro before device JIT, fixed by renaming; no device arithmetic repair.",
+      "KA/JACC each pass one candidate and two device-JIT process checks with two kernel definitions and no repairs. Source shape/two timing configurations/five trials are not extra compiler attempts. Internal passes and compiled specialization counts unknown.",
+      "Usage is split by an urgent, independently metered MLP measurement repair: initial NMS inspection windows closed, then resumed windows. No complete single-window NMS cost is claimed; retained nonoverlapping segments include cached context/coordination and overlapping workflow/child windows are not additive billing."
+    ],
+    "native_reference_repaired": false,
+    "exclude_untouched_native_aggregates": false,
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "computer_vision_detection_postprocessing",
+      "secondary_domains": [
+        "signal_image",
+        "face_detection_candidate_windows"
+      ],
+      "scientific_task": "Suppress lower-score overlapping square detection windows by a parallel all-pairs predicate and rowwise keep mask. Source README gives a face-detection use case; current study uses synthetic boxes.",
+      "mathematical_operation": "For score_i<score_j, pairkeep(i,j)=[intersection(i,j)/(width_j+1)^2 < Float32(.3)] AND [width_j!=0]; otherwise pairkeep=1. Keep(i)=AND_j pairkeep(i,j). Integer-pixel +1 convention, square widths, equal-score ties retained.",
+      "discretization_or_topology": "4096 square windows in512 spatial clusters of8; dense4096\u00d74096 pair graph, rowwise logical reduction, no PDE discretization.",
+      "invariants": [
+        "All pair/keep bytes are0 or1, all diagonal pairs remain1, equal scores do not suppress each other.",
+        "Every keep flag equals AND of its4096 pair bytes.",
+        "All40 saved artifacts byte-exact against actual input bytes and full independent Float64 predicate oracle;1024 windows kept."
+      ],
+      "accuracy_requirements": [
+        "Full16777216 pair bytes plus4096 keep flags in every model/trial/configuration.",
+        "Exact65536-byte serialized Float32 input prefix, all input values finite.",
+        "Independent Float64 predicate uses exact promoted source Float32 threshold; minimum active threshold margin0.008641963, no tolerance applied to logical outputs."
+      ],
+      "precision_sensitivity": "Float32 overlap division controls a discrete threshold decision; large threshold margin in this fixture avoids rounding-boundary ambiguity. General near-threshold behavior is not certified.",
+      "input_size_regimes": "Full source maximum4096 detections, positive widths8/12/16, clustered overlap and tied scores; source text-input parsing, small/padded cases, zero/negative widths and real-image quality unmeasured.",
+      "community_use_case": "Computer-vision candidate-window postprocessing, source-documented face detection example; not a trained detector or accuracy evaluation.",
+      "uncertainty": "Source pairwise operator is not claimed equivalent to IoU/greedy alternatives. Layout/reduction adaptations and unprofiled implementation effects constrain performance attribution.",
+      "provenance": [
+        {
+          "path": "src/nms-cuda/README",
+          "sha256": "105148dccdaff92cf8b5c7d348683abb1c14c45522279e9b0fecd62d169aca34",
+          "source_locations": "Source application, original publication pointer and absent sample-image description"
+        },
+        {
+          "path": "src/nms-cuda/main.cu",
+          "sha256": "3b86ea69ac0bd25d94bcb411585a510bb262d0e8c991cd5926e9adc3f6965a88",
+          "source_locations": "Actual overlap formula, collective reduction, layout and separate timers"
+        },
+        {
+          "path": "src/nms-julia/reference_original/main.jl",
+          "sha256": "7e63f7f386d3d92814093d8f06b8b99285199f78e2bb2372544b36d4cdf6a2b4",
+          "source_locations": "Existing genuine SoA/tree implementation"
+        },
+        {
+          "path": "src/nms-julia/generate_study_fixture.py",
+          "sha256": "cba0b03c395f515d2e50c951ee88e9ce9667b3de551526c92342f759bf0e6545",
+          "source_locations": "Synthetic fixture and independent full oracle"
+        }
+      ],
+      "reviewed_at": "2026-10-17T23:03:35.297669+00:00",
+      "review_phase": "prospective postverification annotation"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Same source pair predicate; existing Julia local32-partition fold then128-lane binary AND tree, not native32-vote reduction",
+        "mapping": "Map16\u00d716 CTA/256\u00d7256 grid, reduce128 lanes/4096 CTAs, uniform block guard",
+        "layout": "SoA Float32 x/y/width/scores; row-major UInt8 pair bitmap, contiguous keep flags",
+        "precision": {
+          "storage": "Float32 detections, UInt8 bitmap/keep, Int32 logical indices",
+          "compute": "Float32 min/max/intersection/area/division, UInt8 AND tree",
+          "oracle": "Independent Float64 pair predicates, source threshold promoted exactly, rowwise AND"
+        },
+        "implementation_detail": "Original CUDA.jl index formulas, CUDA static UInt8 scratch and sync_threads; existing kernel bodies byte-preserved.",
+        "memory": "64KiB input fields,16MiB pair bitmap,4KiB keep mask; reduction scratch128 bytes; actual cache/DRAM traffic unknown",
+        "synchronization": "Map no block barrier; reduce32 per-lane loads+initial barrier and7 tree barriers, one writer per keep flag; device-wide host completion",
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework kernels/shared/barriers; no operator vendor library or foreign CUDA device call. CUDA host allocation/completion only tested NVIDIA.",
+        "host_control_boundary": "Selected map/reduce stage10 launches and device-wide completion inside timer, other stage/initialization/checks outside",
+        "resource_policy": {
+          "map_threads": [
+            16,
+            16
+          ],
+          "map_blocks": [
+            256,
+            256
+          ],
+          "map_shared_bytes": 0,
+          "reduce_threads": 128,
+          "reduce_blocks": 4096,
+          "reduce_shared_bytes": 128,
+          "jacc_template_initialization": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Full fixture outputs exact versus unchanged native and independent oracle; existing layout/reduction adaptations documented, no whole original CLI/detector accuracy claim",
+        "configuration_traits": {
+          "nms_full4096_positive_cluster_ties_map_v1": {
+            "timed_stage": "map",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          },
+          "nms_full4096_positive_cluster_ties_reduce_v1": {
+            "timed_stage": "reduce",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          }
+        },
+        "provenance": [
+          {
+            "path": "src/nms-julia/nms-julia-cuda.jl/main.jl",
+            "sha256": "45d88baa6e08f3d5329167be2534a0b60c3121fb3321b4c390f972745eded091",
+            "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+          }
+        ],
+        "attempt_count_policy": "Two timing configurations, one numerical fixture, five trials; actual process/frontend/device-JIT counts separate. Existing reference bodies unchanged; target first candidates2 JIT check commands each.",
+        "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Same source pair predicate; existing Julia local32-partition fold then128-lane binary AND tree, not native32-vote reduction",
+        "mapping": "Map16\u00d716 CTA/256\u00d7256 grid, reduce128 lanes/4096 CTAs, uniform block guard",
+        "layout": "SoA Float32 x/y/width/scores; row-major UInt8 pair bitmap, contiguous keep flags",
+        "precision": {
+          "storage": "Float32 detections, UInt8 bitmap/keep, Int32 logical indices",
+          "compute": "Float32 min/max/intersection/area/division, UInt8 AND tree",
+          "oracle": "Independent Float64 pair predicates, source threshold promoted exactly, rowwise AND"
+        },
+        "implementation_detail": "KA 2D global map indices; group/local reduction indices, @localmem UInt8(128), @synchronize; no foreign CUDA device API.",
+        "memory": "64KiB input fields,16MiB pair bitmap,4KiB keep mask; reduction scratch128 bytes; actual cache/DRAM traffic unknown",
+        "synchronization": "Map no block barrier; reduce32 per-lane loads+initial barrier and7 tree barriers, one writer per keep flag; device-wide host completion",
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework kernels/shared/barriers; no operator vendor library or foreign CUDA device call. CUDA host allocation/completion only tested NVIDIA.",
+        "host_control_boundary": "Selected map/reduce stage10 launches and device-wide completion inside timer, other stage/initialization/checks outside",
+        "resource_policy": {
+          "map_threads": [
+            16,
+            16
+          ],
+          "map_blocks": [
+            256,
+            256
+          ],
+          "map_shared_bytes": 0,
+          "reduce_threads": 128,
+          "reduce_blocks": 4096,
+          "reduce_shared_bytes": 128,
+          "jacc_template_initialization": false,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Full fixture outputs exact versus unchanged native and independent oracle; existing layout/reduction adaptations documented, no whole original CLI/detector accuracy claim",
+        "configuration_traits": {
+          "nms_full4096_positive_cluster_ties_map_v1": {
+            "timed_stage": "map",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          },
+          "nms_full4096_positive_cluster_ties_reduce_v1": {
+            "timed_stage": "reduce",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          }
+        },
+        "provenance": [
+          {
+            "path": "src/nms-julia/nms-julia-KA/main.jl",
+            "sha256": "f2606406027235d79348c46f9ca5e8e089fe8d38517b38a6923e3e77a0c57a35",
+            "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+          }
+        ],
+        "attempt_count_policy": "Two timing configurations, one numerical fixture, five trials; actual process/frontend/device-JIT counts separate. Existing reference bodies unchanged; target first candidates2 JIT check commands each.",
+        "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Same source pair predicate; existing Julia local32-partition fold then128-lane binary AND tree, not native32-vote reduction",
+        "mapping": "Map16\u00d716 CTA/256\u00d7256 grid, reduce128 lanes/4096 CTAs, uniform block guard",
+        "layout": "SoA Float32 x/y/width/scores; row-major UInt8 pair bitmap, contiguous keep flags",
+        "precision": {
+          "storage": "Float32 detections, UInt8 bitmap/keep, Int32 logical indices",
+          "compute": "Float32 min/max/intersection/area/division, UInt8 AND tree",
+          "oracle": "Independent Float64 pair predicates, source threshold promoted exactly, rowwise AND"
+        },
+        "implementation_detail": "JACC 2D callback map, linear reduction callback recovers group/lane, shared UInt8 template and sync_workgroup; explicit0/128 shared bytes.",
+        "memory": "64KiB input fields,16MiB pair bitmap,4KiB keep mask; reduction scratch128 bytes; actual cache/DRAM traffic unknown",
+        "synchronization": "Map no block barrier; reduce32 per-lane loads+initial barrier and7 tree barriers, one writer per keep flag; device-wide host completion",
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Own framework kernels/shared/barriers; no operator vendor library or foreign CUDA device call. CUDA host allocation/completion only tested NVIDIA.",
+        "host_control_boundary": "Selected map/reduce stage10 launches and device-wide completion inside timer, other stage/initialization/checks outside",
+        "resource_policy": {
+          "map_threads": [
+            16,
+            16
+          ],
+          "map_blocks": [
+            256,
+            256
+          ],
+          "map_shared_bytes": 0,
+          "reduce_threads": 128,
+          "reduce_blocks": 4096,
+          "reduce_shared_bytes": 128,
+          "jacc_template_initialization": true,
+          "registers_spills_occupancy": "unknown"
+        },
+        "fidelity_status": "Full fixture outputs exact versus unchanged native and independent oracle; existing layout/reduction adaptations documented, no whole original CLI/detector accuracy claim",
+        "configuration_traits": {
+          "nms_full4096_positive_cluster_ties_map_v1": {
+            "timed_stage": "map",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          },
+          "nms_full4096_positive_cluster_ties_reduce_v1": {
+            "timed_stage": "reduce",
+            "other_stage_outside_timer": true,
+            "full_2stage_output_verified": true,
+            "native_to_julia_layout": "AoS\u2192SoA",
+            "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+          }
+        },
+        "provenance": [
+          {
+            "path": "src/nms-julia/nms-julia-JACC/main.jl",
+            "sha256": "de4c1d2a4cb61bac4ea740213db1d948e9a7b66a690893957035a845eed30619",
+            "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+          }
+        ],
+        "attempt_count_policy": "Two timing configurations, one numerical fixture, five trials; actual process/frontend/device-JIT counts separate. Existing reference bodies unchanged; target first candidates2 JIT check commands each.",
+        "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1"
+      }
+    },
+    "configuration_results": {
+      "map": {
+        "configuration_id": "nms_full4096_positive_cluster_ties_map_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T225915097292Z_nms/result.json",
+        "mean_seconds": {
+          "cuda": 0.000166457525,
+          "cuda_jl": 0.00027266225,
+          "ka": 0.000363824325,
+          "jacc": 0.000365294075
+        },
+        "timed_region": "map",
+        "checked_values_each_trial": 16846848,
+        "input_prefix_count_bytes": 65536,
+        "pair_bitmap_values": 16777216,
+        "keep_values": 4096,
+        "kept_windows": 1024,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 10,
+        "native_reference_repaired": false
+      },
+      "reduce": {
+        "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T225941887462Z_nms/result.json",
+        "mean_seconds": {
+          "cuda": 0.00034431767500000003,
+          "cuda_jl": 4.2009375e-05,
+          "ka": 4.36899e-05,
+          "jacc": 0.000153444725
+        },
+        "timed_region": "reduce",
+        "checked_values_each_trial": 16846848,
+        "input_prefix_count_bytes": 65536,
+        "pair_bitmap_values": 16777216,
+        "keep_values": 4096,
+        "kept_windows": 1024,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 10,
+        "native_reference_repaired": false
+      }
+    },
+    "configuration_overrides": {
+      "nms_full4096_positive_cluster_ties_map_v1": {
+        "timed_stage": "map",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "nms_full4096_positive_cluster_ties_reduce_v1": {
+        "timed_stage": "reduce",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      }
+    },
+    "performance_variability_by_configuration": {
+      "nms_full4096_positive_cluster_ties_map_v1": {
+        "cuda": {
+          "retained_trial_seconds": [
+            0.0001681055,
+            0.0001660155,
+            0.0001660426,
+            0.0001656665
+          ],
+          "stddev": 1.1119189130357778e-06,
+          "CV": 0.006679895745390771,
+          "outliers_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            0.0002728135,
+            0.0002725285,
+            0.0002725935,
+            0.0002727135
+          ],
+          "stddev": 1.2664747661651978e-07,
+          "CV": 0.00046448482185018196,
+          "outliers_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            0.0003646553,
+            0.0003634554,
+            0.0003639233,
+            0.0003632633
+          ],
+          "stddev": 6.194541165413326e-07,
+          "CV": 0.0017026187474994492,
+          "outliers_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            0.0003670764,
+            0.0003644063,
+            0.0003647493,
+            0.0003649443
+          ],
+          "stddev": 1.2088492058565503e-06,
+          "CV": 0.0033092494200913343,
+          "outliers_removed": false
+        }
+      },
+      "nms_full4096_positive_cluster_ties_reduce_v1": {
+        "cuda": {
+          "retained_trial_seconds": [
+            0.0003434791,
+            0.0003444682,
+            0.0003448732,
+            0.0003444502
+          ],
+          "stddev": 5.921814776738785e-07,
+          "CV": 0.0017198695294218587,
+          "outliers_removed": false
+        },
+        "cuda_jl": {
+          "retained_trial_seconds": [
+            4.18984e-05,
+            4.19834e-05,
+            4.21274e-05,
+            4.20283e-05
+          ],
+          "stddev": 9.535583796146584e-08,
+          "CV": 0.00226987042681463,
+          "outliers_removed": false
+        },
+        "ka": {
+          "retained_trial_seconds": [
+            4.41054e-05,
+            4.33534e-05,
+            4.36734e-05,
+            4.36274e-05
+          ],
+          "stddev": 3.1093997277073763e-07,
+          "CV": 0.007116976069314363,
+          "outliers_removed": false
+        },
+        "jacc": {
+          "retained_trial_seconds": [
+            0.0001539602,
+            0.0001526852,
+            0.0001537842,
+            0.0001533493
+          ],
+          "stddev": 5.67727019937113e-07,
+          "CV": 0.0036998796793901714,
+          "outliers_removed": false
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/nms-julia/nms-julia-JACC/main.jl",
+    "sha256": "de4c1d2a4cb61bac4ea740213db1d948e9a7b66a690893957035a845eed30619",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        53,
+        54
+      ],
+      "local_storage": [],
+      "barrier": [
+        34,
+        40
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        51
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "nms_full4096_positive_cluster_ties_map_v1",
+      "run_id": "20261017T225915097292Z_nms",
+      "result": ".porting-state/portable_julia/runs/20261017T225915097292Z_nms/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_source_unchanged": true,
+        "cuda_jl_original_kernel_bodies_preserved": true,
+        "cuda_jl_AoS_to_SoA_layout_adaptation": true,
+        "cuda_jl_AND_associativity_algorithm_adaptation": true,
+        "completion": "nativecudaDeviceSynchronize/JuliaCUDA.device_synchronize(blocking=true)"
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "dd5d263350f3ce276851e79794e60ed0298079a1ae0d03cb2bdf291a8edf09ab",
+      "source_hash": "e83ac46655394cc60fe59886e0436ac9ac9ae30eaeaa2e1a384dfdf76bf7389c",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T225915097292Z_nms/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0003670803,
+        0.0003670764,
+        0.0003644063,
+        0.0003647493,
+        0.0003649443
+      ],
+      "mean_last_four_seconds": 0.000365294075,
+      "contract": "FullMAX4096positivesquareboxes512clusters\u00d78withscoreties, actualFloat32x/y/width/score sourceoperator asymmetricintersection/higherboxarea. Full4096\u00b2pairbitmap+4096rowANDmask vsFloat64oracle, exact65536byteactualinputprefix. Timedsourcemaponly10repeats; otherstageoutsideROI. NativeAoS/32voteANDrounds vsJuliaSoA/local32fold+one128tree documentedmappingadaptation.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": {
+        "timed_stage": "map",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "shared_configuration_traits_override": {
+        "timed_stage": "map",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1",
+      "run_id": "20261017T225941887462Z_nms",
+      "result": ".porting-state/portable_julia/runs/20261017T225941887462Z_nms/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_source_unchanged": true,
+        "cuda_jl_original_kernel_bodies_preserved": true,
+        "cuda_jl_AoS_to_SoA_layout_adaptation": true,
+        "cuda_jl_AND_associativity_algorithm_adaptation": true,
+        "completion": "nativecudaDeviceSynchronize/JuliaCUDA.device_synchronize(blocking=true)"
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "21fa70b3a710a0397b430d9ebaa03f1e5fbcc5aaf34bf8437b2a45fe31887271",
+      "source_hash": "e83ac46655394cc60fe59886e0436ac9ac9ae30eaeaa2e1a384dfdf76bf7389c",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T225941887462Z_nms/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0001541483,
+        0.0001539602,
+        0.0001526852,
+        0.0001537842,
+        0.0001533493
+      ],
+      "mean_last_four_seconds": 0.000153444725,
+      "contract": "FullMAX4096positivesquareboxes512clusters\u00d78withscoreties, actualFloat32x/y/width/score sourceoperator asymmetricintersection/higherboxarea. Full4096\u00b2pairbitmap+4096rowANDmask vsFloat64oracle, exact65536byteactualinputprefix. Timedsourcereduceonly10repeats; otherstageoutsideROI. NativeAoS/32voteANDrounds vsJuliaSoA/local32fold+one128tree documentedmappingadaptation.",
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": {
+        "timed_stage": "reduce",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "shared_configuration_traits_override": {
+        "timed_stage": "reduce",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "ad5aa72103ca23744831",
+        "benchmark_id": "nms",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "prospective_source_mapping",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/nms.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "benchmark": "nms",
+          "model": "jacc",
+          "phase": "prospective_source_mapping",
+          "code": "P1",
+          "is_failure": false,
+          "reason": "JACC 2D callback map, linear reduction callback recovers group/lane, shared UInt8 template and sync_workgroup; explicit0/128 shared bytes. Existing local-fold/tree and SoA adaptation verified but retained as performance confound.",
+          "evidence": [
+            {
+              "path": "src/nms-julia/nms-julia-JACC/main.jl",
+              "sha256": "de4c1d2a4cb61bac4ea740213db1d948e9a7b66a690893957035a845eed30619",
+              "source_locations": "Actual map/reduce arithmetic/index/shared/barrier mapping"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 4283,
+      "output_tokens": 570,
+      "cached_tokens": null,
+      "total_tokens": 4853,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/nms-cuda/main.cu",
+        "src/nms-julia/nms-julia-cuda.jl/main.jl",
+        "src/nms-julia/nms-julia-KA/main.jl",
+        "src/nms-julia/nms-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA.",
+      "observed_consumed_usage_boundary": ".porting-state/portable_julia/usage_boundaries_300/nms/jacc_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "a24561376b50a33d4684f096",
+        "begin_event_id": "374678c9c9d289653c8604f4",
+        "agent": "/root/portable_infrastructure",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T23:00:42.023880+00:00",
+        "usage_event_timestamp": "2026-10-17T23:00:32.619Z",
+        "elapsed_usage_event_start": "2026-10-17T22:58:35.089Z",
+        "delta_usage": {
+          "input_tokens": 1182792,
+          "cached_input_tokens": 1180928,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4355,
+          "reasoning_output_tokens": 2559,
+          "total_tokens": 1187147
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "7835f36b0dcf254ee2c183f0edadb81b812e5800b9e971fd5811c8256b9394f8",
+        "marker_lag_seconds": 9.40488,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "2020b6eb18d986ba996c67334a04a8950f8d461bffe976b792f949c07635b3ce",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Bothmap/reduceregionsall4modelsfullbitmap+maskexact. Firstcandidate2actualdeviceJITcheckcommands/2kerneldefs/0repairs; JACCown2Dcallback/shared128byte/barriers, explicitshmem0map/128reduce. Additionalreductionruntimegapunprofiled, nospeculativecause.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 7.575008,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nms/jacc_translation.jsonl",
+        "evidence_sha256": "acf59dc5b70acb749429c7abb2c7384d8b61bd1aee8688d47a3285a489948121",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 2,
+        "compiler_check_invocations": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/nms-julia-jacc/manifest.json",
+    "selected_sha256": "2b04b1d9db15d381052934e7b2b1c544b2758330a71c18bee076ce186bf849c6",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/nms-julia-jacc/manifest.json",
+        "sha256": "2b04b1d9db15d381052934e7b2b1c544b2758330a71c18bee076ce186bf849c6"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "026ce0dad9288a4ecf19c2850f45cf9c164b3ff2",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "nms",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T225941887462Z_nms/result.json"
+    ],
+    "contract": "FullMAX4096positivesquareboxes512clusters\u00d78withscoreties, actualFloat32x/y/width/score sourceoperator asymmetricintersection/higherboxarea. Full4096\u00b2pairbitmap+4096rowANDmask vsFloat64oracle, exact65536byteactualinputprefix. Timedsourcereduceonly10repeats; otherstageoutsideROI. NativeAoS/32voteANDrounds vsJuliaSoA/local32fold+one128tree documentedmappingadaptation.",
+    "limitations": [
+      "The source implements simultaneous higher-score pairwise suppression using intersection divided by the higher-score square area, not intersection-over-union or a score-sorted greedy acceptance loop. A higher-score box can suppress another even if itself suppressed. These are operator boundaries, not an imposed alternative correctness target.",
+      "Source README identifies face-detector window postprocessing, but the provided image/sample detections are absent here. The named fixture is synthetic: 512 separated clusters of eight positive-width boxes, four dyadic score levels with ties, full MAX_DETECTIONS=4096. No detection precision/recall or trained-model accuracy claim.",
+      "Native AoS float4 versus existing Julia and portable SoA arrays is a real layout adaptation. Native reduction has 32 collective __syncthreads_and rounds/global-byte updates; existing Julia folds 32 partitions locally then uses one 128-lane shared AND tree. Algebraic equivalence is verified, but timing gaps cannot be assigned solely to frontend abstraction.",
+      "Original native reduction has all threads store the same global byte after each vote. This static concurrent-writer pattern is retained and disclosed; no sanitizer race witness or universal race-free guarantee is claimed. All named five-trial outputs match the independent full oracle. Native source is unchanged, not silently repaired.",
+      "All 16777216 pairwise UInt8 values and all 4096 keep flags are checked; 65536 actual Float32 input bytes are compared exactly separately. Inputs finite; strict threshold margin at least0.00864196 supports this fixture, not arbitrary near-threshold floating-point cases.",
+      "The two original timer regions remain separate configurations: ten map launches then completion, or ten reduction launches then completion. Other stage preparation/validation is outside the selected timer. Both stages execute for correctness in every trial; no stage is omitted from the port.",
+      "Buffer initialization/reset, input transfer, CPU oracle and serialization are outside timing. Blocking device-wide completion matches native cudaDeviceSynchronize, including warmup/pre/post timing. Five outer trials, mean last four, no outlier selection. Original Makefile1000 repetitions is named-study10, same full input extent.",
+      "Native and Julia map use 16\u00d716 blocks and256\u00d7256 grid, reduce uses128 lanes and4096 blocks. KA/JACC preserve selected geometry and existing Julia local-fold/tree strategy. Backend bounds/index lowering and memory code generation may differ.",
+      "JACC uses explicit zero dynamic shared memory for map and128 bytes for reduction, stages a128-byte zero template and an extra barrier. CUDA.jl/KA use uninitialized static/local128-byte scratch overwritten before use. Register/spill/occupancy/cache effects remain unknown.",
+      "Map gap and JACC-versus-KA reduction gap are observed without profiles; template staging alone is not established as their cause. Nominal memory size or source operations do not establish measured roofline position or DRAM traffic. Comparisons, min/max, division and logical AND require an explicit operation convention.",
+      "All tested kernels use their own framework index/shared/barrier APIs; CUDA allocation/completion host glue is tested only on NVIDIA. No cross-vendor portability conclusion.",
+      "Existing CUDA.jl device bodies are byte-preserved; current work is adapter/entry guard plus full numerical verification. One host closure named map shadowed Base.map inside CUDA launch macro before device JIT, fixed by renaming; no device arithmetic repair.",
+      "KA/JACC each pass one candidate and two device-JIT process checks with two kernel definitions and no repairs. Source shape/two timing configurations/five trials are not extra compiler attempts. Internal passes and compiled specialization counts unknown.",
+      "Usage is split by an urgent, independently metered MLP measurement repair: initial NMS inspection windows closed, then resumed windows. No complete single-window NMS cost is claimed; retained nonoverlapping segments include cached context/coordination and overlapping workflow/child windows are not additive billing."
+    ],
+    "configuration_results": {
+      "map": {
+        "configuration_id": "nms_full4096_positive_cluster_ties_map_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T225915097292Z_nms/result.json",
+        "mean_seconds": {
+          "cuda": 0.000166457525,
+          "cuda_jl": 0.00027266225,
+          "ka": 0.000363824325,
+          "jacc": 0.000365294075
+        },
+        "timed_region": "map",
+        "checked_values_each_trial": 16846848,
+        "input_prefix_count_bytes": 65536,
+        "pair_bitmap_values": 16777216,
+        "keep_values": 4096,
+        "kept_windows": 1024,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 10,
+        "native_reference_repaired": false
+      },
+      "reduce": {
+        "configuration_id": "nms_full4096_positive_cluster_ties_reduce_v1",
+        "result": ".porting-state/portable_julia/runs/20261017T225941887462Z_nms/result.json",
+        "mean_seconds": {
+          "cuda": 0.00034431767500000003,
+          "cuda_jl": 4.2009375e-05,
+          "ka": 4.36899e-05,
+          "jacc": 0.000153444725
+        },
+        "timed_region": "reduce",
+        "checked_values_each_trial": 16846848,
+        "input_prefix_count_bytes": 65536,
+        "pair_bitmap_values": 16777216,
+        "keep_values": 4096,
+        "kept_windows": 1024,
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "internal_repeats": 10,
+        "native_reference_repaired": false
+      }
+    },
+    "configuration_traits": {
+      "nms_full4096_positive_cluster_ties_map_v1": {
+        "timed_stage": "map",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      },
+      "nms_full4096_positive_cluster_ties_reduce_v1": {
+        "timed_stage": "reduce",
+        "other_stage_outside_timer": true,
+        "full_2stage_output_verified": true,
+        "native_to_julia_layout": "AoS\u2192SoA",
+        "native_to_julia_reduce": "32 collective votes\u2192local32 fold+one128 tree"
+      }
+    },
+    "implementation_class": "framework_device_kernel"
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/nms.json",
+    "annotation_sha256": "3880710de6b44a9a24bf236eaa9c10f5418230af8b883dec03a1bd60718913bf",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

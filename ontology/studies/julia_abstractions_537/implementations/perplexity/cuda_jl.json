@@ -1,0 +1,462 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "perplexity",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/perplexity.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Per-row serial Gaussian-affinity entropy search with beta interval updates.",
+    "mapping": "4096 rows in16blocks256, one row/workitem, data-dependent loop termination.",
+    "layout": "Contiguous row-major Float32 distance and affinity arrays.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 exp/log/division/search"
+    },
+    "implementation_detail": "Uses CUDA.exp/CUDA.log and ordinary reciprocal; explicitCUDA linear index.",
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+    "provenance": [
+      {
+        "path": "src/perplexity-julia/perplexity-julia-cuda.jl/main.jl",
+        "sha256": "cbc5d45b8091519026c1dd0408a0ee1414e9510656d8847add342869c88f1bca",
+        "source_locations": "actual kernel, precision stages and launch policy"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+    "memory": "Global buffers, no shared scratch",
+    "synchronization": [
+      "ordered kernel boundaries only"
+    ],
+    "atomic_operations": [],
+    "algorithm_iterations": {
+      "maximum_epochs": 100,
+      "actual_executed_per_row": null,
+      "convergence_evidence": "Final affinities verified; per-row iteration counts not recorded."
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Per-row serial Gaussian-affinity entropy search with beta interval updates.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "4096 rows in16blocks256, one row/workitem, data-dependent loop termination.",
+    "layout": "Contiguous row-major Float32 distance and affinity arrays.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 exp/log/division/search",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global buffers, no shared scratch",
+    "synchronization": [
+      "ordered kernel boundaries only"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Verified named scope; model-specific adaptation disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/perplexity-julia/perplexity-julia-cuda.jl/main.jl",
+        "sha256": "cbc5d45b8091519026c1dd0408a0ee1414e9510656d8847add342869c88f1bca",
+        "source_locations": "actual kernel, precision stages and launch policy"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "perplexity",
+    "primary_motif": "iterative_nonlinear_search",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "none_within_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same row/workitem and bisection structure; native fast CUDA intrinsics vs inherited generic accurate Julia math"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native __expf/__logf/__fdividef vs Julia-family genericmath",
+      "Actual data-dependent iteration counts unmeasured; maximumepochs100 alone not equal executedwork",
+      "Transcendental workload needs explicitwork model before roofline placement"
+    ],
+    "jacc_shared_memory_policy": "explicit_zero",
+    "observation": "research/observations/perplexity.md",
+    "ontology_sha256": "528ce222316a872b57dac12dcb3a5cb1ba8624bf4f8a6bad6c2d9c8348042e80",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "entropy_constrained_gaussian_affinities",
+      "scientific_task": "Search a Gaussian bandwidth/precision for each distance row to match a target entropy.",
+      "mathematical_operation": "Normalize exp(-distance*beta), estimate entropy log(sumP)+beta*weightedDistance, bisect/double/halve beta toward log8.",
+      "discretization_or_topology": "4096 independent rows of32 neighbor distances; no vocabulary or token axis.",
+      "invariants": [
+        "Nonnegative affinities.",
+        "Rows approximately sum to one with source epsilon normalization.",
+        "Target entropy is conditional on convergence, not guaranteed by epoch cap alone."
+      ],
+      "accuracy_requirements": [
+        "All131072 finite Float32 affinities compared at absolute1e-3; convergence threshold1e-8 and100maximumepochs preserved."
+      ],
+      "precision_sensitivity": "Native fast exp/log/divide versus Julia generic math can affect bisection stopping and work counts, not only final rounding.",
+      "input_size_regimes": "4096x32,targetperplexity8,maxepochs100,tol1e-8,ten repeats; actual per-row executed iterations unmeasured.",
+      "community_use_case": "Source explicitly says find best Gaussian bandwidth per row. This is an affinity/entropy-search primitive, not language-model perplexity.",
+      "uncertainty": "No explicit t-SNE application is named in the native source; downstream embedding use remains an inference, not a provenance claim.",
+      "provenance": [
+        {
+          "path": "src/perplexity-cuda/main.cu",
+          "sha256": "85e09aac9c0203882be040b3215582be40f8d55c31f5845171d57753c6aa5ecb",
+          "source_locations": "native operation, launch and original scope"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:13:28.209022+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-row serial Gaussian-affinity entropy search with beta interval updates.",
+        "mapping": "4096 rows in16blocks256, one row/workitem, data-dependent loop termination.",
+        "layout": "Contiguous row-major Float32 distance and affinity arrays.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/log/division/search"
+        },
+        "implementation_detail": "Uses CUDA.exp/CUDA.log and ordinary reciprocal; explicitCUDA linear index.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/perplexity-julia/perplexity-julia-cuda.jl/main.jl",
+            "sha256": "cbc5d45b8091519026c1dd0408a0ee1414e9510656d8847add342869c88f1bca",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Global buffers, no shared scratch",
+        "synchronization": [
+          "ordered kernel boundaries only"
+        ],
+        "atomic_operations": [],
+        "algorithm_iterations": {
+          "maximum_epochs": 100,
+          "actual_executed_per_row": null,
+          "convergence_evidence": "Final affinities verified; per-row iteration counts not recorded."
+        }
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-row serial Gaussian-affinity entropy search with beta interval updates.",
+        "mapping": "4096 rows in16blocks256, one row/workitem, data-dependent loop termination.",
+        "layout": "Contiguous row-major Float32 distance and affinity arrays.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/log/division/search"
+        },
+        "implementation_detail": "Uses generic exp/log and ordinary reciprocal, KA globalindex convertedInt32.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/perplexity-julia/perplexity-julia-KA/main.jl",
+            "sha256": "d9531609666c3397ab84865c5707eb4366feab5e5cb6e53a538b89516128e96d",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Global buffers, no shared scratch",
+        "synchronization": [
+          "ordered kernel boundaries only"
+        ],
+        "atomic_operations": [],
+        "algorithm_iterations": {
+          "maximum_epochs": 100,
+          "actual_executed_per_row": null,
+          "convergence_evidence": "Final affinities verified; per-row iteration counts not recorded."
+        }
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Per-row serial Gaussian-affinity entropy search with beta interval updates.",
+        "mapping": "4096 rows in16blocks256, one row/workitem, data-dependent loop termination.",
+        "layout": "Contiguous row-major Float32 distance and affinity arrays.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 exp/log/division/search"
+        },
+        "implementation_detail": "Uses generic exp/log and reciprocal, callbackindex convertedInt32, explicitshmem0.",
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and GPU math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; reset only included foraccuracy where explicitlypartofcontract.",
+        "fidelity_status": "Verified named scope; model-specific adaptation disclosed.",
+        "provenance": [
+          {
+            "path": "src/perplexity-julia/perplexity-julia-JACC/main.jl",
+            "sha256": "184a9aaf32980eae47719c5f2e81c043ebe3e77e5b68ccded1e56011b62e348a",
+            "source_locations": "actual kernel, precision stages and launch policy"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; no historical counts inferred.",
+        "memory": "Global buffers, no shared scratch",
+        "synchronization": [
+          "ordered kernel boundaries only"
+        ],
+        "atomic_operations": [],
+        "algorithm_iterations": {
+          "maximum_epochs": 100,
+          "actual_executed_per_row": null,
+          "convergence_evidence": "Final affinities verified; per-row iteration counts not recorded."
+        }
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/perplexity-julia/perplexity-julia-cuda.jl/main.jl",
+    "sha256": "cbc5d45b8091519026c1dd0408a0ee1414e9510656d8847add342869c88f1bca",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        111
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_n4096_perplexity8_k32_epochs100_tol1e-8_repeat10_v1",
+      "run_id": "20261016T234230406388Z_perplexity",
+      "result": ".porting-state/portable_julia/runs/20261016T234230406388Z_perplexity/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "b54785c29e440f38dac2514152a48fea103f632facffa4ff44274322199d7329",
+      "source_hash": "8366d8f7e49dbdb4c7ee76bcb644ad017e74aa606af178525aee4f9a531edcbd",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T234230406388Z_perplexity/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.001213983,
+        0.001215468,
+        0.001213307,
+        0.001212977,
+        0.0012125639
+      ],
+      "mean_last_four_seconds": 0.0012135789749999999,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          4096,
+          32
+        ],
+        "fixture": "distance=Float32((17*i+div(i,32)*13)%257)/256, zero-based i",
+        "internal_repeats": 10,
+        "perplexity": 8,
+        "epochs": 100,
+        "convergence_tolerance": 1e-08,
+        "mapping": "one row/workitem, 256threads; native fast CUDA intrinsics vs inherited Julia generic accurate transcendental functions; actual convergence iteration counts unmeasured"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "perplexity-cuda_jl-P1-retrospective-implementation",
+        "benchmark_id": "perplexity",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/perplexity.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "perplexity-cuda_jl-P1-retrospective-implementation",
+          "benchmark": "perplexity",
+          "model": "cuda_jl",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native __expf/__logf/__fdividef differ from generic Julia math; actual convergence iteration counts are unknown.",
+          "root_cause": "Source-established implementation differences; not a newly observed compiler failure.",
+          "resolution": "Preserve verified evidence, expose the adaptation when interpreting performance.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/perplexity-cuda/main.cu",
+              "sha256": "85e09aac9c0203882be040b3215582be40f8d55c31f5845171d57753c6aa5ecb",
+              "source_locations": "native operation, launch and original scope"
+            },
+            {
+              "path": "src/perplexity-julia/perplexity-julia-cuda.jl/main.jl",
+              "sha256": "cbc5d45b8091519026c1dd0408a0ee1414e9510656d8847add342869c88f1bca",
+              "source_locations": "actual kernel, precision stages and launch policy"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/perplexity-julia/manifest.json",
+    "selected_sha256": "0dd5cbdf527f1d060b2dfa3923940dba0d79a3ea57fab94d5957289caafc526b",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/perplexity-julia/manifest.json",
+        "sha256": "0dd5cbdf527f1d060b2dfa3923940dba0d79a3ea57fab94d5957289caafc526b"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/perplexity.json",
+    "annotation_sha256": "6b0426f2bca788479f4b999998b0cdf8bfb25c8754e857cfac303ecf2b1e0a2d",
+    "field": "implementation_class.julia",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

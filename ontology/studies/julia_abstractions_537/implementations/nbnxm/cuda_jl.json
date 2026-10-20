@@ -1,0 +1,844 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "nbnxm",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/nbnxm.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_model": "cuda_jl",
+    "review_status": "source_reviewed",
+    "implementation_status": "verified",
+    "implementation_class": "CUDAjl_authored_force_kernel_native_managed_controller",
+    "authored_device_kernel_count": 1,
+    "authored_device_kernel_definitions": 1,
+    "primary_device_entrypoints": 1,
+    "shared_authored_math_body_definitions": 1,
+    "count_unit": "One authored entry per model, shared pair arithmetic helper not a second dispatch entry; 120030 actual launches including warmup+five trials. Framework wrappers excluded. Backend compiler invocation count not directly observed.",
+    "scientific_intent": {
+      "benchmark": "nbnxm",
+      "primary_family": "particle_molecular",
+      "review_status": "source_reviewed",
+      "domain": "Molecular nonbonded Lennard-Jones and Ewald-correction cluster force operator",
+      "scientific_question": "Preserve a standalone GROMACS-derived clustered force calculation and validate active-pair, exclusion, self-triangle and shifted-force paths.",
+      "mathematical_operation": "Float32 cluster-list LJ plus screened Coulomb/Ewald correction with masked exclusions, warp reductions and particle/shift atomic accumulation.",
+      "classification_rationale": "Source GROMACS-derived molecular pair-force operator; its execution motif is blocked pair interaction rather than a complete trajectory or reciprocal PME solver.",
+      "community_use_case": "Molecular force-kernel developers assessing masked pair-list semantics and CUDA-specific collective mappings.",
+      "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+      "accuracy_requirements": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+      "source_evidence": [
+        {
+          "path": "src/nbnxm-julia/reference_history/main.cu",
+          "sha256": "6b237b31a8ae7533987c9157b330f3e6ae97d4d12976861973b24df3a24acc0e",
+          "bytes": 17017
+        },
+        {
+          "path": "src/nbnxm-julia/reference_history/COPYRIGHT",
+          "sha256": "a0c84abb633ef62a6724d2d60a76c56b669949af1639791b0a194aeb054cfaab",
+          "bytes": 1798
+        },
+        {
+          "path": "src/nbnxm-julia/native_source_identity.json",
+          "sha256": "7ccdf09549c2f1edb9d0d0c4da88343d21f3d069cb086b493c2e6042650f657e",
+          "bytes": 2158
+        },
+        {
+          "path": "src/nbnxm-julia/all4_full_capture_audit.json",
+          "sha256": "3b1d805fa9278f666d6e4eb2ded978422f9f8f747d39b20dfe5b2ca2780f8a13",
+          "bytes": 53198
+        },
+        {
+          "path": "src/nbnxm-julia/pme_scalar_witness.json",
+          "sha256": "c94365f2e3ff06349c15166e8e49ccde9bc422b02583c5dbed0c677f5144a8e5",
+          "bytes": 612
+        },
+        {
+          "path": "src/nbnxm-julia/energy_gradient_witness.json",
+          "sha256": "d44682c053e6d35b0871cbad2bcf69403a4e7c3fbc03c88bfb2b8248adde7b84",
+          "bytes": 1264
+        }
+      ]
+    },
+    "work_item_mapping": "8x8x1 threads; grid (1,1,3199) default and 1/2 z-block controls; source cluster indexing, eight CI unroll, per-warp masks and same atomic destinations.",
+    "data_layout": "Original managed allocations through borrowed CUDA views; Float4 xq, Float3 force/shift, 32-byte CJ4, 16-byte SCI and 128-byte exclusion PODs; full source tail preserved.",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32 device"
+    ],
+    "synchronization": "2048 bytes static shared: 64 Float4 + 192 Float32 + 64 Int32; 33 source-derived lexical block barriers, warp full-mask shuffles, Float32 global atomics; context completion per phase.",
+    "resources": {
+      "static_shared_bytes": 2048,
+      "dynamic_shared_bytes": 0,
+      "private_I_force_components": 24,
+      "hardware_register_spill_occupancy_counters": null
+    },
+    "host_boundary": "Native C++ allocation/reset/prefetch/observers and whole-phase callback; target launches its own repeats. Non-null callback has no selected-native-kernel fallback.",
+    "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+    "verification_contract": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+    "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+    "keyconfounds": [
+      "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+      "Default no-pair launch workload dominates aggregate; active controls repeat once, unsuitable robust physical throughput ranking.",
+      "Host dispatch plus device kernel/completion measured; no device/host causal attribution or hardware profile.",
+      "KA always_inline=true; CUDAjl default compiler controls; shared equations inherit prior CUDA idioms.",
+      "JACC 1.4 CUDAExt 3D launch omits LaunchSpec.stream; actual task legacy stream set explicitly with context completion fences."
+    ],
+    "source_evidence": [
+      {
+        "path": "src/nbnxm-julia/nbnxm-julia-cuda.jl/main.jl",
+        "sha256": "d39477ecd5ec5047a24f5a65c40e9255c747f0b2dc1bd0bab422b4631d19aa48",
+        "bytes": 2235
+      },
+      {
+        "path": "src/nbnxm-julia/nb_device.jl",
+        "sha256": "a74b8e18447045b145602a0c9616660126bb07309a25e975c9ad7206186d9533",
+        "bytes": 5249
+      },
+      {
+        "path": "src/nbnxm-julia/study_common.jl",
+        "sha256": "852126e282402b6d5f769a7a8549a1ddea5e44ddb55c4da6adacdf62f9fad5dc",
+        "bytes": 2017
+      }
+    ],
+    "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "CUDAjl_authored_force_kernel_native_managed_controller",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "8x8x1 threads; grid (1,1,3199) default and 1/2 z-block controls; source cluster indexing, eight CI unroll, per-warp masks and same atomic destinations.",
+    "layout": "Original managed allocations through borrowed CUDA views; Float4 xq, Float3 force/shift, 32-byte CJ4, 16-byte SCI and 128-byte exclusion PODs; full source tail preserved.",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32 device"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": "2048 bytes static shared: 64 Float4 + 192 Float32 + 64 Int32; 33 source-derived lexical block barriers, warp full-mask shuffles, Float32 global atomics; context completion per phase.",
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+    "native_to_model_mapping": null,
+    "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/nbnxm-julia/nbnxm-julia-cuda.jl/main.jl",
+        "sha256": "d39477ecd5ec5047a24f5a65c40e9255c747f0b2dc1bd0bab422b4631d19aa48",
+        "bytes": 2235
+      },
+      {
+        "path": "src/nbnxm-julia/nb_device.jl",
+        "sha256": "a74b8e18447045b145602a0c9616660126bb07309a25e975c9ad7206186d9533",
+        "bytes": 5249
+      },
+      {
+        "path": "src/nbnxm-julia/study_common.jl",
+        "sha256": "852126e282402b6d5f769a7a8549a1ddea5e44ddb55c4da6adacdf62f9fad5dc",
+        "bytes": 2017
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "nbnxm",
+    "schema_version": 2,
+    "scientific_intent": {
+      "benchmark": "nbnxm",
+      "primary_family": "particle_molecular",
+      "review_status": "source_reviewed",
+      "domain": "Molecular nonbonded Lennard-Jones and Ewald-correction cluster force operator",
+      "scientific_question": "Preserve a standalone GROMACS-derived clustered force calculation and validate active-pair, exclusion, self-triangle and shifted-force paths.",
+      "mathematical_operation": "Float32 cluster-list LJ plus screened Coulomb/Ewald correction with masked exclusions, warp reductions and particle/shift atomic accumulation.",
+      "classification_rationale": "Source GROMACS-derived molecular pair-force operator; its execution motif is blocked pair interaction rather than a complete trajectory or reciprocal PME solver.",
+      "community_use_case": "Molecular force-kernel developers assessing masked pair-list semantics and CUDA-specific collective mappings.",
+      "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+      "accuracy_requirements": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+      "source_evidence": [
+        {
+          "path": "src/nbnxm-julia/reference_history/main.cu",
+          "sha256": "6b237b31a8ae7533987c9157b330f3e6ae97d4d12976861973b24df3a24acc0e",
+          "bytes": 17017
+        },
+        {
+          "path": "src/nbnxm-julia/reference_history/COPYRIGHT",
+          "sha256": "a0c84abb633ef62a6724d2d60a76c56b669949af1639791b0a194aeb054cfaab",
+          "bytes": 1798
+        },
+        {
+          "path": "src/nbnxm-julia/native_source_identity.json",
+          "sha256": "7ccdf09549c2f1edb9d0d0c4da88343d21f3d069cb086b493c2e6042650f657e",
+          "bytes": 2158
+        },
+        {
+          "path": "src/nbnxm-julia/all4_full_capture_audit.json",
+          "sha256": "3b1d805fa9278f666d6e4eb2ded978422f9f8f747d39b20dfe5b2ca2780f8a13",
+          "bytes": 53198
+        },
+        {
+          "path": "src/nbnxm-julia/pme_scalar_witness.json",
+          "sha256": "c94365f2e3ff06349c15166e8e49ccde9bc422b02583c5dbed0c677f5144a8e5",
+          "bytes": 612
+        },
+        {
+          "path": "src/nbnxm-julia/energy_gradient_witness.json",
+          "sha256": "d44682c053e6d35b0871cbad2bcf69403a4e7c3fbc03c88bfb2b8248adde7b84",
+          "bytes": 1264
+        }
+      ]
+    },
+    "primary_motif": "Blocked masked molecular pair forces with shared tiles, warp reductions and atomics",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32 device",
+      "longdouble independent analytic CPU oracle",
+      "Float64 artifact encoding only"
+    ],
+    "synchronization": [
+      "33 source-derived block barriers per block",
+      "warp full-mask shuffles",
+      "Float32 global atomics",
+      "whole-context completion per phase"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same source 8x8 workgroup and cluster-list arithmetic; native managed allocation/controller through explicit phase CABI, actual target owns repeated launch loop. KA lexical local memory/barriers; JACC CUDA backend extensions."
+    },
+    "implementation_class": {
+      "cuda_jl": "CUDAjl_authored_force_kernel_native_managed_controller",
+      "ka": "KA_authored_force_kernel_CUDA_warp_atomic_rsqrt_extensions_native_managed_controller",
+      "jacc": "JACC_authored_force_kernel_CUDA_shared_warp_atomic_rsqrt_extensions_native_managed_controller"
+    },
+    "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+    "verification_contract": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+    "keyconfounds": [
+      "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+      "Default no-pair launch workload dominates aggregate; active controls repeat once, unsuitable robust physical throughput ranking.",
+      "Host dispatch plus device kernel/completion measured; no device/host causal attribution or hardware profile.",
+      "KA always_inline=true; CUDAjl default compiler controls; shared equations inherit prior CUDA idioms.",
+      "JACC 1.4 CUDAExt 3D launch omits LaunchSpec.stream; actual task legacy stream set explicitly with context completion fences."
+    ],
+    "native_reference_repaired": false,
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_model": "cuda_jl",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "CUDAjl_authored_force_kernel_native_managed_controller",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "shared_authored_math_body_definitions": 1,
+        "count_unit": "One authored entry per model, shared pair arithmetic helper not a second dispatch entry; 120030 actual launches including warmup+five trials. Framework wrappers excluded. Backend compiler invocation count not directly observed.",
+        "scientific_intent": {
+          "benchmark": "nbnxm",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Molecular nonbonded Lennard-Jones and Ewald-correction cluster force operator",
+          "scientific_question": "Preserve a standalone GROMACS-derived clustered force calculation and validate active-pair, exclusion, self-triangle and shifted-force paths.",
+          "mathematical_operation": "Float32 cluster-list LJ plus screened Coulomb/Ewald correction with masked exclusions, warp reductions and particle/shift atomic accumulation.",
+          "classification_rationale": "Source GROMACS-derived molecular pair-force operator; its execution motif is blocked pair interaction rather than a complete trajectory or reciprocal PME solver.",
+          "community_use_case": "Molecular force-kernel developers assessing masked pair-list semantics and CUDA-specific collective mappings.",
+          "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "accuracy_requirements": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+          "source_evidence": [
+            {
+              "path": "src/nbnxm-julia/reference_history/main.cu",
+              "sha256": "6b237b31a8ae7533987c9157b330f3e6ae97d4d12976861973b24df3a24acc0e",
+              "bytes": 17017
+            },
+            {
+              "path": "src/nbnxm-julia/reference_history/COPYRIGHT",
+              "sha256": "a0c84abb633ef62a6724d2d60a76c56b669949af1639791b0a194aeb054cfaab",
+              "bytes": 1798
+            },
+            {
+              "path": "src/nbnxm-julia/native_source_identity.json",
+              "sha256": "7ccdf09549c2f1edb9d0d0c4da88343d21f3d069cb086b493c2e6042650f657e",
+              "bytes": 2158
+            },
+            {
+              "path": "src/nbnxm-julia/all4_full_capture_audit.json",
+              "sha256": "3b1d805fa9278f666d6e4eb2ded978422f9f8f747d39b20dfe5b2ca2780f8a13",
+              "bytes": 53198
+            },
+            {
+              "path": "src/nbnxm-julia/pme_scalar_witness.json",
+              "sha256": "c94365f2e3ff06349c15166e8e49ccde9bc422b02583c5dbed0c677f5144a8e5",
+              "bytes": 612
+            },
+            {
+              "path": "src/nbnxm-julia/energy_gradient_witness.json",
+              "sha256": "d44682c053e6d35b0871cbad2bcf69403a4e7c3fbc03c88bfb2b8248adde7b84",
+              "bytes": 1264
+            }
+          ]
+        },
+        "work_item_mapping": "8x8x1 threads; grid (1,1,3199) default and 1/2 z-block controls; source cluster indexing, eight CI unroll, per-warp masks and same atomic destinations.",
+        "data_layout": "Original managed allocations through borrowed CUDA views; Float4 xq, Float3 force/shift, 32-byte CJ4, 16-byte SCI and 128-byte exclusion PODs; full source tail preserved.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 device"
+        ],
+        "synchronization": "2048 bytes static shared: 64 Float4 + 192 Float32 + 64 Int32; 33 source-derived lexical block barriers, warp full-mask shuffles, Float32 global atomics; context completion per phase.",
+        "resources": {
+          "static_shared_bytes": 2048,
+          "dynamic_shared_bytes": 0,
+          "private_I_force_components": 24,
+          "hardware_register_spill_occupancy_counters": null
+        },
+        "host_boundary": "Native C++ allocation/reset/prefetch/observers and whole-phase callback; target launches its own repeats. Non-null callback has no selected-native-kernel fallback.",
+        "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+        "verification_contract": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+        "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+        "keyconfounds": [
+          "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "Default no-pair launch workload dominates aggregate; active controls repeat once, unsuitable robust physical throughput ranking.",
+          "Host dispatch plus device kernel/completion measured; no device/host causal attribution or hardware profile.",
+          "KA always_inline=true; CUDAjl default compiler controls; shared equations inherit prior CUDA idioms.",
+          "JACC 1.4 CUDAExt 3D launch omits LaunchSpec.stream; actual task legacy stream set explicitly with context completion fences."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/nbnxm-julia/nbnxm-julia-cuda.jl/main.jl",
+            "sha256": "d39477ecd5ec5047a24f5a65c40e9255c747f0b2dc1bd0bab422b4631d19aa48",
+            "bytes": 2235
+          },
+          {
+            "path": "src/nbnxm-julia/nb_device.jl",
+            "sha256": "a74b8e18447045b145602a0c9616660126bb07309a25e975c9ad7206186d9533",
+            "bytes": 5249
+          },
+          {
+            "path": "src/nbnxm-julia/study_common.jl",
+            "sha256": "852126e282402b6d5f769a7a8549a1ddea5e44ddb55c4da6adacdf62f9fad5dc",
+            "bytes": 2017
+          }
+        ],
+        "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1"
+      },
+      "ka": {
+        "implementation_model": "ka",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "KA_authored_force_kernel_CUDA_warp_atomic_rsqrt_extensions_native_managed_controller",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "shared_authored_math_body_definitions": 1,
+        "count_unit": "One authored entry per model, shared pair arithmetic helper not a second dispatch entry; 120030 actual launches including warmup+five trials. Framework wrappers excluded. Backend compiler invocation count not directly observed.",
+        "scientific_intent": {
+          "benchmark": "nbnxm",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Molecular nonbonded Lennard-Jones and Ewald-correction cluster force operator",
+          "scientific_question": "Preserve a standalone GROMACS-derived clustered force calculation and validate active-pair, exclusion, self-triangle and shifted-force paths.",
+          "mathematical_operation": "Float32 cluster-list LJ plus screened Coulomb/Ewald correction with masked exclusions, warp reductions and particle/shift atomic accumulation.",
+          "classification_rationale": "Source GROMACS-derived molecular pair-force operator; its execution motif is blocked pair interaction rather than a complete trajectory or reciprocal PME solver.",
+          "community_use_case": "Molecular force-kernel developers assessing masked pair-list semantics and CUDA-specific collective mappings.",
+          "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "accuracy_requirements": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+          "source_evidence": [
+            {
+              "path": "src/nbnxm-julia/reference_history/main.cu",
+              "sha256": "6b237b31a8ae7533987c9157b330f3e6ae97d4d12976861973b24df3a24acc0e",
+              "bytes": 17017
+            },
+            {
+              "path": "src/nbnxm-julia/reference_history/COPYRIGHT",
+              "sha256": "a0c84abb633ef62a6724d2d60a76c56b669949af1639791b0a194aeb054cfaab",
+              "bytes": 1798
+            },
+            {
+              "path": "src/nbnxm-julia/native_source_identity.json",
+              "sha256": "7ccdf09549c2f1edb9d0d0c4da88343d21f3d069cb086b493c2e6042650f657e",
+              "bytes": 2158
+            },
+            {
+              "path": "src/nbnxm-julia/all4_full_capture_audit.json",
+              "sha256": "3b1d805fa9278f666d6e4eb2ded978422f9f8f747d39b20dfe5b2ca2780f8a13",
+              "bytes": 53198
+            },
+            {
+              "path": "src/nbnxm-julia/pme_scalar_witness.json",
+              "sha256": "c94365f2e3ff06349c15166e8e49ccde9bc422b02583c5dbed0c677f5144a8e5",
+              "bytes": 612
+            },
+            {
+              "path": "src/nbnxm-julia/energy_gradient_witness.json",
+              "sha256": "d44682c053e6d35b0871cbad2bcf69403a4e7c3fbc03c88bfb2b8248adde7b84",
+              "bytes": 1264
+            }
+          ]
+        },
+        "work_item_mapping": "8x8x1 threads; grid (1,1,3199) default and 1/2 z-block controls; source cluster indexing, eight CI unroll, per-warp masks and same atomic destinations.",
+        "data_layout": "Original managed allocations through borrowed CUDA views; Float4 xq, Float3 force/shift, 32-byte CJ4, 16-byte SCI and 128-byte exclusion PODs; full source tail preserved.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 device"
+        ],
+        "synchronization": "2048 bytes static shared: 64 Float4 + 192 Float32 + 64 Int32; 33 source-derived lexical block barriers, warp full-mask shuffles, Float32 global atomics; context completion per phase.",
+        "resources": {
+          "static_shared_bytes": 2048,
+          "dynamic_shared_bytes": 0,
+          "private_I_force_components": 24,
+          "hardware_register_spill_occupancy_counters": null
+        },
+        "host_boundary": "Native C++ allocation/reset/prefetch/observers and whole-phase callback; target launches its own repeats. Non-null callback has no selected-native-kernel fallback.",
+        "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+        "verification_contract": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+        "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+        "keyconfounds": [
+          "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "Default no-pair launch workload dominates aggregate; active controls repeat once, unsuitable robust physical throughput ranking.",
+          "Host dispatch plus device kernel/completion measured; no device/host causal attribution or hardware profile.",
+          "KA always_inline=true; CUDAjl default compiler controls; shared equations inherit prior CUDA idioms.",
+          "JACC 1.4 CUDAExt 3D launch omits LaunchSpec.stream; actual task legacy stream set explicitly with context completion fences."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/nbnxm-julia/nbnxm-julia-KA/main.jl",
+            "sha256": "642cc37a58ca76d1caac06e82a9f8865392514b7728ae7f0e5bdab2255792aa9",
+            "bytes": 9187
+          },
+          {
+            "path": "src/nbnxm-julia/nb_device.jl",
+            "sha256": "a74b8e18447045b145602a0c9616660126bb07309a25e975c9ad7206186d9533",
+            "bytes": 5249
+          },
+          {
+            "path": "src/nbnxm-julia/study_common.jl",
+            "sha256": "852126e282402b6d5f769a7a8549a1ddea5e44ddb55c4da6adacdf62f9fad5dc",
+            "bytes": 2017
+          }
+        ],
+        "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1"
+      },
+      "jacc": {
+        "implementation_model": "jacc",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "JACC_authored_force_kernel_CUDA_shared_warp_atomic_rsqrt_extensions_native_managed_controller",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "shared_authored_math_body_definitions": 1,
+        "count_unit": "One authored entry per model, shared pair arithmetic helper not a second dispatch entry; 120030 actual launches including warmup+five trials. Framework wrappers excluded. Backend compiler invocation count not directly observed.",
+        "scientific_intent": {
+          "benchmark": "nbnxm",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Molecular nonbonded Lennard-Jones and Ewald-correction cluster force operator",
+          "scientific_question": "Preserve a standalone GROMACS-derived clustered force calculation and validate active-pair, exclusion, self-triangle and shifted-force paths.",
+          "mathematical_operation": "Float32 cluster-list LJ plus screened Coulomb/Ewald correction with masked exclusions, warp reductions and particle/shift atomic accumulation.",
+          "classification_rationale": "Source GROMACS-derived molecular pair-force operator; its execution motif is blocked pair interaction rather than a complete trajectory or reciprocal PME solver.",
+          "community_use_case": "Molecular force-kernel developers assessing masked pair-list semantics and CUDA-specific collective mappings.",
+          "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "accuracy_requirements": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+          "source_evidence": [
+            {
+              "path": "src/nbnxm-julia/reference_history/main.cu",
+              "sha256": "6b237b31a8ae7533987c9157b330f3e6ae97d4d12976861973b24df3a24acc0e",
+              "bytes": 17017
+            },
+            {
+              "path": "src/nbnxm-julia/reference_history/COPYRIGHT",
+              "sha256": "a0c84abb633ef62a6724d2d60a76c56b669949af1639791b0a194aeb054cfaab",
+              "bytes": 1798
+            },
+            {
+              "path": "src/nbnxm-julia/native_source_identity.json",
+              "sha256": "7ccdf09549c2f1edb9d0d0c4da88343d21f3d069cb086b493c2e6042650f657e",
+              "bytes": 2158
+            },
+            {
+              "path": "src/nbnxm-julia/all4_full_capture_audit.json",
+              "sha256": "3b1d805fa9278f666d6e4eb2ded978422f9f8f747d39b20dfe5b2ca2780f8a13",
+              "bytes": 53198
+            },
+            {
+              "path": "src/nbnxm-julia/pme_scalar_witness.json",
+              "sha256": "c94365f2e3ff06349c15166e8e49ccde9bc422b02583c5dbed0c677f5144a8e5",
+              "bytes": 612
+            },
+            {
+              "path": "src/nbnxm-julia/energy_gradient_witness.json",
+              "sha256": "d44682c053e6d35b0871cbad2bcf69403a4e7c3fbc03c88bfb2b8248adde7b84",
+              "bytes": 1264
+            }
+          ]
+        },
+        "work_item_mapping": "8x8x1 threads; grid (1,1,3199) default and 1/2 z-block controls; source cluster indexing, eight CI unroll, per-warp masks and same atomic destinations.",
+        "data_layout": "Original managed allocations through borrowed CUDA views; Float4 xq, Float3 force/shift, 32-byte CJ4, 16-byte SCI and 128-byte exclusion PODs; full source tail preserved.",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 device"
+        ],
+        "synchronization": "2048 bytes static shared: 64 Float4 + 192 Float32 + 64 Int32; 33 source-derived lexical block barriers, warp full-mask shuffles, Float32 global atomics; context completion per phase.",
+        "resources": {
+          "static_shared_bytes": 2048,
+          "dynamic_shared_bytes": 0,
+          "private_I_force_components": 24,
+          "hardware_register_spill_occupancy_counters": null
+        },
+        "host_boundary": "Native C++ allocation/reset/prefetch/observers and whole-phase callback; target launches its own repeats. Non-null callback has no selected-native-kernel fallback.",
+        "timing_scope": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+        "verification_contract": "All nine actual device buffers byte-compared against six full native canonical readbacks every trial/model; full force and 45 shift vectors, 2462658 Float64-encoded Float32 values/trial, 1231362 exact-prefix values. Full independent analytic LJ/Ewald pair oracle at .002+1e-4*abs(ref); exact default/tails/untouched fields; normalized Newton<=5e-5; nonfinite rejected.",
+        "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+        "keyconfounds": [
+          "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+          "Default no-pair launch workload dominates aggregate; active controls repeat once, unsuitable robust physical throughput ranking.",
+          "Host dispatch plus device kernel/completion measured; no device/host causal attribution or hardware profile.",
+          "KA always_inline=true; CUDAjl default compiler controls; shared equations inherit prior CUDA idioms.",
+          "JACC 1.4 CUDAExt 3D launch omits LaunchSpec.stream; actual task legacy stream set explicitly with context completion fences."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/nbnxm-julia/nbnxm-julia-JACC/main.jl",
+            "sha256": "16e915ef88adcf7828256cf4196fc93b92c991c2792ef33983bec4acdf8e9c6e",
+            "bytes": 2684
+          },
+          {
+            "path": "src/nbnxm-julia/nb_device.jl",
+            "sha256": "a74b8e18447045b145602a0c9616660126bb07309a25e975c9ad7206186d9533",
+            "bytes": 5249
+          },
+          {
+            "path": "src/nbnxm-julia/study_common.jl",
+            "sha256": "852126e282402b6d5f769a7a8549a1ddea5e44ddb55c4da6adacdf62f9fad5dc",
+            "bytes": 2017
+          }
+        ],
+        "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1"
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/nbnxm-julia/nbnxm-julia-cuda.jl/main.jl",
+    "sha256": "d39477ecd5ec5047a24f5a65c40e9255c747f0b2dc1bd0bab422b4631d19aa48",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        46
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [
+        14,
+        21,
+        29,
+        37
+      ],
+      "atomic": [
+        34,
+        40
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1",
+      "run_id": "20261020T041915930643Z_nbnxm",
+      "result": ".porting-state/portable_julia/runs/20261020T041915930643Z_nbnxm/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "2593179b0ba44b485762874c61c7333b82fb31df9b9891738ec4af98a337e0e1",
+      "source_hash": "035f9a955ad86ae1a6073324786940689fed1d75ecbcddaf7b1dd620d0a07e63",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261020T041915930643Z_nbnxm/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        4.069845427999999,
+        4.1917701869999995,
+        4.761267287,
+        4.7086563230000005,
+        3.9366068329999995
+      ],
+      "mean_last_four_seconds": 4.3995751575,
+      "contract": {
+        "scope": "Completeoriginal3199SC/204808atoms/10000repeatbothshiftflagphases withall9fullsourceinputallocations; pluscentral/shifted/self/exclusion/cutoffphysicalcontrols. No completeGROMACS/reciprocalPME/integrationclaim.",
+        "actual_inputs": "Allactualdevicebuffersreadbackandfullbytecomparisonagainst6uniqueactualnativecanonicalfiles, includingunusedtails. Canonicalfirst48byteheaderbindsactualparameters(noaddresses). Exactflatprefixincludescompleteinitialforce/fShiftforeachcase, notduplicatelargecoordinates/masks.",
+        "actual_input_readback_assets": [
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_centralBipartite.bin",
+            "sha256": "028a75c32feaf82b7804a960a268b4f8f5fd62639233d128c2abcdb9a6bace16",
+            "bytes": 14880
+          },
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_centralSelf.bin",
+            "sha256": "a1197d9da144aa9c1a58795c10481cc018cd6f3986d2936c6aa2b927c670ba01",
+            "bytes": 11760
+          },
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_originalNoShift.bin",
+            "sha256": "1f60b09e82e1a0a522e5de87e88f1b99776b10ea49ba6bd954885036df544aea",
+            "bytes": 10918592
+          },
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_originalShift.bin",
+            "sha256": "8fa455b615b765c2a55389ae9a975cd4a6f2b4caaffbf094d442b6db32e19dc6",
+            "bytes": 10918592
+          },
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_shiftedBipartiteNoShift.bin",
+            "sha256": "c9dbd16ed50af742507c2b3c1d0ad99e158438c1c306581aa3812d8da18435eb",
+            "bytes": 14880
+          },
+          {
+            "path": ".porting-state/porting_logs/nbnxm-julia-shared/canonical_inputs_v1/actual_input_shiftedBipartiteShift.bin",
+            "sha256": "4678b0f66d8cb835fde19a583a4e2ce56d58e4cc86ac7ed7dbbe886bd71aa379",
+            "bytes": 14880
+          }
+        ],
+        "outputs": "Everyparticleforcecomponent/all45shiftvectors foreach6cases. Full2462658Float64artifact encodesactualFloat32values; not checksums. SourcePODFloat3=12,Float4=16,CJ4=32,SCI=16,Excl=128bytes verified.",
+        "oracle": "IndependentlongdoublepairlistanalyticLJ/Ewaldforce, everydecodedactivepairoccurrence andNewton/opposingshift; explicitfullzeromaskdefaultbitidentity; readonlyallinputs andexactuntouchedforce/shiftregions. PaircountsCPUdecoded, notGPUcounters. ScalarPMEpoly/analytic andpotentialnegativegradientCPUcontrols separate.",
+        "budgets": "Absolute.002+relative1e-4sameforfullartifacts/independentforceoracle; exactinputprefix/canonicalbytes; exactno-active-pairdefaultanduntouchedforce/shiftregions; normalizedNewton<=5e-5; nonfinite rejected. Engineeringbudgetnotuniversalphysicalaccuracybound.",
+        "timing": "Sum6resident-data sourcekernellaunchloopspluswholecontextcompletion; separatelyrecordall6casetimes. Original2cases10000repeats, activecontrols1. Allocate/init/prefetch/readback/oracle/serializationoutsideROI. Whole6casewarmupthen5checkedtrialsmean2\u20135. NativeUMGPUresidentinterventioncommonall4, notoriginalunobservedfirst-touchmigrationlatency.",
+        "default_degenerate_workload": "Alloriginalimasks0soactivepairarithmeticabsent; stillgenuinekernelsharedtile/barriers/globalzeroatomics andshiftcontention. Do notrecommendphysicalforcethroughputfromdefaultcase.",
+        "memory_and_guards": "Originalmanagedmemoryclass/fulldefaultsizesretained throughphaseCABI. Newnamedcontrolsboundedarrays, noextrasyntheticpaddingguards. Fullreadonly/tailinvariantsnotunrestrictedmemory-safetyproof.",
+        "support_boundary": "TestedsourceRcut1/beta3.12341F32/epsFac138.935F32,numTypes32,mixed2types. Nonzero-controlmindistance>=.625, noextremeclamp/singularaccuracyclaim. Sourcecutoffstrict< andcentralselfhalftriangle maintained.",
+        "precision": "Float32sourceGPUvalues; UInt32masks/Int32indices. LongdoubleanalyticCPU64bitmantissa, actualFloat32storedF64encodingnotFloat64compute."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "begin_event_id": "b71ccd5c686feea825af16ac",
+      "end_event_id": "c7d751a8601bc30271f6c7e8",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/nbnxm/cuda_jl_translation.jsonl",
+      "observed_usage": {
+        "input_tokens": 2308079,
+        "cached_input_tokens": 2286592,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 16634,
+        "reasoning_output_tokens": 10769,
+        "total_tokens": 2324713
+      },
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-20T03:11:18.213Z",
+        "context_event_sha256": "f5f484d6bd68adaa813d62acfb2221bfb1562a5d4484835bdf86fffc91a5da1a",
+        "source_snapshot_bytes": 117805326,
+        "lookup_bytes_reviewed": 4194304,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "counter_timestamp": "2026-10-20T04:12:46.120Z",
+      "marker_lag_seconds": 77.463149,
+      "usage_scope": "Actual inclusive ordered target workflow and verification; cached input subset of input, reasoning subset of output; context reuse and marker lag retained, not billed-exclusive or cold-start cost.",
+      "input_tokens": 2308079,
+      "cached_input_tokens": 2286592,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 16634,
+      "reasoning_output_tokens": 10769,
+      "total_tokens": 2324713
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "c7d751a8601bc30271f6c7e8",
+        "begin_event_id": "b71ccd5c686feea825af16ac",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-20T04:14:03.583149+00:00",
+        "usage_event_timestamp": "2026-10-20T04:12:46.120Z",
+        "elapsed_usage_event_start": "2026-10-20T04:07:47.999Z",
+        "delta_usage": {
+          "input_tokens": 2308079,
+          "cached_input_tokens": 2286592,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 16634,
+          "reasoning_output_tokens": 10769,
+          "total_tokens": 2324713
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 77.463149,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "68fff07d8014fa6384c333fffa76de829bc6d59b0c5924a385c95b7cbd7db7dd",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-20T03:11:18.213Z",
+          "context_event_sha256": "f5f484d6bd68adaa813d62acfb2221bfb1562a5d4484835bdf86fffc91a5da1a",
+          "source_snapshot_bytes": 117805326,
+          "lookup_bytes_reviewed": 4194304,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 5.262713,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/nbnxm/cuda_jl_translation.jsonl",
+        "evidence_sha256": "7cfc6daa05b18f983ede792b5bd6ece72ab7ff89161baedf814995e9b2a619c8",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/nbnxm-julia-cuda_jl/manifest.json",
+    "selected_sha256": "8026e21592a06fd98e39d227a7f195787c82be104f8580458b3e19d642fc518d",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/nbnxm-julia-cuda_jl/manifest.json",
+        "sha256": "8026e21592a06fd98e39d227a7f195787c82be104f8580458b3e19d642fc518d"
+      },
+      {
+        "path": ".porting-state/porting_logs/nbnxm-julia/manifest.json",
+        "sha256": "78c602ca451b7d875a6891030ec62bfc9df5f111ebb6556e5f64e8f017eb9236"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "a2dfdd6c1ac271e8ede1cbbff5fa2065de525620",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "nbnxm",
+    "implementation_model": "cuda_jl",
+    "status": "verified",
+    "configuration_id": "source3199SC_204808atoms_10000bothFlags_plus_activePairControls_residentManaged_v1",
+    "configuration_role": "primary",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261020T041915930643Z_nbnxm",
+    "evidence": "src/nbnxm-julia/all4_full_capture_audit.json",
+    "native_reference_repaired": false,
+    "support_boundary": "Original 3199 superclusters/204808 atoms/10000 repeats for both shift flags, plus four nonzero/self/exclusion/cutoff controls. Original masks all zero: no physical pair arithmetic in default. Source GPU body unchanged; common explicitly resident managed-data study, not full GROMACS/PME/integrated MD or original first-touch latency.",
+    "implementation_qualification": "CUDAjl_authored_force_kernel_native_managed_controller",
+    "source_commit": "a2dfdd6c1ac271e8ede1cbbff5fa2065de525620",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "a2dfdd6c1ac271e8ede1cbbff5fa2065de525620",
+      "source": "src/nbnxm-julia/nbnxm-julia-cuda.jl/main.jl",
+      "source_sha256": "d39477ecd5ec5047a24f5a65c40e9255c747f0b2dc1bd0bab422b4631d19aa48",
+      "phase": "shared",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/nbnxm-julia/reference_history/accounting_original_delivery_20261020/cuda_jl_status_before_commit_join_4571fb5e119b.json",
+      "recorded_at": "2026-10-20T15:23:45.316860+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "CUDAjl_authored_force_kernel_native_managed_controller",
+    "annotation_path": ".porting-state/portable_julia/traits/nbnxm.json",
+    "annotation_sha256": "954956a7a27d9f8e44846678d711a0c52e96fcb632436e4137ef092b439de76c",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

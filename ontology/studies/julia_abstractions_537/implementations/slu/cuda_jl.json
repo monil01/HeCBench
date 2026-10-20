@@ -1,0 +1,937 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "slu",
+  "implementation_model": "cuda_jl",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/slu.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_model": "cuda_jl",
+    "review_status": "source_reviewed",
+    "implementation_status": "verified",
+    "implementation_class": "CUDAjl_authored_sparse_LU_native_CPU_NICSLU_controller_hybrid",
+    "authored_device_kernel_count": 6,
+    "authored_device_kernel_definitions": 6,
+    "executed_distinct_authored_entries": 6,
+    "shared_authored_math_body_definitions": 2,
+    "work_item_mapping": "Original level schedule, 64/128/256-thread full source groups, zero-basedUInt32 sparse structure/Int32 controls, perwarp updates/Float32 atomics; original10353*nFloat32scratch retained. CUDA @cuda with exact source dynamic8/16/128B and static4B update storage.",
+    "data_layout": "Combined CSC Float32LU, CSRtranspose/diag andlevelindices; originalarrays borrowed through checked120-byte CABI. Allinitializedexternaldevicearrays exactD2H/F64encoded; fullscratchbefore/afterlosslesszlib; fullLU/XrawF64encoded actualFloat32.",
+    "storage_precision": [
+      "Float32 numerical GPU/factor/solution storage",
+      "UInt32 sparse indices",
+      "Int32 level/control",
+      "Float64 artifact encoding only",
+      "Original host NICSLU Float64 data/scalings"
+    ],
+    "compute_precision": [
+      "GPUFloat32 division/multiply/atomicadd",
+      "OriginalCPUFloat32triangularsolve and Float64scalingproducts roundedtoFloat32",
+      "IndependentCPU longdoubleproducts/decimalAx, Float64normreduction"
+    ],
+    "synchronization": [
+      "CUDAlegacy/defaultstreamalllaunches",
+      "Explicitwarp/blockpublication/use/reuseordering",
+      "OriginalfullcontextcudaDeviceSynchronize commonROIcompletion"
+    ],
+    "resources": "Original10353*nFloat32workspace:4113868080BASIC; fixed64/128/256threads, selectedsource8/16/128Bshared, onecolupdate4Bstatic. Allocations/readbacks/CPUoraclesoutsideROI. No profiler resource/occupancy/roofline inference.",
+    "host_device_boundary": "NativeCPU NICSLU analyze/MC64/permutation/scaling, symbolic fill/leveling, CPU solve and source CLI x.dat write retained in CABI. AllsixselectedGPUentries dispatched by ownframeworkcallback; nativeGPUfallback false. Sharedlibrary contains compiled unusednativefallback definitions, neverselected withnonnullcallback.",
+    "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "review_status": "source_reviewed",
+      "domain": "Circuit-simulation sparse linear systems",
+      "subdomain": "Sandia/Xyce stripped ASIC matrix; numerical sparse LU benchmark",
+      "source_scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+      "operator": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+      "boundary_conditions": "No PDEboundarycondition; nonsingular square sparsematrix in fixed sourceNICSLUpermutation/scalings. Staticpositiveperturb flag controls remaininactiveclamp only.",
+      "physical_claim_limit": "Matrix is source-labeled circuit-simulation data, not a full Xyce circuit/transient or validated physical model. Backwarderror doesnotboundforwarderror withoutconditioning.",
+      "scientific_invariants": [
+        "FullL*U reconstructs actualpreprocessedF32matrix withincomponentwise/normwise1e-4 budgets",
+        "OriginalMatrixMarket A*x=ones componentwisebackwarderror1e-4",
+        "AllLU/Xfinite; fullscratch actualbefore/afterzero; fullindexbuffersunchanged"
+      ],
+      "source_evidence": [
+        {
+          "path": "src/slu-cuda/src/numeric.cu",
+          "sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570"
+        },
+        {
+          "path": "/tmp/hecbench-stencil-ports-slu-fixtures-v2/ASIC_100k.mtx",
+          "sha256": "19bf67d60d6b794934985ea1d5aa143f6a813592294d362c548f5cb6b4dbb725",
+          "header": "Sandia/Xyce circuitsimulationmatrix(stripped), R.Hoekstra2006, UFSparseMatrixCollectionTimDavis"
+        }
+      ],
+      "benchmark": "slu",
+      "scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+      "mathematical_operation": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+      "classification_rationale": "SparseLU/linearsystemisprimaryscientificoperator; sourceoriginalASICheaderestablishescircuitsimulationprovenance. Sparsecolumnupdates/atomics/levelparallelism aremechanisms, notapplicationtaxonomy.",
+      "community_use_case": "Assess numerical backwarderror and mapping/interop cost for faithful sparsefactorization pipelines used as a component in circuit simulation.",
+      "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+      "accuracy_requirements": "CompleteactualinputbitsandfullLU/X, exactprefix anddual2e-5abs/rel budgets, independentfullL*Ucomponentwise/normwise andoriginal-systemcomponentwisebackwarderror1e-4.",
+      "scientific_validity": "Conditionalconcurrency-repairedsourceoperator withindependentfullbackwarderrorgate",
+      "boundary_policy": "OriginalsquareCSR/CSC andNICSLUfixedpermutation/scaling, positiveperturb rule onlyfornonemptyL; testedpflagcontrolsnotclamped."
+    },
+    "native_reference_repaired": true,
+    "source_evidence": [
+      {
+        "path": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+        "bytes": 5547,
+        "sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06"
+      },
+      {
+        "path": "src/slu-julia/study_common.jl",
+        "bytes": 1853,
+        "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+      },
+      {
+        "path": "src/slu-julia/reference_provenance.json",
+        "bytes": 1805,
+        "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+      },
+      {
+        "path": "src/slu-julia/final_dependency_review.json",
+        "bytes": 73783,
+        "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+      }
+    ],
+    "scope_limit": "Allsourceentrydefinitions execute; optionalperturbcontrols neveractivate pivot clamp. No active-clamp/dynamicpivot/forwardconditioning/circuitphysical certificate; originalallocations have no guardcanaries. Perlaunch scalarvalues derivefromboundcommoncontroller, no extra kernelargumentecho.",
+    "attempt_unit": "One complete Julia implementation candidate; six entrydefinitions/two helperbodies; one actual Julia device-JIT process runs fullwarmup+fivecheckedprogram evaluations. Internal compiler invocations/specializations unknown, not six attempts.",
+    "selected_dispatches": {
+      "selected_dispatches_including_fullwarmup": 48036,
+      "per_entry": [
+        558,
+        12,
+        15750,
+        96,
+        15774,
+        15846
+      ],
+      "raw_log": {
+        "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T061533257347Z_slu/cuda_jl_run1.log",
+        "bytes": 41830,
+        "sha256": "06e9014e380aa471e126058c7dc338aef8f374af37a4583c0bf6876f72a416d0"
+      },
+      "unit": "Runtime callback-selected authored framework dispatches, not backend compiler invocations or profiler counters."
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "CUDAjl_authored_sparse_LU_native_CPU_NICSLU_controller_hybrid",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Original level schedule, 64/128/256-thread full source groups, zero-basedUInt32 sparse structure/Int32 controls, perwarp updates/Float32 atomics; original10353*nFloat32scratch retained. CUDA @cuda with exact source dynamic8/16/128B and static4B update storage.",
+    "layout": "Combined CSC Float32LU, CSRtranspose/diag andlevelindices; originalarrays borrowed through checked120-byte CABI. Allinitializedexternaldevicearrays exactD2H/F64encoded; fullscratchbefore/afterlosslesszlib; fullLU/XrawF64encoded actualFloat32.",
+    "storage_precision": [
+      "Float32 numerical GPU/factor/solution storage",
+      "UInt32 sparse indices",
+      "Int32 level/control",
+      "Float64 artifact encoding only",
+      "Original host NICSLU Float64 data/scalings"
+    ],
+    "compute_precision": [
+      "GPUFloat32 division/multiply/atomicadd",
+      "OriginalCPUFloat32triangularsolve and Float64scalingproducts roundedtoFloat32",
+      "IndependentCPU longdoubleproducts/decimalAx, Float64normreduction"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "CUDAlegacy/defaultstreamalllaunches",
+      "Explicitwarp/blockpublication/use/reuseordering",
+      "OriginalfullcontextcudaDeviceSynchronize commonROIcompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": "NativeCPU NICSLU analyze/MC64/permutation/scaling, symbolic fill/leveling, CPU solve and source CLI x.dat write retained in CABI. AllsixselectedGPUentries dispatched by ownframeworkcallback; nativeGPUfallback false. Sharedlibrary contains compiled unusednativefallback definitions, neverselected withnonnullcallback.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+        "bytes": 5547,
+        "sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06"
+      },
+      {
+        "path": "src/slu-julia/study_common.jl",
+        "bytes": 1853,
+        "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+      },
+      {
+        "path": "src/slu-julia/reference_provenance.json",
+        "bytes": 1805,
+        "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+      },
+      {
+        "path": "src/slu-julia/final_dependency_review.json",
+        "bytes": 73783,
+        "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "slu",
+    "schema_version": 2,
+    "primary_motif": "level_scheduled_sparse_LU_warp_broadcast_atomic_column_updates",
+    "storage_precision": [
+      "Float32",
+      "UInt32",
+      "Int32"
+    ],
+    "compute_precision": [
+      "GPUFloat32",
+      "HostFloat32andFloat64",
+      "CPUindependentlongdouble"
+    ],
+    "synchronization": [
+      "Warp andCTA shared publication/use/reuse",
+      "CommonCUDAlegacy/defaultstream",
+      "Wholecontextcompletion"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Originalmatrix/levelwork/fullscratch and CPUcontroller retained; ownedorderingreference; actualframeworkGPUentries withCUDAbackendextensions; KA dynamic-to-staticsharedsamebytes."
+    },
+    "implementation_class": {
+      "cuda_jl": "CUDAjl_authored_sparse_LU_native_CPU_NICSLU_controller_hybrid",
+      "ka": "KA_authored_sparse_LU_CUDA_warp_atomic_shared_extensions_native_CPU_hybrid",
+      "jacc": "JACC_authored_sparse_LU_CUDA_warp_atomic_shared_extensions_native_CPU_hybrid"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_model": "cuda_jl",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "CUDAjl_authored_sparse_LU_native_CPU_NICSLU_controller_hybrid",
+        "authored_device_kernel_count": 6,
+        "authored_device_kernel_definitions": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 2,
+        "work_item_mapping": "Original level schedule, 64/128/256-thread full source groups, zero-basedUInt32 sparse structure/Int32 controls, perwarp updates/Float32 atomics; original10353*nFloat32scratch retained. CUDA @cuda with exact source dynamic8/16/128B and static4B update storage.",
+        "data_layout": "Combined CSC Float32LU, CSRtranspose/diag andlevelindices; originalarrays borrowed through checked120-byte CABI. Allinitializedexternaldevicearrays exactD2H/F64encoded; fullscratchbefore/afterlosslesszlib; fullLU/XrawF64encoded actualFloat32.",
+        "storage_precision": [
+          "Float32 numerical GPU/factor/solution storage",
+          "UInt32 sparse indices",
+          "Int32 level/control",
+          "Float64 artifact encoding only",
+          "Original host NICSLU Float64 data/scalings"
+        ],
+        "compute_precision": [
+          "GPUFloat32 division/multiply/atomicadd",
+          "OriginalCPUFloat32triangularsolve and Float64scalingproducts roundedtoFloat32",
+          "IndependentCPU longdoubleproducts/decimalAx, Float64normreduction"
+        ],
+        "synchronization": [
+          "CUDAlegacy/defaultstreamalllaunches",
+          "Explicitwarp/blockpublication/use/reuseordering",
+          "OriginalfullcontextcudaDeviceSynchronize commonROIcompletion"
+        ],
+        "resources": "Original10353*nFloat32workspace:4113868080BASIC; fixed64/128/256threads, selectedsource8/16/128Bshared, onecolupdate4Bstatic. Allocations/readbacks/CPUoraclesoutsideROI. No profiler resource/occupancy/roofline inference.",
+        "host_device_boundary": "NativeCPU NICSLU analyze/MC64/permutation/scaling, symbolic fill/leveling, CPU solve and source CLI x.dat write retained in CABI. AllsixselectedGPUentries dispatched by ownframeworkcallback; nativeGPUfallback false. Sharedlibrary contains compiled unusednativefallback definitions, neverselected withnonnullcallback.",
+        "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "review_status": "source_reviewed",
+          "domain": "Circuit-simulation sparse linear systems",
+          "subdomain": "Sandia/Xyce stripped ASIC matrix; numerical sparse LU benchmark",
+          "source_scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "operator": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "boundary_conditions": "No PDEboundarycondition; nonsingular square sparsematrix in fixed sourceNICSLUpermutation/scalings. Staticpositiveperturb flag controls remaininactiveclamp only.",
+          "physical_claim_limit": "Matrix is source-labeled circuit-simulation data, not a full Xyce circuit/transient or validated physical model. Backwarderror doesnotboundforwarderror withoutconditioning.",
+          "scientific_invariants": [
+            "FullL*U reconstructs actualpreprocessedF32matrix withincomponentwise/normwise1e-4 budgets",
+            "OriginalMatrixMarket A*x=ones componentwisebackwarderror1e-4",
+            "AllLU/Xfinite; fullscratch actualbefore/afterzero; fullindexbuffersunchanged"
+          ],
+          "source_evidence": [
+            {
+              "path": "src/slu-cuda/src/numeric.cu",
+              "sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570"
+            },
+            {
+              "path": "/tmp/hecbench-stencil-ports-slu-fixtures-v2/ASIC_100k.mtx",
+              "sha256": "19bf67d60d6b794934985ea1d5aa143f6a813592294d362c548f5cb6b4dbb725",
+              "header": "Sandia/Xyce circuitsimulationmatrix(stripped), R.Hoekstra2006, UFSparseMatrixCollectionTimDavis"
+            }
+          ],
+          "benchmark": "slu",
+          "scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "mathematical_operation": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "classification_rationale": "SparseLU/linearsystemisprimaryscientificoperator; sourceoriginalASICheaderestablishescircuitsimulationprovenance. Sparsecolumnupdates/atomics/levelparallelism aremechanisms, notapplicationtaxonomy.",
+          "community_use_case": "Assess numerical backwarderror and mapping/interop cost for faithful sparsefactorization pipelines used as a component in circuit simulation.",
+          "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+          "accuracy_requirements": "CompleteactualinputbitsandfullLU/X, exactprefix anddual2e-5abs/rel budgets, independentfullL*Ucomponentwise/normwise andoriginal-systemcomponentwisebackwarderror1e-4.",
+          "scientific_validity": "Conditionalconcurrency-repairedsourceoperator withindependentfullbackwarderrorgate",
+          "boundary_policy": "OriginalsquareCSR/CSC andNICSLUfixedpermutation/scaling, positiveperturb rule onlyfornonemptyL; testedpflagcontrolsnotclamped."
+        },
+        "native_reference_repaired": true,
+        "source_evidence": [
+          {
+            "path": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+            "bytes": 5547,
+            "sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06"
+          },
+          {
+            "path": "src/slu-julia/study_common.jl",
+            "bytes": 1853,
+            "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+          },
+          {
+            "path": "src/slu-julia/reference_provenance.json",
+            "bytes": 1805,
+            "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+          },
+          {
+            "path": "src/slu-julia/final_dependency_review.json",
+            "bytes": 73783,
+            "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+          }
+        ],
+        "scope_limit": "Allsourceentrydefinitions execute; optionalperturbcontrols neveractivate pivot clamp. No active-clamp/dynamicpivot/forwardconditioning/circuitphysical certificate; originalallocations have no guardcanaries. Perlaunch scalarvalues derivefromboundcommoncontroller, no extra kernelargumentecho.",
+        "attempt_unit": "One complete Julia implementation candidate; six entrydefinitions/two helperbodies; one actual Julia device-JIT process runs fullwarmup+fivecheckedprogram evaluations. Internal compiler invocations/specializations unknown, not six attempts.",
+        "selected_dispatches": {
+          "selected_dispatches_including_fullwarmup": 48036,
+          "per_entry": [
+            558,
+            12,
+            15750,
+            96,
+            15774,
+            15846
+          ],
+          "raw_log": {
+            "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T061533257347Z_slu/cuda_jl_run1.log",
+            "bytes": 41830,
+            "sha256": "06e9014e380aa471e126058c7dc338aef8f374af37a4583c0bf6876f72a416d0"
+          },
+          "unit": "Runtime callback-selected authored framework dispatches, not backend compiler invocations or profiler counters."
+        }
+      },
+      "ka": {
+        "implementation_model": "ka",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "KA_authored_sparse_LU_CUDA_warp_atomic_shared_extensions_native_CPU_hybrid",
+        "authored_device_kernel_count": 6,
+        "authored_device_kernel_definitions": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 2,
+        "work_item_mapping": "Original level schedule, 64/128/256-thread full source groups, zero-basedUInt32 sparse structure/Int32 controls, perwarp updates/Float32 atomics; original10353*nFloat32scratch retained. KA @kernel unsafe_indices/fullgroups, Val-specialized static8/16/128B replacing dynamic shared launch storage; CUDA thread/warp/atomic/shared backend extensions.",
+        "data_layout": "Combined CSC Float32LU, CSRtranspose/diag andlevelindices; originalarrays borrowed through checked120-byte CABI. Allinitializedexternaldevicearrays exactD2H/F64encoded; fullscratchbefore/afterlosslesszlib; fullLU/XrawF64encoded actualFloat32.",
+        "storage_precision": [
+          "Float32 numerical GPU/factor/solution storage",
+          "UInt32 sparse indices",
+          "Int32 level/control",
+          "Float64 artifact encoding only",
+          "Original host NICSLU Float64 data/scalings"
+        ],
+        "compute_precision": [
+          "GPUFloat32 division/multiply/atomicadd",
+          "OriginalCPUFloat32triangularsolve and Float64scalingproducts roundedtoFloat32",
+          "IndependentCPU longdoubleproducts/decimalAx, Float64normreduction"
+        ],
+        "synchronization": [
+          "CUDAlegacy/defaultstreamalllaunches",
+          "Explicitwarp/blockpublication/use/reuseordering",
+          "OriginalfullcontextcudaDeviceSynchronize commonROIcompletion"
+        ],
+        "resources": "Original10353*nFloat32workspace:4113868080BASIC; fixed64/128/256threads, selectedsource8/16/128Bshared, onecolupdate4Bstatic. Allocations/readbacks/CPUoraclesoutsideROI. No profiler resource/occupancy/roofline inference.",
+        "host_device_boundary": "NativeCPU NICSLU analyze/MC64/permutation/scaling, symbolic fill/leveling, CPU solve and source CLI x.dat write retained in CABI. AllsixselectedGPUentries dispatched by ownframeworkcallback; nativeGPUfallback false. Sharedlibrary contains compiled unusednativefallback definitions, neverselected withnonnullcallback.",
+        "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "review_status": "source_reviewed",
+          "domain": "Circuit-simulation sparse linear systems",
+          "subdomain": "Sandia/Xyce stripped ASIC matrix; numerical sparse LU benchmark",
+          "source_scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "operator": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "boundary_conditions": "No PDEboundarycondition; nonsingular square sparsematrix in fixed sourceNICSLUpermutation/scalings. Staticpositiveperturb flag controls remaininactiveclamp only.",
+          "physical_claim_limit": "Matrix is source-labeled circuit-simulation data, not a full Xyce circuit/transient or validated physical model. Backwarderror doesnotboundforwarderror withoutconditioning.",
+          "scientific_invariants": [
+            "FullL*U reconstructs actualpreprocessedF32matrix withincomponentwise/normwise1e-4 budgets",
+            "OriginalMatrixMarket A*x=ones componentwisebackwarderror1e-4",
+            "AllLU/Xfinite; fullscratch actualbefore/afterzero; fullindexbuffersunchanged"
+          ],
+          "source_evidence": [
+            {
+              "path": "src/slu-cuda/src/numeric.cu",
+              "sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570"
+            },
+            {
+              "path": "/tmp/hecbench-stencil-ports-slu-fixtures-v2/ASIC_100k.mtx",
+              "sha256": "19bf67d60d6b794934985ea1d5aa143f6a813592294d362c548f5cb6b4dbb725",
+              "header": "Sandia/Xyce circuitsimulationmatrix(stripped), R.Hoekstra2006, UFSparseMatrixCollectionTimDavis"
+            }
+          ],
+          "benchmark": "slu",
+          "scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "mathematical_operation": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "classification_rationale": "SparseLU/linearsystemisprimaryscientificoperator; sourceoriginalASICheaderestablishescircuitsimulationprovenance. Sparsecolumnupdates/atomics/levelparallelism aremechanisms, notapplicationtaxonomy.",
+          "community_use_case": "Assess numerical backwarderror and mapping/interop cost for faithful sparsefactorization pipelines used as a component in circuit simulation.",
+          "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+          "accuracy_requirements": "CompleteactualinputbitsandfullLU/X, exactprefix anddual2e-5abs/rel budgets, independentfullL*Ucomponentwise/normwise andoriginal-systemcomponentwisebackwarderror1e-4.",
+          "scientific_validity": "Conditionalconcurrency-repairedsourceoperator withindependentfullbackwarderrorgate",
+          "boundary_policy": "OriginalsquareCSR/CSC andNICSLUfixedpermutation/scaling, positiveperturb rule onlyfornonemptyL; testedpflagcontrolsnotclamped."
+        },
+        "native_reference_repaired": true,
+        "source_evidence": [
+          {
+            "path": "src/slu-julia/slu-julia-KA/main.jl",
+            "bytes": 5986,
+            "sha256": "49801d6edf5d1811f9354d772365705e3ce2debd0a1baffc899328a0abdf1045"
+          },
+          {
+            "path": "src/slu-julia/study_common.jl",
+            "bytes": 1853,
+            "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+          },
+          {
+            "path": "src/slu-julia/reference_provenance.json",
+            "bytes": 1805,
+            "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+          },
+          {
+            "path": "src/slu-julia/final_dependency_review.json",
+            "bytes": 73783,
+            "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+          }
+        ],
+        "scope_limit": "Allsourceentrydefinitions execute; optionalperturbcontrols neveractivate pivot clamp. No active-clamp/dynamicpivot/forwardconditioning/circuitphysical certificate; originalallocations have no guardcanaries. Perlaunch scalarvalues derivefromboundcommoncontroller, no extra kernelargumentecho.",
+        "attempt_unit": "One complete Julia implementation candidate; six entrydefinitions/two helperbodies; one actual Julia device-JIT process runs fullwarmup+fivecheckedprogram evaluations. Internal compiler invocations/specializations unknown, not six attempts.",
+        "selected_dispatches": {
+          "selected_dispatches_including_fullwarmup": 48036,
+          "per_entry": [
+            558,
+            12,
+            15750,
+            96,
+            15774,
+            15846
+          ],
+          "raw_log": {
+            "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T062251341176Z_slu/ka_run1.log",
+            "bytes": 41625,
+            "sha256": "023abcd2f1e52a0263782bb2f605610404ed49392fd9862469826ecc8d53f798"
+          },
+          "unit": "Runtime callback-selected authored framework dispatches, not backend compiler invocations or profiler counters."
+        }
+      },
+      "jacc": {
+        "implementation_model": "jacc",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "JACC_authored_sparse_LU_CUDA_warp_atomic_shared_extensions_native_CPU_hybrid",
+        "authored_device_kernel_count": 6,
+        "authored_device_kernel_definitions": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 2,
+        "work_item_mapping": "Original level schedule, 64/128/256-thread full source groups, zero-basedUInt32 sparse structure/Int32 controls, perwarp updates/Float32 atomics; original10353*nFloat32scratch retained. JACC parallel_for full threads*blocks, explicit dynamic8/16/128B or0 plus source static4B, complete(op,threads,blocks,smem) LaunchSpec key/asynclegacy; CUDA backend intrinsics.",
+        "data_layout": "Combined CSC Float32LU, CSRtranspose/diag andlevelindices; originalarrays borrowed through checked120-byte CABI. Allinitializedexternaldevicearrays exactD2H/F64encoded; fullscratchbefore/afterlosslesszlib; fullLU/XrawF64encoded actualFloat32.",
+        "storage_precision": [
+          "Float32 numerical GPU/factor/solution storage",
+          "UInt32 sparse indices",
+          "Int32 level/control",
+          "Float64 artifact encoding only",
+          "Original host NICSLU Float64 data/scalings"
+        ],
+        "compute_precision": [
+          "GPUFloat32 division/multiply/atomicadd",
+          "OriginalCPUFloat32triangularsolve and Float64scalingproducts roundedtoFloat32",
+          "IndependentCPU longdoubleproducts/decimalAx, Float64normreduction"
+        ],
+        "synchronization": [
+          "CUDAlegacy/defaultstreamalllaunches",
+          "Explicitwarp/blockpublication/use/reuseordering",
+          "OriginalfullcontextcudaDeviceSynchronize commonROIcompletion"
+        ],
+        "resources": "Original10353*nFloat32workspace:4113868080BASIC; fixed64/128/256threads, selectedsource8/16/128Bshared, onecolupdate4Bstatic. Allocations/readbacks/CPUoraclesoutsideROI. No profiler resource/occupancy/roofline inference.",
+        "host_device_boundary": "NativeCPU NICSLU analyze/MC64/permutation/scaling, symbolic fill/leveling, CPU solve and source CLI x.dat write retained in CABI. AllsixselectedGPUentries dispatched by ownframeworkcallback; nativeGPUfallback false. Sharedlibrary contains compiled unusednativefallback definitions, neverselected withnonnullcallback.",
+        "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "review_status": "source_reviewed",
+          "domain": "Circuit-simulation sparse linear systems",
+          "subdomain": "Sandia/Xyce stripped ASIC matrix; numerical sparse LU benchmark",
+          "source_scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "operator": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "boundary_conditions": "No PDEboundarycondition; nonsingular square sparsematrix in fixed sourceNICSLUpermutation/scalings. Staticpositiveperturb flag controls remaininactiveclamp only.",
+          "physical_claim_limit": "Matrix is source-labeled circuit-simulation data, not a full Xyce circuit/transient or validated physical model. Backwarderror doesnotboundforwarderror withoutconditioning.",
+          "scientific_invariants": [
+            "FullL*U reconstructs actualpreprocessedF32matrix withincomponentwise/normwise1e-4 budgets",
+            "OriginalMatrixMarket A*x=ones componentwisebackwarderror1e-4",
+            "AllLU/Xfinite; fullscratch actualbefore/afterzero; fullindexbuffersunchanged"
+          ],
+          "source_evidence": [
+            {
+              "path": "src/slu-cuda/src/numeric.cu",
+              "sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570"
+            },
+            {
+              "path": "/tmp/hecbench-stencil-ports-slu-fixtures-v2/ASIC_100k.mtx",
+              "sha256": "19bf67d60d6b794934985ea1d5aa143f6a813592294d362c548f5cb6b4dbb725",
+              "header": "Sandia/Xyce circuitsimulationmatrix(stripped), R.Hoekstra2006, UFSparseMatrixCollectionTimDavis"
+            }
+          ],
+          "benchmark": "slu",
+          "scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+          "mathematical_operation": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+          "classification_rationale": "SparseLU/linearsystemisprimaryscientificoperator; sourceoriginalASICheaderestablishescircuitsimulationprovenance. Sparsecolumnupdates/atomics/levelparallelism aremechanisms, notapplicationtaxonomy.",
+          "community_use_case": "Assess numerical backwarderror and mapping/interop cost for faithful sparsefactorization pipelines used as a component in circuit simulation.",
+          "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+          "accuracy_requirements": "CompleteactualinputbitsandfullLU/X, exactprefix anddual2e-5abs/rel budgets, independentfullL*Ucomponentwise/normwise andoriginal-systemcomponentwisebackwarderror1e-4.",
+          "scientific_validity": "Conditionalconcurrency-repairedsourceoperator withindependentfullbackwarderrorgate",
+          "boundary_policy": "OriginalsquareCSR/CSC andNICSLUfixedpermutation/scaling, positiveperturb rule onlyfornonemptyL; testedpflagcontrolsnotclamped."
+        },
+        "native_reference_repaired": true,
+        "source_evidence": [
+          {
+            "path": "src/slu-julia/slu-julia-JACC/main.jl",
+            "bytes": 6053,
+            "sha256": "3a04444e56fa13d3a63902a82bb8046f24eae1564976166b942c0e0fcba67634"
+          },
+          {
+            "path": "src/slu-julia/study_common.jl",
+            "bytes": 1853,
+            "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+          },
+          {
+            "path": "src/slu-julia/reference_provenance.json",
+            "bytes": 1805,
+            "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+          },
+          {
+            "path": "src/slu-julia/final_dependency_review.json",
+            "bytes": 73783,
+            "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+          }
+        ],
+        "scope_limit": "Allsourceentrydefinitions execute; optionalperturbcontrols neveractivate pivot clamp. No active-clamp/dynamicpivot/forwardconditioning/circuitphysical certificate; originalallocations have no guardcanaries. Perlaunch scalarvalues derivefromboundcommoncontroller, no extra kernelargumentecho.",
+        "attempt_unit": "One complete Julia implementation candidate; six entrydefinitions/two helperbodies; one actual Julia device-JIT process runs fullwarmup+fivecheckedprogram evaluations. Internal compiler invocations/specializations unknown, not six attempts.",
+        "selected_dispatches": {
+          "selected_dispatches_including_fullwarmup": 48036,
+          "per_entry": [
+            558,
+            12,
+            15750,
+            96,
+            15774,
+            15846
+          ],
+          "raw_log": {
+            "path": "/tmp/hecbench-stencil-ports-state/portable_julia/runs/20261020T063218364893Z_slu/jacc_run1.log",
+            "bytes": 41680,
+            "sha256": "c7879d9a34540b05044e531d4de890db332275dbde52c6dbc932ef9019763820"
+          },
+          "unit": "Runtime callback-selected authored framework dispatches, not backend compiler invocations or profiler counters."
+        }
+      }
+    },
+    "timing_scope": "Complete original numeric GPU level loops plus commonCPUlaunchcontrol/CABIbridge and contextcompletion wallclock; sourceCPUpreprocess/symbolic/solve executes outsideROI. Not fullapplicationwalltime or puredeviceeventtime.",
+    "verification_contract": "Exactactualarrayinputs, fulltolerantLU/Xdualrefs, fullindependentL*U/Axbackwarderrors",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "review_status": "source_reviewed",
+      "domain": "Circuit-simulation sparse linear systems",
+      "subdomain": "Sandia/Xyce stripped ASIC matrix; numerical sparse LU benchmark",
+      "source_scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+      "operator": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+      "boundary_conditions": "No PDEboundarycondition; nonsingular square sparsematrix in fixed sourceNICSLUpermutation/scalings. Staticpositiveperturb flag controls remaininactiveclamp only.",
+      "physical_claim_limit": "Matrix is source-labeled circuit-simulation data, not a full Xyce circuit/transient or validated physical model. Backwarderror doesnotboundforwarderror withoutconditioning.",
+      "scientific_invariants": [
+        "FullL*U reconstructs actualpreprocessedF32matrix withincomponentwise/normwise1e-4 budgets",
+        "OriginalMatrixMarket A*x=ones componentwisebackwarderror1e-4",
+        "AllLU/Xfinite; fullscratch actualbefore/afterzero; fullindexbuffersunchanged"
+      ],
+      "source_evidence": [
+        {
+          "path": "src/slu-cuda/src/numeric.cu",
+          "sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570"
+        },
+        {
+          "path": "/tmp/hecbench-stencil-ports-slu-fixtures-v2/ASIC_100k.mtx",
+          "sha256": "19bf67d60d6b794934985ea1d5aa143f6a813592294d362c548f5cb6b4dbb725",
+          "header": "Sandia/Xyce circuitsimulationmatrix(stripped), R.Hoekstra2006, UFSparseMatrixCollectionTimDavis"
+        }
+      ],
+      "benchmark": "slu",
+      "scientific_question": "Can the level-scheduled sparse factorization and solve reproduce the input linear system within declared Float32 backward-error budgets?",
+      "mathematical_operation": "NICSLU-preprocessed combined sparse L/U and original-system solve A*x=ones",
+      "classification_rationale": "SparseLU/linearsystemisprimaryscientificoperator; sourceoriginalASICheaderestablishescircuitsimulationprovenance. Sparsecolumnupdates/atomics/levelparallelism aremechanisms, notapplicationtaxonomy.",
+      "community_use_case": "Assess numerical backwarderror and mapping/interop cost for faithful sparsefactorization pipelines used as a component in circuit simulation.",
+      "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+      "accuracy_requirements": "CompleteactualinputbitsandfullLU/X, exactprefix anddual2e-5abs/rel budgets, independentfullL*Ucomponentwise/normwise andoriginal-systemcomponentwisebackwarderror1e-4.",
+      "scientific_validity": "Conditionalconcurrency-repairedsourceoperator withindependentfullbackwarderrorgate",
+      "boundary_policy": "OriginalsquareCSR/CSC andNICSLUfixedpermutation/scaling, positiveperturb rule onlyfornonemptyL; testedpflagcontrolsnotclamped."
+    },
+    "native_reference_repaired": true,
+    "keyconfounds": [
+      "Conditionalnativeorderingrepair",
+      "NativeCPU/NICSLU/controller+CABIsharedbytargets",
+      "No purebackend-independentKA/JACCpipeline",
+      "Differentstatic-vs-dynamicsharedallocationrepresentation inKA",
+      "Fullscratch readbacks/compression outsideROI",
+      "Nooriginalcanary/memorysafetyproof",
+      "No forwarderror/conditioning/circuitphysics guarantee",
+      "NativeGPUatomicfloating variability, outputbitidentitynotclaimed"
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+    "sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        130
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [
+        16,
+        27,
+        51,
+        74,
+        104,
+        108
+      ],
+      "atomic": [
+        4,
+        44,
+        106
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "ASIC100k_add32_positivePair16_2048_fullLU_sourcelevels_ordered_v1",
+      "run_id": "20261020T063218364893Z_slu",
+      "result": ".porting-state/portable_julia/runs/20261020T063218364893Z_slu/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_reference_repaired": true,
+        "intervention": "Explicitsource sharedpublish/use/reuse ordering onVolta; singlethreadsame-positive-pert pivotpublication onlywhenLnonempty. Sparseupdate/rule/levelwork andstorage unchanged.",
+        "original_sha256": "45059862dcf462723533041f7e6323640bc4522aeaef3ef824525c0b87dbc570",
+        "corrected_sha256": "44c17416fe5ae918926b2c20d2dda694aa6645fd4eac1f30c6d24bea3546bc71",
+        "witness": "shared_ordering_witness.json",
+        "raw_warning_log": ".porting-state/porting_logs/slu-julia-shared/original_add32_racecheck.log",
+        "numeric_wrong_output_observed_in_first_unmodified_CLI": false,
+        "source_ABFT_passed_despite_shared_hazard_warnings": true,
+        "additional_onecol_shared_reuse_and_perturb_ordering_basis": "Staticdata-dependency/lifetime observations; notclaimedobservedGPUwrongoutput.",
+        "exclusion": "Conditionalconcurrency-repairedreference; exclude untouched-native/performanceaggregates. No frameworkunsupportedclaim.",
+        "original_source": "src/slu-cuda/src/numeric.cu",
+        "corrected_source": "src/slu-julia/corrected_numeric.cuh",
+        "witness_provenance": {
+          "path": "src/slu-julia/shared_ordering_witness.json",
+          "sha256": "514b7715de0cfa94d4234dd60fd62a11629ee6b3ef0ee641e1c980416f35c1c4"
+        },
+        "host_status_guard": {
+          "path": "src/slu-julia/checked_preprocess.cpp",
+          "sha256": "a0c4c6009e1d68e8000dbf5907c6e67458c1e52c6c1d96608dd72efcc5cc5e41",
+          "scope": "FailfastCreate/Analyze/DumpAchecks; validinputoperatorunchanged; ownbadfixturetriggeredignoredCreatefailure. Freeinternaln/nnzoutsideROI."
+        },
+        "qualification": "Concurrency-corrected reference only; matchedoriginal13/corrected0racecheckwarnings, noobservedwrongoriginalnumericoutput. OriginalfullASICCLIweakABFTpasses; independent fullstatechecksbelongnewconditionalreference."
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "7535c92a1aec4af4d278eb4a95262fc5d8c629242fd4ba807b9b2ffa92b887ab",
+      "source_hash": "9a8a826049a6483c63fab009620d44dd26b54dcc93baaa27467074280284e86a",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261020T063218364893Z_slu/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.7663839039999999,
+        0.7782272530000001,
+        0.830908151,
+        0.7850549219999999,
+        0.781167223
+      ],
+      "mean_last_four_seconds": 0.79383938725,
+      "contract": null,
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "begin_event_id": "6450618d774f7792efeb225f",
+      "end_event_id": "d41911025ad587ff8b456f28",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/slu/cuda_jl_translation.jsonl",
+      "observed_usage": {
+        "input_tokens": 5260719,
+        "cached_input_tokens": 5194752,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 28896,
+        "reasoning_output_tokens": 11097,
+        "total_tokens": 5289615
+      },
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-20T06:06:01.512Z",
+        "context_event_sha256": "84dfb9809aa4e38e411b924271455a4bf7a94a4f7a284f672e7e988eede828c9",
+        "source_snapshot_bytes": 126918247,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "marker_lag_seconds": 18.800981,
+      "scope": "Inclusive ordered translation/check-feedback window; cached/reasoning are subsets, common harness/context and same-benchmark coordination included. Sharedverification overlaps; do not sum it. Not exclusive billing or intrinsic/cold-start target cost.",
+      "measurement_scope_review": {
+        "scope": "Inclusive same-study coordination/helper/metadata work; no newly audited secondbenchmark source or targets inside this window.",
+        "contains_other_worker_coordination": true
+      },
+      "input_tokens": 5260719,
+      "cached_input_tokens": 5194752,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 28896,
+      "reasoning_output_tokens": 11097,
+      "total_tokens": 5289615
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "d41911025ad587ff8b456f28",
+        "begin_event_id": "6450618d774f7792efeb225f",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-20T06:22:06.073981+00:00",
+        "usage_event_timestamp": "2026-10-20T06:21:47.273Z",
+        "elapsed_usage_event_start": "2026-10-20T06:10:01.093Z",
+        "delta_usage": {
+          "input_tokens": 5260719,
+          "cached_input_tokens": 5194752,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 28896,
+          "reasoning_output_tokens": 11097,
+          "total_tokens": 5289615
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 18.800981,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "729624e242e2e3e49f0880bfb2ae264b29da0da6d1b6b3de8111e8553ff5880f",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "Onecompletecandidate6entrydefinitions/2shareddevicehelpers, oneactualdeviceJITprogram, zeroGPUcompilerrepairs; fullall4cases\u00d75checked/fullnativeagreement/independentL*UandAxgatesPASS. IncludesfirstsharedJuliaCABIcreation, ownedmetadata-schema/numpyresolutionrepairs and same-benchmark futuremappingplanning/nativecoordination. SpecializedCUDA/CPUhybrid, notcoldstartintrinsicframeworkcost. Nativeprepclosedbeforetarget; native5execution overlapped codeauthoring.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-20T06:06:01.512Z",
+          "context_event_sha256": "84dfb9809aa4e38e411b924271455a4bf7a94a4f7a284f672e7e988eede828c9",
+          "source_snapshot_bytes": 126918247,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 7.314036,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/slu/cuda_jl_translation.jsonl",
+        "evidence_sha256": "13eac361b0f29ff143a63651911bb9d863b0c3a089673f1f86d68110abeed9a8",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/slu-julia-cuda_jl/manifest.json",
+    "selected_sha256": "c1b71b9b0cbc57c7e0f0a71b67d5642e36cacade3c914f981f23e3dbd4795d3d",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/slu-julia-cuda_jl/manifest.json",
+        "sha256": "c1b71b9b0cbc57c7e0f0a71b67d5642e36cacade3c914f981f23e3dbd4795d3d"
+      },
+      {
+        "path": ".porting-state/porting_logs/slu-julia/manifest.json",
+        "sha256": "a0157e7cde71bd01cb67ed86f221ef459b0a1d7db5aede2a277b959806cc6e53"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "85bd618c3ebfffa0a223264765a28da41ad5b098",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "slu",
+    "implementation_model": "cuda_jl",
+    "status": "verified",
+    "configuration_id": "ASIC100k_add32_positivePair16_2048_fullLU_sourcelevels_ordered_v1",
+    "verification_result": ".porting-state/portable_julia/runs/20261020T063218364893Z_slu/result.json",
+    "candidate_attempts": 1,
+    "compiler_loop_attempts": 1,
+    "actual_device_JIT_programs": 1,
+    "backend_internal_compiler_invocations": null,
+    "failed_target_compiler_checks": 0,
+    "authored_device_kernel_count": 6,
+    "executed_distinct_authored_entries": 6,
+    "shared_authored_math_body_definitions": 2,
+    "selected_dispatches_including_warmup": 48036,
+    "attempt_unit": "One complete Julia implementation candidate; six entrydefinitions/two helperbodies; one actual Julia device-JIT process runs fullwarmup+fivecheckedprogram evaluations. Internal compiler invocations/specializations unknown, not six attempts.",
+    "translation_tokens": {
+      "begin_event_id": "6450618d774f7792efeb225f",
+      "end_event_id": "d41911025ad587ff8b456f28",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/slu/cuda_jl_translation.jsonl",
+      "observed_usage": {
+        "input_tokens": 5260719,
+        "cached_input_tokens": 5194752,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 28896,
+        "reasoning_output_tokens": 11097,
+        "total_tokens": 5289615
+      },
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-20T06:06:01.512Z",
+        "context_event_sha256": "84dfb9809aa4e38e411b924271455a4bf7a94a4f7a284f672e7e988eede828c9",
+        "source_snapshot_bytes": 126918247,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "marker_lag_seconds": 18.800981,
+      "scope": "Inclusive ordered translation/check-feedback window; cached/reasoning are subsets, common harness/context and same-benchmark coordination included. Sharedverification overlaps; do not sum it. Not exclusive billing or intrinsic/cold-start target cost.",
+      "measurement_scope_review": {
+        "scope": "Inclusive same-study coordination/helper/metadata work; no newly audited secondbenchmark source or targets inside this window.",
+        "contains_other_worker_coordination": true
+      }
+    },
+    "native_reference_repaired": true,
+    "reference_provenance": "src/slu-julia/reference_provenance.json",
+    "source_evidence": [
+      {
+        "path": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+        "bytes": 5547,
+        "sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06"
+      },
+      {
+        "path": "src/slu-julia/study_common.jl",
+        "bytes": 1853,
+        "sha256": "6c239959ccd69edd9fa57926c66361b7467c0dc028b0001869fa6b7ddec30492"
+      },
+      {
+        "path": "src/slu-julia/reference_provenance.json",
+        "bytes": 1805,
+        "sha256": "8d403e369e4a13fdea59e470e0f177b17f985f7b1e231e353463eb5fad17c6d2"
+      },
+      {
+        "path": "src/slu-julia/final_dependency_review.json",
+        "bytes": 73783,
+        "sha256": "21c993a859a348026f6c51753987a2748020e4673e81ec9cad32f3fa61ca317d"
+      }
+    ],
+    "source_hash": "9a8a826049a6483c63fab009620d44dd26b54dcc93baaa27467074280284e86a",
+    "raw5times": [
+      0.7663839039999999,
+      0.7782272530000001,
+      0.830908151,
+      0.7850549219999999,
+      0.781167223
+    ],
+    "mean_seconds": 0.79383938725,
+    "support_boundary": "FullsourceASIC100k/add32 plus two namedinactiveperturbcontrols, all6GPUentrydefinitions exercised; conditionalorderingreference. No dynamicpivot/activeclamp accuracy certificate, forwardconditioning guarantee or wholeXyce circuitmodel.",
+    "commit": null,
+    "source_commit": "85bd618c3ebfffa0a223264765a28da41ad5b098",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "85bd618c3ebfffa0a223264765a28da41ad5b098",
+      "source": "src/slu-julia/slu-julia-cuda.jl/main.jl",
+      "source_sha256": "fb53f44396fd154e7ae85d44c0c22dc1537f0ee55218a779d742988c7b577c06",
+      "phase": "shared",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/slu-julia/reference_history/accounting_original_delivery_20261020/cuda_jl_status_before_commit_join_0fa9a005f323.json",
+      "recorded_at": "2026-10-20T15:23:45.487967+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "CUDAjl_authored_sparse_LU_native_CPU_NICSLU_controller_hybrid",
+    "annotation_path": ".porting-state/portable_julia/traits/slu.json",
+    "annotation_sha256": "21cd2bf6a1d186c6db763a6602cfba10d5a821d162814f65df5f0707c1c00c2d",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

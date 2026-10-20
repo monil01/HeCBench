@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "minimod",
+  "scientific_intent": {
+    "primary_family": "pde_continuum",
+    "primary_domain": "acoustic_wave_finite_difference_with_absorbing_boundary_memory",
+    "review_status": "source_reviewed",
+    "scientific_task": "Advance two acoustic wave time levels and an auxiliary absorbing-boundary memory field on a padded three-dimensional grid with point forcing.",
+    "mathematical_operation": "Interior v_next=2u+(c*dt)^2*Laplacian8(u)-v_previous; source labeled PML slabs use eta-dependent rational damping and auxiliaryphi update driven bygrad(eta) dotgrad(u). Add pointforcing then swap timelevels. SourcePML formulation is validated as the recorded discreteoperator, not proved perfectlymatched incontinuousphysics.",
+    "discretization": "Radius4 axis-centered25point spatial eighth-order stencil, second-order interior time recurrence. N24,spacing20,sourcepadding40x32x32,8cellPML thickness,sevenaligneddisjointregions/source8^3threads. Four/two/one steps forpointforcing+variablevp/PML, manufacturedquadraticeta0, andzero control.",
+    "accuracy_requirements": "Complete two timelevels/phi/immutablevpeta andactualpreexecutioninputs/guards vsindependentFloat64globalstencil oracle. Fixeduv2e-6+2e-5relative, phi1e-10+2e-5relative; alluntouchedhalos/phioutsidePML/immutablefields/guardbytes/zero case exact. CPUmanufacturedquadraticanalyticLaplacian residual7.6479e-10 validatesoracle, notseparatecapturedGPUfirststep experiment.",
+    "input_size_regime": "ThreefullN24wave/PMLstep components withall7regions active;7totalsteps/56launches. Customaligned8cellboundary vsnativeCLI20/defaultN100; definednsteps+1forcingsamplesandinitialconditions. NotcompleteoriginalCLI/PMLprofilecalibration orfullseismicsolver.",
+    "precision_sensitivity": "ActualFloat32GPU wave/Laplacian/PMLmemory, independentFloat64CPUrecurrence usingexactF32inputs/coefficients. Smallphi hasseparate1e-10absolutebudget sozeroingitcannotpasswithinuvbudget. CoefficientspromotedsourceF32values, Juliaexplicitmuladdintent; arithmeticordering/FMA differences preservedwithinpredeclaredengineeringbudgets.",
+    "community_use_case": "Finite-difference acoustic modeling with absorbingboundary-style auxiliarymemory is relevant towave/seismic numerical kernels. Short namedtests do not establish resolution convergence, longtimestability, physicalreflection/absorptionquality or seismic inversion/migration correctness.",
+    "description": "HistoricalJulia hasgenuineglobal-memory wave/PML formulas buthostphysicalconstants differ andnativecallerforcingarray is too short foractualsourceindexing. Preserve originals, definefullforcingrange andrestore source sharedtilemapping for comparablework. NativeGPUkernel bodies byteidenticalprefix extraction; initialization/allocationintervention conditional.",
+    "provenance": "Native main.cu/init_coef andminimig.cu interior/PML/point-source kernels, grid.cu padding/leadpad, historicalJulia source. No inferred externalapplicationidentity beyondsource discretewave/PMLequations.",
+    "source_evidence": [
+      {
+        "path": "src/minimod-cuda/minimig.cu",
+        "sha256": "bc35da3a09ddc48f7b112f9a614cdf65b2701a5a5abc335ce800779ee4596a34"
+      },
+      {
+        "path": "src/minimod-cuda/main.cu",
+        "sha256": "38a5d9dace79cf99e0a6dabf0c5ce32f4aa9a0079b7de0019fc2fa086ae8f6f6"
+      },
+      {
+        "path": "src/minimod-cuda/grid.cu",
+        "sha256": "48c01fc03084dde3a003c286d80e18963ec4fba8e2e423b9d7392c32550911d2"
+      },
+      {
+        "path": "src/minimod-cuda/constants.cu",
+        "sha256": "6907f7cf5f144ae571854d8cf03634275081ad7d12ee0d75c0d77bd5c7ebc6d8"
+      },
+      {
+        "path": "src/minimod-julia/original_main.jl",
+        "sha256": "9c70cea9a6816e2e174db47b908330ea7c1fd3acac2a9e4c824600f7625506ab"
+      },
+      {
+        "path": "src/minimod-julia/source_scope_witness.json",
+        "sha256": "473af34a2bca6e6d8f1286edb3789e8e3f1bb793a1552d76a91c919a33eec330"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/minimod.yaml",
+    "frozen_sha256": "3095112ff827fcf7a29add51568f02e2a4ed5e571e0f8c7134b7584ce31ae482",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "existing_cuda_jl_entrypoint_only",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "722024deafcf049b4bc4095d",
+      "begin_event_id": "f4c1a0ab7915428b965bd27f",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T09:29:20.623507+00:00",
+      "usage_event_timestamp": "2026-10-18T09:29:09.429Z",
+      "elapsed_usage_event_start": "2026-10-18T09:13:31.192Z",
+      "delta_usage": {
+        "input_tokens": 6569741,
+        "cached_input_tokens": 6505728,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 34708,
+        "reasoning_output_tokens": 14314,
+        "total_tokens": 6604449
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 11.194507,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "61645b2a569ce23b749d0247a397359a5d768c847cb8c6a20a83e1e7edfca5c2",
+      "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 6.305602,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/minimod/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "f1a0c87c51ebf9cc1e6184a2cd9b9f744bff139df0ca0f5c07f62deff99860ef",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}

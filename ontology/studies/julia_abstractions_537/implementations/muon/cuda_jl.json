@@ -1,0 +1,971 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "muon",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/muon.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "actual_algorithm": "Nesterov-style momentum, BF16 storage Newton-Schulz5-stage quintic iteration using15BF16/FP32accum vendor GEMMs per optimizer step, fused tall-matrix transposes and FP32 parameter scaling/update.",
+    "work_item_mapping": "Vector4 work per256-thread elementwise kernel;32x8 shared XOR-layout fused transposes;256x256 reduction geometry; same row-major BF16 working matrices and cuBLAS swapped-operand ABI.",
+    "storage_precision": [
+      "Float32 parameter/momentum/gradient/norm",
+      "BF16 working X/A/A2/B/BX encodedUInt16"
+    ],
+    "compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "synchronization": [
+      "256-thread block barriers for reduction and tile transpose",
+      "Global Float32 atomic norm accumulation",
+      "Raw cuBLAS handle bound to authored-kernel task stream",
+      "Context-wide completion at timer boundaries"
+    ],
+    "launch_geometry": {
+      "vector_threads": 256,
+      "norm_grid": 256,
+      "norm_shared_bytes": 1024,
+      "transpose_threads": [
+        32,
+        8
+      ],
+      "transpose_tile": [
+        32,
+        32
+      ],
+      "transpose_shared_bytes": 2048,
+      "authored_distinct_kernels": 8,
+      "authored_kernel_calls_per_optimizer_step": 14,
+      "vendor_gemm_calls_per_optimizer_step": 15,
+      "cases": [
+        [
+          16,
+          32,
+          "diagonal"
+        ],
+        [
+          32,
+          16,
+          "diagonal"
+        ],
+        [
+          17,
+          33,
+          "dense"
+        ],
+        [
+          33,
+          17,
+          "dense"
+        ]
+      ]
+    },
+    "resource_policy": "256threads/1024B reduction shared;32x8/2048B tiled transpose;zero shared for elementwise",
+    "backend_extensions": [
+      "Pinned system cuBLAS BF16GemmEx ABI; stream binding"
+    ],
+    "implementation_class": "mixed_kernel_library_pipeline",
+    "source_sha256": "57fa55c957a6a5c025c040bd1586e39d7a520b17d85bc9fe7f361ee77921a233",
+    "reference_repair": {
+      "finding": "Historical Julia implements the same idealized momentum/Newton-Schulz update using allFP32 working matrices, while native uses BF16 storage and rounding after each NS stage. This is a P1 precision/mapping fidelity compromise, not an established wrong idealized optimizer or observed historical failure. Named reference restores actual source BF16 pipeline, vector4 work assignment, fused transposes and explicit vendor GEMM ABI.",
+      "taxonomy_code": "P1",
+      "phase": "reference_precision_mapping_alignment",
+      "original_path": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-cuda.jl/original_main.jl",
+      "original_sha256": "9501e927b7e1b8b7c643a4e5892413a376249f2f8f235b93ddc6eeae1e40c6cd",
+      "original_preserved": true,
+      "historical_compiler_attempts": null
+    },
+    "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "vendor_library_interop": true,
+    "vendor_calls_per_optimizer_step": 15,
+    "translated_device_kernels": 8,
+    "authored_kernel_calls_per_optimizer_step": 14,
+    "timed_compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "host_oracle_precision": [
+      "Scalar Float32/FMA and explicitBF16 RNE",
+      "Float64 Frobenius norm accumulation"
+    ],
+    "artifact_encoding": [
+      "Float64 exact Float32/BF16 decoded values and scalar controls"
+    ],
+    "mixed_vendor_pipeline": true,
+    "native_compiler_override": {
+      "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+      "version": "CUDA12.9 V12.9.41",
+      "reason": "CUDA12.0 headers hide packed BF16 conversion APIs onsm70; newer toolchain supports unchanged source.",
+      "runtime": "--cudart=none, explicit system libcudart12.0 and cuBLAS12.0.2.224",
+      "primary_native_source_unchanged": true,
+      "prior_scalar_compatibility_diagnostic": "20261017T225001642126Z_muon; successful finite capture, not primary measurement or scientific acceptance"
+    },
+    "component_classes": {
+      "authored_kernels": "framework_device_kernel",
+      "vendor_gemms": "vendor_library_interop"
+    },
+    "source_review_status": "source_reviewed",
+    "host_device_boundary": "Input/reset outside timer;2 full optimizer steps including GPU normalization and stream-ordered15GEMMs/step, context-wide sync; captures outside timer.",
+    "vendor_library": {
+      "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+      "API": "cublasGemmEx",
+      "input_output": "BF16",
+      "accumulation": "CUBLAS_COMPUTE_32F",
+      "algorithm": "CUBLAS_GEMM_DEFAULT_TENSOR_OP"
+    }
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Nesterov-style momentum, BF16 storage Newton-Schulz5-stage quintic iteration using15BF16/FP32accum vendor GEMMs per optimizer step, fused tall-matrix transposes and FP32 parameter scaling/update.",
+    "implementation_class": "mixed_kernel_library_pipeline",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Vector4 work per256-thread elementwise kernel;32x8 shared XOR-layout fused transposes;256x256 reduction geometry; same row-major BF16 working matrices and cuBLAS swapped-operand ABI.",
+    "layout": null,
+    "storage_precision": [
+      "Float32 parameter/momentum/gradient/norm",
+      "BF16 working X/A/A2/B/BX encodedUInt16"
+    ],
+    "compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "timed_compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "Scalar Float32/FMA and explicitBF16 RNE",
+      "Float64 Frobenius norm accumulation"
+    ],
+    "artifact_encoding": [
+      "Float64 exact Float32/BF16 decoded values and scalar controls"
+    ],
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "256-thread block barriers for reduction and tile transpose",
+      "Global Float32 atomic norm accumulation",
+      "Raw cuBLAS handle bound to authored-kernel task stream",
+      "Context-wide completion at timer boundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": "256threads/1024B reduction shared;32x8/2048B tiled transpose;zero shared for elementwise",
+    "launch_geometry": {
+      "vector_threads": 256,
+      "norm_grid": 256,
+      "norm_shared_bytes": 1024,
+      "transpose_threads": [
+        32,
+        8
+      ],
+      "transpose_tile": [
+        32,
+        32
+      ],
+      "transpose_shared_bytes": 2048,
+      "authored_distinct_kernels": 8,
+      "authored_kernel_calls_per_optimizer_step": 14,
+      "vendor_gemm_calls_per_optimizer_step": 15,
+      "cases": [
+        [
+          16,
+          32,
+          "diagonal"
+        ],
+        [
+          32,
+          16,
+          "diagonal"
+        ],
+        [
+          17,
+          33,
+          "dense"
+        ],
+        [
+          33,
+          17,
+          "dense"
+        ]
+      ]
+    },
+    "library_backend_boundary": [
+      "Pinned system cuBLAS BF16GemmEx ABI; stream binding"
+    ],
+    "host_control_boundary": "Input/reset outside timer;2 full optimizer steps including GPU normalization and stream-ordered15GEMMs/step, context-wide sync; captures outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified",
+    "source_review_evidence": "57fa55c957a6a5c025c040bd1586e39d7a520b17d85bc9fe7f361ee77921a233",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "primary_motif": "mixed_precision_optimizer_Newton_Schulz_dense_GEMM_reduction_fused_transpose",
+    "storage_precision": [
+      "Float32 parameter/momentum/gradient/norm",
+      "BF16 working X/A/A2/B/BX encodedUInt16"
+    ],
+    "compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "timed_compute_precision": [
+      "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+      "cuBLAS BF16input/output FP32accumulation",
+      "UInt32/UInt16 bitwise BF16RNE conversions",
+      "Int32 indices/control"
+    ],
+    "host_oracle_precision": [
+      "Scalar Float32/FMA and explicitBF16 RNE",
+      "Float64 Frobenius norm accumulation"
+    ],
+    "artifact_encoding": [
+      "Float64 exact Float32/BF16 decoded values and scalar controls"
+    ],
+    "synchronization": [
+      "256-thread block barriers for reduction and tile transpose",
+      "Global Float32 atomic norm accumulation",
+      "Raw cuBLAS handle bound to authored-kernel task stream",
+      "Context-wide completion at timer boundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Restored BF16 working precision and native vector4/tiled geometry; scalarized four-component loads rather than explicit native float4/bf16x4 instructions, same row-major shared XOR layout. Julia backend fill for norm reset vs native cudaMemset."
+    },
+    "implementation_class": {
+      "cuda_jl": "mixed_kernel_library_pipeline",
+      "ka": "mixed_kernel_library_pipeline",
+      "jacc": "mixed_kernel_library_pipeline"
+    },
+    "timing_scope": "mixed_authored_kernel_vendor_GEMM_two_step_optimizer",
+    "verification_contract": "complete_parameter_momentum_BF16_working_matrices_norm_and_independent_mixed_precision_oracle",
+    "keyconfounds": [
+      "Mixed vendor-compute pipeline, not pure framework solver kernel",
+      "HistoricalFP32 to actualBF16 precision alignment separate from target translation",
+      "Native compiler12.9.41 needed for packedconversion API onsm70; runtime/library12.0 retained",
+      "NativeCPU companion additionally BF16rounds spectral-scaled update; GPU scales FP32",
+      "Julia scalarized vector4load/store instruction mapping",
+      "Native cudaMemset norm reset versus JuliaCUDA.fill! backend kernel",
+      "Five-step quintic is not exact orthogonality/training convergence proof",
+      "JACC shared template copy and initial barrier added before source reduction/tile stores"
+    ],
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "Neural network optimization",
+      "scientific_task": "Apply a momentum-based approximately orthogonalized update to a2D hidden-layer weight matrix, testing BF16 working precision and tall/wide orientation.",
+      "governing_method": "Five-step quintic Newton-Schulz polynomial with Frobenius normalization and spectral aspect-ratio scaling.",
+      "accuracy_needs": [
+        "ActualBF16 round-to-nearest-even pipeline, not FP32selfcheck",
+        "Momentum and parameter state over2optimizersteps",
+        "Both transposed and nontransposed working matrices",
+        "Dense and diagonal controlled singular-value fixtures",
+        "Separate finite-step polynomial/quantization approximation from cross-port arithmetic"
+      ],
+      "review_status": "source_reviewed",
+      "source_hash_evidence": [
+        {
+          "path": "src/muon-cuda/main.cu",
+          "sha256": "921e4f209e9b5fb4ce4f175c3f93c4b996f3765e0ec50e1b8357c8bb8221b7ee"
+        },
+        {
+          "path": "src/muon-cuda/reference.h",
+          "sha256": "89e39299534b892e9fae24c2721f17cdadba94a797b4517a0c2220fad81d41d2"
+        }
+      ]
+    },
+    "benchmark": "muon",
+    "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+    "evidence": {
+      "result": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261017T225841732698Z_muon/result.json",
+      "native_source": "/home/imo/HeCBench_julia/src/muon-cuda/main.cu",
+      "native_source_sha256": "921e4f209e9b5fb4ce4f175c3f93c4b996f3765e0ec50e1b8357c8bb8221b7ee",
+      "reviewed_at": "2026-10-17T23:00:04.853677+00:00"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "actual_algorithm": "Nesterov-style momentum, BF16 storage Newton-Schulz5-stage quintic iteration using15BF16/FP32accum vendor GEMMs per optimizer step, fused tall-matrix transposes and FP32 parameter scaling/update.",
+        "work_item_mapping": "Vector4 work per256-thread elementwise kernel;32x8 shared XOR-layout fused transposes;256x256 reduction geometry; same row-major BF16 working matrices and cuBLAS swapped-operand ABI.",
+        "storage_precision": [
+          "Float32 parameter/momentum/gradient/norm",
+          "BF16 working X/A/A2/B/BX encodedUInt16"
+        ],
+        "compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "synchronization": [
+          "256-thread block barriers for reduction and tile transpose",
+          "Global Float32 atomic norm accumulation",
+          "Raw cuBLAS handle bound to authored-kernel task stream",
+          "Context-wide completion at timer boundaries"
+        ],
+        "launch_geometry": {
+          "vector_threads": 256,
+          "norm_grid": 256,
+          "norm_shared_bytes": 1024,
+          "transpose_threads": [
+            32,
+            8
+          ],
+          "transpose_tile": [
+            32,
+            32
+          ],
+          "transpose_shared_bytes": 2048,
+          "authored_distinct_kernels": 8,
+          "authored_kernel_calls_per_optimizer_step": 14,
+          "vendor_gemm_calls_per_optimizer_step": 15,
+          "cases": [
+            [
+              16,
+              32,
+              "diagonal"
+            ],
+            [
+              32,
+              16,
+              "diagonal"
+            ],
+            [
+              17,
+              33,
+              "dense"
+            ],
+            [
+              33,
+              17,
+              "dense"
+            ]
+          ]
+        },
+        "resource_policy": "256threads/1024B reduction shared;32x8/2048B tiled transpose;zero shared for elementwise",
+        "backend_extensions": [
+          "Pinned system cuBLAS BF16GemmEx ABI; stream binding"
+        ],
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "source_sha256": "57fa55c957a6a5c025c040bd1586e39d7a520b17d85bc9fe7f361ee77921a233",
+        "reference_repair": {
+          "finding": "Historical Julia implements the same idealized momentum/Newton-Schulz update using allFP32 working matrices, while native uses BF16 storage and rounding after each NS stage. This is a P1 precision/mapping fidelity compromise, not an established wrong idealized optimizer or observed historical failure. Named reference restores actual source BF16 pipeline, vector4 work assignment, fused transposes and explicit vendor GEMM ABI.",
+          "taxonomy_code": "P1",
+          "phase": "reference_precision_mapping_alignment",
+          "original_path": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-cuda.jl/original_main.jl",
+          "original_sha256": "9501e927b7e1b8b7c643a4e5892413a376249f2f8f235b93ddc6eeae1e40c6cd",
+          "original_preserved": true,
+          "historical_compiler_attempts": null
+        },
+        "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "vendor_library_interop": true,
+        "vendor_calls_per_optimizer_step": 15,
+        "translated_device_kernels": 8,
+        "authored_kernel_calls_per_optimizer_step": 14,
+        "timed_compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "host_oracle_precision": [
+          "Scalar Float32/FMA and explicitBF16 RNE",
+          "Float64 Frobenius norm accumulation"
+        ],
+        "artifact_encoding": [
+          "Float64 exact Float32/BF16 decoded values and scalar controls"
+        ],
+        "mixed_vendor_pipeline": true,
+        "native_compiler_override": {
+          "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+          "version": "CUDA12.9 V12.9.41",
+          "reason": "CUDA12.0 headers hide packed BF16 conversion APIs onsm70; newer toolchain supports unchanged source.",
+          "runtime": "--cudart=none, explicit system libcudart12.0 and cuBLAS12.0.2.224",
+          "primary_native_source_unchanged": true,
+          "prior_scalar_compatibility_diagnostic": "20261017T225001642126Z_muon; successful finite capture, not primary measurement or scientific acceptance"
+        },
+        "component_classes": {
+          "authored_kernels": "framework_device_kernel",
+          "vendor_gemms": "vendor_library_interop"
+        },
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Input/reset outside timer;2 full optimizer steps including GPU normalization and stream-ordered15GEMMs/step, context-wide sync; captures outside timer.",
+        "vendor_library": {
+          "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+          "API": "cublasGemmEx",
+          "input_output": "BF16",
+          "accumulation": "CUBLAS_COMPUTE_32F",
+          "algorithm": "CUBLAS_GEMM_DEFAULT_TENSOR_OP"
+        }
+      },
+      "ka": {
+        "status": "verified",
+        "actual_algorithm": "Nesterov-style momentum, BF16 storage Newton-Schulz5-stage quintic iteration using15BF16/FP32accum vendor GEMMs per optimizer step, fused tall-matrix transposes and FP32 parameter scaling/update.",
+        "work_item_mapping": "Vector4 work per256-thread elementwise kernel;32x8 shared XOR-layout fused transposes;256x256 reduction geometry; same row-major BF16 working matrices and cuBLAS swapped-operand ABI.",
+        "storage_precision": [
+          "Float32 parameter/momentum/gradient/norm",
+          "BF16 working X/A/A2/B/BX encodedUInt16"
+        ],
+        "compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "synchronization": [
+          "256-thread block barriers for reduction and tile transpose",
+          "Global Float32 atomic norm accumulation",
+          "Raw cuBLAS handle bound to authored-kernel task stream",
+          "Context-wide completion at timer boundaries"
+        ],
+        "launch_geometry": {
+          "vector_threads": 256,
+          "norm_grid": 256,
+          "norm_shared_bytes": 1024,
+          "transpose_threads": [
+            32,
+            8
+          ],
+          "transpose_tile": [
+            32,
+            32
+          ],
+          "transpose_shared_bytes": 2048,
+          "authored_distinct_kernels": 8,
+          "authored_kernel_calls_per_optimizer_step": 14,
+          "vendor_gemm_calls_per_optimizer_step": 15,
+          "cases": [
+            [
+              16,
+              32,
+              "diagonal"
+            ],
+            [
+              32,
+              16,
+              "diagonal"
+            ],
+            [
+              17,
+              33,
+              "dense"
+            ],
+            [
+              33,
+              17,
+              "dense"
+            ]
+          ]
+        },
+        "resource_policy": "256threads/1024B reduction shared;32x8/2048B tiled transpose;zero shared for elementwise",
+        "backend_extensions": [
+          "Pinned system cuBLAS BF16GemmEx ABI; stream binding",
+          "CUDA.jl atomic_add for norm reduction"
+        ],
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "source_sha256": "60887a2f3e7585939e9defed013cc895e37aed47b0b92733dbe8eb9b4338366b",
+        "reference_repair": null,
+        "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "vendor_library_interop": true,
+        "vendor_calls_per_optimizer_step": 15,
+        "translated_device_kernels": 8,
+        "authored_kernel_calls_per_optimizer_step": 14,
+        "timed_compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "host_oracle_precision": [
+          "Scalar Float32/FMA and explicitBF16 RNE",
+          "Float64 Frobenius norm accumulation"
+        ],
+        "artifact_encoding": [
+          "Float64 exact Float32/BF16 decoded values and scalar controls"
+        ],
+        "mixed_vendor_pipeline": true,
+        "native_compiler_override": {
+          "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+          "version": "CUDA12.9 V12.9.41",
+          "reason": "CUDA12.0 headers hide packed BF16 conversion APIs onsm70; newer toolchain supports unchanged source.",
+          "runtime": "--cudart=none, explicit system libcudart12.0 and cuBLAS12.0.2.224",
+          "primary_native_source_unchanged": true,
+          "prior_scalar_compatibility_diagnostic": "20261017T225001642126Z_muon; successful finite capture, not primary measurement or scientific acceptance"
+        },
+        "component_classes": {
+          "authored_kernels": "hybrid_device_intrinsics",
+          "vendor_gemms": "vendor_library_interop"
+        },
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Input/reset outside timer;2 full optimizer steps including GPU normalization and stream-ordered15GEMMs/step, context-wide sync; captures outside timer.",
+        "vendor_library": {
+          "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+          "API": "cublasGemmEx",
+          "input_output": "BF16",
+          "accumulation": "CUBLAS_COMPUTE_32F",
+          "algorithm": "CUBLAS_GEMM_DEFAULT_TENSOR_OP"
+        }
+      },
+      "jacc": {
+        "status": "verified",
+        "actual_algorithm": "Nesterov-style momentum, BF16 storage Newton-Schulz5-stage quintic iteration using15BF16/FP32accum vendor GEMMs per optimizer step, fused tall-matrix transposes and FP32 parameter scaling/update.",
+        "work_item_mapping": "Vector4 work per256-thread elementwise kernel;32x8 shared XOR-layout fused transposes;256x256 reduction geometry; same row-major BF16 working matrices and cuBLAS swapped-operand ABI.",
+        "storage_precision": [
+          "Float32 parameter/momentum/gradient/norm",
+          "BF16 working X/A/A2/B/BX encodedUInt16"
+        ],
+        "compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "synchronization": [
+          "256-thread block barriers for reduction and tile transpose",
+          "Global Float32 atomic norm accumulation",
+          "Raw cuBLAS handle bound to authored-kernel task stream",
+          "Context-wide completion at timer boundaries"
+        ],
+        "launch_geometry": {
+          "vector_threads": 256,
+          "norm_grid": 256,
+          "norm_shared_bytes": 1024,
+          "transpose_threads": [
+            32,
+            8
+          ],
+          "transpose_tile": [
+            32,
+            32
+          ],
+          "transpose_shared_bytes": 2048,
+          "authored_distinct_kernels": 8,
+          "authored_kernel_calls_per_optimizer_step": 14,
+          "vendor_gemm_calls_per_optimizer_step": 15,
+          "cases": [
+            [
+              16,
+              32,
+              "diagonal"
+            ],
+            [
+              32,
+              16,
+              "diagonal"
+            ],
+            [
+              17,
+              33,
+              "dense"
+            ],
+            [
+              33,
+              17,
+              "dense"
+            ]
+          ]
+        },
+        "resource_policy": "256threads/1024B reduction shared;32x8/2048B tiled transpose;zero shared for elementwise",
+        "backend_extensions": [
+          "Pinned system cuBLAS BF16GemmEx ABI; stream binding",
+          "CUDA.jl atomic_add for norm reduction"
+        ],
+        "implementation_class": "mixed_kernel_library_pipeline",
+        "source_sha256": "a67374784f86ccd91aed845210e9b26f823da79ed03ea5eb8ddd58b68dcda911",
+        "reference_repair": null,
+        "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "vendor_library_interop": true,
+        "vendor_calls_per_optimizer_step": 15,
+        "translated_device_kernels": 8,
+        "authored_kernel_calls_per_optimizer_step": 14,
+        "timed_compute_precision": [
+          "Float32 elementwise/Nesterov/reduction/parameter arithmetic",
+          "cuBLAS BF16input/output FP32accumulation",
+          "UInt32/UInt16 bitwise BF16RNE conversions",
+          "Int32 indices/control"
+        ],
+        "host_oracle_precision": [
+          "Scalar Float32/FMA and explicitBF16 RNE",
+          "Float64 Frobenius norm accumulation"
+        ],
+        "artifact_encoding": [
+          "Float64 exact Float32/BF16 decoded values and scalar controls"
+        ],
+        "mixed_vendor_pipeline": true,
+        "native_compiler_override": {
+          "path": "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc",
+          "version": "CUDA12.9 V12.9.41",
+          "reason": "CUDA12.0 headers hide packed BF16 conversion APIs onsm70; newer toolchain supports unchanged source.",
+          "runtime": "--cudart=none, explicit system libcudart12.0 and cuBLAS12.0.2.224",
+          "primary_native_source_unchanged": true,
+          "prior_scalar_compatibility_diagnostic": "20261017T225001642126Z_muon; successful finite capture, not primary measurement or scientific acceptance"
+        },
+        "component_classes": {
+          "authored_kernels": "hybrid_device_intrinsics",
+          "vendor_gemms": "vendor_library_interop"
+        },
+        "shared_memory_adaptation": "JACC.shared copies256Float32/1024UInt16 templates and adds an initial barrier before actual reduction/transpose stores; same1024/2048B capacity, extra API work not assumed optimized away.",
+        "source_review_status": "source_reviewed",
+        "host_device_boundary": "Input/reset outside timer;2 full optimizer steps including GPU normalization and stream-ordered15GEMMs/step, context-wide sync; captures outside timer.",
+        "vendor_library": {
+          "path": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+          "API": "cublasGemmEx",
+          "input_output": "BF16",
+          "accumulation": "CUBLAS_COMPUTE_32F",
+          "algorithm": "CUBLAS_GEMM_DEFAULT_TENSOR_OP"
+        }
+      }
+    },
+    "numerical_evidence_strength": "complete_parameter_momentum_BF16_stage_buffers_norm_plus_independent_mixed_precision_oracle",
+    "scientific_witness": "/home/imo/HeCBench_julia/.porting-state/portable_julia/scientific_witnesses_300/muon.json",
+    "state_alignment": {
+      "p_m": "After optimizer step2",
+      "X": "After NS iteration5, optimizer step2",
+      "A_A2_B_BX": "Scratch from NS iteration5, formed from X at iteration4",
+      "ss": "Pre-normalization norm, optimizer step2"
+    },
+    "native_reference_repaired": false,
+    "prospective_usage_intervals": [
+      {
+        "model": "jacc",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/muon/jacc_translation.jsonl",
+        "end_event": "0f5f061b2dcd921d3694bf67",
+        "delta_usage": {
+          "input_tokens": 750527,
+          "cached_input_tokens": 748288,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4148,
+          "reasoning_output_tokens": 2067,
+          "total_tokens": 754675
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "reference_preparation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/muon/shared_reference_preparation.jsonl",
+        "end_event": "d7ff78f2e1987c21b520f607",
+        "delta_usage": {
+          "input_tokens": 6450257,
+          "cached_input_tokens": 6428160,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 25873,
+          "reasoning_output_tokens": 10207,
+          "total_tokens": 6476130
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "ka",
+        "phase": "translation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/muon/ka_translation.jsonl",
+        "end_event": "3a5da82c110061ab7ebf5d64",
+        "delta_usage": {
+          "input_tokens": 734841,
+          "cached_input_tokens": 733824,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3539,
+          "reasoning_output_tokens": 1682,
+          "total_tokens": 738380
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "annotation",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/muon/shared_annotation.jsonl",
+        "end_event": "a9c9a9c06beae45922887cd5",
+        "delta_usage": {
+          "input_tokens": 767629,
+          "cached_input_tokens": 765184,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4185,
+          "reasoning_output_tokens": 956,
+          "total_tokens": 771814
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      },
+      {
+        "model": "shared",
+        "phase": "benchmark_workflow",
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/usage_boundaries_300/muon/shared_benchmark_workflow.jsonl",
+        "end_event": "9b929fd7534892159e5695c2",
+        "delta_usage": {
+          "input_tokens": 9308447,
+          "cached_input_tokens": 9279616,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 38539,
+          "reasoning_output_tokens": 14912,
+          "total_tokens": 9346986
+        },
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+      }
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/muon-julia/muon-julia-cuda.jl/main.jl",
+    "sha256": "57fa55c957a6a5c025c040bd1586e39d7a520b17d85bc9fe7f361ee77921a233",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        5,
+        6,
+        7,
+        9,
+        11,
+        12
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+      "run_id": "20261017T225841732698Z_muon",
+      "result": ".porting-state/portable_julia/runs/20261017T225841732698Z_muon/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "25e6bd98cadfd84f0a5ae735b581742939e9e8e277689bdb4f073e70457711b6",
+      "source_hash": "9a3e20c4387fa6954cb007aeee41ca0846dcafaa8bc3d6ec4afbba5af82efcc6",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T225841732698Z_muon/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000621261,
+        0.000660421,
+        0.0006254805,
+        0.0006222655000000001,
+        0.000620151
+      ],
+      "mean_last_four_seconds": 0.0006320795,
+      "contract": {
+        "cases": [
+          [
+            16,
+            32,
+            "diagonal"
+          ],
+          [
+            32,
+            16,
+            "diagonal"
+          ],
+          [
+            17,
+            33,
+            "dense"
+          ],
+          [
+            33,
+            17,
+            "dense"
+          ]
+        ],
+        "fixture": "Dyadic initial weights/momentum/gradients, defaultbeta.95/lr.02/wd0,2optimizersteps/5NSsteps",
+        "input_prefix_count": 6470,
+        "output_count": 11858,
+        "checked_values": 18328,
+        "precision": "Float32 parameter/momentum; actual UInt16BF16 working matrices and GEMM storage, FP32 GEMM accumulation, explicitRNE stages",
+        "timing": "Sum4case2optimizerstepmeans inclmomentum/transpose,256blocknormreduction,normalize,15BF16GEMMs/step,combine/update,parameter; reset/captureoutside",
+        "native_geometry": "256threads/vector4 kernels,256blocks norm reduction;32x8 shared2048B fused transpose; scalar tails retained",
+        "library": "Pinned systemcuBLAS12.0.2.224; Julia rawhandleexplicitly bound to same stream as authored kernels; context-wide timer completion",
+        "outputs": "Complete p,m,X,A,A2,B,BX andss fromfinaloptimizerstep, rowmajor state",
+        "scope": "Four smallwide/tall cases; diagonal singular-value and dense fixtures. Source native GPU scales update inFP32, CPUcompanion additionallyBF16roundsscale; distinguish. No exactpolarorthogonalityortrainingconvergenceclaim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "muon_cuda_jl_reference_mapping_01",
+        "benchmark_id": "muon",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "reference_precision_mapping_alignment",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/muon.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "muon_cuda_jl_reference_mapping_01",
+          "benchmark_id": "muon",
+          "implementation_model": "cuda_jl",
+          "configuration_id": "muon_bf16_ns5_four_wide_tall_diagonal_dense_two_steps_v1",
+          "environment_id": "historical_original_reference",
+          "phase": "reference_precision_mapping_alignment",
+          "taxonomy_code": "P1",
+          "symptom": "Historical Julia implements the same idealized momentum/Newton-Schulz update using allFP32 working matrices, while native uses BF16 storage and rounding after each NS stage. This is a P1 precision/mapping fidelity compromise, not an established wrong idealized optimizer or observed historical failure. Named reference restores actual source BF16 pipeline, vector4 work assignment, fused transposes and explicit vendor GEMM ABI.",
+          "cause": "Historical Julia implements the same idealized momentum/Newton-Schulz update using allFP32 working matrices, while native uses BF16 storage and rounding after each NS stage. This is a P1 precision/mapping fidelity compromise, not an established wrong idealized optimizer or observed historical failure. Named reference restores actual source BF16 pipeline, vector4 work assignment, fused transposes and explicit vendor GEMM ABI.",
+          "minimal_trigger": "Read original reference kernel and compare native arithmetic/control flow",
+          "root_cause_evidence": {
+            "finding": "Historical Julia implements the same idealized momentum/Newton-Schulz update using allFP32 working matrices, while native uses BF16 storage and rounding after each NS stage. This is a P1 precision/mapping fidelity compromise, not an established wrong idealized optimizer or observed historical failure. Named reference restores actual source BF16 pipeline, vector4 work assignment, fused transposes and explicit vendor GEMM ABI.",
+            "taxonomy_code": "P1",
+            "phase": "reference_precision_mapping_alignment",
+            "original_path": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-cuda.jl/original_main.jl",
+            "original_sha256": "9501e927b7e1b8b7c643a4e5892413a376249f2f8f235b93ddc6eeae1e40c6cd",
+            "original_preserved": true,
+            "historical_compiler_attempts": null
+          },
+          "resolution": "Preserve original bytes and implement faithful native-equivalent CUDA.jl reference",
+          "final_outcome": "resolved",
+          "source_candidate_id": 1,
+          "check_id": null,
+          "repair_id": 1,
+          "source_sha256": "9501e927b7e1b8b7c643a4e5892413a376249f2f8f235b93ddc6eeae1e40c6cd",
+          "log_reference": "/home/imo/HeCBench_julia/src/muon-julia/study_notes.json",
+          "historical_observed_failure_attempt": false,
+          "is_failure": false,
+          "scientific_operator_incorrect": false
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 3,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": null,
+      "output_tokens": 236,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "status": "partial_estimated",
+      "method": "ceil(saved final main.jl characters/4); source-size proxy, not consumed/billed tokens",
+      "sources": [
+        "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-cuda.jl/main.jl"
+      ],
+      "limitations": "Prompts, reasoning, tool context, discarded drafts and shared reference/measurement work unavailable; not comparable total translation cost."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 3
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_feedback_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/muon-julia-cuda_jl/manifest.json",
+    "selected_sha256": "4d56dfb675f5e92def93ccb30b89c3d992fd2f1562ba5d75c50d0682d87f0952",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/muon-julia-cuda_jl/manifest.json",
+        "sha256": "4d56dfb675f5e92def93ccb30b89c3d992fd2f1562ba5d75c50d0682d87f0952"
+      },
+      {
+        "path": ".porting-state/porting_logs/muon-julia/manifest.json",
+        "sha256": "9b84697f8e9bac537978f5207b1c202de13acce3d32d81b75f45f4aa02e91126"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "mixed_kernel_library_pipeline",
+    "annotation_path": ".porting-state/portable_julia/traits/muon.json",
+    "annotation_sha256": "6f7887b1523e84d76ecae6348e942f8e50b81c933b69b13fe7eb9d621db458fa",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

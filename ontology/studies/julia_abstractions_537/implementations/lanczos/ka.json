@@ -1,0 +1,1181 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "lanczos",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/lanczos.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_model": "ka",
+    "implementation_class": "ka_framework_4scientific_kernels_localmem_barriers_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+    "authored_device_kernel_definitions": 4,
+    "authored_device_kernel_count": 4,
+    "primary_device_entrypoints": 4,
+    "selected_precision": "Float64",
+    "work_item_mapping": "Source256lanes/block; dot/scale/axpyceil257/256=2blocks. SpMVsourceavgdegreeinteger selects2/4/8/16/32lanes/row, grids3/5/9/17/33 blocks. Paddedfullworkextent executesalllanes forbarriers, invalidrows contribute0. Int32logicalindices sourcecompatible; KAphysical1D matcheslogical1D.",
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "SameCSRsubgroup accumulation/FMA/treeorder, nativevolatilewarp-assumedSpMV givenexplicitwholeblocksharedlifetimes inall3Julia models. Source4kernelmath preserved; fullcommonC++controller/allocator stays. No measuredinstruction-levelmapping identity claimed."
+    },
+    "data_layout": "Originalzero-basedInt32CSRrowptr/colind, Float64values/vectors/scratch; Juliaadds1onlyforarrayaccess. NativeCUDApayloadowner+256byteprefix/suffixguards aligned256B; pointersrotate exactlysource. NonowningCuArrayviews liveunderCowner untilsourcefree.",
+    "private_memory": "Scalarindex/loop/temporaries only; actualregister/spillplacement notprofiled.",
+    "shared_memory": "DotandSpMV eachlogical256Float64/2048B; CUDAjl/JACCCUDAstaticshared, KA frameworklocalmem. Actualcompiledresourcesunprofiled.",
+    "dynamic_shared_memory_bytes_requested": null,
+    "launch_spec_policy": "Fixed256lanes/fullsourcegrid, explicitcontextcompletion insharedCdispatcher",
+    "storage_precision": [
+      "Float64scientificmatrices/vectors/reductions/eigenvalues",
+      "Int32CSR",
+      "Float64artifactwithlosslessUInt32initialbitwords"
+    ],
+    "compute_precision": [
+      "GPUFloat64 explicitFMA forsourceSpMV/axpy; sourceblocksubgroupaddtree preserved",
+      "OriginalCPUFloat64dotpartials/alpha-beta/TQLRAT/filter",
+      "IndependentCPUlongdouble64mantissastage/recurrence checks andNumPyFloat64dense symmetric spectra"
+    ],
+    "synchronization": [
+      "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+      "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+      "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+      "FullsourceCPUscalardependencies andnormD2Hcopies"
+    ],
+    "backend_extension_features": [
+      "CUDABackend andnativeCUDAowner/nonowningCuArray views/contextcompletion; devicebodyusesKA localmem/synchronize, nobackendCUDAintrinsics"
+    ],
+    "CPUcontroller_interop": "OriginalC++gpu_lanczos/eigenfilter/controller/guardednativeCUDAallocator sharedFFI. NonnullJulia callbackhandlesall2125scientificlaunches; nativeGPUfallbackonlybaselinecbnull. ActualCPU/GPUboundary remainsCUDA-specific evenKAdevicebodyportable.",
+    "host_device_boundary": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+    "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+    "verification_contract": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+    "boundary_rounding_policy": "Originalunitundirectedgraph CSRorder reversedbyoriginalCOO\u2192CSR; sourcee0, 71iterations/FMA/tree/hostsumorder preserved. No earlytermination/reorthogonalization substitution.",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "secondary_domains": [
+        "sparse_symmetric_eigensolvers",
+        "spectral_graph_analysis",
+        "Krylov_subspace_methods"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Approximate3largest eigenvalues of sparse symmetric graph adjacency via naive fixed-step Lanczos recurrence, originalTQLRAT tridiagonal solver andspurious-root heuristic.",
+      "description": "Source4GPUkernels performsubgroupCSRSpMV, blockdotreduction, axpy andscale; originalC++CPUsums/scalars/pointerrotation/full71iterations andeigenfilter retained.",
+      "classification_rationale": "SparseKryloveigensolver ratherthangenericSpMV; graphinputprovidesunitweighted symmetricadjacency, noapplication-specificnetworksemantic inference.",
+      "mathematical_operation": "Three-termLanczosrecurrence andtridiagonaleigenproblem; sourcehasno reorthogonalization.",
+      "community_use_case": "Iterativesolver developers comparing sourcegroup reduction/memory/synchronization mappings andcomplete host/GPUrecurrence behavior withindependent graph-spectral accuracy.",
+      "accuracy_requirements": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+      "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+      "source_evidence": [
+        {
+          "path": "src/lanczos-cuda/main.cu",
+          "sha256": "e6c4a62ed67afeb4eabc26dd8f1cc5b51a2baf7e1d34d466d9e452669426dbab"
+        },
+        {
+          "path": "src/lanczos-cuda/lanczos.cu",
+          "sha256": "ddf188ed76e40e503941d1afd060cb9700987bdaf4b2a2c585cda24dfa98c3b1"
+        },
+        {
+          "path": "src/lanczos-cuda/eigen.h",
+          "sha256": "9fdb79023aaf442f430d0d5de7cf445e737b17beda91a0893adf94aef0649bd7"
+        },
+        {
+          "path": "src/lanczos-cuda/linear_algebra.h",
+          "sha256": "e663248bc5657340db977db76ae92cd6ccadd666904455e0f40a0666dec0a626"
+        },
+        {
+          "path": "src/lanczos-cuda/matrix.h",
+          "sha256": "3293661aadd836dfbd8d7efc5a68a63fe4418b96d1fcc0449486df4ed324c727"
+        },
+        {
+          "path": "src/lanczos-cuda/graph_io.h",
+          "sha256": "c652fb79bb3679393ed5df749985ea4d694fc3754f96dc270fa645151aa1fee1"
+        },
+        {
+          "path": "src/lanczos-cuda/README",
+          "sha256": "d9b049e1ca6c21c3e23b1cf22f3fd2fafeba47c414ec692ab7047e6b3d3d755a"
+        },
+        {
+          "path": "src/lanczos-cuda/data.tar.bz.dvc",
+          "sha256": "0961a991b8f8efa3ab0c810f9d9928e60f79cad80dc73fe7531088d2a8a1ea02"
+        }
+      ],
+      "scientific_certificates": [
+        {
+          "path": "src/lanczos-julia/source_adapter_provenance.json",
+          "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+        },
+        {
+          "path": "src/lanczos-julia/cpu_control_spectral_witness.json",
+          "sha256": "f86461d1164bf26a963c9e2a180707d57911a4f741203b1811fda899d760e9ba"
+        },
+        {
+          "path": "src/lanczos-julia/verification_audit.json",
+          "sha256": "1a2c88cc781489545398fe80286781f9cd7042296ee654daa1f0f0a43037fe96"
+        },
+        {
+          "path": "src/lanczos-julia/audit_captures.py",
+          "sha256": "cf0c99488fe0f4b50f791a421cc94daa53d3b249b3d997e22706439400033a01"
+        },
+        {
+          "path": "src/lanczos-julia/native_readiness.json",
+          "sha256": "86f445c28a98736df9d6702700a4099e26fd3030f6987e7e48fb67cfb62999b2"
+        },
+        {
+          "path": "src/lanczos-julia/original_cli_diagnostic.json",
+          "sha256": "ffa23e1ef3bb85748f2d7dd80bbf10bbd35833e7433e01b8a1c5ab4dc86db246"
+        },
+        {
+          "path": "src/lanczos-julia/asset_provenance.json",
+          "sha256": "f5966fcc0c24cd090f7060d72295b4b5f574b410f94effccad10b8fcf89c9c57"
+        }
+      ],
+      "native_reference_repaired": false,
+      "configuration_role": "primary",
+      "orthogonality_observation": {
+        "max_offdiagonal_innerproducts": [
+          0.7133789949169927,
+          0.8763509240368079,
+          0.9324913802133837,
+          0.9497273363973862,
+          0.9703395150749217
+        ],
+        "interpretation": "Observedsource-naiveunreorthogonalizedbasis; nothiddenorthogonalityacceptancecontract orframeworkfailure."
+      }
+    },
+    "source_evidence": [
+      {
+        "path": "src/lanczos-julia/lanczos-julia-KA/main.jl",
+        "sha256": "b09e100dd3eeb319d53bef51b17be1cfc8c9057f1eb9c74821fd94c00fd9b55c"
+      },
+      {
+        "path": "src/lanczos-julia/study_common.jl",
+        "sha256": "fb2406310d5dd13917d61260b7cc1fc8cfda701aa50169d24fedfb5f72fb7b9d"
+      },
+      {
+        "path": "src/lanczos-julia/host_driver.cu",
+        "sha256": "18c7ef004f4485fd6d7312fa8d4f8b410273d0db82acb36677b841f909661e93"
+      },
+      {
+        "path": "src/lanczos-julia/source_adapter_provenance.json",
+        "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+      }
+    ],
+    "native_reference_repaired": false,
+    "configuration_role": "primary",
+    "support_status": "verified_in_declared_scope",
+    "unsupported_features": [],
+    "untested_features": [
+      "Float32wholepipeline",
+      "Fourway800kpublicgraph/fullCLI sweep",
+      "Non-CUDAwholeapplicationbackend"
+    ],
+    "keyconfounds": [
+      "Named257node/71stepfullsolver, notoriginal800kCLI certificate",
+      "OriginalCPUrecurrence/TQLRAT+nativeCUDAowner sharedFFI; GPUkernelsall4authoredJulia",
+      "Nativewarpvolatileversusportableexplicitblockbarriers andcompilerstorageoptimization",
+      "Perstagewholecontextcompletion/guardedallocation andexcludedobservation perturbuninterruptedCLI",
+      "Onlyfivecaseaggregate timing retained, notpergraph timing",
+      "No physicalresourcecounters/roofline/causalbottleneckinference",
+      "Naivebasislosesorthogonality; testedtop3spectralengineeringbound, notglobaleigensolveraccuracy"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "ka_framework_4scientific_kernels_localmem_barriers_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Source256lanes/block; dot/scale/axpyceil257/256=2blocks. SpMVsourceavgdegreeinteger selects2/4/8/16/32lanes/row, grids3/5/9/17/33 blocks. Paddedfullworkextent executesalllanes forbarriers, invalidrows contribute0. Int32logicalindices sourcecompatible; KAphysical1D matcheslogical1D.",
+    "layout": "Originalzero-basedInt32CSRrowptr/colind, Float64values/vectors/scratch; Juliaadds1onlyforarrayaccess. NativeCUDApayloadowner+256byteprefix/suffixguards aligned256B; pointersrotate exactlysource. NonowningCuArrayviews liveunderCowner untilsourcefree.",
+    "storage_precision": [
+      "Float64scientificmatrices/vectors/reductions/eigenvalues",
+      "Int32CSR",
+      "Float64artifactwithlosslessUInt32initialbitwords"
+    ],
+    "compute_precision": [
+      "GPUFloat64 explicitFMA forsourceSpMV/axpy; sourceblocksubgroupaddtree preserved",
+      "OriginalCPUFloat64dotpartials/alpha-beta/TQLRAT/filter",
+      "IndependentCPUlongdouble64mantissastage/recurrence checks andNumPyFloat64dense symmetric spectra"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+      "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+      "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+      "FullsourceCPUscalardependencies andnormD2Hcopies"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/lanczos-julia/lanczos-julia-KA/main.jl",
+        "sha256": "b09e100dd3eeb319d53bef51b17be1cfc8c9057f1eb9c74821fd94c00fd9b55c"
+      },
+      {
+        "path": "src/lanczos-julia/study_common.jl",
+        "sha256": "fb2406310d5dd13917d61260b7cc1fc8cfda701aa50169d24fedfb5f72fb7b9d"
+      },
+      {
+        "path": "src/lanczos-julia/host_driver.cu",
+        "sha256": "18c7ef004f4485fd6d7312fa8d4f8b410273d0db82acb36677b841f909661e93"
+      },
+      {
+        "path": "src/lanczos-julia/source_adapter_provenance.json",
+        "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "lanczos",
+    "schema_version": 2,
+    "primary_motif": "sparse_Krylov_eigensolver_with_SpMV_and_reductions",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "secondary_domains": [
+        "sparse_symmetric_eigensolvers",
+        "spectral_graph_analysis",
+        "Krylov_subspace_methods"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Approximate3largest eigenvalues of sparse symmetric graph adjacency via naive fixed-step Lanczos recurrence, originalTQLRAT tridiagonal solver andspurious-root heuristic.",
+      "description": "Source4GPUkernels performsubgroupCSRSpMV, blockdotreduction, axpy andscale; originalC++CPUsums/scalars/pointerrotation/full71iterations andeigenfilter retained.",
+      "classification_rationale": "SparseKryloveigensolver ratherthangenericSpMV; graphinputprovidesunitweighted symmetricadjacency, noapplication-specificnetworksemantic inference.",
+      "mathematical_operation": "Three-termLanczosrecurrence andtridiagonaleigenproblem; sourcehasno reorthogonalization.",
+      "community_use_case": "Iterativesolver developers comparing sourcegroup reduction/memory/synchronization mappings andcomplete host/GPUrecurrence behavior withindependent graph-spectral accuracy.",
+      "accuracy_requirements": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+      "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+      "source_evidence": [
+        {
+          "path": "src/lanczos-cuda/main.cu",
+          "sha256": "e6c4a62ed67afeb4eabc26dd8f1cc5b51a2baf7e1d34d466d9e452669426dbab"
+        },
+        {
+          "path": "src/lanczos-cuda/lanczos.cu",
+          "sha256": "ddf188ed76e40e503941d1afd060cb9700987bdaf4b2a2c585cda24dfa98c3b1"
+        },
+        {
+          "path": "src/lanczos-cuda/eigen.h",
+          "sha256": "9fdb79023aaf442f430d0d5de7cf445e737b17beda91a0893adf94aef0649bd7"
+        },
+        {
+          "path": "src/lanczos-cuda/linear_algebra.h",
+          "sha256": "e663248bc5657340db977db76ae92cd6ccadd666904455e0f40a0666dec0a626"
+        },
+        {
+          "path": "src/lanczos-cuda/matrix.h",
+          "sha256": "3293661aadd836dfbd8d7efc5a68a63fe4418b96d1fcc0449486df4ed324c727"
+        },
+        {
+          "path": "src/lanczos-cuda/graph_io.h",
+          "sha256": "c652fb79bb3679393ed5df749985ea4d694fc3754f96dc270fa645151aa1fee1"
+        },
+        {
+          "path": "src/lanczos-cuda/README",
+          "sha256": "d9b049e1ca6c21c3e23b1cf22f3fd2fafeba47c414ec692ab7047e6b3d3d755a"
+        },
+        {
+          "path": "src/lanczos-cuda/data.tar.bz.dvc",
+          "sha256": "0961a991b8f8efa3ab0c810f9d9928e60f79cad80dc73fe7531088d2a8a1ea02"
+        }
+      ],
+      "scientific_certificates": [
+        {
+          "path": "src/lanczos-julia/source_adapter_provenance.json",
+          "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+        },
+        {
+          "path": "src/lanczos-julia/cpu_control_spectral_witness.json",
+          "sha256": "f86461d1164bf26a963c9e2a180707d57911a4f741203b1811fda899d760e9ba"
+        },
+        {
+          "path": "src/lanczos-julia/verification_audit.json",
+          "sha256": "1a2c88cc781489545398fe80286781f9cd7042296ee654daa1f0f0a43037fe96"
+        },
+        {
+          "path": "src/lanczos-julia/audit_captures.py",
+          "sha256": "cf0c99488fe0f4b50f791a421cc94daa53d3b249b3d997e22706439400033a01"
+        },
+        {
+          "path": "src/lanczos-julia/native_readiness.json",
+          "sha256": "86f445c28a98736df9d6702700a4099e26fd3030f6987e7e48fb67cfb62999b2"
+        },
+        {
+          "path": "src/lanczos-julia/original_cli_diagnostic.json",
+          "sha256": "ffa23e1ef3bb85748f2d7dd80bbf10bbd35833e7433e01b8a1c5ab4dc86db246"
+        },
+        {
+          "path": "src/lanczos-julia/asset_provenance.json",
+          "sha256": "f5966fcc0c24cd090f7060d72295b4b5f574b410f94effccad10b8fcf89c9c57"
+        }
+      ],
+      "native_reference_repaired": false,
+      "configuration_role": "primary",
+      "orthogonality_observation": {
+        "max_offdiagonal_innerproducts": [
+          0.7133789949169927,
+          0.8763509240368079,
+          0.9324913802133837,
+          0.9497273363973862,
+          0.9703395150749217
+        ],
+        "interpretation": "Observedsource-naiveunreorthogonalizedbasis; nothiddenorthogonalityacceptancecontract orframeworkfailure."
+      }
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_model": "cuda_jl",
+        "implementation_class": "cuda_jl_4scientific_kernels_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+        "authored_device_kernel_definitions": 4,
+        "authored_device_kernel_count": 4,
+        "primary_device_entrypoints": 4,
+        "selected_precision": "Float64",
+        "work_item_mapping": "Source256lanes/block; dot/scale/axpyceil257/256=2blocks. SpMVsourceavgdegreeinteger selects2/4/8/16/32lanes/row, grids3/5/9/17/33 blocks. Paddedfullworkextent executesalllanes forbarriers, invalidrows contribute0. Int32logicalindices sourcecompatible; KAphysical1D matcheslogical1D.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "SameCSRsubgroup accumulation/FMA/treeorder, nativevolatilewarp-assumedSpMV givenexplicitwholeblocksharedlifetimes inall3Julia models. Source4kernelmath preserved; fullcommonC++controller/allocator stays. No measuredinstruction-levelmapping identity claimed."
+        },
+        "data_layout": "Originalzero-basedInt32CSRrowptr/colind, Float64values/vectors/scratch; Juliaadds1onlyforarrayaccess. NativeCUDApayloadowner+256byteprefix/suffixguards aligned256B; pointersrotate exactlysource. NonowningCuArrayviews liveunderCowner untilsourcefree.",
+        "private_memory": "Scalarindex/loop/temporaries only; actualregister/spillplacement notprofiled.",
+        "shared_memory": "DotandSpMV eachlogical256Float64/2048B; CUDAjl/JACCCUDAstaticshared, KA frameworklocalmem. Actualcompiledresourcesunprofiled.",
+        "dynamic_shared_memory_bytes_requested": null,
+        "launch_spec_policy": "Fixed256lanes/fullsourcegrid, explicitcontextcompletion insharedCdispatcher",
+        "storage_precision": [
+          "Float64scientificmatrices/vectors/reductions/eigenvalues",
+          "Int32CSR",
+          "Float64artifactwithlosslessUInt32initialbitwords"
+        ],
+        "compute_precision": [
+          "GPUFloat64 explicitFMA forsourceSpMV/axpy; sourceblocksubgroupaddtree preserved",
+          "OriginalCPUFloat64dotpartials/alpha-beta/TQLRAT/filter",
+          "IndependentCPUlongdouble64mantissastage/recurrence checks andNumPyFloat64dense symmetric spectra"
+        ],
+        "synchronization": [
+          "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+          "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+          "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+          "FullsourceCPUscalardependencies andnormD2Hcopies"
+        ],
+        "backend_extension_features": [
+          "CUDAlaunch/staticshared/blocksync",
+          "NativeCUDAowner/nonowningCuArray views/contextcompletion"
+        ],
+        "CPUcontroller_interop": "OriginalC++gpu_lanczos/eigenfilter/controller/guardednativeCUDAallocator sharedFFI. NonnullJulia callbackhandlesall2125scientificlaunches; nativeGPUfallbackonlybaselinecbnull. ActualCPU/GPUboundary remainsCUDA-specific evenKAdevicebodyportable.",
+        "host_device_boundary": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "verification_contract": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+        "boundary_rounding_policy": "Originalunitundirectedgraph CSRorder reversedbyoriginalCOO\u2192CSR; sourcee0, 71iterations/FMA/tree/hostsumorder preserved. No earlytermination/reorthogonalization substitution.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "secondary_domains": [
+            "sparse_symmetric_eigensolvers",
+            "spectral_graph_analysis",
+            "Krylov_subspace_methods"
+          ],
+          "review_status": "source_reviewed",
+          "scientific_task": "Approximate3largest eigenvalues of sparse symmetric graph adjacency via naive fixed-step Lanczos recurrence, originalTQLRAT tridiagonal solver andspurious-root heuristic.",
+          "description": "Source4GPUkernels performsubgroupCSRSpMV, blockdotreduction, axpy andscale; originalC++CPUsums/scalars/pointerrotation/full71iterations andeigenfilter retained.",
+          "classification_rationale": "SparseKryloveigensolver ratherthangenericSpMV; graphinputprovidesunitweighted symmetricadjacency, noapplication-specificnetworksemantic inference.",
+          "mathematical_operation": "Three-termLanczosrecurrence andtridiagonaleigenproblem; sourcehasno reorthogonalization.",
+          "community_use_case": "Iterativesolver developers comparing sourcegroup reduction/memory/synchronization mappings andcomplete host/GPUrecurrence behavior withindependent graph-spectral accuracy.",
+          "accuracy_requirements": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+          "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+          "source_evidence": [
+            {
+              "path": "src/lanczos-cuda/main.cu",
+              "sha256": "e6c4a62ed67afeb4eabc26dd8f1cc5b51a2baf7e1d34d466d9e452669426dbab"
+            },
+            {
+              "path": "src/lanczos-cuda/lanczos.cu",
+              "sha256": "ddf188ed76e40e503941d1afd060cb9700987bdaf4b2a2c585cda24dfa98c3b1"
+            },
+            {
+              "path": "src/lanczos-cuda/eigen.h",
+              "sha256": "9fdb79023aaf442f430d0d5de7cf445e737b17beda91a0893adf94aef0649bd7"
+            },
+            {
+              "path": "src/lanczos-cuda/linear_algebra.h",
+              "sha256": "e663248bc5657340db977db76ae92cd6ccadd666904455e0f40a0666dec0a626"
+            },
+            {
+              "path": "src/lanczos-cuda/matrix.h",
+              "sha256": "3293661aadd836dfbd8d7efc5a68a63fe4418b96d1fcc0449486df4ed324c727"
+            },
+            {
+              "path": "src/lanczos-cuda/graph_io.h",
+              "sha256": "c652fb79bb3679393ed5df749985ea4d694fc3754f96dc270fa645151aa1fee1"
+            },
+            {
+              "path": "src/lanczos-cuda/README",
+              "sha256": "d9b049e1ca6c21c3e23b1cf22f3fd2fafeba47c414ec692ab7047e6b3d3d755a"
+            },
+            {
+              "path": "src/lanczos-cuda/data.tar.bz.dvc",
+              "sha256": "0961a991b8f8efa3ab0c810f9d9928e60f79cad80dc73fe7531088d2a8a1ea02"
+            }
+          ],
+          "scientific_certificates": [
+            {
+              "path": "src/lanczos-julia/source_adapter_provenance.json",
+              "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+            },
+            {
+              "path": "src/lanczos-julia/cpu_control_spectral_witness.json",
+              "sha256": "f86461d1164bf26a963c9e2a180707d57911a4f741203b1811fda899d760e9ba"
+            },
+            {
+              "path": "src/lanczos-julia/verification_audit.json",
+              "sha256": "1a2c88cc781489545398fe80286781f9cd7042296ee654daa1f0f0a43037fe96"
+            },
+            {
+              "path": "src/lanczos-julia/audit_captures.py",
+              "sha256": "cf0c99488fe0f4b50f791a421cc94daa53d3b249b3d997e22706439400033a01"
+            },
+            {
+              "path": "src/lanczos-julia/native_readiness.json",
+              "sha256": "86f445c28a98736df9d6702700a4099e26fd3030f6987e7e48fb67cfb62999b2"
+            },
+            {
+              "path": "src/lanczos-julia/original_cli_diagnostic.json",
+              "sha256": "ffa23e1ef3bb85748f2d7dd80bbf10bbd35833e7433e01b8a1c5ab4dc86db246"
+            },
+            {
+              "path": "src/lanczos-julia/asset_provenance.json",
+              "sha256": "f5966fcc0c24cd090f7060d72295b4b5f574b410f94effccad10b8fcf89c9c57"
+            }
+          ],
+          "native_reference_repaired": false,
+          "configuration_role": "primary",
+          "orthogonality_observation": {
+            "max_offdiagonal_innerproducts": [
+              0.7133789949169927,
+              0.8763509240368079,
+              0.9324913802133837,
+              0.9497273363973862,
+              0.9703395150749217
+            ],
+            "interpretation": "Observedsource-naiveunreorthogonalizedbasis; nothiddenorthogonalityacceptancecontract orframeworkfailure."
+          }
+        },
+        "source_evidence": [
+          {
+            "path": "src/lanczos-julia/lanczos-julia-cuda.jl/main.jl",
+            "sha256": "4baac17892aecceb511fbe8bbde418617caccea11a05183751113246c5f4aab7"
+          },
+          {
+            "path": "src/lanczos-julia/study_common.jl",
+            "sha256": "fb2406310d5dd13917d61260b7cc1fc8cfda701aa50169d24fedfb5f72fb7b9d"
+          },
+          {
+            "path": "src/lanczos-julia/host_driver.cu",
+            "sha256": "18c7ef004f4485fd6d7312fa8d4f8b410273d0db82acb36677b841f909661e93"
+          },
+          {
+            "path": "src/lanczos-julia/source_adapter_provenance.json",
+            "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+          }
+        ],
+        "native_reference_repaired": false,
+        "configuration_role": "primary",
+        "support_status": "verified_in_declared_scope",
+        "unsupported_features": [],
+        "untested_features": [
+          "Float32wholepipeline",
+          "Fourway800kpublicgraph/fullCLI sweep",
+          "Non-CUDAwholeapplicationbackend"
+        ],
+        "keyconfounds": [
+          "Named257node/71stepfullsolver, notoriginal800kCLI certificate",
+          "OriginalCPUrecurrence/TQLRAT+nativeCUDAowner sharedFFI; GPUkernelsall4authoredJulia",
+          "Nativewarpvolatileversusportableexplicitblockbarriers andcompilerstorageoptimization",
+          "Perstagewholecontextcompletion/guardedallocation andexcludedobservation perturbuninterruptedCLI",
+          "Onlyfivecaseaggregate timing retained, notpergraph timing",
+          "No physicalresourcecounters/roofline/causalbottleneckinference",
+          "Naivebasislosesorthogonality; testedtop3spectralengineeringbound, notglobaleigensolveraccuracy"
+        ]
+      },
+      "ka": {
+        "implementation_model": "ka",
+        "implementation_class": "ka_framework_4scientific_kernels_localmem_barriers_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+        "authored_device_kernel_definitions": 4,
+        "authored_device_kernel_count": 4,
+        "primary_device_entrypoints": 4,
+        "selected_precision": "Float64",
+        "work_item_mapping": "Source256lanes/block; dot/scale/axpyceil257/256=2blocks. SpMVsourceavgdegreeinteger selects2/4/8/16/32lanes/row, grids3/5/9/17/33 blocks. Paddedfullworkextent executesalllanes forbarriers, invalidrows contribute0. Int32logicalindices sourcecompatible; KAphysical1D matcheslogical1D.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "SameCSRsubgroup accumulation/FMA/treeorder, nativevolatilewarp-assumedSpMV givenexplicitwholeblocksharedlifetimes inall3Julia models. Source4kernelmath preserved; fullcommonC++controller/allocator stays. No measuredinstruction-levelmapping identity claimed."
+        },
+        "data_layout": "Originalzero-basedInt32CSRrowptr/colind, Float64values/vectors/scratch; Juliaadds1onlyforarrayaccess. NativeCUDApayloadowner+256byteprefix/suffixguards aligned256B; pointersrotate exactlysource. NonowningCuArrayviews liveunderCowner untilsourcefree.",
+        "private_memory": "Scalarindex/loop/temporaries only; actualregister/spillplacement notprofiled.",
+        "shared_memory": "DotandSpMV eachlogical256Float64/2048B; CUDAjl/JACCCUDAstaticshared, KA frameworklocalmem. Actualcompiledresourcesunprofiled.",
+        "dynamic_shared_memory_bytes_requested": null,
+        "launch_spec_policy": "Fixed256lanes/fullsourcegrid, explicitcontextcompletion insharedCdispatcher",
+        "storage_precision": [
+          "Float64scientificmatrices/vectors/reductions/eigenvalues",
+          "Int32CSR",
+          "Float64artifactwithlosslessUInt32initialbitwords"
+        ],
+        "compute_precision": [
+          "GPUFloat64 explicitFMA forsourceSpMV/axpy; sourceblocksubgroupaddtree preserved",
+          "OriginalCPUFloat64dotpartials/alpha-beta/TQLRAT/filter",
+          "IndependentCPUlongdouble64mantissastage/recurrence checks andNumPyFloat64dense symmetric spectra"
+        ],
+        "synchronization": [
+          "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+          "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+          "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+          "FullsourceCPUscalardependencies andnormD2Hcopies"
+        ],
+        "backend_extension_features": [
+          "CUDABackend andnativeCUDAowner/nonowningCuArray views/contextcompletion; devicebodyusesKA localmem/synchronize, nobackendCUDAintrinsics"
+        ],
+        "CPUcontroller_interop": "OriginalC++gpu_lanczos/eigenfilter/controller/guardednativeCUDAallocator sharedFFI. NonnullJulia callbackhandlesall2125scientificlaunches; nativeGPUfallbackonlybaselinecbnull. ActualCPU/GPUboundary remainsCUDA-specific evenKAdevicebodyportable.",
+        "host_device_boundary": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "verification_contract": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+        "boundary_rounding_policy": "Originalunitundirectedgraph CSRorder reversedbyoriginalCOO\u2192CSR; sourcee0, 71iterations/FMA/tree/hostsumorder preserved. No earlytermination/reorthogonalization substitution.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "secondary_domains": [
+            "sparse_symmetric_eigensolvers",
+            "spectral_graph_analysis",
+            "Krylov_subspace_methods"
+          ],
+          "review_status": "source_reviewed",
+          "scientific_task": "Approximate3largest eigenvalues of sparse symmetric graph adjacency via naive fixed-step Lanczos recurrence, originalTQLRAT tridiagonal solver andspurious-root heuristic.",
+          "description": "Source4GPUkernels performsubgroupCSRSpMV, blockdotreduction, axpy andscale; originalC++CPUsums/scalars/pointerrotation/full71iterations andeigenfilter retained.",
+          "classification_rationale": "SparseKryloveigensolver ratherthangenericSpMV; graphinputprovidesunitweighted symmetricadjacency, noapplication-specificnetworksemantic inference.",
+          "mathematical_operation": "Three-termLanczosrecurrence andtridiagonaleigenproblem; sourcehasno reorthogonalization.",
+          "community_use_case": "Iterativesolver developers comparing sourcegroup reduction/memory/synchronization mappings andcomplete host/GPUrecurrence behavior withindependent graph-spectral accuracy.",
+          "accuracy_requirements": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+          "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+          "source_evidence": [
+            {
+              "path": "src/lanczos-cuda/main.cu",
+              "sha256": "e6c4a62ed67afeb4eabc26dd8f1cc5b51a2baf7e1d34d466d9e452669426dbab"
+            },
+            {
+              "path": "src/lanczos-cuda/lanczos.cu",
+              "sha256": "ddf188ed76e40e503941d1afd060cb9700987bdaf4b2a2c585cda24dfa98c3b1"
+            },
+            {
+              "path": "src/lanczos-cuda/eigen.h",
+              "sha256": "9fdb79023aaf442f430d0d5de7cf445e737b17beda91a0893adf94aef0649bd7"
+            },
+            {
+              "path": "src/lanczos-cuda/linear_algebra.h",
+              "sha256": "e663248bc5657340db977db76ae92cd6ccadd666904455e0f40a0666dec0a626"
+            },
+            {
+              "path": "src/lanczos-cuda/matrix.h",
+              "sha256": "3293661aadd836dfbd8d7efc5a68a63fe4418b96d1fcc0449486df4ed324c727"
+            },
+            {
+              "path": "src/lanczos-cuda/graph_io.h",
+              "sha256": "c652fb79bb3679393ed5df749985ea4d694fc3754f96dc270fa645151aa1fee1"
+            },
+            {
+              "path": "src/lanczos-cuda/README",
+              "sha256": "d9b049e1ca6c21c3e23b1cf22f3fd2fafeba47c414ec692ab7047e6b3d3d755a"
+            },
+            {
+              "path": "src/lanczos-cuda/data.tar.bz.dvc",
+              "sha256": "0961a991b8f8efa3ab0c810f9d9928e60f79cad80dc73fe7531088d2a8a1ea02"
+            }
+          ],
+          "scientific_certificates": [
+            {
+              "path": "src/lanczos-julia/source_adapter_provenance.json",
+              "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+            },
+            {
+              "path": "src/lanczos-julia/cpu_control_spectral_witness.json",
+              "sha256": "f86461d1164bf26a963c9e2a180707d57911a4f741203b1811fda899d760e9ba"
+            },
+            {
+              "path": "src/lanczos-julia/verification_audit.json",
+              "sha256": "1a2c88cc781489545398fe80286781f9cd7042296ee654daa1f0f0a43037fe96"
+            },
+            {
+              "path": "src/lanczos-julia/audit_captures.py",
+              "sha256": "cf0c99488fe0f4b50f791a421cc94daa53d3b249b3d997e22706439400033a01"
+            },
+            {
+              "path": "src/lanczos-julia/native_readiness.json",
+              "sha256": "86f445c28a98736df9d6702700a4099e26fd3030f6987e7e48fb67cfb62999b2"
+            },
+            {
+              "path": "src/lanczos-julia/original_cli_diagnostic.json",
+              "sha256": "ffa23e1ef3bb85748f2d7dd80bbf10bbd35833e7433e01b8a1c5ab4dc86db246"
+            },
+            {
+              "path": "src/lanczos-julia/asset_provenance.json",
+              "sha256": "f5966fcc0c24cd090f7060d72295b4b5f574b410f94effccad10b8fcf89c9c57"
+            }
+          ],
+          "native_reference_repaired": false,
+          "configuration_role": "primary",
+          "orthogonality_observation": {
+            "max_offdiagonal_innerproducts": [
+              0.7133789949169927,
+              0.8763509240368079,
+              0.9324913802133837,
+              0.9497273363973862,
+              0.9703395150749217
+            ],
+            "interpretation": "Observedsource-naiveunreorthogonalizedbasis; nothiddenorthogonalityacceptancecontract orframeworkfailure."
+          }
+        },
+        "source_evidence": [
+          {
+            "path": "src/lanczos-julia/lanczos-julia-KA/main.jl",
+            "sha256": "b09e100dd3eeb319d53bef51b17be1cfc8c9057f1eb9c74821fd94c00fd9b55c"
+          },
+          {
+            "path": "src/lanczos-julia/study_common.jl",
+            "sha256": "fb2406310d5dd13917d61260b7cc1fc8cfda701aa50169d24fedfb5f72fb7b9d"
+          },
+          {
+            "path": "src/lanczos-julia/host_driver.cu",
+            "sha256": "18c7ef004f4485fd6d7312fa8d4f8b410273d0db82acb36677b841f909661e93"
+          },
+          {
+            "path": "src/lanczos-julia/source_adapter_provenance.json",
+            "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+          }
+        ],
+        "native_reference_repaired": false,
+        "configuration_role": "primary",
+        "support_status": "verified_in_declared_scope",
+        "unsupported_features": [],
+        "untested_features": [
+          "Float32wholepipeline",
+          "Fourway800kpublicgraph/fullCLI sweep",
+          "Non-CUDAwholeapplicationbackend"
+        ],
+        "keyconfounds": [
+          "Named257node/71stepfullsolver, notoriginal800kCLI certificate",
+          "OriginalCPUrecurrence/TQLRAT+nativeCUDAowner sharedFFI; GPUkernelsall4authoredJulia",
+          "Nativewarpvolatileversusportableexplicitblockbarriers andcompilerstorageoptimization",
+          "Perstagewholecontextcompletion/guardedallocation andexcludedobservation perturbuninterruptedCLI",
+          "Onlyfivecaseaggregate timing retained, notpergraph timing",
+          "No physicalresourcecounters/roofline/causalbottleneckinference",
+          "Naivebasislosesorthogonality; testedtop3spectralengineeringbound, notglobaleigensolveraccuracy"
+        ]
+      },
+      "jacc": {
+        "implementation_model": "jacc",
+        "implementation_class": "jacc_dispatch_4scientific_functions_CUDAstaticshared_sync_extension_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+        "authored_device_kernel_definitions": 4,
+        "authored_device_kernel_count": 4,
+        "primary_device_entrypoints": 4,
+        "selected_precision": "Float64",
+        "work_item_mapping": "Source256lanes/block; dot/scale/axpyceil257/256=2blocks. SpMVsourceavgdegreeinteger selects2/4/8/16/32lanes/row, grids3/5/9/17/33 blocks. Paddedfullworkextent executesalllanes forbarriers, invalidrows contribute0. Int32logicalindices sourcecompatible; KAphysical1D matcheslogical1D.",
+        "native_to_julia_mapping": {
+          "status": "adapted",
+          "reason": "SameCSRsubgroup accumulation/FMA/treeorder, nativevolatilewarp-assumedSpMV givenexplicitwholeblocksharedlifetimes inall3Julia models. Source4kernelmath preserved; fullcommonC++controller/allocator stays. No measuredinstruction-levelmapping identity claimed."
+        },
+        "data_layout": "Originalzero-basedInt32CSRrowptr/colind, Float64values/vectors/scratch; Juliaadds1onlyforarrayaccess. NativeCUDApayloadowner+256byteprefix/suffixguards aligned256B; pointersrotate exactlysource. NonowningCuArrayviews liveunderCowner untilsourcefree.",
+        "private_memory": "Scalarindex/loop/temporaries only; actualregister/spillplacement notprofiled.",
+        "shared_memory": "DotandSpMV eachlogical256Float64/2048B; CUDAjl/JACCCUDAstaticshared, KA frameworklocalmem. Actualcompiledresourcesunprofiled.",
+        "dynamic_shared_memory_bytes_requested": 0,
+        "launch_spec_policy": "JACC completefrozengrids threads256/blockcountkey, shmem_size0, syncfalse; no mutableinferredgrid",
+        "storage_precision": [
+          "Float64scientificmatrices/vectors/reductions/eigenvalues",
+          "Int32CSR",
+          "Float64artifactwithlosslessUInt32initialbitwords"
+        ],
+        "compute_precision": [
+          "GPUFloat64 explicitFMA forsourceSpMV/axpy; sourceblocksubgroupaddtree preserved",
+          "OriginalCPUFloat64dotpartials/alpha-beta/TQLRAT/filter",
+          "IndependentCPUlongdouble64mantissastage/recurrence checks andNumPyFloat64dense symmetric spectra"
+        ],
+        "synchronization": [
+          "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+          "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+          "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+          "FullsourceCPUscalardependencies andnormD2Hcopies"
+        ],
+        "backend_extension_features": [
+          "CUDA.CuStaticSharedArray andCUDA.sync_threads fordot/SpMV",
+          "NativeCUDAowner/nonowningCuArray views/contextcompletion"
+        ],
+        "CPUcontroller_interop": "OriginalC++gpu_lanczos/eigenfilter/controller/guardednativeCUDAallocator sharedFFI. NonnullJulia callbackhandlesall2125scientificlaunches; nativeGPUfallbackonlybaselinecbnull. ActualCPU/GPUboundary remainsCUDA-specific evenKAdevicebodyportable.",
+        "host_device_boundary": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "verification_contract": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+        "boundary_rounding_policy": "Originalunitundirectedgraph CSRorder reversedbyoriginalCOO\u2192CSR; sourcee0, 71iterations/FMA/tree/hostsumorder preserved. No earlytermination/reorthogonalization substitution.",
+        "scientific_intent": {
+          "primary_family": "linear_algebra",
+          "secondary_domains": [
+            "sparse_symmetric_eigensolvers",
+            "spectral_graph_analysis",
+            "Krylov_subspace_methods"
+          ],
+          "review_status": "source_reviewed",
+          "scientific_task": "Approximate3largest eigenvalues of sparse symmetric graph adjacency via naive fixed-step Lanczos recurrence, originalTQLRAT tridiagonal solver andspurious-root heuristic.",
+          "description": "Source4GPUkernels performsubgroupCSRSpMV, blockdotreduction, axpy andscale; originalC++CPUsums/scalars/pointerrotation/full71iterations andeigenfilter retained.",
+          "classification_rationale": "SparseKryloveigensolver ratherthangenericSpMV; graphinputprovidesunitweighted symmetricadjacency, noapplication-specificnetworksemantic inference.",
+          "mathematical_operation": "Three-termLanczosrecurrence andtridiagonaleigenproblem; sourcehasno reorthogonalization.",
+          "community_use_case": "Iterativesolver developers comparing sourcegroup reduction/memory/synchronization mappings andcomplete host/GPUrecurrence behavior withindependent graph-spectral accuracy.",
+          "accuracy_requirements": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+          "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+          "source_evidence": [
+            {
+              "path": "src/lanczos-cuda/main.cu",
+              "sha256": "e6c4a62ed67afeb4eabc26dd8f1cc5b51a2baf7e1d34d466d9e452669426dbab"
+            },
+            {
+              "path": "src/lanczos-cuda/lanczos.cu",
+              "sha256": "ddf188ed76e40e503941d1afd060cb9700987bdaf4b2a2c585cda24dfa98c3b1"
+            },
+            {
+              "path": "src/lanczos-cuda/eigen.h",
+              "sha256": "9fdb79023aaf442f430d0d5de7cf445e737b17beda91a0893adf94aef0649bd7"
+            },
+            {
+              "path": "src/lanczos-cuda/linear_algebra.h",
+              "sha256": "e663248bc5657340db977db76ae92cd6ccadd666904455e0f40a0666dec0a626"
+            },
+            {
+              "path": "src/lanczos-cuda/matrix.h",
+              "sha256": "3293661aadd836dfbd8d7efc5a68a63fe4418b96d1fcc0449486df4ed324c727"
+            },
+            {
+              "path": "src/lanczos-cuda/graph_io.h",
+              "sha256": "c652fb79bb3679393ed5df749985ea4d694fc3754f96dc270fa645151aa1fee1"
+            },
+            {
+              "path": "src/lanczos-cuda/README",
+              "sha256": "d9b049e1ca6c21c3e23b1cf22f3fd2fafeba47c414ec692ab7047e6b3d3d755a"
+            },
+            {
+              "path": "src/lanczos-cuda/data.tar.bz.dvc",
+              "sha256": "0961a991b8f8efa3ab0c810f9d9928e60f79cad80dc73fe7531088d2a8a1ea02"
+            }
+          ],
+          "scientific_certificates": [
+            {
+              "path": "src/lanczos-julia/source_adapter_provenance.json",
+              "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+            },
+            {
+              "path": "src/lanczos-julia/cpu_control_spectral_witness.json",
+              "sha256": "f86461d1164bf26a963c9e2a180707d57911a4f741203b1811fda899d760e9ba"
+            },
+            {
+              "path": "src/lanczos-julia/verification_audit.json",
+              "sha256": "1a2c88cc781489545398fe80286781f9cd7042296ee654daa1f0f0a43037fe96"
+            },
+            {
+              "path": "src/lanczos-julia/audit_captures.py",
+              "sha256": "cf0c99488fe0f4b50f791a421cc94daa53d3b249b3d997e22706439400033a01"
+            },
+            {
+              "path": "src/lanczos-julia/native_readiness.json",
+              "sha256": "86f445c28a98736df9d6702700a4099e26fd3030f6987e7e48fb67cfb62999b2"
+            },
+            {
+              "path": "src/lanczos-julia/original_cli_diagnostic.json",
+              "sha256": "ffa23e1ef3bb85748f2d7dd80bbf10bbd35833e7433e01b8a1c5ab4dc86db246"
+            },
+            {
+              "path": "src/lanczos-julia/asset_provenance.json",
+              "sha256": "f5966fcc0c24cd090f7060d72295b4b5f574b410f94effccad10b8fcf89c9c57"
+            }
+          ],
+          "native_reference_repaired": false,
+          "configuration_role": "primary",
+          "orthogonality_observation": {
+            "max_offdiagonal_innerproducts": [
+              0.7133789949169927,
+              0.8763509240368079,
+              0.9324913802133837,
+              0.9497273363973862,
+              0.9703395150749217
+            ],
+            "interpretation": "Observedsource-naiveunreorthogonalizedbasis; nothiddenorthogonalityacceptancecontract orframeworkfailure."
+          }
+        },
+        "source_evidence": [
+          {
+            "path": "src/lanczos-julia/lanczos-julia-JACC/main.jl",
+            "sha256": "c12394a04661787e258f190597e25cf4311751be3e4ea3fb5845a3842719470c"
+          },
+          {
+            "path": "src/lanczos-julia/study_common.jl",
+            "sha256": "fb2406310d5dd13917d61260b7cc1fc8cfda701aa50169d24fedfb5f72fb7b9d"
+          },
+          {
+            "path": "src/lanczos-julia/host_driver.cu",
+            "sha256": "18c7ef004f4485fd6d7312fa8d4f8b410273d0db82acb36677b841f909661e93"
+          },
+          {
+            "path": "src/lanczos-julia/source_adapter_provenance.json",
+            "sha256": "702ae78d363cf13fb0a82623f8252e35beabcf5179d44445995996b12c261b8c"
+          }
+        ],
+        "native_reference_repaired": false,
+        "configuration_role": "primary",
+        "support_status": "verified_in_declared_scope",
+        "unsupported_features": [],
+        "untested_features": [
+          "Float32wholepipeline",
+          "Fourway800kpublicgraph/fullCLI sweep",
+          "Non-CUDAwholeapplicationbackend"
+        ],
+        "keyconfounds": [
+          "Named257node/71stepfullsolver, notoriginal800kCLI certificate",
+          "OriginalCPUrecurrence/TQLRAT+nativeCUDAowner sharedFFI; GPUkernelsall4authoredJulia",
+          "Nativewarpvolatileversusportableexplicitblockbarriers andcompilerstorageoptimization",
+          "Perstagewholecontextcompletion/guardedallocation andexcludedobservation perturbuninterruptedCLI",
+          "Onlyfivecaseaggregate timing retained, notpergraph timing",
+          "No physicalresourcecounters/roofline/causalbottleneckinference",
+          "Naivebasislosesorthogonality; testedtop3spectralengineeringbound, notglobaleigensolveraccuracy"
+        ]
+      }
+    },
+    "storage_precision": [
+      "Float64",
+      "Int32CSR",
+      "Float64UInt32bitwords"
+    ],
+    "compute_precision": [
+      "Float64GPU+originalCPU",
+      "IndependentCPUextended64mantissa/NumPyF64spectra"
+    ],
+    "synchronization": [
+      "Nativeblockbarriersfordot; nativeSpMVwarpvolatileassumption retained inreference",
+      "JuliaSpMVexplicitblockinit+log2(group) reductionbarriers, allthreads enter",
+      "SharedC wholecontextwait aftereverymathkernel INCLUDED beforeobserverclock",
+      "FullsourceCPUscalardependencies andnormD2Hcopies"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "SameCSRsubgroup accumulation/FMA/treeorder, nativevolatilewarp-assumedSpMV givenexplicitwholeblocksharedlifetimes inall3Julia models. Source4kernelmath preserved; fullcommonC++controller/allocator stays. No measuredinstruction-levelmapping identity claimed."
+    },
+    "implementation_class": {
+      "cuda_jl": "cuda_jl_4scientific_kernels_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+      "ka": "ka_framework_4scientific_kernels_localmem_barriers_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+      "jacc": "jacc_dispatch_4scientific_functions_CUDAstaticshared_sync_extension_originalC_CPUcontroller_nativeCUDA_owner_FFI"
+    },
+    "timing_scope": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+    "verification_contract": "All20full3,103,860field artifacts byteidentical, bothrefs pass declaredabs1e-8+rel1e-8. Everyactualstage checkedlongdouble abs1e-10+rel1e-10; complete15toproots independentlydense-solvedabs1e-4+rel1e-6, maxerror1.7635e-5. Exactcanonicalinitialbits/CSR andactualguardbytes. Engineeringbounds, notuniversalconvergence/eigenbasisorthogonality.",
+    "keyconfounds": [
+      "Named257node/71stepfullsolver, notoriginal800kCLI certificate",
+      "OriginalCPUrecurrence/TQLRAT+nativeCUDAowner sharedFFI; GPUkernelsall4authoredJulia",
+      "Nativewarpvolatileversusportableexplicitblockbarriers andcompilerstorageoptimization",
+      "Perstagewholecontextcompletion/guardedallocation andexcludedobservation perturbuninterruptedCLI",
+      "Onlyfivecaseaggregate timing retained, notpergraph timing",
+      "No physicalresourcecounters/roofline/causalbottleneckinference",
+      "Naivebasislosesorthogonality; testedtop3spectralengineeringbound, notglobaleigensolveraccuracy"
+    ],
+    "native_reference_repaired": false
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/lanczos-julia/lanczos-julia-KA/main.jl",
+    "sha256": "b09e100dd3eeb319d53bef51b17be1cfc8c9057f1eb9c74821fd94c00fd9b55c",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        16,
+        20,
+        24
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        5,
+        27
+      ],
+      "barrier": [
+        7,
+        11,
+        35,
+        39
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fullLanczos71_float64_5connected257graphs_allgroups_sourceTQLRATfilter_v1",
+      "run_id": "20261019T235806629045Z_lanczos",
+      "result": ".porting-state/portable_julia/runs/20261019T235806629045Z_lanczos/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "fee54d65f8441aba49fd90e20e3c66077b7163de0fe8109e486e886b6b202d22",
+      "source_hash": "2b99dcb5afea7018f99f94a0d13fad8a73a2c5ae48a18bd47836aed58e0c9777",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T235806629045Z_lanczos/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.05455296699999961,
+        0.057349954999999675,
+        0.05418530899999935,
+        0.05441284799999973,
+        0.0556272290000002
+      ],
+      "mean_last_four_seconds": 0.05539383524999974,
+      "contract": {
+        "benchmark": "lanczos",
+        "precision": "Float64 scientificstate/Float64artifact; Int32CSR andexactUInt32inputwordencoding",
+        "full_pipeline": "Originalgpu_lanczos_eigen incl4scientificGPUkernels, originalCPUhostdotblocksums/alpha-beta/scalarcontrol, full71steps andoriginalCPU TQLRAT+spuriousfilter returns3roots. No reorthogonalization algorithm substituted.",
+        "named_cases": {
+          "n": 257,
+          "cliques": [
+            [
+              6,
+              5,
+              4
+            ],
+            [
+              17,
+              13,
+              9
+            ],
+            [
+              25,
+              19,
+              13
+            ],
+            [
+              37,
+              29,
+              23
+            ],
+            [
+              53,
+              43,
+              31
+            ]
+          ],
+          "graph": "Threecompleteunitundirectedcliques connectedsequentiallyandattachedunitpath coveringallremainingvertices, no loops/duplicates; originalCOO\u2192CSR conversion retained.",
+          "nonzeros": [
+            550,
+            940,
+            1502,
+            2990,
+            5756
+          ],
+          "group_sizes": [
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "source_steps": 71,
+          "requested_eigenvalues": 3,
+          "source_initial_vector": "e0=1, others0"
+        },
+        "original_asset": "ExactoriginalDVC800kgraphretrieved; originalfullCLIall12sweepsteps completes, first7/23CPU-GPUeigenvalues agree~1e-11 diagnostic. Notpartofnamedfourwayfullcapturerecommendation.",
+        "predeclared_dual_budget": {
+          "atol": 1e-08,
+          "rtol": 1e-08
+        },
+        "independent_scientific_budgets": {
+          "every_gpu_stage": "LongdoublecompleteSpMV/dot/scale/axpy abs1e-10+rel1e-10 onactualcaptureddeviceinputs",
+          "spectral": "Largest3roots comparedindependentfullsymmetric257x257dense spectrum abs1e-4+rel1e-6; engineeringbound forsource71step/nonreorthogonalized+heuristicfilter, notuniversalconvergenceguarantee. PriorCPU-onlysourcewitness maxerror4.99e-5 beforeGPUcapture.",
+          "normalized_basis": "EverySpMVpreinput sumx\u00b2 within1e-10 of1",
+          "exact": "InitialCSR/coefficient/e0inputwords; inputreadbacks vsfixture andalloutputallocationguards"
+        },
+        "timing": "Completegpu_lanczos_eigen allocation/transfers/CPUrecurrence/full71steps/TQLRAT/spuriousfilter andguardconstruction, percase. Commonwholecontextcompletion AFTEReachmathkernel isincluded beforeobserverclock; fullactualreadbacks/serialization/guardchecks/CPUoracles explicitlyexcluded. Setupgraph/CSR outside. NotoriginaluninterruptedasynchronousCLI orkernel-only timer.",
+        "completion": "Pre/posteachstage wholecudaDeviceSynchronize; scientificGPUwait INCLUDED, never insideexcludedobservationinterval. SharedCnorm D2H synchronouslycompleted beforeCPUscalars.",
+        "kernel_body_policy": "Original4CUDAkernelbodies byteidentical. OriginalvolatileSpMVwarp-assumedsharedreduction remains; staticrisk noted, noobservednamedfailure/unsupportedclaim beforeactualfullgate.",
+        "initial_input_prefix_count": 39099,
+        "guard_policy": "256byte0xA5beforeandafter eachof7sourceGPUallocations, payloadalignment256 preserved. Outputguards eachstage, allguardsreadback+serializedbeforefree. No sourceuninitializedpayloadread added: observercapturesonlyactualreadroles, outputafterproducer.",
+        "warmup": "Full5casepipelinetrial0 beforeall5checkedtrials; ownwarmup_diagnostic.bin retainedonfailure, no timingpromotion."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": 1031940,
+      "cached_input_tokens": 1027200,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7083,
+      "reasoning_output_tokens": 5231,
+      "total_tokens": 1039023
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "8f7315f91c6d855ecf4e294b",
+        "begin_event_id": "5b92465bf2555a528840f202",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T23:57:22.609694+00:00",
+        "usage_event_timestamp": "2026-10-19T23:57:10.349Z",
+        "elapsed_usage_event_start": "2026-10-19T23:54:57.980Z",
+        "delta_usage": {
+          "input_tokens": 1031940,
+          "cached_input_tokens": 1027200,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 7083,
+          "reasoning_output_tokens": 5231,
+          "total_tokens": 1039023
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 12.260694,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "04a979bb8221e846c802b85760c85d1ca30f1a58cd4ee1cae9781c5a4f921e36",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "KAfirstfullprogram/all4devicekernels acceptedall5\u00d73,103,860fields EXACTbothrefs. Uniformdynamicgroup-size sharedreduction loops compile andall5group geos run; no compiler/runtime/numericalrepair. Frameworklocalmem/synchronize preserves subgroupFMA/addorder; sourcehostpipeline andguardowner sharedCFFI. Targetwindowcontains no crossbenchmark work; sharedharnessreused afterCUDAjl.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T23:09:54.183Z",
+          "context_event_sha256": "73534d1484c997a9dd66d38a07660451d9be25120da76a542deaf1f11372c3fc",
+          "source_snapshot_bytes": 100489585,
+          "lookup_bytes_reviewed": 4194304,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 8.448069,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lanczos/ka_translation.jsonl",
+        "evidence_sha256": "15295960a07460d3d8bdada92c3df793a459a4326147106deb81d024c0341020",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/lanczos-julia-ka/manifest.json",
+    "selected_sha256": "b733902528687a44f38ae90a8b3a55924d2f59cb49430d8a87b6b5d425e2fb92",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/lanczos-julia-ka/manifest.json",
+        "sha256": "b733902528687a44f38ae90a8b3a55924d2f59cb49430d8a87b6b5d425e2fb92"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "f409977699b89830b4914fdc01efcf62dfc93b12",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "lanczos",
+    "implementation_model": "ka",
+    "status": "verified",
+    "configuration_id": "fullLanczos71_float64_5connected257graphs_allgroups_sourceTQLRATfilter_v1",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261019T235806629045Z_lanczos",
+    "evidence": "src/lanczos-julia/verification_audit.json",
+    "native_reference_repaired": false,
+    "configuration_role": "primary",
+    "support_boundary": "Float64only,5connected257-node tripleclique/pathunitgraphs; original71step/k3/e0 path, allgroup_sizes2/4/8/16/32. Original800kDVCgraph/fullCLI executeddiagnosticonly, notfourwayfullsizecertificate. OriginalC++CPUcontroller/guardednativeCUDAallocations viaFFI shared; all4scientificGPUkernels authoredin eachJulia model.",
+    "source_commit": "f409977699b89830b4914fdc01efcf62dfc93b12",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "f409977699b89830b4914fdc01efcf62dfc93b12",
+      "source": "src/lanczos-julia/lanczos-julia-KA/main.jl",
+      "source_sha256": "b09e100dd3eeb319d53bef51b17be1cfc8c9057f1eb9c74821fd94c00fd9b55c",
+      "phase": "KA",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/lanczos-julia/reference_history/accounting_original_delivery_20261020/ka_status_before_commit_join_89a90a8e0310.json",
+      "recorded_at": "2026-10-20T15:23:44.952344+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "ka_framework_4scientific_kernels_localmem_barriers_originalC_CPUcontroller_nativeCUDA_owner_FFI",
+    "annotation_path": ".porting-state/portable_julia/traits/lanczos.json",
+    "annotation_sha256": "fb0109dd27d88bd8c95fbaa2cb3a3b2d4899619d464fba2024b7b68805c4c320",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

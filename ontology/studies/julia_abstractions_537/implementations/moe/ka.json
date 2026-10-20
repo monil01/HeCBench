@@ -1,0 +1,1157 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "moe",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/moe.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_named_configuration",
+    "review_status": "source_audited",
+    "actual_algorithm": "Stable row softmax with blockmax/blocksum, then K repeated lexicographic argmax excluding earlier winners",
+    "work_item_mapping": "One token/block,256threads, strided384experts; 257blocks each two kernels",
+    "data_layout": "Token-major contiguous FP32gating/probabilities and token-majorKweights/Int32indices; source_rows=rank*257+token",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float64_lossless_mixed_float32_int32"
+    ],
+    "normalization_domain": "all384experts",
+    "topk_renormalization": false,
+    "tie_break": "lowerexpertID",
+    "memory_access": "Globalgate read, fullprobabilitywrites/repeatedprobabilityreads/earlierwinningindexreads; sharedblocktrees",
+    "synchronization": [
+      "Tree blockbarriers",
+      "Globalindexwrite+blockbarrier before next winner",
+      "Defaulttaskstream two launches thenblockingdevicewidecompletion"
+    ],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 257,
+      "kernel_definitions": 2,
+      "shared_bytes_by_kernel": [
+        1024,
+        2048
+      ],
+      "shared_kind": "static",
+      "registers": null,
+      "spills": null
+    },
+    "library_boundary": "Authoredframeworkdevicekernels, no foreign deviceintrinsics or vendorcompute call",
+    "backend_extensions": [],
+    "source_evidence": {
+      "path": "src/moe-julia/moe-julia-KA/main.jl",
+      "sha256": "40ee92f04f8fc23484953fa78c21e869e3044dde95bd2de652eef18609c33e21"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.0",
+    "profiling_status": "Julia notprofiled; nativecompiledattributes only, no DRAM/occupancy causalclaim",
+    "host_control_boundary": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+    "native_to_model_mapping": {
+      "status": "same_two_stage_algorithm_with_different_block_reduction",
+      "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+    },
+    "limitations": [
+      "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms",
+      "Native compiled shared memory52Bsoftmax/80BtopK and31regs each; Julia sourcepolicy1024B/2048Bshared. Julia compiledregisters/occupancy/DRAMtraffic notmeasured",
+      "JACC public shared() adds256/512Float32template copies+barrier/block; global indicesInt32, sharedexpertkeysFloat32 exactfor<=383; CUDAjl/KA sharedkeysInt32",
+      "Timer sums eight 20-pair kernel-loop means includinghostdispatch+finalblockingdevicewidecompletion; not isolateddevicekernel latency or sourceoriginallargeCLI workload",
+      "Globalsoftmax over384, no selectedsubsetrenormalization. Flatrow K8 mass8/384, renormalization would changeconstant-expert mixture output48x; derivedwitness, no expertnetworkrun",
+      "Source full-expert range/finishednull only. Expert-parallel/finished flags notmeasured; no claim these API variants areunsupported",
+      "FP32 arithmetic/probabilities andInt32indices, Float64oracle andlosslessmixedartifact encoding outsideROI; no FP64GPUcompute claim",
+      "Small reduction differences allowed atpredeclaredatol1e-6/rtol1e-5; all integer outputs exact andunitintegererrors exceed commonbinarybudget because maxid2055",
+      "HistoricalJulia GPUmarker+cannedPASS/0us semanticallyunrelated, restored references/host/oracle separatelyaccounted",
+      "Root prospective windows containcached/repeatedcontext andteam/paper/retrospectivelibrarysyncauditcoordination; broadworkflow overlaps subphases, notexclusive/additive/billedcost"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Stable row softmax with blockmax/blocksum, then K repeated lexicographic argmax excluding earlier winners",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.0",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One token/block,256threads, strided384experts; 257blocks each two kernels",
+    "layout": "Token-major contiguous FP32gating/probabilities and token-majorKweights/Int32indices; source_rows=rank*257+token",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float64_lossless_mixed_float32_int32"
+    ],
+    "memory_hierarchy_and_access": "Globalgate read, fullprobabilitywrites/repeatedprobabilityreads/earlierwinningindexreads; sharedblocktrees",
+    "synchronization": [
+      "Tree blockbarriers",
+      "Globalindexwrite+blockbarrier before next winner",
+      "Defaulttaskstream two launches thenblockingdevicewidecompletion"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 257,
+      "kernel_definitions": 2,
+      "shared_bytes_by_kernel": [
+        1024,
+        2048
+      ],
+      "shared_kind": "static",
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Authoredframeworkdevicekernels, no foreign deviceintrinsics or vendorcompute call",
+    "host_control_boundary": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+    "support_boundary": null,
+    "native_to_model_mapping": {
+      "status": "same_two_stage_algorithm_with_different_block_reduction",
+      "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified_named_configuration",
+    "source_review_evidence": {
+      "path": "src/moe-julia/moe-julia-KA/main.jl",
+      "sha256": "40ee92f04f8fc23484953fa78c21e869e3044dde95bd2de652eef18609c33e21"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "moe",
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "application_domain": "Mixture-of-experts routing",
+      "scientific_task": "Normalize gating logits over all experts and select distinct top-k experts with deterministic ties and source-row mapping",
+      "mathematical_method": "Rowwise stable softmax, then repeated maximum selection; retain global probabilities without top-k subset renormalization",
+      "accuracy_requirements": [
+        "Every probability/selectedweight finite andwithin fixedFloat64oracle budget",
+        "All expert/source-row integers exact; equal probabilities choose smallest expert ID",
+        "Fullrow probabilitysum1 and weights exactlyselectedprobabilities, no duplicatedexperts"
+      ],
+      "community_use_case": "A reusable routing operator for scientific-ML pipelines; documents normalization domain, numerical range and tie policy before choosing an implementation, not fullmodel accuracy",
+      "review_status": "source_audited",
+      "input_size_regime": "257tokens/384experts/K1,2,4,8, bounded dyadic logits and large/tied logits; original32768-tokenCLI not executed",
+      "evidence": [
+        {
+          "path": "src/moe-cuda/kernels.h",
+          "sha256": "3bca5f8592099cbd482ad3791972d9234eed44833410b2385eeaf5e1de7f2887"
+        },
+        {
+          "path": "src/moe-julia/generate_study_fixture.py",
+          "sha256": "fa5d8b68c82f7b5bc00f797c3f2a840a3f0e083277197abf28e7b76088dd7bda"
+        },
+        {
+          "path": "src/moe-julia/scientific_operator_witness.py",
+          "sha256": "4cf27e0a59965d7a5d72299e1384ae6436c3802aa2b493d0300710026e892bfe"
+        }
+      ]
+    },
+    "primary_motif": "softmax_and_deterministic_repeated_argmax_routing",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float64_lossless_mixed_float32_int32"
+    ],
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "native_to_julia_mapping": {
+      "status": "same_two_stage_algorithm_with_different_block_reduction",
+      "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+    },
+    "timing_scope": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+    "verification_contract": "812634fullprobability/weight/index/sourceoutputs+797246exactprefixvalues onall20artifacts, Float64softmax/fullstable-sort oracle, rowconservation/selection/tiechecks",
+    "numerical_evidence_strength": "complete_recorded_output_arrays",
+    "normalization_domain": "all384experts",
+    "topk_renormalization": false,
+    "tie_break": "lowerexpertID",
+    "native_compiled_resources": {
+      "softmax_static_shared": 52,
+      "topk_static_shared": 80,
+      "softmax_registers": 31,
+      "topk_registers": 31
+    },
+    "input_dependent_descriptors": [
+      {
+        "pattern": 0,
+        "k": 1,
+        "output_offset": 0,
+        "output_count": 99459,
+        "probability_count": 98688,
+        "topk_count": 257,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 0,
+        "k": 2,
+        "output_offset": 99459,
+        "output_count": 100230,
+        "probability_count": 98688,
+        "topk_count": 514,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 0,
+        "k": 4,
+        "output_offset": 199689,
+        "output_count": 101772,
+        "probability_count": 98688,
+        "topk_count": 1028,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 0,
+        "k": 8,
+        "output_offset": 301461,
+        "output_count": 104856,
+        "probability_count": 98688,
+        "topk_count": 2056,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 1,
+        "k": 1,
+        "output_offset": 406317,
+        "output_count": 99459,
+        "probability_count": 98688,
+        "topk_count": 257,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 1,
+        "k": 2,
+        "output_offset": 505776,
+        "output_count": 100230,
+        "probability_count": 98688,
+        "topk_count": 514,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 1,
+        "k": 4,
+        "output_offset": 606006,
+        "output_count": 101772,
+        "probability_count": 98688,
+        "topk_count": 1028,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      },
+      {
+        "pattern": 1,
+        "k": 8,
+        "output_offset": 707778,
+        "output_count": 104856,
+        "probability_count": 98688,
+        "topk_count": 2056,
+        "kernel_definitions": 2,
+        "threads_per_block": 256,
+        "blocks": 257,
+        "softmax_normalization_domain": 384,
+        "selected_weight_renormalization": false
+      }
+    ],
+    "scientific_witness": ".porting-state/portable_julia/scientific_witnesses_300/moe.json",
+    "keyconfounds": [
+      "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms",
+      "Native compiled shared memory52Bsoftmax/80BtopK and31regs each; Julia sourcepolicy1024B/2048Bshared. Julia compiledregisters/occupancy/DRAMtraffic notmeasured",
+      "JACC public shared() adds256/512Float32template copies+barrier/block; global indicesInt32, sharedexpertkeysFloat32 exactfor<=383; CUDAjl/KA sharedkeysInt32",
+      "Timer sums eight 20-pair kernel-loop means includinghostdispatch+finalblockingdevicewidecompletion; not isolateddevicekernel latency or sourceoriginallargeCLI workload",
+      "Globalsoftmax over384, no selectedsubsetrenormalization. Flatrow K8 mass8/384, renormalization would changeconstant-expert mixture output48x; derivedwitness, no expertnetworkrun",
+      "Source full-expert range/finishednull only. Expert-parallel/finished flags notmeasured; no claim these API variants areunsupported",
+      "FP32 arithmetic/probabilities andInt32indices, Float64oracle andlosslessmixedartifact encoding outsideROI; no FP64GPUcompute claim",
+      "Small reduction differences allowed atpredeclaredatol1e-6/rtol1e-5; all integer outputs exact andunitintegererrors exceed commonbinarybudget because maxid2055",
+      "HistoricalJulia GPUmarker+cannedPASS/0us semanticallyunrelated, restored references/host/oracle separatelyaccounted",
+      "Root prospective windows containcached/repeatedcontext andteam/paper/retrospectivelibrarysyncauditcoordination; broadworkflow overlaps subphases, notexclusive/additive/billedcost"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Stable row softmax with blockmax/blocksum, then K repeated lexicographic argmax excluding earlier winners",
+        "work_item_mapping": "One token/block,256threads, strided384experts; 257blocks each two kernels",
+        "data_layout": "Token-major contiguous FP32gating/probabilities and token-majorKweights/Int32indices; source_rows=rank*257+token",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float64_lossless_mixed_float32_int32"
+        ],
+        "normalization_domain": "all384experts",
+        "topk_renormalization": false,
+        "tie_break": "lowerexpertID",
+        "memory_access": "Globalgate read, fullprobabilitywrites/repeatedprobabilityreads/earlierwinningindexreads; sharedblocktrees",
+        "synchronization": [
+          "Tree blockbarriers",
+          "Globalindexwrite+blockbarrier before next winner",
+          "Defaulttaskstream two launches thenblockingdevicewidecompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 257,
+          "kernel_definitions": 2,
+          "shared_bytes_by_kernel": [
+            1024,
+            2048
+          ],
+          "shared_kind": "static",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "Authoredframeworkdevicekernels, no foreign deviceintrinsics or vendorcompute call",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/moe-julia/moe-julia-cuda.jl/main.jl",
+          "sha256": "de7e0b4ef7a41d2619af4b97fd152507488bc74d19b321915706db5d8d193a83"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.0",
+        "profiling_status": "Julia notprofiled; nativecompiledattributes only, no DRAM/occupancy causalclaim",
+        "host_control_boundary": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+        "native_to_model_mapping": {
+          "status": "same_two_stage_algorithm_with_different_block_reduction",
+          "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+        },
+        "limitations": [
+          "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms",
+          "Native compiled shared memory52Bsoftmax/80BtopK and31regs each; Julia sourcepolicy1024B/2048Bshared. Julia compiledregisters/occupancy/DRAMtraffic notmeasured",
+          "JACC public shared() adds256/512Float32template copies+barrier/block; global indicesInt32, sharedexpertkeysFloat32 exactfor<=383; CUDAjl/KA sharedkeysInt32",
+          "Timer sums eight 20-pair kernel-loop means includinghostdispatch+finalblockingdevicewidecompletion; not isolateddevicekernel latency or sourceoriginallargeCLI workload",
+          "Globalsoftmax over384, no selectedsubsetrenormalization. Flatrow K8 mass8/384, renormalization would changeconstant-expert mixture output48x; derivedwitness, no expertnetworkrun",
+          "Source full-expert range/finishednull only. Expert-parallel/finished flags notmeasured; no claim these API variants areunsupported",
+          "FP32 arithmetic/probabilities andInt32indices, Float64oracle andlosslessmixedartifact encoding outsideROI; no FP64GPUcompute claim",
+          "Small reduction differences allowed atpredeclaredatol1e-6/rtol1e-5; all integer outputs exact andunitintegererrors exceed commonbinarybudget because maxid2055",
+          "HistoricalJulia GPUmarker+cannedPASS/0us semanticallyunrelated, restored references/host/oracle separatelyaccounted",
+          "Root prospective windows containcached/repeatedcontext andteam/paper/retrospectivelibrarysyncauditcoordination; broadworkflow overlaps subphases, notexclusive/additive/billedcost"
+        ]
+      },
+      "ka": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Stable row softmax with blockmax/blocksum, then K repeated lexicographic argmax excluding earlier winners",
+        "work_item_mapping": "One token/block,256threads, strided384experts; 257blocks each two kernels",
+        "data_layout": "Token-major contiguous FP32gating/probabilities and token-majorKweights/Int32indices; source_rows=rank*257+token",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float64_lossless_mixed_float32_int32"
+        ],
+        "normalization_domain": "all384experts",
+        "topk_renormalization": false,
+        "tie_break": "lowerexpertID",
+        "memory_access": "Globalgate read, fullprobabilitywrites/repeatedprobabilityreads/earlierwinningindexreads; sharedblocktrees",
+        "synchronization": [
+          "Tree blockbarriers",
+          "Globalindexwrite+blockbarrier before next winner",
+          "Defaulttaskstream two launches thenblockingdevicewidecompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 257,
+          "kernel_definitions": 2,
+          "shared_bytes_by_kernel": [
+            1024,
+            2048
+          ],
+          "shared_kind": "static",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "Authoredframeworkdevicekernels, no foreign deviceintrinsics or vendorcompute call",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/moe-julia/moe-julia-KA/main.jl",
+          "sha256": "40ee92f04f8fc23484953fa78c21e869e3044dde95bd2de652eef18609c33e21"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.0",
+        "profiling_status": "Julia notprofiled; nativecompiledattributes only, no DRAM/occupancy causalclaim",
+        "host_control_boundary": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+        "native_to_model_mapping": {
+          "status": "same_two_stage_algorithm_with_different_block_reduction",
+          "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+        },
+        "limitations": [
+          "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms",
+          "Native compiled shared memory52Bsoftmax/80BtopK and31regs each; Julia sourcepolicy1024B/2048Bshared. Julia compiledregisters/occupancy/DRAMtraffic notmeasured",
+          "JACC public shared() adds256/512Float32template copies+barrier/block; global indicesInt32, sharedexpertkeysFloat32 exactfor<=383; CUDAjl/KA sharedkeysInt32",
+          "Timer sums eight 20-pair kernel-loop means includinghostdispatch+finalblockingdevicewidecompletion; not isolateddevicekernel latency or sourceoriginallargeCLI workload",
+          "Globalsoftmax over384, no selectedsubsetrenormalization. Flatrow K8 mass8/384, renormalization would changeconstant-expert mixture output48x; derivedwitness, no expertnetworkrun",
+          "Source full-expert range/finishednull only. Expert-parallel/finished flags notmeasured; no claim these API variants areunsupported",
+          "FP32 arithmetic/probabilities andInt32indices, Float64oracle andlosslessmixedartifact encoding outsideROI; no FP64GPUcompute claim",
+          "Small reduction differences allowed atpredeclaredatol1e-6/rtol1e-5; all integer outputs exact andunitintegererrors exceed commonbinarybudget because maxid2055",
+          "HistoricalJulia GPUmarker+cannedPASS/0us semanticallyunrelated, restored references/host/oracle separatelyaccounted",
+          "Root prospective windows containcached/repeatedcontext andteam/paper/retrospectivelibrarysyncauditcoordination; broadworkflow overlaps subphases, notexclusive/additive/billedcost"
+        ]
+      },
+      "jacc": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Stable row softmax with blockmax/blocksum, then K repeated lexicographic argmax excluding earlier winners",
+        "work_item_mapping": "One token/block,256threads, strided384experts; 257blocks each two kernels",
+        "data_layout": "Token-major contiguous FP32gating/probabilities and token-majorKweights/Int32indices; source_rows=rank*257+token",
+        "storage_precision": [
+          "float32",
+          "int32"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float64_lossless_mixed_float32_int32"
+        ],
+        "normalization_domain": "all384experts",
+        "topk_renormalization": false,
+        "tie_break": "lowerexpertID",
+        "memory_access": "Globalgate read, fullprobabilitywrites/repeatedprobabilityreads/earlierwinningindexreads; sharedblocktrees",
+        "synchronization": [
+          "Tree blockbarriers",
+          "Globalindexwrite+blockbarrier before next winner",
+          "Defaulttaskstream two launches thenblockingdevicewidecompletion"
+        ],
+        "resource_policy": {
+          "threads": 256,
+          "blocks": 257,
+          "kernel_definitions": 2,
+          "shared_bytes_by_kernel": [
+            1024,
+            2048
+          ],
+          "shared_kind": "dynamic",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "Authoredframeworkdevicekernels, no foreign deviceintrinsics or vendorcompute call",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/moe-julia/moe-julia-JACC/main.jl",
+          "sha256": "0ca97436623b7ad83fffe8af27db48ca4423b6dda802edfa9fd33ef1daa866be"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.0",
+        "profiling_status": "Julia notprofiled; nativecompiledattributes only, no DRAM/occupancy causalclaim",
+        "host_control_boundary": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+        "native_to_model_mapping": {
+          "status": "same_two_stage_algorithm_with_different_block_reduction",
+          "reason": "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms"
+        },
+        "limitations": [
+          "Native CUB block reductions versus Julia explicit shared halving trees; same two kernels, 257 token blocks and 256 threads per block; different cooperative reduction algorithms",
+          "Native compiled shared memory52Bsoftmax/80BtopK and31regs each; Julia sourcepolicy1024B/2048Bshared. Julia compiledregisters/occupancy/DRAMtraffic notmeasured",
+          "JACC public shared() adds256/512Float32template copies+barrier/block; global indicesInt32, sharedexpertkeysFloat32 exactfor<=383; CUDAjl/KA sharedkeysInt32",
+          "Timer sums eight 20-pair kernel-loop means includinghostdispatch+finalblockingdevicewidecompletion; not isolateddevicekernel latency or sourceoriginallargeCLI workload",
+          "Globalsoftmax over384, no selectedsubsetrenormalization. Flatrow K8 mass8/384, renormalization would changeconstant-expert mixture output48x; derivedwitness, no expertnetworkrun",
+          "Source full-expert range/finishednull only. Expert-parallel/finished flags notmeasured; no claim these API variants areunsupported",
+          "FP32 arithmetic/probabilities andInt32indices, Float64oracle andlosslessmixedartifact encoding outsideROI; no FP64GPUcompute claim",
+          "Small reduction differences allowed atpredeclaredatol1e-6/rtol1e-5; all integer outputs exact andunitintegererrors exceed commonbinarybudget because maxid2055",
+          "HistoricalJulia GPUmarker+cannedPASS/0us semanticallyunrelated, restored references/host/oracle separatelyaccounted",
+          "Root prospective windows containcached/repeatedcontext andteam/paper/retrospectivelibrarysyncauditcoordination; broadworkflow overlaps subphases, notexclusive/additive/billedcost"
+        ]
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/moe-julia/moe-julia-KA/main.jl",
+    "sha256": "40ee92f04f8fc23484953fa78c21e869e3044dde95bd2de652eef18609c33e21",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3,
+        39
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        5,
+        41
+      ],
+      "barrier": [
+        12,
+        17,
+        20,
+        26,
+        31,
+        58,
+        68,
+        75
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "moe_routing_T257_E384_k1_2_4_8_bounded_and_extreme_v1",
+      "run_id": "20261017T224036319097Z_moe",
+      "result": ".porting-state/portable_julia/runs/20261017T224036319097Z_moe/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "97087ab0fbf0be4d4e768b8f8f73086288dfff3aaee1e512cb9bd6d17c4f1418",
+      "source_hash": "603d0c382eedc87fef50d3c2d73e858f926e93d3ebbd98cd4897c680914b0175",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T224036319097Z_moe/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00039132895,
+        0.00015182835,
+        0.0001510058,
+        0.00015080485,
+        0.00015421685
+      ],
+      "mean_last_four_seconds": 0.0001519639625,
+      "contract": {
+        "tokens": 257,
+        "experts": 384,
+        "ks": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "patterns": [
+          "dyadicbounded",
+          "extreme/tied"
+        ],
+        "scope": "OriginalE384/k1,2,4,8, namedT257versusCLI32768;finishednull/start0/end384 only,notexpertpartition/fullMoEmodel",
+        "roi": "Sum8case20softmax+topKpair means includinghostlaunchloop+finalcompletion,allocation/idxreset/capture/oracleoutside",
+        "dtypes": {
+          "device_probability": "float32",
+          "device_indices": "int32",
+          "oracle": "float64",
+          "artifact": "float64losslessmixed"
+        },
+        "input_prefix_count": 797246,
+        "actual_output_count": 812634,
+        "integer_comparison": "Allindex/source_rows exactownindependentoracle. Globalbinarycomparisonwithfloatbudget cannotacceptunitintegererror: maxid2055givesbudget<.021<1.",
+        "mapping_notes": [
+          "NativeCUBblockreductionsvsJuliaframeworksharedhalvingtrees,256threads/tokenblock,257blocks,twoactualkernels",
+          "AllprobsandtopKweights,indices,source_rowscaptured; notjusttopKsummary",
+          "Representedsoftmaxsourcecontract, deterministiclowexpertidties. Sourceextremelogitsunderflowexplicit."
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "moe-ka-reductionmapping",
+        "benchmark_id": "moe",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/moe.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "moe-ka-reductionmapping",
+          "implementation_model": "ka",
+          "origin_model": "ka",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "NativeCUBversusexplicitsharedhalvingtrees; actualsharedlayout/templatecopychoices differ",
+          "resolution": "Per-modelresource/algorithmevidence, notpureabstractionoverhead"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "prospective_activity_window_plus_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": {
+        "cuda_jl_reference_restoration": {
+          "begin": {
+            "event_id": "22e7a3b7bcf004d955f617d9",
+            "recorded_at": "2026-10-17T22:35:03.558014+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "cuda_jl",
+            "phase": "reference_restoration",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44218774,
+            "usage_event_timestamp": "2026-10-17T22:34:52.171Z",
+            "cumulative_usage": {
+              "input_tokens": 228538850,
+              "cached_input_tokens": 224091648,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 954715,
+              "reasoning_output_tokens": 332403,
+              "total_tokens": 229493565
+            },
+            "source_token_event_sha256": "96d9f0239c6942fa0ef8004dbd1a408e2c35ee9296916523919313ff82c4002f",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 11.387014,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "ea7a208f461330083475805f",
+            "recorded_at": "2026-10-17T22:38:52.135031+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "cuda_jl",
+            "phase": "reference_restoration",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44390402,
+            "usage_event_timestamp": "2026-10-17T22:38:41.467Z",
+            "cumulative_usage": {
+              "input_tokens": 230093524,
+              "cached_input_tokens": 225639168,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 963939,
+              "reasoning_output_tokens": 335466,
+              "total_tokens": 231057463
+            },
+            "source_token_event_sha256": "0beb616ae3d245b655f8e84d2d8388fda668fbc99d7f21e69c94c5e5e41d845f",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.668031,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "22e7a3b7bcf004d955f617d9",
+            "delta_usage": {
+              "input_tokens": 1554674,
+              "cached_input_tokens": 1547520,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 9224,
+              "reasoning_output_tokens": 3063,
+              "total_tokens": 1563898
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:34:52.171Z",
+            "positive_counter_span": true
+          }
+        },
+        "shared_scientific_annotation": {
+          "begin": {
+            "event_id": "e7dd4648ce1099c1fecaa11d",
+            "recorded_at": "2026-10-17T22:42:07.081603+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "shared",
+            "phase": "scientific_annotation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44567647,
+            "usage_event_timestamp": "2026-10-17T22:41:56.915Z",
+            "cumulative_usage": {
+              "input_tokens": 232424678,
+              "cached_input_tokens": 227961088,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 969936,
+              "reasoning_output_tokens": 337314,
+              "total_tokens": 233394614
+            },
+            "source_token_event_sha256": "32937eac0eb2faf2a71d3b8e7b7aa0b76d9f4b3d13788ff8569ad9857104f3c0",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.166603,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "e7f57d2a2fe9ed6472c3633a",
+            "recorded_at": "2026-10-17T22:48:06.588259+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "shared",
+            "phase": "scientific_annotation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44941764,
+            "usage_event_timestamp": "2026-10-17T22:47:45.190Z",
+            "cumulative_usage": {
+              "input_tokens": 234702384,
+              "cached_input_tokens": 230221056,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 982315,
+              "reasoning_output_tokens": 342996,
+              "total_tokens": 235684699
+            },
+            "source_token_event_sha256": "647502bca2519dd2e1e5f125c85112a134b485613bb69fdd1b782a92a4db5d19",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 21.398259,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "e7dd4648ce1099c1fecaa11d",
+            "delta_usage": {
+              "input_tokens": 2277706,
+              "cached_input_tokens": 2259968,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 12379,
+              "reasoning_output_tokens": 5682,
+              "total_tokens": 2290085
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:41:56.915Z",
+            "positive_counter_span": true
+          }
+        },
+        "jacc_translation": {
+          "begin": {
+            "event_id": "43dd849c7046a0f9c21783e3",
+            "recorded_at": "2026-10-17T22:40:11.829345+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "jacc",
+            "phase": "translation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44468413,
+            "usage_event_timestamp": "2026-10-17T22:40:04.548Z",
+            "cumulative_usage": {
+              "input_tokens": 231242226,
+              "cached_input_tokens": 226783872,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 965570,
+              "reasoning_output_tokens": 335962,
+              "total_tokens": 232207796
+            },
+            "source_token_event_sha256": "214be61ac0d6cb154ffb7c8955e5ee6ee95dbbe4e2f81bec131332db3a086ccd",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 7.281345,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "aa1f5182f125260dccd0597e",
+            "recorded_at": "2026-10-17T22:42:07.017814+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "jacc",
+            "phase": "translation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44567647,
+            "usage_event_timestamp": "2026-10-17T22:41:56.915Z",
+            "cumulative_usage": {
+              "input_tokens": 232424678,
+              "cached_input_tokens": 227961088,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 969936,
+              "reasoning_output_tokens": 337314,
+              "total_tokens": 233394614
+            },
+            "source_token_event_sha256": "32937eac0eb2faf2a71d3b8e7b7aa0b76d9f4b3d13788ff8569ad9857104f3c0",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.102814,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "43dd849c7046a0f9c21783e3",
+            "delta_usage": {
+              "input_tokens": 1182452,
+              "cached_input_tokens": 1177216,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 4366,
+              "reasoning_output_tokens": 1352,
+              "total_tokens": 1186818
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:40:04.548Z",
+            "positive_counter_span": true
+          }
+        },
+        "shared_benchmark_workflow": {
+          "begin": {
+            "event_id": "9ee1f314c0ce6ac3c5bdff43",
+            "recorded_at": "2026-10-17T22:33:32.925348+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "shared",
+            "phase": "benchmark_workflow",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44105521,
+            "usage_event_timestamp": "2026-10-17T22:33:23.288Z",
+            "cumulative_usage": {
+              "input_tokens": 228125246,
+              "cached_input_tokens": 223681280,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 954279,
+              "reasoning_output_tokens": 332242,
+              "total_tokens": 229079525
+            },
+            "source_token_event_sha256": "506b45e9e8dfdd79cf76e02960d6eb6f9ff9571b8fcff974359ce82f0d60927f",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 9.637348,
+            "accounting_level": "inclusive_workflow_overlaps_subphases",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "436ca6159cf9a8ac349ddd05",
+            "recorded_at": "2026-10-17T22:48:06.645277+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "shared",
+            "phase": "benchmark_workflow",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44941764,
+            "usage_event_timestamp": "2026-10-17T22:47:45.190Z",
+            "cumulative_usage": {
+              "input_tokens": 234702384,
+              "cached_input_tokens": 230221056,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 982315,
+              "reasoning_output_tokens": 342996,
+              "total_tokens": 235684699
+            },
+            "source_token_event_sha256": "647502bca2519dd2e1e5f125c85112a134b485613bb69fdd1b782a92a4db5d19",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 21.455277,
+            "accounting_level": "inclusive_workflow_overlaps_subphases",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "9ee1f314c0ce6ac3c5bdff43",
+            "delta_usage": {
+              "input_tokens": 6577138,
+              "cached_input_tokens": 6539776,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 28036,
+              "reasoning_output_tokens": 10754,
+              "total_tokens": 6605174
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:33:23.288Z",
+            "positive_counter_span": true
+          }
+        },
+        "ka_translation": {
+          "begin": {
+            "event_id": "7e8bd6260be36c6fbc3150ae",
+            "recorded_at": "2026-10-17T22:38:52.186456+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "ka",
+            "phase": "translation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44390402,
+            "usage_event_timestamp": "2026-10-17T22:38:41.467Z",
+            "cumulative_usage": {
+              "input_tokens": 230093524,
+              "cached_input_tokens": 225639168,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 963939,
+              "reasoning_output_tokens": 335466,
+              "total_tokens": 231057463
+            },
+            "source_token_event_sha256": "0beb616ae3d245b655f8e84d2d8388fda668fbc99d7f21e69c94c5e5e41d845f",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.719456,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "de61be9fd984a079e15f0852",
+            "recorded_at": "2026-10-17T22:40:11.771705+00:00",
+            "agent": "/root",
+            "benchmark": "moe",
+            "implementation_model": "ka",
+            "phase": "translation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 44468413,
+            "usage_event_timestamp": "2026-10-17T22:40:04.548Z",
+            "cumulative_usage": {
+              "input_tokens": 231242226,
+              "cached_input_tokens": 226783872,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 965570,
+              "reasoning_output_tokens": 335962,
+              "total_tokens": 232207796
+            },
+            "source_token_event_sha256": "214be61ac0d6cb154ffb7c8955e5ee6ee95dbbe4e2f81bec131332db3a086ccd",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 7.223705,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "7e8bd6260be36c6fbc3150ae",
+            "delta_usage": {
+              "input_tokens": 1148702,
+              "cached_input_tokens": 1144704,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1631,
+              "reasoning_output_tokens": 496,
+              "total_tokens": 1150333
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:38:41.467Z",
+            "positive_counter_span": true
+          }
+        }
+      },
+      "estimated_saved_source_tokens": 644,
+      "method": "Sourcechars/4 proxy notconsumption. Harnessusageincludescontext/cache/coordination; scopesoverlap notadditive/exclusive ormonetarybilling. Historicalunknown.",
+      "scope_review": "Referenceincludesepistasiscommits, KAincludeslinearprobingcoordination, annotation/workflowincludesretrospectivevendorstreamaudit; stagewindows marginalorderedcost."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "de61be9fd984a079e15f0852",
+        "begin_event_id": "7e8bd6260be36c6fbc3150ae",
+        "agent": "/root",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T22:40:11.771705+00:00",
+        "usage_event_timestamp": "2026-10-17T22:40:04.548Z",
+        "elapsed_usage_event_start": "2026-10-17T22:38:41.467Z",
+        "delta_usage": {
+          "input_tokens": 1148702,
+          "cached_input_tokens": 1144704,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1631,
+          "reasoning_output_tokens": 496,
+          "total_tokens": 1150333
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 7.223705,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "214be61ac0d6cb154ffb7c8955e5ee6ee95dbbe4e2f81bec131332db3a086ccd",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 10.719456,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/moe/ka_translation.jsonl",
+        "evidence_sha256": "20d5bbb70c5fa923c500c6a3dc5a50fb4e36690dc995d639ef54680507f5c241",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/moe-julia-ka/manifest.json",
+    "selected_sha256": "e8aa0c477562da872d3b511fc651a566ca07e9d935e31af4cbc836be8ec7a696",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/moe-julia-ka/manifest.json",
+        "sha256": "e8aa0c477562da872d3b511fc651a566ca07e9d935e31af4cbc836be8ec7a696"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "4d5862ff962ce9aba8f72962fd07f41f1d67abbc",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "moe",
+    "model": "ka",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T224036319097Z_moe/result.json",
+    "evidence": [
+      {
+        "path": "src/moe-julia/moe-julia-KA/main.jl",
+        "sha256": "40ee92f04f8fc23484953fa78c21e869e3044dde95bd2de652eef18609c33e21"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T224036319097Z_moe/result.json",
+        "sha256": "97087ab0fbf0be4d4e768b8f8f73086288dfff3aaee1e512cb9bd6d17c4f1418"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/moe.json",
+    "annotation_sha256": "d2bac44e76bbd781b1afadc8898a1647bce45bacb0e5538f0319d6d191c80410",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

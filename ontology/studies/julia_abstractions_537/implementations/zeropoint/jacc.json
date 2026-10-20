@@ -1,0 +1,452 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "zeropoint",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/zeropoint.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Independent mixed-precision parameter selection and nearest-integer nudge.",
+    "mapping": "1024 blocks256, one bound pair per lane.",
+    "layout": "Separate contiguous Float32 min/max/scale and Int32 zero-point arrays.",
+    "precision": {
+      "storage": [
+        "float32",
+        "int32"
+      ],
+      "compute": "float32 stored bounds/scale, float64 selection and symmetric division in Julia"
+    },
+    "implementation_detail": "Calls same helper from256-thread linear callback, explicitshmem0.",
+    "memory": "Global arrays only; explicit0 shared.",
+    "synchronization": [],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/zeropoint-julia/zeropoint-julia-JACC/main.jl",
+        "sha256": "b06893ae2dc10f91c64d9ce8c901a3d87dd1eec3bb9a55c6c7b88c9591ced0d6",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Independent mixed-precision parameter selection and nearest-integer nudge.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "1024 blocks256, one bound pair per lane.",
+    "layout": "Separate contiguous Float32 min/max/scale and Int32 zero-point arrays.",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": "float32 stored bounds/scale, float64 selection and symmetric division in Julia",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global arrays only; explicit0 shared.",
+    "synchronization": [],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/zeropoint-julia/zeropoint-julia-JACC/main.jl",
+        "sha256": "b06893ae2dc10f91c64d9ce8c901a3d87dd1eec3bb9a55c6c7b88c9591ced0d6",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "zeropoint",
+    "primary_motif": "mixed_precision_quantization_map",
+    "storage_precision": [
+      "float32",
+      "int32"
+    ],
+    "compute_precision": [
+      "float32",
+      "float64"
+    ],
+    "synchronization": [
+      "none_within_kernel"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native Float32 symmetric-bound division vs inherited Julia Float64 promotion"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native Float32 symmetric-bound division vs inherited Julia Float64 promotion",
+      "Only preserve_sparsity=true qrange[-127,127] measured; roundingboundarycoverage limited"
+    ],
+    "jacc_shared_memory_policy": "explicit_zero",
+    "observation": "research/observations/zeropoint.md",
+    "ontology_sha256": "2914f8ccf2da3facab435c199b43c774e97dda8c7f64e0be8fc9e9a2fd669929",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "machine_learning",
+      "primary_domain": "affine_quantization_parameter_selection",
+      "scientific_task": "Select quantization scale and integer zero point from min/max bounds.",
+      "mathematical_operation": "Extend range to contain zero, optionally symmetrize crossing-zero bounds, choose scale and rounded clamped zero point.",
+      "discretization_or_topology": "262144 independent pairs of Float32 bounds; qrange[-127,127],preserve_sparsity=true.",
+      "invariants": [
+        "Scale nonzero fallback0.1 for zero/reciprocal-infinite scale.",
+        "Zero point clamped to quantized integer interval."
+      ],
+      "accuracy_requirements": [
+        "All262144 scales and262144 zero points exported asFloat64, absolute1e-3 dual/CPU check."
+      ],
+      "precision_sensitivity": "Symmetric-bound division is Float32 in native but Float64 in inherited Julia; tie/rounding boundaries may differ outside fixture.",
+      "input_size_regimes": "Named synthetic bound pairs only; preserve_sparsity=false and other qranges unmeasured.",
+      "community_use_case": "Quantized tensor parameter calibration primitive; no particular model or calibration dataset established.",
+      "uncertainty": "Produces parameters rather than quantizing tensor values; tolerance does not establish all rounding-boundary cases.",
+      "provenance": [
+        {
+          "path": "src/zeropoint-cuda/main.cu",
+          "sha256": "64b5029aff49cfb7e012914fafe6e70b4f1229d5fc0c754a654844369058e866",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/zeropoint-julia/study_common.jl",
+          "sha256": "246ba861544b29ba2765e34c56dbe40011f119aef7cc3f7fd32c9ba576118d67",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:17:45.830975+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent mixed-precision parameter selection and nearest-integer nudge.",
+        "mapping": "1024 blocks256, one bound pair per lane.",
+        "layout": "Separate contiguous Float32 min/max/scale and Int32 zero-point arrays.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 stored bounds/scale, float64 selection and symmetric division in Julia"
+        },
+        "implementation_detail": "Generic scalar helper with explicit Float64 promotion in symmetric division.",
+        "memory": "Global arrays only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/zeropoint-julia/zeropoint-julia-cuda.jl/main.jl",
+            "sha256": "2b50c3a467b2601aa5b9cddc18e3991675673714264df08b563c20a26bb5f410",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent mixed-precision parameter selection and nearest-integer nudge.",
+        "mapping": "1024 blocks256, one bound pair per lane.",
+        "layout": "Separate contiguous Float32 min/max/scale and Int32 zero-point arrays.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 stored bounds/scale, float64 selection and symmetric division in Julia"
+        },
+        "implementation_detail": "Calls same audited helper under global indexing.",
+        "memory": "Global arrays only.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/zeropoint-julia/zeropoint-julia-KA/main.jl",
+            "sha256": "12546104829068388a806600000ead8b1c87ba84ceba12e1666e8b3482aba189",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Independent mixed-precision parameter selection and nearest-integer nudge.",
+        "mapping": "1024 blocks256, one bound pair per lane.",
+        "layout": "Separate contiguous Float32 min/max/scale and Int32 zero-point arrays.",
+        "precision": {
+          "storage": [
+            "float32",
+            "int32"
+          ],
+          "compute": "float32 stored bounds/scale, float64 selection and symmetric division in Julia"
+        },
+        "implementation_detail": "Calls same helper from256-thread linear callback, explicitshmem0.",
+        "memory": "Global arrays only; explicit0 shared.",
+        "synchronization": [],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/zeropoint-julia/zeropoint-julia-JACC/main.jl",
+            "sha256": "b06893ae2dc10f91c64d9ce8c901a3d87dd1eec3bb9a55c6c7b88c9591ced0d6",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/zeropoint-julia/zeropoint-julia-JACC/main.jl",
+    "sha256": "b06893ae2dc10f91c64d9ce8c901a3d87dd1eec3bb9a55c6c7b88c9591ced0d6",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        16
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        15
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_n262144_qmin-127_qmax127_preserve_true_repeat10_v1",
+      "run_id": "20261016T234808283297Z_zeropoint",
+      "result": ".porting-state/portable_julia/runs/20261016T234808283297Z_zeropoint/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "712d577897fa7f96ae6c3cd158313e55c8e88d85568f5dc4e19d3b2a7771c2a7",
+      "source_hash": "4bdd96fd78651129a3067712e7e93cd905dd8f4c721e6293e93d064a33d2d0fe",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T234808283297Z_zeropoint/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        2.51612e-05,
+        3.74593e-05,
+        2.11062e-05,
+        1.96202e-05,
+        1.95432e-05
+      ],
+      "mean_last_four_seconds": 2.4432225e-05,
+      "contract": {
+        "shape": [
+          262144
+        ],
+        "fixture": "lo=Float32((17*i)%257-128)/128;hi=Float32((13*i)%257-128)/128, zero-based i",
+        "internal_repeats": 10,
+        "precision": "Float32 input/scales, Float64 intermediate arithmetic, Int32 zero points; artifacts losslessly widenedFloat64",
+        "coverage": "preserve_sparsity=true, qrange[-127,127]; all sign/zero/ordered-unordered input pairs sampled",
+        "mapping": "native symmetric min/max divisions initially Float32 vs inherited Julia Float64; precision adaptation declared"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "zeropoint-jacc-P1-retrospective-implementation",
+        "benchmark_id": "zeropoint",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/zeropoint.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "zeropoint-jacc-P1-retrospective-implementation",
+          "benchmark": "zeropoint",
+          "model": "jacc",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native Float32 symmetric-bound division versus inherited Julia Float64 promotion; not a demonstrated framework limitation.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/zeropoint-cuda/main.cu",
+              "sha256": "64b5029aff49cfb7e012914fafe6e70b4f1229d5fc0c754a654844369058e866",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/zeropoint-julia/zeropoint-julia-JACC/main.jl",
+              "sha256": "b06893ae2dc10f91c64d9ce8c901a3d87dd1eec3bb9a55c6c7b88c9591ced0d6",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 3167,
+      "output_tokens": 162,
+      "cached_tokens": null,
+      "total_tokens": 3329,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/zeropoint-cuda/main.cu",
+        "src/zeropoint-cuda/reference.h",
+        "src/zeropoint-julia/zeropoint-julia-cuda.jl/main.jl",
+        "src/zeropoint-julia/zeropoint-julia-KA/main.jl",
+        "src/zeropoint-julia/zeropoint-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/zeropoint-julia-jacc/manifest.json",
+    "selected_sha256": "ec67020ebc6aac712cb3b49bc405acb15077966b0d9e574690071ed3e5d6eecc",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/zeropoint-julia-jacc/manifest.json",
+        "sha256": "ec67020ebc6aac712cb3b49bc405acb15077966b0d9e574690071ed3e5d6eecc"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "dcabc01cd5e13e240f10fa21c14d3bf6fbff77e1",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/zeropoint.json",
+    "annotation_sha256": "10f742fca824a22e6992de5cce0843ffbfd1d421ac0d22865b1051694b97348d",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

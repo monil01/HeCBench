@@ -1,0 +1,864 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "babelstream",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/babelstream.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "six independent vector operation kernels",
+    "mapping": "map1024blocks256; dot256blocks256 with4strided source elements/lane and binarytree256",
+    "layout": "contiguous separate Float32 arrays",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32"
+    },
+    "memory": "global maps, shared1024B dot",
+    "synchronization": [
+      "8 dot barriers",
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "map_threads": 256,
+      "map_blocks": 1024,
+      "map_dynamic_shared_bytes": 0,
+      "dot_threads": 256,
+      "dot_blocks": 256,
+      "dot_shared_bytes": 1024
+    },
+    "library_boundary": "CUDA backend/runtime only",
+    "host_control_boundary": "one operation launch; finalhostsum outside dot timer",
+    "fidelity_status": "named_float32_operation_scope",
+    "configuration_id": "fp32_n262144_copy_repeat10_v1",
+    "kernel_dispatch": "Distinctcopy/mul/add/triad/nstream/dot kernels",
+    "configuration_ids": [
+      "fp32_n262144_copy_repeat10_v1",
+      "fp32_n262144_mul_repeat10_v1",
+      "fp32_n262144_add_repeat10_v1",
+      "fp32_n262144_triad_repeat10_v1",
+      "fp32_n262144_nstream_repeat10_v1",
+      "fp32_n262144_dot_repeat10_v1"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "six independent vector operation kernels",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "map1024blocks256; dot256blocks256 with4strided source elements/lane and binarytree256",
+    "layout": "contiguous separate Float32 arrays",
+    "storage_precision": "float32",
+    "compute_precision": "float32",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "global maps, shared1024B dot",
+    "synchronization": [
+      "8 dot barriers",
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "map_threads": 256,
+      "map_blocks": 1024,
+      "map_dynamic_shared_bytes": 0,
+      "dot_threads": 256,
+      "dot_blocks": 256,
+      "dot_shared_bytes": 1024
+    },
+    "launch_geometry": {
+      "map_threads": 256,
+      "map_blocks": 1024,
+      "map_dynamic_shared_bytes": 0,
+      "dot_threads": 256,
+      "dot_blocks": 256,
+      "dot_shared_bytes": 1024
+    },
+    "library_backend_boundary": "CUDA backend/runtime only",
+    "host_control_boundary": "one operation launch; finalhostsum outside dot timer",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "named_float32_operation_scope",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "babelstream",
+    "primary_motif": "streaming_vector_maps_and_dot_reduction",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "kernel_boundary",
+      "dot_workgroup_tree_barriers"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Elementwise and dotreduction geometry retained. Native/CUDAjl separate map kernels vs KA/JACC consolidatedmap with uniform operationbranch; disclosed as generatedimplementationchoice."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "one operationkernel per internal repeat; dot GPUblockpartial kernel only, finalhostsum/transfer excluded allmodels",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Based on a variant of the BabelStream benchmark code; not a claim of conformance to official BabelStream runrules",
+      "3MiB working set fits V1006MiB L2: cache-resident operation costs, not full DRAMSTREAM bandwidth",
+      "Named Float32 only, Float64 and original33M array and initkernel unported/unmeasured",
+      "JACC dot scratch template initialization extra loads included in timed kernel",
+      "KA/JACC maps share one devicebody selected by uniform integeroperationbranch; originalnative/CUDAjl distinctkernelbodies. Branchcontrol overhead included, not pureframework effect."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "linear_algebra",
+      "primary_domain": "high_performance_computing",
+      "scientific_task": "Characterize primitive vector data movement, arithmetic and reduction costs",
+      "mathematical_operation": "copy,multiply,addition,triad,nstream update,and dotproduct",
+      "discretization_or_topology": "Independent flat vector elements and blockwise partial reduction; no physical mesh",
+      "invariants": [
+        "Full mapoutputs match direct elementwise formulas",
+        "Dot partials cover every element exactly once over256groups/256lanes/gridstride65536"
+      ],
+      "accuracy_requirements": [
+        "Full finite Float32 outputs atol1e-4 rtol0",
+        "Dot blockpartial Float64 independent CPU reference roundedFloat32"
+      ],
+      "precision_sensitivity": "Float32 mul/add and reduction order; native compiler may fuse multiply-add; limited bounded fixture avoids repeated nstream overflow",
+      "input_size_regimes": "Controlled262144elements/3MiB totalworking set, six separateconfigs; larger DRAMworking sets notmeasured",
+      "community_use_case": "Memory/vector primitives serve as HPC proxy motifs; source alone does not establish a particular physical simulation or domain application",
+      "provenance": [
+        {
+          "path": "src/babelstream-cuda/main.cu",
+          "sha256": "74d56fe973897f7b3c65dda6816c83a5c20b956fcc8384441db14c5f348aae16",
+          "source_locations": "copyright/runrules header and six kerneldefinitions lines97-227"
+        }
+      ],
+      "uncertainty": "Source documents Bristol HPC STREAM derivation; domain-science tasks are not inferable solely from these generic operators"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "six independent vector operation kernels",
+        "mapping": "map1024blocks256; dot256blocks256 with4strided source elements/lane and binarytree256",
+        "layout": "contiguous separate Float32 arrays",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "global maps, shared1024B dot",
+        "synchronization": [
+          "8 dot barriers",
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "map_threads": 256,
+          "map_blocks": 1024,
+          "map_dynamic_shared_bytes": 0,
+          "dot_threads": 256,
+          "dot_blocks": 256,
+          "dot_shared_bytes": 1024
+        },
+        "library_boundary": "CUDA backend/runtime only",
+        "host_control_boundary": "one operation launch; finalhostsum outside dot timer",
+        "fidelity_status": "named_float32_operation_scope",
+        "configuration_id": "fp32_n262144_copy_repeat10_v1",
+        "kernel_dispatch": "Distinctcopy/mul/add/triad/nstream/dot kernels",
+        "configuration_ids": [
+          "fp32_n262144_copy_repeat10_v1",
+          "fp32_n262144_mul_repeat10_v1",
+          "fp32_n262144_add_repeat10_v1",
+          "fp32_n262144_triad_repeat10_v1",
+          "fp32_n262144_nstream_repeat10_v1",
+          "fp32_n262144_dot_repeat10_v1"
+        ]
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "six independent vector operation kernels",
+        "mapping": "map1024blocks256; dot256blocks256 with4strided source elements/lane and binarytree256",
+        "layout": "contiguous separate Float32 arrays",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "global maps, shared1024B dot",
+        "synchronization": [
+          "8 dot barriers",
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "map_threads": 256,
+          "map_blocks": 1024,
+          "map_dynamic_shared_bytes": 0,
+          "dot_threads": 256,
+          "dot_blocks": 256,
+          "dot_shared_bytes": 1024
+        },
+        "library_boundary": "CUDA backend/runtime only",
+        "host_control_boundary": "one operation launch; finalhostsum outside dot timer",
+        "fidelity_status": "named_float32_operation_scope",
+        "configuration_id": "fp32_n262144_copy_repeat10_v1",
+        "kernel_dispatch": "One mapbody with uniform operationbranch; independentdot kernel",
+        "configuration_ids": [
+          "fp32_n262144_copy_repeat10_v1",
+          "fp32_n262144_mul_repeat10_v1",
+          "fp32_n262144_add_repeat10_v1",
+          "fp32_n262144_triad_repeat10_v1",
+          "fp32_n262144_nstream_repeat10_v1",
+          "fp32_n262144_dot_repeat10_v1"
+        ]
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "six independent vector operation kernels",
+        "mapping": "map1024blocks256; dot256blocks256 with4strided source elements/lane and binarytree256",
+        "layout": "contiguous separate Float32 arrays",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32"
+        },
+        "memory": "Globalmaps;1024B dynamicshared dot with cooperative256Float32 zero-template preload perblock",
+        "synchronization": [
+          "8 dot barriers",
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "map_threads": 256,
+          "map_blocks": 1024,
+          "map_dynamic_shared_bytes": 0,
+          "dot_threads": 256,
+          "dot_blocks": 256,
+          "dot_shared_bytes": 1024
+        },
+        "library_boundary": "CUDA backend/runtime only",
+        "host_control_boundary": "one operation launch; finalhostsum outside dot timer",
+        "fidelity_status": "named_float32_operation_scope",
+        "configuration_id": "fp32_n262144_copy_repeat10_v1",
+        "kernel_dispatch": "One mapbody with uniform operationbranch; independentdot kernel",
+        "configuration_ids": [
+          "fp32_n262144_copy_repeat10_v1",
+          "fp32_n262144_mul_repeat10_v1",
+          "fp32_n262144_add_repeat10_v1",
+          "fp32_n262144_triad_repeat10_v1",
+          "fp32_n262144_nstream_repeat10_v1",
+          "fp32_n262144_dot_repeat10_v1"
+        ]
+      }
+    },
+    "configuration_overrides": {
+      "fp32_n262144_copy_repeat10_v1": {
+        "operation": "copy",
+        "algorithmic_nominal_flops": 0,
+        "minimum_source_requested_bytes": 2097152,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "fp32_n262144_mul_repeat10_v1": {
+        "operation": "mul",
+        "algorithmic_nominal_flops": 262144,
+        "minimum_source_requested_bytes": 2097152,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "fp32_n262144_add_repeat10_v1": {
+        "operation": "add",
+        "algorithmic_nominal_flops": 262144,
+        "minimum_source_requested_bytes": 3145728,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "fp32_n262144_triad_repeat10_v1": {
+        "operation": "triad",
+        "algorithmic_nominal_flops": 524288,
+        "minimum_source_requested_bytes": 3145728,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "fp32_n262144_nstream_repeat10_v1": {
+        "operation": "nstream",
+        "algorithmic_nominal_flops": 786432,
+        "minimum_source_requested_bytes": 4194304,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "fp32_n262144_dot_repeat10_v1": {
+        "operation": "dot",
+        "algorithmic_nominal_flops": 589568,
+        "minimum_source_requested_bytes": 2098176,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/babelstream-julia/babelstream-julia-cuda.jl/main.jl",
+    "sha256": "b7be6b0baabc9a772773e619c1d35ad93b7081efccd96d37a8fb722f14304156",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        76,
+        81,
+        86,
+        91,
+        96,
+        101,
+        106
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        49
+      ],
+      "barrier": [
+        62
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_n262144_copy_repeat10_v1",
+      "run_id": "20261017T162255114029Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162255114029Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "a5c23e5585eec5d93a896ff7402ec68f0fff36f863e94576b0865cc0e71ff0ab",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162255114029Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.1151e-06,
+        8.379e-06,
+        5.849e-06,
+        5.7021e-06,
+        5.572e-06
+      ],
+      "mean_last_four_seconds": 6.375525e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "copy"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "copy",
+        "algorithmic_nominal_flops": 0,
+        "minimum_source_requested_bytes": 2097152,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_n262144_mul_repeat10_v1",
+      "run_id": "20261017T162305340313Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162305340313Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "203826cd48fdd0f8dd7ce9a7fd6eee8aea9194aaf9915b7d12b3d23b5ff9ecbf",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162305340313Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.3301e-06,
+        7.9371e-06,
+        5.7721e-06,
+        5.3121e-06,
+        5.1861e-06
+      ],
+      "mean_last_four_seconds": 6.05185e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "mul"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "mul",
+        "algorithmic_nominal_flops": 262144,
+        "minimum_source_requested_bytes": 2097152,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_n262144_add_repeat10_v1",
+      "run_id": "20261017T162315560468Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162315560468Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "616664348a651df379e8486176c595a2eea2112b0f327ba97dfc07e5704dde64",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162315560468Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.218e-06,
+        7.8171e-06,
+        6.117e-06,
+        5.8741e-06,
+        5.6261e-06
+      ],
+      "mean_last_four_seconds": 6.358575e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "add"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "add",
+        "algorithmic_nominal_flops": 262144,
+        "minimum_source_requested_bytes": 3145728,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_n262144_triad_repeat10_v1",
+      "run_id": "20261017T162325749217Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162325749217Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "47655ffa2129bfd49fc307b937403b45a5411f92c6c9ce411f6b582decceeab6",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162325749217Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        8.744e-06,
+        9.928e-06,
+        6.8651e-06,
+        6.6471e-06,
+        6.2051e-06
+      ],
+      "mean_last_four_seconds": 7.411325e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "triad"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "triad",
+        "algorithmic_nominal_flops": 524288,
+        "minimum_source_requested_bytes": 3145728,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_n262144_nstream_repeat10_v1",
+      "run_id": "20261017T162338299002Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162338299002Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "43269e20289eca561c6d764ab469a839cfe186b81f814ecfe61ad8310b61493f",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162338299002Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        6.571e-06,
+        8.4411e-06,
+        6.5971e-06,
+        5.986e-06,
+        5.892e-06
+      ],
+      "mean_last_four_seconds": 6.7290499999999995e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "nstream"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "nstream",
+        "algorithmic_nominal_flops": 786432,
+        "minimum_source_requested_bytes": 4194304,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    },
+    {
+      "configuration_id": "fp32_n262144_dot_repeat10_v1",
+      "run_id": "20261017T162401122064Z_babelstream",
+      "result": ".porting-state/portable_julia/runs/20261017T162401122064Z_babelstream/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "09ca34eef43db6232fd17c425d3814ba50e23593ca51fad06cad2220bae8fa16",
+      "source_hash": "7fbaf60a8ac9fa2e967a138c6630d9a520e11d9a54ef9ff8dc3cb9a3e031ceb2",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T162401122064Z_babelstream/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        7.1491e-06,
+        1.53202e-05,
+        6.5131e-06,
+        6.6241e-06,
+        6.45e-06
+      ],
+      "mean_last_four_seconds": 8.72685e-06,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          262144
+        ],
+        "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+        "internal_repeats": 10,
+        "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+        "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+        "working_set_bytes": 3145728,
+        "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+        "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+        "operation": "dot"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": {
+        "operation": "dot",
+        "algorithmic_nominal_flops": 589568,
+        "minimum_source_requested_bytes": 2098176,
+        "traffic_definition": "Source-level global input/output bytes, not measured DRAMtraffic; excludes extra JACCdot template1024B perblock",
+        "timing_scope": "GPUkernel only, including launchloop; excludes alltransfers and hostfinaldot",
+        "working_set_bytes": 3145728
+      },
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/babelstream-julia/manifest.json",
+    "selected_sha256": "b3d06f78a4538468ec96335f67e213d0270402b066e9b0584888d5511161a892",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/babelstream-julia/manifest.json",
+        "sha256": "b3d06f78a4538468ec96335f67e213d0270402b066e9b0584888d5511161a892"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "babelstream",
+    "model": "cuda_jl",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T162255114029Z_babelstream/result.json",
+      ".porting-state/portable_julia/runs/20261017T162305340313Z_babelstream/result.json",
+      ".porting-state/portable_julia/runs/20261017T162315560468Z_babelstream/result.json",
+      ".porting-state/portable_julia/runs/20261017T162325749217Z_babelstream/result.json",
+      ".porting-state/portable_julia/runs/20261017T162338299002Z_babelstream/result.json",
+      ".porting-state/portable_julia/runs/20261017T162401122064Z_babelstream/result.json"
+    ],
+    "contract": {
+      "precision": "float32",
+      "shape": [
+        262144
+      ],
+      "fixture": "zero-based i: a=(i%31-15)/32,b=((7*i)%17-8)/16,c=((11*i)%23-11)/16;scalar=Float32(0.4)",
+      "internal_repeats": 10,
+      "scope": "Separate copy,mul,add,triad,nstream,dot GPUkernels; Float64 and original33M size and initializationkernel unmeasured. Dot records all256 GPUblockpartials; hostfinal reduction outside timed region.",
+      "mapping": "map1024blocks256; dot256blocks256,stride65536,Float32 binarytree reduction",
+      "working_set_bytes": 3145728,
+      "working_set_limitation": "3MiB total arrays fits V1006MiB L2; do not interpret as DRAMSTREAM bandwidth",
+      "accuracy": "all262144 mapoutputs or256 dotpartials finite CPU and direct dualartifacts atol1e-4; dotindependentFloat64CPUblocksum",
+      "operation": "copy"
+    },
+    "limitations": [
+      "Based on a variant of the BabelStream benchmark code; not a claim of conformance to official BabelStream runrules",
+      "3MiB working set fits V1006MiB L2: cache-resident operation costs, not full DRAMSTREAM bandwidth",
+      "Named Float32 only, Float64 and original33M array and initkernel unported/unmeasured",
+      "JACC dot scratch template initialization extra loads included in timed kernel",
+      "KA/JACC maps share one devicebody selected by uniform integeroperationbranch; originalnative/CUDAjl distinctkernelbodies. Branchcontrol overhead included, not pureframework effect."
+    ],
+    "configuration_ids": [
+      "fp32_n262144_copy_repeat10_v1",
+      "fp32_n262144_mul_repeat10_v1",
+      "fp32_n262144_add_repeat10_v1",
+      "fp32_n262144_triad_repeat10_v1",
+      "fp32_n262144_nstream_repeat10_v1",
+      "fp32_n262144_dot_repeat10_v1"
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/babelstream.json",
+    "annotation_sha256": "8d59794e57388314462cbceba744d0f50b2c145616d1682f3d0c3379dc388c45",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

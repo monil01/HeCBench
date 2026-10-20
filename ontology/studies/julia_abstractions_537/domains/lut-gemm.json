@@ -1,0 +1,111 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "lut-gemm",
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "compressed_weight_neural_inference_linear_operator",
+    "review_status": "source_reviewed",
+    "scientific_task": "Evaluate a matrix-vector product whose weights are compressed into learned signed bit planes with per-group scales and optional offsets.",
+    "mathematical_operation": "y[m]=sum_k x[k]*(bias[group(k),m]+sum_b alpha[group(k),b,m]*sign(W[k,b,m])). Bit sign is +1 for set bits and -1 for unset bits. Alpha is learned per group, bit plane and output; it is not a fixed power-of-two integer quantizer.",
+    "discretization": "Seven legal even-output configurations: M34/514/2050,K64/128/256,8/4/3 planes, group sizes32/64/128, bias and no-bias, plus zero-input control. Source Ktile32 with bias,64 without bias, M_tile2048 and256threads retained.",
+    "accuracy_requirements": "Every output and actual input/guard value exact against independent dense integer weighted matvec. Dense quarter-integer inputs and half scales \u00b11/128 give all intermediate values exactly representable in half: absolute integer coefficient bound <=2048 on1/512 lattice. All32 packed bit positions active except explicit zero control.",
+    "input_size_regime": "One input vector, moderate output tails across one/two M tiles, one-to-eight K tiles, multiple quantization groups. Not full source large-shape CLI or batched general GEMM.",
+    "precision_sensitivity": "True FP16 lookup sums, scaled accumulation and packed half2 atomics. Native selected SASS contains contracted HFMA2 despite separate PTX mul/add. Exact dyadic class makes contraction and atomic scheduling irrelevant here; arbitrary FP16 rounding and neural-model accuracy are outside certification.",
+    "community_use_case": "Source NAVER LUT-GEMM compressed-weight inference operator, useful to study learned bit-plane lookup GEMV mapping. No end-to-end model quality, quantization calibration or production inference recommendation.",
+    "description": "Historical Julia source is dense Float32 matvec without packed planes, learned scales, offsets or LUT. Preserve it and restore actual source operator and shared lookup/packed atomic mapping in all Julia versions.",
+    "provenance": "Original source mv_fp16.h and kernels.cu, NAVER Cloud copyright2024 Apache2.0. Source headers and full originals archived. Independent oracle expands every packed bit directly; no LUT source reuse.",
+    "source_evidence": [
+      {
+        "path": "src/lut-gemm-cuda/mv_fp16.h",
+        "sha256": "331b21634ad2443d9de3c28bde442ed59575c9f3732deaf90e1fca1e8e43b3bd"
+      },
+      {
+        "path": "src/lut-gemm-cuda/kernels.cu",
+        "sha256": "2490e5a367d9aaefca0a17a87f1a6656bec135be0b5de6b41edf50c1ef169f06"
+      },
+      {
+        "path": "src/lut-gemm-cuda/nQWeight_fp16.cu",
+        "sha256": "9023b7f0192accd44514c1acab03b9de3aed72c54c544e10841846fc6cba2882"
+      },
+      {
+        "path": "src/lut-gemm-julia/original_main.jl",
+        "sha256": "0ef88565f62b8514834555d26b4079e1aaf556c913f356e6e14c12b6eb3dd7bd"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/lut-gemm.yaml",
+    "frozen_sha256": "e29110024b23a68c65eb304868abf4980550b67b7aaf3a83c606370a1372d777",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "existing_cuda_jl_entrypoint_only",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "089b8ea1e713010512333bca",
+      "begin_event_id": "bff4135a5803cd8ec427e007",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "annotation",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T09:13:27.197654+00:00",
+      "usage_event_timestamp": "2026-10-18T09:13:20.092Z",
+      "elapsed_usage_event_start": "2026-10-18T09:12:57.912Z",
+      "delta_usage": {
+        "input_tokens": 338651,
+        "cached_input_tokens": 338048,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 455,
+        "reasoning_output_tokens": 71,
+        "total_tokens": 339106
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 7.105654,
+      "accounting_level": "declared_activity_window; interleaving must be disclosed",
+      "source_token_event_sha256": "0cf827fe72a85e9dc1d1e9beb2b1b53b62f050047466b210dd2610d870c06b1f",
+      "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 8.043126,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lut-gemm/shared_annotation.jsonl",
+      "evidence_sha256": "d3a1cf870ec916fe42733e3d73ac7110992696a844653653d2c8247aed22e086",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    },
+    {
+      "event_id": "f14ad1853a937ac98e9aa2da",
+      "begin_event_id": "3687c07bef9b70289ae05077",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T08:49:37.726409+00:00",
+      "usage_event_timestamp": "2026-10-18T08:49:26.491Z",
+      "elapsed_usage_event_start": "2026-10-18T08:29:45.625Z",
+      "delta_usage": {
+        "input_tokens": 6497599,
+        "cached_input_tokens": 6341632,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 30577,
+        "reasoning_output_tokens": 13038,
+        "total_tokens": 6528176
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 11.235409,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "11d4633d600f95157fc6f31b9b4e6ab5f60d20a5d8eb7703b1b70b8f73a0152b",
+      "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 10.494907,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/lut-gemm/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "c6835623e84ab7e3a70d644057c25af6d0be9d2b0da9a0a19b172a00073f55c5",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}

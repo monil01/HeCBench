@@ -1,0 +1,923 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "mcmd",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/mcmd.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_model": "ka",
+    "review_status": "source_reviewed",
+    "implementation_status": "verified",
+    "implementation_class": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+    "authored_device_kernel_count": 1,
+    "authored_device_kernel_definitions": 1,
+    "shared_authored_math_body_definitions": 1,
+    "primary_device_entrypoints": 1,
+    "count_unit": "One selected force entry; one shared Julia mathematical work-item body. Eleven launches per full trajectory,66 including warmup+five trials.",
+    "scientific_intent": {
+      "benchmark": "mcmd",
+      "primary_family": "particle_molecular",
+      "review_status": "source_reviewed",
+      "domain": "Classical molecular dynamics of a water/octane configuration",
+      "scientific_question": "Advance a molecular configuration under Lennard\u2013Jones and periodic Ewald forces with the source NVT Nose\u2013Hoover thermostat and rigid-body rotations.",
+      "mathematical_operation": "Eleven all-pairs LJ + real/reciprocal Ewald force evaluations (kmax3), complete original CPU integration, rotation, thermostat, potential, observables and file-I/O pipeline.",
+      "classification_rationale": "Particle/molecular simulation with pair potentials and reciprocal periodic charge interactions; the selected input uses MD, not Monte Carlo.",
+      "community_use_case": "Molecular simulation developers comparing force accuracy and a complete CPU/GPU integration path. No equilibrium chemical accuracy or infinite-Ewald convergence claim.",
+      "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+      "accuracy_requirements": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+      "source_evidence": [
+        {
+          "path": "src/mcmd-julia/reference_history/main.cpp",
+          "sha256": "26ce1ba75520f1a0ec56413f2ed881ece95354d0745fedd2db47a612553d7b0d"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/force_kernel.cu",
+          "sha256": "c3d750117717f1dffb6d307bbe399389ccf44a455f255e9ca3de2d6a777b8199"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/dataset/mcmd.inp",
+          "sha256": "e7b9fa2efa9d496f3bc8d59d653f1a4e9fb730388a7efe58120b48bd2b104510"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/dataset/input.pqr",
+          "sha256": "33510a4886431a2d29c7fc265ababda5a0bc69bf9dce1a1cbeb234d911512109"
+        },
+        {
+          "path": "src/mcmd-julia/oracle_controls.json",
+          "sha256": "eb3cac7e15007b805f9d95d944227f7aeb0bc1dba228adc650236b849260b69a"
+        },
+        {
+          "path": "src/mcmd-julia/native_full_capture_audit.json",
+          "sha256": "c777076597a25f23c6ab803972510bded45305097771fa6ed4a7514f9cb49ef5"
+        },
+        {
+          "path": "src/mcmd-julia/all4_full_capture_audit.json",
+          "sha256": "9f8d52c90af13603fd150391142a823b4d6e73c861958dce1fcd2fee5e63fef0"
+        },
+        {
+          "path": "src/mcmd-julia/all4_accuracy_timing_summary.json",
+          "sha256": "6ab4f0923025fefda74798e2e8ed6d8f0b45ac3881ce555ff56882e13a936c58"
+        }
+      ],
+      "scientific_task": "Full original 10 fs molecular-dynamics trajectory for 3,371 physical atoms and 955 movable molecules."
+    },
+    "work_item_mapping": "Original14 blocks \u00d7256 threads, one particle per thread; physical3584 work items and explicit3371-particle guard. Selected source LJ pair and reciprocal sphere/component loops retained.",
+    "data_layout": "Native-owned112-byte atom AoS: positions/epsilon/sigma/charge/force/dipole/polar Float64; molid/frozen Int32 pair occupies raw Float64 slot10. Julia typed raw view, no repacking or source allocation resizing.",
+    "compute_precision": [
+      "Float64GPUforce/sourcehostMD",
+      "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+    ],
+    "storage_precision": [
+      "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+      "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+    ],
+    "private_memory": "Julia scalar three-component accumulators instead of captured mutable tuple closures. Source anchor POD copy is represented by indexed raw AoS field loads; no device malloc/shared memory, no actual register/spill profile.",
+    "dynamic_shared_memory_bytes_requested": 0,
+    "shared_memory": "No authored shared-memory allocation in the selected force path.",
+    "synchronization": [
+      "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+      "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+      "Wholecontextcompletionattimedpipelineboundaries"
+    ],
+    "backend_extension_features": [
+      "CUDA Float64 device atomic add",
+      "CUDA libdevice erfc/rint LLVM intrinsics",
+      "Original native CPU full MD controller C ABI"
+    ],
+    "host_device_boundary": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+    "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+    "verification_contract": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+    "boundary_rounding_policy": "Original nearest-image rint ties-to-even; orthogonal source cell only. Finite separation domain, same-molecule/frozen-pair exclusions, source volume expression retained. No universal triclinic-cell or polarization claim.",
+    "source_evidence": [
+      {
+        "path": "src/mcmd-julia/mcmd-julia-KA/main.jl",
+        "sha256": "aa17b368690a7b30bc894ce2e7738e45ad424306f56e53b5c542985d646d9fb2"
+      },
+      {
+        "path": "src/mcmd-julia/mcmd_device.jl",
+        "sha256": "9befb3266d255163ae00258048ae50964c63ae107d1e116e33c3839a1efd93fc"
+      },
+      {
+        "path": "src/mcmd-julia/study_common.jl",
+        "sha256": "36ca6cdd543ba9eb8f33039dd1132d4d81ca4a1a10565067e1c0391451364a78"
+      },
+      {
+        "path": "src/mcmd-julia/force_dispatch.cu",
+        "sha256": "4480ae1cfd1964e369d23aabe8ea303b045972941e63813d6588da2667f4db8d"
+      }
+    ],
+    "environment": {
+      "Julia": "1.12.6",
+      "packages": {
+        "CUDA": "6.2.1",
+        "CUDACore": "6.2.1",
+        "GPUCompiler": "1.23.0",
+        "KernelAbstractions": "0.9.45"
+      },
+      "native_nvcc": "12.0.140",
+      "GPU": "physical6 Tesla V100 PCIe32GB sm70",
+      "pinned_files": [
+        {
+          "path": "src/_julia_ka_env/Project.toml",
+          "sha256": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8"
+        },
+        {
+          "path": "src/_julia_ka_env/Manifest.toml",
+          "sha256": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3"
+        },
+        {
+          "path": "src/_julia_ka_env/LocalPreferences.toml",
+          "sha256": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+        }
+      ]
+    },
+    "numerical_result": ".porting-state/portable_julia/runs/20261020T022249656722Z_mcmd/result.json",
+    "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+    "launch_spec_policy": "Actual KA.@kernel, static workgroup256, physical ndrange3584, current task legacy stream. CUDA backend extensions in shared math are explicit."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+    "declared_environment": {
+      "Julia": "1.12.6",
+      "packages": {
+        "CUDA": "6.2.1",
+        "CUDACore": "6.2.1",
+        "GPUCompiler": "1.23.0",
+        "KernelAbstractions": "0.9.45"
+      },
+      "native_nvcc": "12.0.140",
+      "GPU": "physical6 Tesla V100 PCIe32GB sm70",
+      "pinned_files": [
+        {
+          "path": "src/_julia_ka_env/Project.toml",
+          "sha256": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8"
+        },
+        {
+          "path": "src/_julia_ka_env/Manifest.toml",
+          "sha256": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3"
+        },
+        {
+          "path": "src/_julia_ka_env/LocalPreferences.toml",
+          "sha256": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+        }
+      ]
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Original14 blocks \u00d7256 threads, one particle per thread; physical3584 work items and explicit3371-particle guard. Selected source LJ pair and reciprocal sphere/component loops retained.",
+    "layout": "Native-owned112-byte atom AoS: positions/epsilon/sigma/charge/force/dipole/polar Float64; molid/frozen Int32 pair occupies raw Float64 slot10. Julia typed raw view, no repacking or source allocation resizing.",
+    "storage_precision": [
+      "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+      "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+    ],
+    "compute_precision": [
+      "Float64GPUforce/sourcehostMD",
+      "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+      "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+      "Wholecontextcompletionattimedpipelineboundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+    "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+    "native_to_model_mapping": null,
+    "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/mcmd-julia/mcmd-julia-KA/main.jl",
+        "sha256": "aa17b368690a7b30bc894ce2e7738e45ad424306f56e53b5c542985d646d9fb2"
+      },
+      {
+        "path": "src/mcmd-julia/mcmd_device.jl",
+        "sha256": "9befb3266d255163ae00258048ae50964c63ae107d1e116e33c3839a1efd93fc"
+      },
+      {
+        "path": "src/mcmd-julia/study_common.jl",
+        "sha256": "36ca6cdd543ba9eb8f33039dd1132d4d81ca4a1a10565067e1c0391451364a78"
+      },
+      {
+        "path": "src/mcmd-julia/force_dispatch.cu",
+        "sha256": "4480ae1cfd1964e369d23aabe8ea303b045972941e63813d6588da2667f4db8d"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "mcmd",
+    "schema_version": 2,
+    "scientific_intent": {
+      "benchmark": "mcmd",
+      "primary_family": "particle_molecular",
+      "review_status": "source_reviewed",
+      "domain": "Classical molecular dynamics of a water/octane configuration",
+      "scientific_question": "Advance a molecular configuration under Lennard\u2013Jones and periodic Ewald forces with the source NVT Nose\u2013Hoover thermostat and rigid-body rotations.",
+      "mathematical_operation": "Eleven all-pairs LJ + real/reciprocal Ewald force evaluations (kmax3), complete original CPU integration, rotation, thermostat, potential, observables and file-I/O pipeline.",
+      "classification_rationale": "Particle/molecular simulation with pair potentials and reciprocal periodic charge interactions; the selected input uses MD, not Monte Carlo.",
+      "community_use_case": "Molecular simulation developers comparing force accuracy and a complete CPU/GPU integration path. No equilibrium chemical accuracy or infinite-Ewald convergence claim.",
+      "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+      "accuracy_requirements": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+      "source_evidence": [
+        {
+          "path": "src/mcmd-julia/reference_history/main.cpp",
+          "sha256": "26ce1ba75520f1a0ec56413f2ed881ece95354d0745fedd2db47a612553d7b0d"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/force_kernel.cu",
+          "sha256": "c3d750117717f1dffb6d307bbe399389ccf44a455f255e9ca3de2d6a777b8199"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/dataset/mcmd.inp",
+          "sha256": "e7b9fa2efa9d496f3bc8d59d653f1a4e9fb730388a7efe58120b48bd2b104510"
+        },
+        {
+          "path": "src/mcmd-julia/reference_history/dataset/input.pqr",
+          "sha256": "33510a4886431a2d29c7fc265ababda5a0bc69bf9dce1a1cbeb234d911512109"
+        },
+        {
+          "path": "src/mcmd-julia/oracle_controls.json",
+          "sha256": "eb3cac7e15007b805f9d95d944227f7aeb0bc1dba228adc650236b849260b69a"
+        },
+        {
+          "path": "src/mcmd-julia/native_full_capture_audit.json",
+          "sha256": "c777076597a25f23c6ab803972510bded45305097771fa6ed4a7514f9cb49ef5"
+        },
+        {
+          "path": "src/mcmd-julia/all4_full_capture_audit.json",
+          "sha256": "9f8d52c90af13603fd150391142a823b4d6e73c861958dce1fcd2fee5e63fef0"
+        },
+        {
+          "path": "src/mcmd-julia/all4_accuracy_timing_summary.json",
+          "sha256": "6ab4f0923025fefda74798e2e8ed6d8f0b45ac3881ce555ff56882e13a936c58"
+        }
+      ],
+      "scientific_task": "Full original 10 fs molecular-dynamics trajectory for 3,371 physical atoms and 955 movable molecules."
+    },
+    "primary_motif": "all-pairs LJ/Ewald particle forces with full CPU molecular MD",
+    "storage_precision": [
+      "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+      "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+    ],
+    "compute_precision": [
+      "Float64GPUforce/sourcehostMD",
+      "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+    ],
+    "synchronization": [
+      "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+      "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+      "Wholecontextcompletionattimedpipelineboundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Selected source pair/reciprocal loops and FP64 atomics are authored in Julia; full original CPU MD remains a C ABI hybrid. A raw14-Float64 atom view preserves the112-byte C POD and packed Int32 IDs. Source anchor POD copy becomes indexed field reads in Julia; actual load hoisting/register placement was not profiled."
+    },
+    "implementation_class": {
+      "cuda_jl": "authored_force_kernel_native_CPU_MD_hybrid_CUDA_atomic_libdevice",
+      "ka": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+      "jacc": "JACC_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions"
+    },
+    "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+    "verification_contract": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+    "keyconfounds": [
+      "Single source input and short10 fs trajectory, not equilibrium validation.",
+      "Full original CPU controller remains common; no independent full integrator rewrite.",
+      "Only selected pform1 branch is authored/certified; polarization is unverified, not framework unsupported.",
+      "Source allocation/copy members retained but adapter groups independent allocations before copies.",
+      "Native NVCC and Julia compiler stacks differ; no measured causal attribution of the slowdown.",
+      "CUDA.jl retained trial3=15.582581117 s; no outlier was dropped.",
+      "Source printed offload subtimes contain the added CPU oracle; only structured corrected ROI is comparative.",
+      "Captured listed host state/statistics are not every CLI output byte or unlisted Stats field."
+    ],
+    "native_reference_repaired": false,
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_model": "cuda_jl",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "authored_force_kernel_native_CPU_MD_hybrid_CUDA_atomic_libdevice",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "shared_authored_math_body_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "count_unit": "One selected force entry; one shared Julia mathematical work-item body. Eleven launches per full trajectory,66 including warmup+five trials.",
+        "scientific_intent": {
+          "benchmark": "mcmd",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Classical molecular dynamics of a water/octane configuration",
+          "scientific_question": "Advance a molecular configuration under Lennard\u2013Jones and periodic Ewald forces with the source NVT Nose\u2013Hoover thermostat and rigid-body rotations.",
+          "mathematical_operation": "Eleven all-pairs LJ + real/reciprocal Ewald force evaluations (kmax3), complete original CPU integration, rotation, thermostat, potential, observables and file-I/O pipeline.",
+          "classification_rationale": "Particle/molecular simulation with pair potentials and reciprocal periodic charge interactions; the selected input uses MD, not Monte Carlo.",
+          "community_use_case": "Molecular simulation developers comparing force accuracy and a complete CPU/GPU integration path. No equilibrium chemical accuracy or infinite-Ewald convergence claim.",
+          "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+          "accuracy_requirements": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+          "source_evidence": [
+            {
+              "path": "src/mcmd-julia/reference_history/main.cpp",
+              "sha256": "26ce1ba75520f1a0ec56413f2ed881ece95354d0745fedd2db47a612553d7b0d"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/force_kernel.cu",
+              "sha256": "c3d750117717f1dffb6d307bbe399389ccf44a455f255e9ca3de2d6a777b8199"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/mcmd.inp",
+              "sha256": "e7b9fa2efa9d496f3bc8d59d653f1a4e9fb730388a7efe58120b48bd2b104510"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/input.pqr",
+              "sha256": "33510a4886431a2d29c7fc265ababda5a0bc69bf9dce1a1cbeb234d911512109"
+            },
+            {
+              "path": "src/mcmd-julia/oracle_controls.json",
+              "sha256": "eb3cac7e15007b805f9d95d944227f7aeb0bc1dba228adc650236b849260b69a"
+            },
+            {
+              "path": "src/mcmd-julia/native_full_capture_audit.json",
+              "sha256": "c777076597a25f23c6ab803972510bded45305097771fa6ed4a7514f9cb49ef5"
+            },
+            {
+              "path": "src/mcmd-julia/all4_full_capture_audit.json",
+              "sha256": "9f8d52c90af13603fd150391142a823b4d6e73c861958dce1fcd2fee5e63fef0"
+            },
+            {
+              "path": "src/mcmd-julia/all4_accuracy_timing_summary.json",
+              "sha256": "6ab4f0923025fefda74798e2e8ed6d8f0b45ac3881ce555ff56882e13a936c58"
+            }
+          ],
+          "scientific_task": "Full original 10 fs molecular-dynamics trajectory for 3,371 physical atoms and 955 movable molecules."
+        },
+        "work_item_mapping": "Original14 blocks \u00d7256 threads, one particle per thread; physical3584 work items and explicit3371-particle guard. Selected source LJ pair and reciprocal sphere/component loops retained.",
+        "data_layout": "Native-owned112-byte atom AoS: positions/epsilon/sigma/charge/force/dipole/polar Float64; molid/frozen Int32 pair occupies raw Float64 slot10. Julia typed raw view, no repacking or source allocation resizing.",
+        "compute_precision": [
+          "Float64GPUforce/sourcehostMD",
+          "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+        ],
+        "storage_precision": [
+          "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+          "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+        ],
+        "private_memory": "Julia scalar three-component accumulators instead of captured mutable tuple closures. Source anchor POD copy is represented by indexed raw AoS field loads; no device malloc/shared memory, no actual register/spill profile.",
+        "dynamic_shared_memory_bytes_requested": 0,
+        "shared_memory": "No authored shared-memory allocation in the selected force path.",
+        "synchronization": [
+          "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+          "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+          "Wholecontextcompletionattimedpipelineboundaries"
+        ],
+        "backend_extension_features": [
+          "CUDA Float64 device atomic add",
+          "CUDA libdevice erfc/rint LLVM intrinsics",
+          "Original native CPU full MD controller C ABI"
+        ],
+        "host_device_boundary": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "verification_contract": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+        "boundary_rounding_policy": "Original nearest-image rint ties-to-even; orthogonal source cell only. Finite separation domain, same-molecule/frozen-pair exclusions, source volume expression retained. No universal triclinic-cell or polarization claim.",
+        "source_evidence": [
+          {
+            "path": "src/mcmd-julia/mcmd-julia-cuda.jl/main.jl",
+            "sha256": "4008da378b1ffef5dbc56c62183197d73165d38904383069142a79adf4c2241d"
+          },
+          {
+            "path": "src/mcmd-julia/mcmd_device.jl",
+            "sha256": "9befb3266d255163ae00258048ae50964c63ae107d1e116e33c3839a1efd93fc"
+          },
+          {
+            "path": "src/mcmd-julia/study_common.jl",
+            "sha256": "36ca6cdd543ba9eb8f33039dd1132d4d81ca4a1a10565067e1c0391451364a78"
+          },
+          {
+            "path": "src/mcmd-julia/force_dispatch.cu",
+            "sha256": "4480ae1cfd1964e369d23aabe8ea303b045972941e63813d6588da2667f4db8d"
+          }
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "packages": {
+            "CUDA": "6.2.1",
+            "CUDACore": "6.2.1",
+            "GPUCompiler": "1.23.0",
+            "KernelAbstractions": "0.9.45"
+          },
+          "native_nvcc": "12.0.140",
+          "GPU": "physical6 Tesla V100 PCIe32GB sm70",
+          "pinned_files": [
+            {
+              "path": "src/_julia_ka_env/Project.toml",
+              "sha256": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8"
+            },
+            {
+              "path": "src/_julia_ka_env/Manifest.toml",
+              "sha256": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3"
+            },
+            {
+              "path": "src/_julia_ka_env/LocalPreferences.toml",
+              "sha256": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            }
+          ]
+        },
+        "numerical_result": ".porting-state/portable_julia/runs/20261020T021731231533Z_mcmd/result.json",
+        "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+        "launch_spec_policy": "CUDA.@cuda source geometry, explicit legacy stream. No resource tuning after measurement."
+      },
+      "ka": {
+        "implementation_model": "ka",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "shared_authored_math_body_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "count_unit": "One selected force entry; one shared Julia mathematical work-item body. Eleven launches per full trajectory,66 including warmup+five trials.",
+        "scientific_intent": {
+          "benchmark": "mcmd",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Classical molecular dynamics of a water/octane configuration",
+          "scientific_question": "Advance a molecular configuration under Lennard\u2013Jones and periodic Ewald forces with the source NVT Nose\u2013Hoover thermostat and rigid-body rotations.",
+          "mathematical_operation": "Eleven all-pairs LJ + real/reciprocal Ewald force evaluations (kmax3), complete original CPU integration, rotation, thermostat, potential, observables and file-I/O pipeline.",
+          "classification_rationale": "Particle/molecular simulation with pair potentials and reciprocal periodic charge interactions; the selected input uses MD, not Monte Carlo.",
+          "community_use_case": "Molecular simulation developers comparing force accuracy and a complete CPU/GPU integration path. No equilibrium chemical accuracy or infinite-Ewald convergence claim.",
+          "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+          "accuracy_requirements": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+          "source_evidence": [
+            {
+              "path": "src/mcmd-julia/reference_history/main.cpp",
+              "sha256": "26ce1ba75520f1a0ec56413f2ed881ece95354d0745fedd2db47a612553d7b0d"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/force_kernel.cu",
+              "sha256": "c3d750117717f1dffb6d307bbe399389ccf44a455f255e9ca3de2d6a777b8199"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/mcmd.inp",
+              "sha256": "e7b9fa2efa9d496f3bc8d59d653f1a4e9fb730388a7efe58120b48bd2b104510"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/input.pqr",
+              "sha256": "33510a4886431a2d29c7fc265ababda5a0bc69bf9dce1a1cbeb234d911512109"
+            },
+            {
+              "path": "src/mcmd-julia/oracle_controls.json",
+              "sha256": "eb3cac7e15007b805f9d95d944227f7aeb0bc1dba228adc650236b849260b69a"
+            },
+            {
+              "path": "src/mcmd-julia/native_full_capture_audit.json",
+              "sha256": "c777076597a25f23c6ab803972510bded45305097771fa6ed4a7514f9cb49ef5"
+            },
+            {
+              "path": "src/mcmd-julia/all4_full_capture_audit.json",
+              "sha256": "9f8d52c90af13603fd150391142a823b4d6e73c861958dce1fcd2fee5e63fef0"
+            },
+            {
+              "path": "src/mcmd-julia/all4_accuracy_timing_summary.json",
+              "sha256": "6ab4f0923025fefda74798e2e8ed6d8f0b45ac3881ce555ff56882e13a936c58"
+            }
+          ],
+          "scientific_task": "Full original 10 fs molecular-dynamics trajectory for 3,371 physical atoms and 955 movable molecules."
+        },
+        "work_item_mapping": "Original14 blocks \u00d7256 threads, one particle per thread; physical3584 work items and explicit3371-particle guard. Selected source LJ pair and reciprocal sphere/component loops retained.",
+        "data_layout": "Native-owned112-byte atom AoS: positions/epsilon/sigma/charge/force/dipole/polar Float64; molid/frozen Int32 pair occupies raw Float64 slot10. Julia typed raw view, no repacking or source allocation resizing.",
+        "compute_precision": [
+          "Float64GPUforce/sourcehostMD",
+          "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+        ],
+        "storage_precision": [
+          "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+          "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+        ],
+        "private_memory": "Julia scalar three-component accumulators instead of captured mutable tuple closures. Source anchor POD copy is represented by indexed raw AoS field loads; no device malloc/shared memory, no actual register/spill profile.",
+        "dynamic_shared_memory_bytes_requested": 0,
+        "shared_memory": "No authored shared-memory allocation in the selected force path.",
+        "synchronization": [
+          "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+          "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+          "Wholecontextcompletionattimedpipelineboundaries"
+        ],
+        "backend_extension_features": [
+          "CUDA Float64 device atomic add",
+          "CUDA libdevice erfc/rint LLVM intrinsics",
+          "Original native CPU full MD controller C ABI"
+        ],
+        "host_device_boundary": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "verification_contract": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+        "boundary_rounding_policy": "Original nearest-image rint ties-to-even; orthogonal source cell only. Finite separation domain, same-molecule/frozen-pair exclusions, source volume expression retained. No universal triclinic-cell or polarization claim.",
+        "source_evidence": [
+          {
+            "path": "src/mcmd-julia/mcmd-julia-KA/main.jl",
+            "sha256": "aa17b368690a7b30bc894ce2e7738e45ad424306f56e53b5c542985d646d9fb2"
+          },
+          {
+            "path": "src/mcmd-julia/mcmd_device.jl",
+            "sha256": "9befb3266d255163ae00258048ae50964c63ae107d1e116e33c3839a1efd93fc"
+          },
+          {
+            "path": "src/mcmd-julia/study_common.jl",
+            "sha256": "36ca6cdd543ba9eb8f33039dd1132d4d81ca4a1a10565067e1c0391451364a78"
+          },
+          {
+            "path": "src/mcmd-julia/force_dispatch.cu",
+            "sha256": "4480ae1cfd1964e369d23aabe8ea303b045972941e63813d6588da2667f4db8d"
+          }
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "packages": {
+            "CUDA": "6.2.1",
+            "CUDACore": "6.2.1",
+            "GPUCompiler": "1.23.0",
+            "KernelAbstractions": "0.9.45"
+          },
+          "native_nvcc": "12.0.140",
+          "GPU": "physical6 Tesla V100 PCIe32GB sm70",
+          "pinned_files": [
+            {
+              "path": "src/_julia_ka_env/Project.toml",
+              "sha256": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8"
+            },
+            {
+              "path": "src/_julia_ka_env/Manifest.toml",
+              "sha256": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3"
+            },
+            {
+              "path": "src/_julia_ka_env/LocalPreferences.toml",
+              "sha256": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+            }
+          ]
+        },
+        "numerical_result": ".porting-state/portable_julia/runs/20261020T022249656722Z_mcmd/result.json",
+        "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+        "launch_spec_policy": "Actual KA.@kernel, static workgroup256, physical ndrange3584, current task legacy stream. CUDA backend extensions in shared math are explicit."
+      },
+      "jacc": {
+        "implementation_model": "jacc",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "JACC_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+        "authored_device_kernel_count": 1,
+        "authored_device_kernel_definitions": 1,
+        "shared_authored_math_body_definitions": 1,
+        "primary_device_entrypoints": 1,
+        "count_unit": "One selected force entry; one shared Julia mathematical work-item body. Eleven launches per full trajectory,66 including warmup+five trials.",
+        "scientific_intent": {
+          "benchmark": "mcmd",
+          "primary_family": "particle_molecular",
+          "review_status": "source_reviewed",
+          "domain": "Classical molecular dynamics of a water/octane configuration",
+          "scientific_question": "Advance a molecular configuration under Lennard\u2013Jones and periodic Ewald forces with the source NVT Nose\u2013Hoover thermostat and rigid-body rotations.",
+          "mathematical_operation": "Eleven all-pairs LJ + real/reciprocal Ewald force evaluations (kmax3), complete original CPU integration, rotation, thermostat, potential, observables and file-I/O pipeline.",
+          "classification_rationale": "Particle/molecular simulation with pair potentials and reciprocal periodic charge interactions; the selected input uses MD, not Monte Carlo.",
+          "community_use_case": "Molecular simulation developers comparing force accuracy and a complete CPU/GPU integration path. No equilibrium chemical accuracy or infinite-Ewald convergence claim.",
+          "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+          "accuracy_requirements": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+          "source_evidence": [
+            {
+              "path": "src/mcmd-julia/reference_history/main.cpp",
+              "sha256": "26ce1ba75520f1a0ec56413f2ed881ece95354d0745fedd2db47a612553d7b0d"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/force_kernel.cu",
+              "sha256": "c3d750117717f1dffb6d307bbe399389ccf44a455f255e9ca3de2d6a777b8199"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/mcmd.inp",
+              "sha256": "e7b9fa2efa9d496f3bc8d59d653f1a4e9fb730388a7efe58120b48bd2b104510"
+            },
+            {
+              "path": "src/mcmd-julia/reference_history/dataset/input.pqr",
+              "sha256": "33510a4886431a2d29c7fc265ababda5a0bc69bf9dce1a1cbeb234d911512109"
+            },
+            {
+              "path": "src/mcmd-julia/oracle_controls.json",
+              "sha256": "eb3cac7e15007b805f9d95d944227f7aeb0bc1dba228adc650236b849260b69a"
+            },
+            {
+              "path": "src/mcmd-julia/native_full_capture_audit.json",
+              "sha256": "c777076597a25f23c6ab803972510bded45305097771fa6ed4a7514f9cb49ef5"
+            },
+            {
+              "path": "src/mcmd-julia/all4_full_capture_audit.json",
+              "sha256": "9f8d52c90af13603fd150391142a823b4d6e73c861958dce1fcd2fee5e63fef0"
+            },
+            {
+              "path": "src/mcmd-julia/all4_accuracy_timing_summary.json",
+              "sha256": "6ab4f0923025fefda74798e2e8ed6d8f0b45ac3881ce555ff56882e13a936c58"
+            }
+          ],
+          "scientific_task": "Full original 10 fs molecular-dynamics trajectory for 3,371 physical atoms and 955 movable molecules."
+        },
+        "work_item_mapping": "Original14 blocks \u00d7256 threads, one particle per thread; physical3584 work items and explicit3371-particle guard. Selected source LJ pair and reciprocal sphere/component loops retained.",
+        "data_layout": "Native-owned112-byte atom AoS: positions/epsilon/sigma/charge/force/dipole/polar Float64; molid/frozen Int32 pair occupies raw Float64 slot10. Julia typed raw view, no repacking or source allocation resizing.",
+        "compute_precision": [
+          "Float64GPUforce/sourcehostMD",
+          "IndependentlongdoubleCPUforceoracle64bitmantissa; inputFloat64, timedurationFloat64"
+        ],
+        "storage_precision": [
+          "Float64positions/charges/forces/dipoles/parameters;112byteAoS",
+          "TwoInt32molid/frozenpackedinslot10of14Float64atomview; exactrawbitsreadback"
+        ],
+        "private_memory": "Julia scalar three-component accumulators instead of captured mutable tuple closures. Source anchor POD copy is represented by indexed raw AoS field loads; no device malloc/shared memory, no actual register/spill profile.",
+        "dynamic_shared_memory_bytes_requested": 0,
+        "shared_memory": "No authored shared-memory allocation in the selected force path.",
+        "synchronization": [
+          "OriginalblockingRuntimecopyD2H/allocatorlifetime",
+          "AuthoredcallbacklaunchCUDAlegacystream withmatchingRuntimeD2Hcompletion",
+          "Wholecontextcompletionattimedpipelineboundaries"
+        ],
+        "backend_extension_features": [
+          "CUDA Float64 device atomic add",
+          "CUDA libdevice erfc/rint LLVM intrinsics",
+          "Original native CPU full MD controller C ABI"
+        ],
+        "host_device_boundary": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "timing_scope": "FullsourceCLIsetup/integration/potential/I/O/forceallocationcopycomputefree minusaddedreadback/oracle/studyobservations; notkernelonly.",
+        "verification_contract": "All returned GPU atom buffers and actual device inputs for every force call; initial47,220-value raw Float64 prefix is bit-exact. All2,517,798 artifact fields per trial compare at absolute2e-6 + relative2e-10. Independent long-double force checks cover every coordinate at all11 steps; additional finite/rigid-distance/total-force checks. Listed host vectors and four statistics are captured; not all CLI bytes or unlisted host statistics.",
+        "boundary_rounding_policy": "Original nearest-image rint ties-to-even; orthogonal source cell only. Finite separation domain, same-molecule/frozen-pair exclusions, source volume expression retained. No universal triclinic-cell or polarization claim.",
+        "source_evidence": [
+          {
+            "path": "src/mcmd-julia/mcmd-julia-JACC/main.jl",
+            "sha256": "28adadcf73b5365821c0d3246dba8f401ca9e3e97d534a568e03dd35635c86d6"
+          },
+          {
+            "path": "src/mcmd-julia/mcmd_device.jl",
+            "sha256": "9befb3266d255163ae00258048ae50964c63ae107d1e116e33c3839a1efd93fc"
+          },
+          {
+            "path": "src/mcmd-julia/study_common.jl",
+            "sha256": "36ca6cdd543ba9eb8f33039dd1132d4d81ca4a1a10565067e1c0391451364a78"
+          },
+          {
+            "path": "src/mcmd-julia/force_dispatch.cu",
+            "sha256": "4480ae1cfd1964e369d23aabe8ea303b045972941e63813d6588da2667f4db8d"
+          }
+        ],
+        "environment": {
+          "Julia": "1.12.6",
+          "packages": {
+            "CUDA": "6.2.1",
+            "CUDACore": "6.2.1",
+            "GPUCompiler": "1.23.0",
+            "KernelAbstractions": "0.9.45",
+            "JACC": "1.4.0"
+          },
+          "native_nvcc": "12.0.140",
+          "GPU": "physical6 Tesla V100 PCIe32GB sm70",
+          "pinned_files": [
+            {
+              "path": "src/_julia_jacc_env/Project.toml",
+              "sha256": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49"
+            },
+            {
+              "path": "src/_julia_jacc_env/Manifest.toml",
+              "sha256": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784"
+            },
+            {
+              "path": "src/_julia_jacc_env/LocalPreferences.toml",
+              "sha256": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+            }
+          ]
+        },
+        "numerical_result": ".porting-state/portable_julia/runs/20261020T022748162082Z_mcmd/result.json",
+        "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+        "launch_spec_policy": "Actual JACC.parallel_for own entry, geometry-keyed LaunchSpec256threads14blocks, shmem0, syncfalse, explicit legacy stream; no stale auto-inferred dimensions."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/mcmd-julia/mcmd-julia-KA/main.jl",
+    "sha256": "aa17b368690a7b30bc894ce2e7738e45ad424306f56e53b5c542985d646d9fb2",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "original3371atom_water_octane_full10fs_NVT11forcecalls_v1",
+      "run_id": "20261020T022748162082Z_mcmd",
+      "result": ".porting-state/portable_julia/runs/20261020T022748162082Z_mcmd/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "eeeda62d09bdcefaca6c3c03303b74f34d4d775070efcae2425614fa10f996a8",
+      "source_hash": "ac51cb2b8cf34e980023c3fb3db1cc9209a428fecdb24ad33dd08e1edb5f0d40",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261020T022748162082Z_mcmd/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        13.15096225,
+        13.142055072999995,
+        13.145986399000002,
+        13.150990628000002,
+        13.135142136000002
+      ],
+      "mean_last_four_seconds": 13.143543559000001,
+      "contract": {
+        "scope": "Fulloriginalsourcefixture3371physicalatoms(3379ATOMrecordsminus8boxmarkers)/NVTnosehoover10fsdt1fs11forcecalls+11fullmolecularstates, pform1LJ+real/reciprocalEwaldkmax3. NoMonteCarlo/polarbranchcertification.",
+        "actual_inputs": "Allactualdeviceatom/basisreadbacksbefoREEVERYforcecall; initial47220Float64prefix exactbits. Dynamictrajectoryinputspermodelindependentlyvalidated.",
+        "oracle": "Independentlongdoubleallunorderedrealspacepairs+factorizedreciprocalstructurefactors, allforces/allsteps; unchangedreadonlyatomfields, fullfinitehostmolecular/atomstate, rigidintramoleculardistancecontrols,Newtonbalance. CommonnativeCPUintegratornotindependentlyrewritten.",
+        "tolerance": "PredeclaredallFloat64artifactatol2e-6rtol2e-10; perforceindependentbudget2e-6+2e-10abs(oracle), pairdistancesquared1e-7+1e-10relative, Newtonbalance1e-12normalized. Engineeringtestedbudgetsnotanalyticroundoffbound.",
+        "timing": "FulloriginalCLIincludingCPUsetup/integrator/potential/I/Oandforceallocationcopycomputefree; studyactualreadback/CPUoracle/serialization/stateobservationexcludedidentically. Wholepipelinewarmupthen5checkedtrialsmean2\u20135.",
+        "guards": "Originalallocationsretained; fullinputs/outputs/readonlyfieldinvariance, nosyntheticpaddingguardclaim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": 2312806,
+      "cached_input_tokens": 2303488,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 6195,
+      "reasoning_output_tokens": 4311,
+      "total_tokens": 2319001
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "f1d924a7f701814a893ae653",
+        "begin_event_id": "a4054cc9751e889043ef3dad",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-20T02:27:11.468145+00:00",
+        "usage_event_timestamp": "2026-10-20T02:26:59.384Z",
+        "elapsed_usage_event_start": "2026-10-20T02:22:21.944Z",
+        "delta_usage": {
+          "input_tokens": 2312806,
+          "cached_input_tokens": 2303488,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 6195,
+          "reasoning_output_tokens": 4311,
+          "total_tokens": 2319001
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 12.084145,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "11ae3398ad7669d22a366fa136e299f2c1b589e925e2c9e72bc323f4e827f626",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "KAcandidate01verifiedall5full2.517Mfieldcapturessame3371atom10fsMD, exact47220inputprefix+bothnative/CUDAjlcomparisons+independentlongdoubleforces/rigidity. CPUrehash/schema15capturesallpass. Mean13.143543559s. Reusedacceptedmath/sourceCPUcontroller; noJACCcodeorotherbenchmarkworkinsidewindow.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-20T01:57:24.138Z",
+          "context_event_sha256": "057d5534d7212d9b44d3c438347b4ac21c4b93791a1a80894be9b692d614abd7",
+          "source_snapshot_bytes": 111007397,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 7.117676,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/mcmd/ka_translation.jsonl",
+        "evidence_sha256": "d81c66510f05c4160f5df98c0978a526ddce8836de0f51817512b6944c2c36e4",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/mcmd-julia-ka/manifest.json",
+    "selected_sha256": "36cee43e2e4fea943010a732d156ff7500494e7d546a8f69ffd98b49f7632a04",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/mcmd-julia-ka/manifest.json",
+        "sha256": "36cee43e2e4fea943010a732d156ff7500494e7d546a8f69ffd98b49f7632a04"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "14085beb810e0d3f2b7e0570662ab363197b05fe",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "mcmd",
+    "implementation_model": "ka",
+    "status": "verified",
+    "configuration_id": "original3371atom_water_octane_full10fs_NVT11forcecalls_v1",
+    "configuration_role": "primary",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261020T022249656722Z_mcmd",
+    "evidence": "src/mcmd-julia/all4_full_capture_audit.json",
+    "native_reference_repaired": false,
+    "support_boundary": "Original input: 3,379 ATOM records minus eight BOX markers = 3,371 physical atoms, 955 molecules, 10 fs with dt1 fs, pform1 LJES, kmax3, orthogonal 50 \u00c5 cell. Other potential modes/MC/SP/optimization are not certified. Original CPU integrator is shared, not independently rewritten.",
+    "implementation_qualification": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+    "source_commit": "14085beb810e0d3f2b7e0570662ab363197b05fe",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "14085beb810e0d3f2b7e0570662ab363197b05fe",
+      "source": "src/mcmd-julia/mcmd-julia-KA/main.jl",
+      "source_sha256": "aa17b368690a7b30bc894ce2e7738e45ad424306f56e53b5c542985d646d9fb2",
+      "phase": "KA",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/mcmd-julia/reference_history/accounting_original_delivery_20261020/ka_status_before_commit_join_ae8e6f375f41.json",
+      "recorded_at": "2026-10-20T15:23:45.092483+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "KA_authored_force_entry_shared_Julia_math_native_CPU_MD_CUDA_extensions",
+    "annotation_path": ".porting-state/portable_julia/traits/mcmd.json",
+    "annotation_sha256": "78f0180938416215a57b99567094ab43c0c43d687d703ba2ca4e5acf9de3e969",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

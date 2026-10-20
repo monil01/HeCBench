@@ -1,0 +1,1026 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "hotspot3D",
+  "implementation_model": "cuda_jl",
+  "status": "verified_native_behavior_known_scientific_defect",
+  "scientific_intent_record": "../../domains/hotspot3D.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "hotspot3D",
+    "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+    "implementation_model": "cuda_jl",
+    "status": "verified_native_behavior_known_scientific_defect",
+    "implementation_class": "framework_device_kernel",
+    "algorithm": "Source-compatible rolling three-temperature z-column sweep; unchanged source public parity selection outside the kernel.",
+    "work_item_mapping": "64x4 threads, x-fast two-dimensional n*n launch, z loop within each work item.",
+    "layout": "Contiguous x-fast Float32, then y then z; each buffer256-byte aligned payload with64-element prefix/suffix guards.",
+    "precision": {
+      "storage": [
+        "Float32 temperature/power/coefficients",
+        "Int32 dimensions/indices"
+      ],
+      "compute": [
+        "Float32 device operations; native may fuse, Julia helper grouping retained"
+      ]
+    },
+    "synchronization": [
+      "Ordered kernel boundaries",
+      "Context-wide completion before/after each timed case"
+    ],
+    "resource_policy": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_bytes": 0,
+      "thread_block": [
+        64,
+        4
+      ],
+      "register_count": null,
+      "JACC_explicit_zero_shared": false
+    },
+    "backend_extensions": [],
+    "host_device_boundary": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+    "source_evidence": [
+      {
+        "path": "src/hotspot3D-julia/hotspot3D-julia-cuda.jl/main.jl",
+        "sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03"
+      },
+      {
+        "path": "src/hotspot3D-julia/thermal_device.jl",
+        "sha256": "ae8b6435f51432bf75d2e35467636c82d6f1cf4ae47fd4e3168af4d357b71a3b"
+      },
+      {
+        "path": "src/hotspot3D-julia/study_common.jl",
+        "sha256": "147a515bad9d80857a640c81837897b26c085b4eb68110216a1de53a0ca995bc"
+      }
+    ],
+    "source_revision": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03",
+    "environment": {
+      "Julia": "1.12.6",
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "GPU": "V100-PCIE32GB",
+      "GPU_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "native_behavior_known_scientific_defect": true,
+    "exclude_from_scientific_fidelity_aggregates": true,
+    "exclude_untouched_native_aggregates": true,
+    "reference_provenance": {
+      "native_source": {
+        "path": "src/hotspot3D-cuda/3D.cu",
+        "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+      },
+      "native_kernel_unchanged": true,
+      "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+      "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+      "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+      "fixture_oracle": {
+        "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+        "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+        "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+      }
+    },
+    "support_boundary": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+    "numerical_contract": "All20 complete15400493-value artifacts:6600237 exact prefix values plus full final/previous/public-selected/power buffers and guards. Independent F64 stencil, exact readonly/guard checks, actual last-step temperature-sum balance, and public-output parity witness.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+    "authored_device_kernel_definitions": 1,
+    "authored_device_source_candidates": 1,
+    "actual_authored_device_JIT_check_programs": 1,
+    "host_program_evaluations": 2,
+    "host_parse_repairs": 1,
+    "compiler_feedback_repairs": 1,
+    "candidate_attempts": 2,
+    "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.0003708040000000001,
+      0.00034573300000000003,
+      0.000379394,
+      0.000341254,
+      0.000344702
+    ],
+    "mean_last_four_seconds": 0.00035277075,
+    "profile_ids": []
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Source-compatible rolling three-temperature z-column sweep; unchanged source public parity selection outside the kernel.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": {
+      "Julia": "1.12.6",
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0",
+      "CUDA_toolkit": "12.0",
+      "GPU": "V100-PCIE32GB",
+      "GPU_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "64x4 threads, x-fast two-dimensional n*n launch, z loop within each work item.",
+    "layout": "Contiguous x-fast Float32, then y then z; each buffer256-byte aligned payload with64-element prefix/suffix guards.",
+    "storage_precision": [
+      "Float32 temperature/power/coefficients",
+      "Int32 dimensions/indices"
+    ],
+    "compute_precision": [
+      "Float32 device operations; native may fuse, Julia helper grouping retained"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Ordered kernel boundaries",
+      "Context-wide completion before/after each timed case"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "dynamic_shared_bytes": 0,
+      "static_shared_bytes": 0,
+      "thread_block": [
+        64,
+        4
+      ],
+      "register_count": null,
+      "JACC_explicit_zero_shared": false
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": [],
+    "host_control_boundary": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+    "support_boundary": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified_native_behavior_known_scientific_defect",
+    "source_review_evidence": [
+      {
+        "path": "src/hotspot3D-julia/hotspot3D-julia-cuda.jl/main.jl",
+        "sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03"
+      },
+      {
+        "path": "src/hotspot3D-julia/thermal_device.jl",
+        "sha256": "ae8b6435f51432bf75d2e35467636c82d6f1cf4ae47fd4e3168af4d357b71a3b"
+      },
+      {
+        "path": "src/hotspot3D-julia/study_common.jl",
+        "sha256": "147a515bad9d80857a640c81837897b26c085b4eb68110216a1de53a0ca995bc"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "hotspot3D",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "scientific_task": "Three-dimensional chip-temperature finite-difference update with power forcing and ambient heat exchange",
+      "mathematical_operation": "Positive-weight seven-neighbor thermal RC update, clamped spatial edge neighbors, source ambient parameter80 and power source.",
+      "description": "The source constants identify chip geometry, silicon heat capacity/conductivity, power and ambient temperature. The kernel maps one x/y cell per thread and sweeps z using three rolling register temperatures.",
+      "community_use_case": "Thermal-update building block; no complete chip-model calibration or physical-temperature accuracy certificate.",
+      "accuracy_requirements": "Declared actual Float32 coefficients/inputs and full time-level arrays against an independent Float64 stencil. Public even-step output defect is retained and excluded from scientific recommendations.",
+      "source_evidence": [
+        {
+          "path": "src/hotspot3D-cuda/3D.cu",
+          "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+        }
+      ]
+    },
+    "primary_motif": "register_rolling_3D_thermal_stencil",
+    "storage_precision": [
+      "Float32 temperature/power/coefficients",
+      "Int32 dimensions/indices"
+    ],
+    "compute_precision": [
+      "Float32 source GPU arithmetic",
+      "Float64 independent whole-field oracle"
+    ],
+    "native_behavior_known_scientific_defect": true,
+    "reference_provenance": {
+      "native_source": {
+        "path": "src/hotspot3D-cuda/3D.cu",
+        "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+      },
+      "native_kernel_unchanged": true,
+      "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+      "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+      "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+      "fixture_oracle": {
+        "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+        "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+        "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+      }
+    },
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same 64x4 threads, one x/y column per thread, serial rolling-z register algorithm; Julia arithmetic grouping vs native FMA is a rounding covariate."
+    },
+    "verification_contract": "All20 complete15400493-value artifacts:6600237 exact prefix values plus full final/previous/public-selected/power buffers and guards. Independent F64 stencil, exact readonly/guard checks, actual last-step temperature-sum balance, and public-output parity witness.",
+    "timing_scope": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+    "keyconfounds": [
+      "Known source public even-step output is previous rather than final; same CPU helper parity masks this in its RMS.",
+      "Original512x512x8 spatial footprint included for5 steps, not5000 default horizon/data files.",
+      "Context-inclusive marginal ordered translation windows, shared first harness creation and repeated cached context.",
+      "No profiler counters, clock control or cross-vendor experiment."
+    ],
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "hotspot3D",
+        "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+        "implementation_model": "cuda_jl",
+        "status": "verified_native_behavior_known_scientific_defect",
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Source-compatible rolling three-temperature z-column sweep; unchanged source public parity selection outside the kernel.",
+        "work_item_mapping": "64x4 threads, x-fast two-dimensional n*n launch, z loop within each work item.",
+        "layout": "Contiguous x-fast Float32, then y then z; each buffer256-byte aligned payload with64-element prefix/suffix guards.",
+        "precision": {
+          "storage": [
+            "Float32 temperature/power/coefficients",
+            "Int32 dimensions/indices"
+          ],
+          "compute": [
+            "Float32 device operations; native may fuse, Julia helper grouping retained"
+          ]
+        },
+        "synchronization": [
+          "Ordered kernel boundaries",
+          "Context-wide completion before/after each timed case"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_bytes": 0,
+          "thread_block": [
+            64,
+            4
+          ],
+          "register_count": null,
+          "JACC_explicit_zero_shared": false
+        },
+        "backend_extensions": [],
+        "host_device_boundary": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+        "source_evidence": [
+          {
+            "path": "src/hotspot3D-julia/hotspot3D-julia-cuda.jl/main.jl",
+            "sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03"
+          },
+          {
+            "path": "src/hotspot3D-julia/thermal_device.jl",
+            "sha256": "ae8b6435f51432bf75d2e35467636c82d6f1cf4ae47fd4e3168af4d357b71a3b"
+          },
+          {
+            "path": "src/hotspot3D-julia/study_common.jl",
+            "sha256": "147a515bad9d80857a640c81837897b26c085b4eb68110216a1de53a0ca995bc"
+          }
+        ],
+        "source_revision": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03",
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "GPU": "V100-PCIE32GB",
+          "GPU_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "native_behavior_known_scientific_defect": true,
+        "exclude_from_scientific_fidelity_aggregates": true,
+        "exclude_untouched_native_aggregates": true,
+        "reference_provenance": {
+          "native_source": {
+            "path": "src/hotspot3D-cuda/3D.cu",
+            "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+          },
+          "native_kernel_unchanged": true,
+          "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+          "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+          "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+          "fixture_oracle": {
+            "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+            "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+            "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+          }
+        },
+        "support_boundary": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+        "numerical_contract": "All20 complete15400493-value artifacts:6600237 exact prefix values plus full final/previous/public-selected/power buffers and guards. Independent F64 stencil, exact readonly/guard checks, actual last-step temperature-sum balance, and public-output parity witness.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+        "authored_device_kernel_definitions": 1,
+        "authored_device_source_candidates": 1,
+        "actual_authored_device_JIT_check_programs": 1,
+        "host_program_evaluations": 2,
+        "host_parse_repairs": 1,
+        "compiler_feedback_repairs": 1,
+        "candidate_attempts": 2,
+        "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0003708040000000001,
+          0.00034573300000000003,
+          0.000379394,
+          0.000341254,
+          0.000344702
+        ],
+        "mean_last_four_seconds": 0.00035277075,
+        "profile_ids": []
+      },
+      "ka": {
+        "benchmark_id": "hotspot3D",
+        "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+        "implementation_model": "ka",
+        "status": "verified_native_behavior_known_scientific_defect",
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Source-compatible rolling three-temperature z-column sweep; unchanged source public parity selection outside the kernel.",
+        "work_item_mapping": "64x4 threads, x-fast two-dimensional n*n launch, z loop within each work item.",
+        "layout": "Contiguous x-fast Float32, then y then z; each buffer256-byte aligned payload with64-element prefix/suffix guards.",
+        "precision": {
+          "storage": [
+            "Float32 temperature/power/coefficients",
+            "Int32 dimensions/indices"
+          ],
+          "compute": [
+            "Float32 device operations; native may fuse, Julia helper grouping retained"
+          ]
+        },
+        "synchronization": [
+          "Ordered kernel boundaries",
+          "Context-wide completion before/after each timed case"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_bytes": 0,
+          "thread_block": [
+            64,
+            4
+          ],
+          "register_count": null,
+          "JACC_explicit_zero_shared": false
+        },
+        "backend_extensions": [],
+        "host_device_boundary": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+        "source_evidence": [
+          {
+            "path": "src/hotspot3D-julia/hotspot3D-julia-KA/main.jl",
+            "sha256": "764275481fbb7e165b5fb5a2832431c317da90c23f51276af22e4a19ac72848d"
+          },
+          {
+            "path": "src/hotspot3D-julia/thermal_device.jl",
+            "sha256": "ae8b6435f51432bf75d2e35467636c82d6f1cf4ae47fd4e3168af4d357b71a3b"
+          },
+          {
+            "path": "src/hotspot3D-julia/study_common.jl",
+            "sha256": "147a515bad9d80857a640c81837897b26c085b4eb68110216a1de53a0ca995bc"
+          }
+        ],
+        "source_revision": "764275481fbb7e165b5fb5a2832431c317da90c23f51276af22e4a19ac72848d",
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "GPU": "V100-PCIE32GB",
+          "GPU_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "native_behavior_known_scientific_defect": true,
+        "exclude_from_scientific_fidelity_aggregates": true,
+        "exclude_untouched_native_aggregates": true,
+        "reference_provenance": {
+          "native_source": {
+            "path": "src/hotspot3D-cuda/3D.cu",
+            "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+          },
+          "native_kernel_unchanged": true,
+          "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+          "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+          "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+          "fixture_oracle": {
+            "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+            "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+            "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+          }
+        },
+        "support_boundary": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+        "numerical_contract": "All20 complete15400493-value artifacts:6600237 exact prefix values plus full final/previous/public-selected/power buffers and guards. Independent F64 stencil, exact readonly/guard checks, actual last-step temperature-sum balance, and public-output parity witness.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+        "authored_device_kernel_definitions": 1,
+        "authored_device_source_candidates": 1,
+        "actual_authored_device_JIT_check_programs": 1,
+        "host_program_evaluations": 1,
+        "host_parse_repairs": 0,
+        "compiler_feedback_repairs": 0,
+        "candidate_attempts": 1,
+        "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.00043782400000000007,
+          0.000509444,
+          0.000456144,
+          0.0004986750000000001,
+          0.000502725
+        ],
+        "mean_last_four_seconds": 0.0004917470000000001,
+        "profile_ids": []
+      },
+      "jacc": {
+        "benchmark_id": "hotspot3D",
+        "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+        "implementation_model": "jacc",
+        "status": "verified_native_behavior_known_scientific_defect",
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Source-compatible rolling three-temperature z-column sweep; unchanged source public parity selection outside the kernel.",
+        "work_item_mapping": "64x4 threads, x-fast two-dimensional n*n launch, z loop within each work item.",
+        "layout": "Contiguous x-fast Float32, then y then z; each buffer256-byte aligned payload with64-element prefix/suffix guards.",
+        "precision": {
+          "storage": [
+            "Float32 temperature/power/coefficients",
+            "Int32 dimensions/indices"
+          ],
+          "compute": [
+            "Float32 device operations; native may fuse, Julia helper grouping retained"
+          ]
+        },
+        "synchronization": [
+          "Ordered kernel boundaries",
+          "Context-wide completion before/after each timed case"
+        ],
+        "resource_policy": {
+          "dynamic_shared_bytes": 0,
+          "static_shared_bytes": 0,
+          "thread_block": [
+            64,
+            4
+          ],
+          "register_count": null,
+          "JACC_explicit_zero_shared": true
+        },
+        "backend_extensions": [],
+        "host_device_boundary": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+        "source_evidence": [
+          {
+            "path": "src/hotspot3D-julia/hotspot3D-julia-JACC/main.jl",
+            "sha256": "b1cf44ead4c7c4fd36d2b1a733e5732e8c66c73cb4682e87241b8cf2f621c4bc"
+          },
+          {
+            "path": "src/hotspot3D-julia/thermal_device.jl",
+            "sha256": "ae8b6435f51432bf75d2e35467636c82d6f1cf4ae47fd4e3168af4d357b71a3b"
+          },
+          {
+            "path": "src/hotspot3D-julia/study_common.jl",
+            "sha256": "147a515bad9d80857a640c81837897b26c085b4eb68110216a1de53a0ca995bc"
+          }
+        ],
+        "source_revision": "b1cf44ead4c7c4fd36d2b1a733e5732e8c66c73cb4682e87241b8cf2f621c4bc",
+        "environment": {
+          "Julia": "1.12.6",
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "GPU": "V100-PCIE32GB",
+          "GPU_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "native_behavior_known_scientific_defect": true,
+        "exclude_from_scientific_fidelity_aggregates": true,
+        "exclude_untouched_native_aggregates": true,
+        "reference_provenance": {
+          "native_source": {
+            "path": "src/hotspot3D-cuda/3D.cu",
+            "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+          },
+          "native_kernel_unchanged": true,
+          "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+          "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+          "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+          "fixture_oracle": {
+            "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+            "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+            "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+          }
+        },
+        "support_boundary": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+        "numerical_contract": "All20 complete15400493-value artifacts:6600237 exact prefix values plus full final/previous/public-selected/power buffers and guards. Independent F64 stencil, exact readonly/guard checks, actual last-step temperature-sum balance, and public-output parity witness.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+        "authored_device_kernel_definitions": 1,
+        "authored_device_source_candidates": 1,
+        "actual_authored_device_JIT_check_programs": 1,
+        "host_program_evaluations": 1,
+        "host_parse_repairs": 0,
+        "compiler_feedback_repairs": 0,
+        "candidate_attempts": 1,
+        "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.0005948450000000001,
+          0.0006156950000000001,
+          0.000573516,
+          0.000576035,
+          0.000621445
+        ],
+        "mean_last_four_seconds": 0.0005966727500000001,
+        "profile_ids": []
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/hotspot3D-julia/hotspot3D-julia-cuda.jl/main.jl",
+    "sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        9
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+      "run_id": "20261019T161822284165Z_hotspot3D",
+      "result": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": true,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_source": {
+          "path": "src/hotspot3D-cuda/3D.cu",
+          "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+        },
+        "native_kernel_unchanged": true,
+        "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+        "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+        "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+        "fixture_oracle": {
+          "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+          "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+          "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+        }
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "b76c23cfc49be4c45796035ff716e5b88a905ca27dc8c76ad78da6596eb5a514",
+      "source_hash": "ad4b9734739068c6148bfe591bc44c54d6c63afeb99af12eee082ee7fdd2eb1b",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0003708040000000001,
+        0.00034573300000000003,
+        0.000379394,
+        0.000341254,
+        0.000344702
+      ],
+      "mean_last_four_seconds": 0.00035277075,
+      "contract": {
+        "cases": [
+          {
+            "n": 64,
+            "layers": 2,
+            "steps": 1,
+            "kind": "ambient",
+            "elements": 8192,
+            "selected_time_level": 1,
+            "params": [
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.0001333333202637732,
+              0.0001333333202637732,
+              0.9974666833877563,
+              0.005333332810550928
+            ]
+          },
+          {
+            "n": 64,
+            "layers": 3,
+            "steps": 2,
+            "kind": "varying",
+            "elements": 12288,
+            "selected_time_level": 1,
+            "params": [
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.00019999996584374458,
+              0.00019999996584374458,
+              0.9972666501998901,
+              0.005333332810550928
+            ]
+          },
+          {
+            "n": 128,
+            "layers": 5,
+            "steps": 3,
+            "kind": "uniform_power",
+            "elements": 81920,
+            "selected_time_level": 3,
+            "params": [
+              0.0021333331242203712,
+              0.0021333331242203712,
+              0.0021333331242203712,
+              0.0021333331242203712,
+              0.000333333300659433,
+              0.000333333300659433,
+              0.9904666543006897,
+              0.021333331242203712
+            ]
+          },
+          {
+            "n": 512,
+            "layers": 8,
+            "steps": 5,
+            "kind": "varying",
+            "elements": 2097152,
+            "selected_time_level": 5,
+            "params": [
+              0.03413332998752594,
+              0.03413332998752594,
+              0.03413332998752594,
+              0.03413332998752594,
+              0.0005333332810550928,
+              0.0005333332810550928,
+              0.8618666529655457,
+              0.3413332998752594
+            ]
+          }
+        ],
+        "precision": "Float32scientificbuffers/coefficients; independentFloat64whole3Doracle; artifactexactFloat64expansion",
+        "metric": "Sum4originalkerneliterationloops+contextcompletion,hostpointer swapsinside. Actualallocation/H2D/beforeinputreadback/afterfulloutput+guardreadbacks/freeoutsideROI; fullpipelineexecuted, notendtoenddefaulttimer.",
+        "time_level": "Finalandpreviousbothchecked;sourcepublicselectedisfinalodd/previous even, knownscientificdefectretained/excludeduntouchedaggregates.",
+        "support": "nmultiple64and4,z>=2. Same64x4columnthreadgeometry, serialzrolling. Default512x512x8footprintincludedbut5steps not5000; nootherCLI/datafile/defaultinputequivalence.",
+        "independent_oracle": "Whole3Dvector dotwithclampedselfboundaries andactualcoeffbits, no rolling-register reuse; fullFloat64fieldoracle plusmanufacturedambient/powercontrols.",
+        "tolerance_rationale": "ConservativeFloat32short-horizonpositiveweighteddotroundingbudget;sourceFMAandunfusedJulia, independentFloat64oracle"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "hotspot3D:cuda_jl:B2:shared_host_parse",
+        "benchmark_id": "hotspot3D",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B2",
+        "phase": "host_frontend_before_device_JIT",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/hotspot3D.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "hotspot3D:cuda_jl:B2:shared_host_parse",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "host_frontend_before_device_JIT",
+          "code": "B2",
+          "is_failure": true,
+          "candidate_id": 1,
+          "check_id": 1,
+          "root_cause": "Missing whitespace before for in shared host comprehension; same GPU body after host fix.",
+          "log": ".porting-state/portable_julia/runs/20261019T161426645860Z_hotspot3D/cuda_jl_run1.log",
+          "benchmark_id": "hotspot3D"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 2,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 1,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": 4095095,
+      "cached_input_tokens": 4075904,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 11292,
+      "reasoning_output_tokens": 2608,
+      "total_tokens": 4106387
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "6aab53028601674147031ece",
+        "begin_event_id": "874421c583504265311a14b6",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T16:16:25.720363+00:00",
+        "usage_event_timestamp": "2026-10-19T16:16:16.153Z",
+        "elapsed_usage_event_start": "2026-10-19T16:10:28.990Z",
+        "delta_usage": {
+          "input_tokens": 4095095,
+          "cached_input_tokens": 4075904,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 11292,
+          "reasoning_output_tokens": 2608,
+          "total_tokens": 4106387
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 9.567363,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "7475c9e463434a4976652e0a958de63e9e138f97a4639c2a64db998180def5ac",
+        "meter_driver_sha256": "709250f613707c472ae55c56dc50a7f668fc761533d3f97c722a0c0b316348ab",
+        "note": "First authored thermalGPUbody candidate passed after one sharedhostparse whitespace repair (2programchecks,1deviceJITcheck). Native+CUDjl all5full15400493values/inputprefix agree with independentFloat64oracle. Fixturegenerator NumPy unavailable led separate shared tooling fallback to compiled C++ independentoracle, not GPU framework failure.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T16:07:16.913Z",
+          "scope": "Observed configured identifier; exact serving snapshot/seed/temperature unknown."
+        },
+        "begin_marker_lag_seconds": 5.223896,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/hotspot3D/cuda_jl_translation.jsonl",
+        "evidence_sha256": "d89cde3b80fe983faa5a89542d3b8b8b0596e7ac3acbdcf4390ce01435abb147",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 1
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/hotspot3D-julia-cuda_jl/manifest.json",
+    "selected_sha256": "8ff8d525ff589193225385a3ff302dfbf9ad12d91d640b73e5e10349ec8ad3eb",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/hotspot3D-julia-cuda.jl/manifest.json",
+        "sha256": "26a4a7ce7204c1ef52982f065b8b430b1ce835d286bb9bab5dafe2775aeb8571"
+      },
+      {
+        "path": ".porting-state/porting_logs/hotspot3D-julia-cuda_jl/manifest.json",
+        "sha256": "8ff8d525ff589193225385a3ff302dfbf9ad12d91d640b73e5e10349ec8ad3eb"
+      },
+      {
+        "path": ".porting-state/porting_logs/hotspot3D-julia/manifest.json",
+        "sha256": "9d4b5dd961707f17a18441393e40316a6d8b04940546ed5531f3e824d139ae99"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "hotspot3D",
+    "model": "cuda_jl",
+    "status": "verified_native_behavior_known_scientific_defect",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+    "framework_unsupported": false
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/hotspot3D.json",
+    "annotation_sha256": "1b94d0b73a8135f45b348283f43585e50c04bf62a55fd5f5325645efd6936e34",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/hotspot3D-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "26a4a7ce7204c1ef52982f065b8b430b1ce835d286bb9bab5dafe2775aeb8571",
+      "record": {
+        "benchmark": "hotspot3D",
+        "target": "cuda_jl",
+        "implementation_model": "cuda_jl",
+        "status": "pass",
+        "verification_strength": "direct_artifact_pass",
+        "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+        "source_sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03",
+        "candidate_attempts": 2,
+        "compiler_check_invocations": 2,
+        "compiler_feedback_repairs": 1,
+        "runtime_repairs": 0,
+        "numerical_repairs": 0,
+        "authored_device_kernel_definitions": 1,
+        "authored_device_source_candidates": 1,
+        "authored_device_JIT_check_programs": 1,
+        "host_parse_repairs": 1,
+        "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+        "first_compilation_attempt": 2,
+        "first_verified_success_attempt": 2,
+        "first_device_compilation_candidate": 1,
+        "native_behavior_known_scientific_defect": true,
+        "reference_provenance": {
+          "native_source": {
+            "path": "src/hotspot3D-cuda/3D.cu",
+            "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+          },
+          "native_kernel_unchanged": true,
+          "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+          "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+          "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+          "fixture_oracle": {
+            "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+            "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+            "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+          }
+        },
+        "mean_time_us": 352.77075,
+        "trial_times_us": [
+          370.8040000000001,
+          345.733,
+          379.394,
+          341.25399999999996,
+          344.702
+        ],
+        "performance_protocol": "five_trials_last_four_v1",
+        "translation_tokens": {
+          "input_tokens": 4095095,
+          "cached_input_tokens": 4075904,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 11292,
+          "reasoning_output_tokens": 2608,
+          "total_tokens": 4106387,
+          "status": "observed_context_inclusive_window",
+          "scope": "Target translation/check/coordination window, cached input subset, reasoning subset; not exclusive billed consumption. Shared native-readiness/verification/annotation windows overlap and must not be summed.",
+          "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/hotspot3D/cuda_jl_translation.jsonl"
+        },
+        "model_identifier": "gpt-6.1-sol",
+        "historical_missing_consumption": null,
+        "source_length_proxy_is_consumption": false,
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "commit_status": "pending_root"
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/hotspot3D-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "26a4a7ce7204c1ef52982f065b8b430b1ce835d286bb9bab5dafe2775aeb8571",
+    "record": {
+      "benchmark": "hotspot3D",
+      "target": "cuda_jl",
+      "implementation_model": "cuda_jl",
+      "status": "pass",
+      "verification_strength": "direct_artifact_pass",
+      "configuration_id": "source_column_rolling_4cases_original512footprint_shortsteps_public_parity_known_defect_v1",
+      "verification_bundle": ".porting-state/portable_julia/runs/20261019T161822284165Z_hotspot3D",
+      "source_sha256": "dea68adfbf02a111f16eb72fbb1cee51211365b73f495cc9dd46c10b67218c03",
+      "candidate_attempts": 2,
+      "compiler_check_invocations": 2,
+      "compiler_feedback_repairs": 1,
+      "runtime_repairs": 0,
+      "numerical_repairs": 0,
+      "authored_device_kernel_definitions": 1,
+      "authored_device_source_candidates": 1,
+      "authored_device_JIT_check_programs": 1,
+      "host_parse_repairs": 1,
+      "candidate_unit": "Complete evaluated Julia program; CUDAjl candidate2 repairs only shared host parsing, device body unchanged.",
+      "first_compilation_attempt": 2,
+      "first_verified_success_attempt": 2,
+      "first_device_compilation_candidate": 1,
+      "native_behavior_known_scientific_defect": true,
+      "reference_provenance": {
+        "native_source": {
+          "path": "src/hotspot3D-cuda/3D.cu",
+          "sha256": "3f704851098400546d392bf7794bb2ff0548c8a89b8d4de2649adeb79d3b6f12"
+        },
+        "native_kernel_unchanged": true,
+        "host_output_selection": "Aftereachiterationpointersswap, d_tInisfinal,d_tOutprevious; sourcechoosesd_tOutforeveniterations. computeTempCPUcalleranswerhasmatchingparity, soRMSmaypasswhileselectingpreviousstep.",
+        "mathematical_witness": "Fourcasescapturebothactualfinalandprevious. IndependentFloat64complete3Dclampedthermalstencilchecks both;publicselectedevenfieldcheckedaspreviousonly andflaggedknownscientifictime-leveldefect, notcertifiedasrequestedfinal.",
+        "correction": "Noneinprimary; preserveknownbehavior, excludesuntouchedscientific/performanceaggregates. Corrected-finalsecondarynotauthored.",
+        "fixture_oracle": {
+          "generator": "src/hotspot3D-julia/generate_fixture.cpp",
+          "sha256": "16882d582699cb8107bc2080da5ec82c4be5743a42decfd5cd772b13e72885d8",
+          "oracle_sha256": "d973feb19a8e3cd02a81e0453c37a3b2381e050c7257a2e7c85daa1a9ab3d916"
+        }
+      },
+      "mean_time_us": 352.77075,
+      "trial_times_us": [
+        370.8040000000001,
+        345.733,
+        379.394,
+        341.25399999999996,
+        344.702
+      ],
+      "performance_protocol": "five_trials_last_four_v1",
+      "translation_tokens": {
+        "input_tokens": 4095095,
+        "cached_input_tokens": 4075904,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11292,
+        "reasoning_output_tokens": 2608,
+        "total_tokens": 4106387,
+        "status": "observed_context_inclusive_window",
+        "scope": "Target translation/check/coordination window, cached input subset, reasoning subset; not exclusive billed consumption. Shared native-readiness/verification/annotation windows overlap and must not be summed.",
+        "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/hotspot3D/cuda_jl_translation.jsonl"
+      },
+      "model_identifier": "gpt-6.1-sol",
+      "historical_missing_consumption": null,
+      "source_length_proxy_is_consumption": false,
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "commit_status": "pending_root"
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

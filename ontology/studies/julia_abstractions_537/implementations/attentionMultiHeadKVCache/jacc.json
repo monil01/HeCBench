@@ -1,0 +1,1212 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "attentionMultiHeadKVCache",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/attentionMultiHeadKVCache.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_named_configuration",
+    "review_status": "source_audited",
+    "actual_algorithm": "Tiledgroupedattention,8featureprivatetuple,eightlaneXORpartials,onlinebase2softmax,eightKVpartitionstatemerge,FP32normalizedvaluecasttostorage",
+    "work_item_mapping": "4KVheadblocks,512threadslogical8\u00d78\u00d78, flatKA/JACCsamecoordinates",
+    "data_layout": "Q[32,64],K/V[seq,4,64]NHD,16bitstorage;sharedrepresentationmodel-specific",
+    "storage_precision": [
+      "float16",
+      "bfloat16"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float32_lossless_of_float16_bfloat16"
+    ],
+    "memory_access": "CooperativeK/Vtileloads andoutputmerge; perthread8queryfeatures, sequential8logitloop, maskedtailpositionscomputedthenmasked",
+    "synchronization": [
+      "Sharedtileload/barrier, pertilereadcompletion, crosszstatemergebarrier",
+      "Publicsharedscratch8laneXORemulation,56extrablockbarrierspertile"
+    ],
+    "resource_policy": {
+      "threads": 512,
+      "blocks": 4,
+      "shared_bytes": 35328,
+      "shared_kind": "dynamic",
+      "xor_scratch_bytes": 2048,
+      "registers": null,
+      "spills": null,
+      "occupancy": null
+    },
+    "shared_representation": "Float32KV convertedlosslesslyfrom16bitinput, aliasedFloat32O/scratch, oneJACC.sharedarena",
+    "library_boundary": "Authoredframeworkdevicekernel, noexternalcomputelibrary",
+    "backend_extensions": [],
+    "source_evidence": {
+      "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-JACC/main.jl",
+      "sha256": "90dc05f77cb8deed8fe519d6352753bbb8f98c3de4c8901ba9938eeb5d497d9e"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.9",
+    "profiling_status": "Notprofiled,source-derivedshared/barriercounts only, no rooflineposition",
+    "host_control_boundary": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+    "native_to_model_mapping": {
+      "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+      "reason": [
+        "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+        "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+        "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+        "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+      ]
+    },
+    "limitations": [
+      "Nativeone-stageV100synchronouscp_asyncfallback, not unsupportedfromdefaultsm90Makefile; originalFP16/BF16CLIcompiledCUDA12.9sm70andall4casesPASS",
+      "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+      "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+      "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+      "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement",
+      "NativeusesFloat32exp2f/FMA/fastdivisionversusJuliamathlowering; smallroundingdifferencesnotassignedtoonecausewithoutcontrolledprofile",
+      "Host20callloop+syncmeanssum8cases;nativecudaFuncSetAttributeinsideROI butcompiletimeknownspecializationomitsgenericGetComputeCapability/dispatchtree. Notfulloriginalwrappertiming orisolatedkernellatency",
+      "FP16/BF16inputs/outputs stored16bit, accumulatorsFP32. Float64oracleandFloat32losslessartifactencoding are not timedGPUFP64/FP32storageclaims",
+      "N1/3shortcachecases stillpadded64positionwork, N65/127padded128; usefulmathematicalwork differsissuedmasked/paddedwork; actualhardwareFLOPs/traffic/occupancynotmeasured",
+      "Namednonrandomdyadicinputs,noapplicationaccuracy/otherGPUs/backendindependentperformance/rooflinepositionclaim"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Tiledgroupedattention,8featureprivatetuple,eightlaneXORpartials,onlinebase2softmax,eightKVpartitionstatemerge,FP32normalizedvaluecasttostorage",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.9",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "4KVheadblocks,512threadslogical8\u00d78\u00d78, flatKA/JACCsamecoordinates",
+    "layout": "Q[32,64],K/V[seq,4,64]NHD,16bitstorage;sharedrepresentationmodel-specific",
+    "storage_precision": [
+      "float16",
+      "bfloat16"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float32_lossless_of_float16_bfloat16"
+    ],
+    "memory_hierarchy_and_access": "CooperativeK/Vtileloads andoutputmerge; perthread8queryfeatures, sequential8logitloop, maskedtailpositionscomputedthenmasked",
+    "synchronization": [
+      "Sharedtileload/barrier, pertilereadcompletion, crosszstatemergebarrier",
+      "Publicsharedscratch8laneXORemulation,56extrablockbarrierspertile"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 512,
+      "blocks": 4,
+      "shared_bytes": 35328,
+      "shared_kind": "dynamic",
+      "xor_scratch_bytes": 2048,
+      "registers": null,
+      "spills": null,
+      "occupancy": null
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "Authoredframeworkdevicekernel, noexternalcomputelibrary",
+    "host_control_boundary": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+    "support_boundary": null,
+    "native_to_model_mapping": {
+      "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+      "reason": [
+        "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+        "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+        "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+        "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+      ]
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "verified_named_configuration",
+    "source_review_evidence": {
+      "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-JACC/main.jl",
+      "sha256": "90dc05f77cb8deed8fe519d6352753bbb8f98c3de4c8901ba9938eeb5d497d9e"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "attentionMultiHeadKVCache",
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "application_domain": "Grouped-query attention for autoregressive sequence decoding",
+      "scientific_task": "Single-request normalized query/key/value aggregation over sharedKVheads",
+      "mathematical_method": "softmax(QK\u1d40/\u221a64)V with32query/4KVheads,FP16/BF16storage,FP32onlinebase2softmax andcrosspartitionstate merging",
+      "accuracy_requirements": [
+        "All16384outputs finite/withinpredeclared.002+.01abs(Float64oracle)",
+        "Correcth\u00f78KVheadmapping;seq1exactVcopy, alloutputwithinVconvexbounds",
+        "ActualfullQ/K/Vprefixexact andsourceGPUinputbinding audited"
+      ],
+      "community_use_case": "Reusable scientific-ML attention operator and cooperative-reduction precision case; it supports kernel selection experiments, not certificationofcompleteLLM/scientificsurrogateaccuracy",
+      "review_status": "source_audited",
+      "input_size_regime": "Sourceheadshapes/seqlen1/3 plus65/127multitileextensions;NHD/noRoPE only; noKVpartitionlongsequence/HND/Rope claim",
+      "evidence": [
+        {
+          "path": "src/attentionMultiHeadKVCache-cuda/decode.cuh",
+          "sha256": "c108c3326186322442415140fac48d72966cb3cfe66d020ac598dd2ce3cdd08a"
+        },
+        {
+          "path": "src/attentionMultiHeadKVCache-cuda/state.cuh",
+          "sha256": "de468961ced9a8594868519ed69113b6ee95b29415b4d974362c0f436bc08c13"
+        },
+        {
+          "path": "src/attentionMultiHeadKVCache-julia/scientific_operator_witness.py",
+          "sha256": "433182441433acfde62ff869c44910a90263059689e835fa17c453beb3f615b4"
+        }
+      ]
+    },
+    "primary_motif": "grouped_query_online_softmax_tiled_attention",
+    "storage_precision": [
+      "float16",
+      "bfloat16"
+    ],
+    "compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "timed_compute_precision": [
+      "float32",
+      "int32"
+    ],
+    "host_oracle_precision": [
+      "float64"
+    ],
+    "artifact_encoding": [
+      "float32_lossless_of_float16_bfloat16"
+    ],
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "native_to_julia_mapping": {
+      "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+      "reason": [
+        "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+        "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+        "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+        "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+      ]
+    },
+    "timing_scope": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+    "verification_contract": "All16384computedattentionvaluesand217128exactinputprefixvalues;20fullFloat32encodedartifacts/934048bytes each. IndependentFloat64normalizedattention, convexbounds,seq1exactgroupV,groupindex/copiedVcounterexamples",
+    "numerical_evidence_strength": "complete_recorded_output_arrays",
+    "keyconfounds": [
+      "Nativeone-stageV100synchronouscp_asyncfallback, not unsupportedfromdefaultsm90Makefile; originalFP16/BF16CLIcompiledCUDA12.9sm70andall4casesPASS",
+      "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+      "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+      "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+      "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement",
+      "NativeusesFloat32exp2f/FMA/fastdivisionversusJuliamathlowering; smallroundingdifferencesnotassignedtoonecausewithoutcontrolledprofile",
+      "Host20callloop+syncmeanssum8cases;nativecudaFuncSetAttributeinsideROI butcompiletimeknownspecializationomitsgenericGetComputeCapability/dispatchtree. Notfulloriginalwrappertiming orisolatedkernellatency",
+      "FP16/BF16inputs/outputs stored16bit, accumulatorsFP32. Float64oracleandFloat32losslessartifactencoding are not timedGPUFP64/FP32storageclaims",
+      "N1/3shortcachecases stillpadded64positionwork, N65/127padded128; usefulmathematicalwork differsissuedmasked/paddedwork; actualhardwareFLOPs/traffic/occupancynotmeasured",
+      "Namednonrandomdyadicinputs,noapplicationaccuracy/otherGPUs/backendindependentperformance/rooflinepositionclaim"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Tiledgroupedattention,8featureprivatetuple,eightlaneXORpartials,onlinebase2softmax,eightKVpartitionstatemerge,FP32normalizedvaluecasttostorage",
+        "work_item_mapping": "4KVheadblocks,512threadslogical8\u00d78\u00d78, flatKA/JACCsamecoordinates",
+        "data_layout": "Q[32,64],K/V[seq,4,64]NHD,16bitstorage;sharedrepresentationmodel-specific",
+        "storage_precision": [
+          "float16",
+          "bfloat16"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float32_lossless_of_float16_bfloat16"
+        ],
+        "memory_access": "CooperativeK/Vtileloads andoutputmerge; perthread8queryfeatures, sequential8logitloop, maskedtailpositionscomputedthenmasked",
+        "synchronization": [
+          "Sharedtileload/barrier, pertilereadcompletion, crosszstatemergebarrier",
+          "CUDAwarpXORshuffles"
+        ],
+        "resource_policy": {
+          "threads": 512,
+          "blocks": 4,
+          "shared_bytes": 16896,
+          "shared_kind": "dynamic",
+          "xor_scratch_bytes": 0,
+          "registers": null,
+          "spills": null,
+          "occupancy": null
+        },
+        "shared_representation": "16bitKV andaliasedFloat32O",
+        "library_boundary": "Authoredframeworkdevicekernel, noexternalcomputelibrary",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-cuda.jl/main.jl",
+          "sha256": "80c027f3105341573f8e51cb8fa4740a1136e669cd570fdbb80c0500bd68f26f"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.9",
+        "profiling_status": "Notprofiled,source-derivedshared/barriercounts only, no rooflineposition",
+        "host_control_boundary": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+        "native_to_model_mapping": {
+          "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+          "reason": [
+            "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+            "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+            "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+            "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+          ]
+        },
+        "limitations": [
+          "Nativeone-stageV100synchronouscp_asyncfallback, not unsupportedfromdefaultsm90Makefile; originalFP16/BF16CLIcompiledCUDA12.9sm70andall4casesPASS",
+          "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+          "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+          "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+          "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement",
+          "NativeusesFloat32exp2f/FMA/fastdivisionversusJuliamathlowering; smallroundingdifferencesnotassignedtoonecausewithoutcontrolledprofile",
+          "Host20callloop+syncmeanssum8cases;nativecudaFuncSetAttributeinsideROI butcompiletimeknownspecializationomitsgenericGetComputeCapability/dispatchtree. Notfulloriginalwrappertiming orisolatedkernellatency",
+          "FP16/BF16inputs/outputs stored16bit, accumulatorsFP32. Float64oracleandFloat32losslessartifactencoding are not timedGPUFP64/FP32storageclaims",
+          "N1/3shortcachecases stillpadded64positionwork, N65/127padded128; usefulmathematicalwork differsissuedmasked/paddedwork; actualhardwareFLOPs/traffic/occupancynotmeasured",
+          "Namednonrandomdyadicinputs,noapplicationaccuracy/otherGPUs/backendindependentperformance/rooflinepositionclaim"
+        ]
+      },
+      "ka": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Tiledgroupedattention,8featureprivatetuple,eightlaneXORpartials,onlinebase2softmax,eightKVpartitionstatemerge,FP32normalizedvaluecasttostorage",
+        "work_item_mapping": "4KVheadblocks,512threadslogical8\u00d78\u00d78, flatKA/JACCsamecoordinates",
+        "data_layout": "Q[32,64],K/V[seq,4,64]NHD,16bitstorage;sharedrepresentationmodel-specific",
+        "storage_precision": [
+          "float16",
+          "bfloat16"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float32_lossless_of_float16_bfloat16"
+        ],
+        "memory_access": "CooperativeK/Vtileloads andoutputmerge; perthread8queryfeatures, sequential8logitloop, maskedtailpositionscomputedthenmasked",
+        "synchronization": [
+          "Sharedtileload/barrier, pertilereadcompletion, crosszstatemergebarrier",
+          "Publicsharedscratch8laneXORemulation,56extrablockbarrierspertile"
+        ],
+        "resource_policy": {
+          "threads": 512,
+          "blocks": 4,
+          "shared_bytes": 35328,
+          "shared_kind": "static",
+          "xor_scratch_bytes": 2048,
+          "registers": null,
+          "spills": null,
+          "occupancy": null
+        },
+        "shared_representation": "16bitKV plusseparateFloat32O/scratch",
+        "library_boundary": "Authoredframeworkdevicekernel, noexternalcomputelibrary",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-KA/main.jl",
+          "sha256": "ee34eb3990a7dfb9dd8bdb7e9cf7e3ff36e59ed427188f2356d00ac192d878d3"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.9",
+        "profiling_status": "Notprofiled,source-derivedshared/barriercounts only, no rooflineposition",
+        "host_control_boundary": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+        "native_to_model_mapping": {
+          "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+          "reason": [
+            "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+            "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+            "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+            "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+          ]
+        },
+        "limitations": [
+          "Nativeone-stageV100synchronouscp_asyncfallback, not unsupportedfromdefaultsm90Makefile; originalFP16/BF16CLIcompiledCUDA12.9sm70andall4casesPASS",
+          "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+          "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+          "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+          "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement",
+          "NativeusesFloat32exp2f/FMA/fastdivisionversusJuliamathlowering; smallroundingdifferencesnotassignedtoonecausewithoutcontrolledprofile",
+          "Host20callloop+syncmeanssum8cases;nativecudaFuncSetAttributeinsideROI butcompiletimeknownspecializationomitsgenericGetComputeCapability/dispatchtree. Notfulloriginalwrappertiming orisolatedkernellatency",
+          "FP16/BF16inputs/outputs stored16bit, accumulatorsFP32. Float64oracleandFloat32losslessartifactencoding are not timedGPUFP64/FP32storageclaims",
+          "N1/3shortcachecases stillpadded64positionwork, N65/127padded128; usefulmathematicalwork differsissuedmasked/paddedwork; actualhardwareFLOPs/traffic/occupancynotmeasured",
+          "Namednonrandomdyadicinputs,noapplicationaccuracy/otherGPUs/backendindependentperformance/rooflinepositionclaim"
+        ]
+      },
+      "jacc": {
+        "status": "verified_named_configuration",
+        "review_status": "source_audited",
+        "actual_algorithm": "Tiledgroupedattention,8featureprivatetuple,eightlaneXORpartials,onlinebase2softmax,eightKVpartitionstatemerge,FP32normalizedvaluecasttostorage",
+        "work_item_mapping": "4KVheadblocks,512threadslogical8\u00d78\u00d78, flatKA/JACCsamecoordinates",
+        "data_layout": "Q[32,64],K/V[seq,4,64]NHD,16bitstorage;sharedrepresentationmodel-specific",
+        "storage_precision": [
+          "float16",
+          "bfloat16"
+        ],
+        "compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "timed_compute_precision": [
+          "float32",
+          "int32"
+        ],
+        "host_oracle_precision": [
+          "float64"
+        ],
+        "artifact_encoding": [
+          "float32_lossless_of_float16_bfloat16"
+        ],
+        "memory_access": "CooperativeK/Vtileloads andoutputmerge; perthread8queryfeatures, sequential8logitloop, maskedtailpositionscomputedthenmasked",
+        "synchronization": [
+          "Sharedtileload/barrier, pertilereadcompletion, crosszstatemergebarrier",
+          "Publicsharedscratch8laneXORemulation,56extrablockbarrierspertile"
+        ],
+        "resource_policy": {
+          "threads": 512,
+          "blocks": 4,
+          "shared_bytes": 35328,
+          "shared_kind": "dynamic",
+          "xor_scratch_bytes": 2048,
+          "registers": null,
+          "spills": null,
+          "occupancy": null
+        },
+        "shared_representation": "Float32KV convertedlosslesslyfrom16bitinput, aliasedFloat32O/scratch, oneJACC.sharedarena",
+        "library_boundary": "Authoredframeworkdevicekernel, noexternalcomputelibrary",
+        "backend_extensions": [],
+        "source_evidence": {
+          "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-JACC/main.jl",
+          "sha256": "90dc05f77cb8deed8fe519d6352753bbb8f98c3de4c8901ba9938eeb5d497d9e"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_nativecuda12.9",
+        "profiling_status": "Notprofiled,source-derivedshared/barriercounts only, no rooflineposition",
+        "host_control_boundary": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+        "native_to_model_mapping": {
+          "status": "cooperative_online_algorithm_with_documented_exchange_and_shared_layout_adaptations",
+          "reason": [
+            "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+            "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+            "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+            "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement"
+          ]
+        },
+        "limitations": [
+          "Nativeone-stageV100synchronouscp_asyncfallback, not unsupportedfromdefaultsm90Makefile; originalFP16/BF16CLIcompiledCUDA12.9sm70andall4casesPASS",
+          "Nativekernelactualspecialization4blocks\u00d7(8,8,8)=512threads, 8featurevector/eightlaneXOR,eightqueryheads/eightKVpartitions and64positionspertile; sameconceptualmappingallJulia",
+          "Native/CUDAjlshared16896byteswithK/V16bit thenFloat32mergealias; KAtypedK/V+separateFloat32merge+scratch35328static; JACCFloat32K/Vsinglealiasedarena+scratch35328dynamic",
+          "KA/JACCpureframeworksharedXORemulation adds56blockbarrierspertile; JACC8832Float32templatecopies+barrierperblock fromoutsideallocatedtemplate; notisolatedabstractionoverhead",
+          "Juliaonlytz0storesoutput/tx0storesmd versusnativeidenticalduplicatewrites; definedzero maskedK ratherthansourceignoreduninitializedmaskedreads. Native/source unchanged; sourcecoherence/racefreedomnotprovedbyoutputagreement",
+          "NativeusesFloat32exp2f/FMA/fastdivisionversusJuliamathlowering; smallroundingdifferencesnotassignedtoonecausewithoutcontrolledprofile",
+          "Host20callloop+syncmeanssum8cases;nativecudaFuncSetAttributeinsideROI butcompiletimeknownspecializationomitsgenericGetComputeCapability/dispatchtree. Notfulloriginalwrappertiming orisolatedkernellatency",
+          "FP16/BF16inputs/outputs stored16bit, accumulatorsFP32. Float64oracleandFloat32losslessartifactencoding are not timedGPUFP64/FP32storageclaims",
+          "N1/3shortcachecases stillpadded64positionwork, N65/127padded128; usefulmathematicalwork differsissuedmasked/paddedwork; actualhardwareFLOPs/traffic/occupancynotmeasured",
+          "Namednonrandomdyadicinputs,noapplicationaccuracy/otherGPUs/backendindependentperformance/rooflinepositionclaim"
+        ]
+      }
+    },
+    "input_dependent_descriptors": [
+      {
+        "storage": "float16",
+        "compute": "float32",
+        "n": 1,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 1,
+        "valid_sequence_elements": 1,
+        "output_count": 2048
+      },
+      {
+        "storage": "float16",
+        "compute": "float32",
+        "n": 3,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 1,
+        "valid_sequence_elements": 3,
+        "output_count": 2048
+      },
+      {
+        "storage": "float16",
+        "compute": "float32",
+        "n": 65,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 2,
+        "valid_sequence_elements": 65,
+        "output_count": 2048
+      },
+      {
+        "storage": "float16",
+        "compute": "float32",
+        "n": 127,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 2,
+        "valid_sequence_elements": 127,
+        "output_count": 2048
+      },
+      {
+        "storage": "bfloat16",
+        "compute": "float32",
+        "n": 1,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 1,
+        "valid_sequence_elements": 1,
+        "output_count": 2048
+      },
+      {
+        "storage": "bfloat16",
+        "compute": "float32",
+        "n": 3,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 1,
+        "valid_sequence_elements": 3,
+        "output_count": 2048
+      },
+      {
+        "storage": "bfloat16",
+        "compute": "float32",
+        "n": 65,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 2,
+        "valid_sequence_elements": 65,
+        "output_count": 2048
+      },
+      {
+        "storage": "bfloat16",
+        "compute": "float32",
+        "n": 127,
+        "q_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "layout": "NHD",
+        "groupsize": 8,
+        "native_blocks": 4,
+        "native_threads": [
+          8,
+          8,
+          8
+        ],
+        "native_dynamic_shared_bytes": 16896,
+        "native_V100_pipeline_stages": 1,
+        "kv_tiles": 2,
+        "valid_sequence_elements": 127,
+        "output_count": 2048
+      }
+    ],
+    "scientific_witness": ".porting-state/portable_julia/scientific_witnesses_300/attentionMultiHeadKVCache.json"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-JACC/main.jl",
+    "sha256": "90dc05f77cb8deed8fe519d6352753bbb8f98c3de4c8901ba9938eeb5d497d9e",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        78
+      ],
+      "local_storage": [],
+      "barrier": [
+        24,
+        32,
+        35,
+        38,
+        49,
+        58
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "attentionMultiHeadKVCache_group8_dim64_NHD_fp16_bf16_seq1_3_65_127_v1",
+      "run_id": "20261017T222612665584Z_attentionMultiHeadKVCache",
+      "result": ".porting-state/portable_julia/runs/20261017T222612665584Z_attentionMultiHeadKVCache/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "1929a3efb5c54f2ac2dcadc636ff9a0627b20e1fa7057cd753b849aa5cc29f6b",
+      "source_hash": "97f388ef419fb9c81542128175688f2a72b1dc2e2d5e0d7884d27c9584e3146d",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T222612665584Z_attentionMultiHeadKVCache/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.00031291385,
+        0.0003154314,
+        0.00030316675,
+        0.0003027303,
+        0.0003026398
+      ],
+      "mean_last_four_seconds": 0.0003059920625,
+      "contract": {
+        "query_heads": 32,
+        "kv_heads": 4,
+        "head_dim": 64,
+        "group_size": 8,
+        "sequence_lengths": [
+          1,
+          3,
+          65,
+          127
+        ],
+        "layout": "NHD",
+        "position_encoding": "none",
+        "dtypes": [
+          "float16",
+          "bfloat16"
+        ],
+        "accumulation": "float32",
+        "artifact_encoding": "float32lossless",
+        "input": "DyadicQ((7i+3)%31-15)/16,K((11i+5)%29-14)/16,V((13i+7)%27-13)/16; identicalexactlyrepresentableFP16/BF16",
+        "roi": "Sum8case20decodecallmeans;hostdispatchincludingnativecudaFuncSetAttribute vsframeworklaunch plusfinalcompletion;setup/capture/oracleexcluded",
+        "native_specialization": "UnchangedoriginalFlashInferkernel instantiated64/group8/oneV100stage/noencoding; same512threads(8,8,8),4blocks,16896sharedbytes",
+        "scope": "Originalseq1/3shapes+dtypedcovered withnamednonrandominputs;65/127multitileextensions. NoRope/HND/partitionKVlongseq/multivendor claim",
+        "mapping_notes": [
+          "CUDAjltypedsharedK/V+aliasedFloat32outputmerge followsnativeone-stageV100fallback;8lanexorshuffle",
+          "Portsingleownerforidenticalnativefinalstores andmdgroupstores; definedzero maskedK insteaduninitializedreads; noexternalnativecorrection",
+          "NativehostcudaFuncSetAttributeinROI; libraryAPIversusJuliaframeworkdispatch overheadconfound"
+        ]
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "attentionKV-jacc-mapping",
+        "benchmark_id": "attentionMultiHeadKVCache",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "mapping_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/attentionMultiHeadKVCache.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "event_id": "attentionKV-jacc-mapping",
+          "implementation_model": "jacc",
+          "origin_model": "jacc",
+          "error_tag": "P1",
+          "phase": "mapping_review",
+          "is_failure": false,
+          "cause": "Declaredsharedlayout/exchange/unique-store/sourcewrapper-specialization adaptation; native4blocks512threads onlinealgorithm retained",
+          "resolution": "Per-modelsharedbytes/barriers/precision/APIconfounds retained, noisolatedabstractionranking"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "prospective_activity_window_plus_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "observed_activity_windows": {
+        "ka_translation": {
+          "begin": {
+            "event_id": "8dd1caedb544b3f103c9db9e",
+            "recorded_at": "2026-10-17T22:23:23.752236+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "ka",
+            "phase": "translation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43318420,
+            "usage_event_timestamp": "2026-10-17T22:23:12.819Z",
+            "cumulative_usage": {
+              "input_tokens": 223371639,
+              "cached_input_tokens": 218967552,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 933943,
+              "reasoning_output_tokens": 323729,
+              "total_tokens": 224305582
+            },
+            "source_token_event_sha256": "52c5f4b1904dcd09b76d964e50b1cc8ddc8b38b5190b2baa5ae3c8a991cd870c",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.933236,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "6f10e55f1fc9769a812ae692",
+            "recorded_at": "2026-10-17T22:25:14.661397+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "ka",
+            "phase": "translation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43421192,
+            "usage_event_timestamp": "2026-10-17T22:25:05.458Z",
+            "cumulative_usage": {
+              "input_tokens": 224536393,
+              "cached_input_tokens": 220120448,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 937046,
+              "reasoning_output_tokens": 325051,
+              "total_tokens": 225473439
+            },
+            "source_token_event_sha256": "af2886747d007916ee6974087a4a627a2af826949c1b04c4ed8af2da007ce9fd",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 9.203397,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "8dd1caedb544b3f103c9db9e",
+            "delta_usage": {
+              "input_tokens": 1164754,
+              "cached_input_tokens": 1152896,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3103,
+              "reasoning_output_tokens": 1322,
+              "total_tokens": 1167857
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:23:12.819Z",
+            "positive_counter_span": true
+          }
+        },
+        "jacc_translation": {
+          "begin": {
+            "event_id": "b51eafdc133e8362bf55369f",
+            "recorded_at": "2026-10-17T22:25:14.718783+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "jacc",
+            "phase": "translation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43421192,
+            "usage_event_timestamp": "2026-10-17T22:25:05.458Z",
+            "cumulative_usage": {
+              "input_tokens": 224536393,
+              "cached_input_tokens": 220120448,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 937046,
+              "reasoning_output_tokens": 325051,
+              "total_tokens": 225473439
+            },
+            "source_token_event_sha256": "af2886747d007916ee6974087a4a627a2af826949c1b04c4ed8af2da007ce9fd",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 9.260783,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "2e9920eab427f8c8b9c5ab85",
+            "recorded_at": "2026-10-17T22:27:16.172789+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "jacc",
+            "phase": "translation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43547586,
+            "usage_event_timestamp": "2026-10-17T22:27:04.434Z",
+            "cumulative_usage": {
+              "input_tokens": 225408766,
+              "cached_input_tokens": 220988160,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 940975,
+              "reasoning_output_tokens": 327618,
+              "total_tokens": 226349741
+            },
+            "source_token_event_sha256": "9b00b7c47697e4aab54adcc8f616ad2c61f9da4909520e717f9f0d1996ac861b",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 11.738789,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "b51eafdc133e8362bf55369f",
+            "delta_usage": {
+              "input_tokens": 872373,
+              "cached_input_tokens": 867712,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3929,
+              "reasoning_output_tokens": 2567,
+              "total_tokens": 876302
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:25:05.458Z",
+            "positive_counter_span": true
+          }
+        },
+        "shared_benchmark_workflow": {
+          "begin": {
+            "event_id": "14cbafeaccd45713db7d4083",
+            "recorded_at": "2026-10-17T22:16:35.524893+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "shared",
+            "phase": "benchmark_workflow",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 42729269,
+            "usage_event_timestamp": "2026-10-17T22:16:28.535Z",
+            "cumulative_usage": {
+              "input_tokens": 220729879,
+              "cached_input_tokens": 216390912,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 918985,
+              "reasoning_output_tokens": 318451,
+              "total_tokens": 221648864
+            },
+            "source_token_event_sha256": "aae2e10c8e2d26508b669d2b47f8fb45e0f27ee31ddd89b7dadfc5465716bf95",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 6.989893,
+            "accounting_level": "inclusive_workflow_overlaps_subphases",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "af622e9ec95455a266d8809c",
+            "recorded_at": "2026-10-17T22:30:12.826959+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "shared",
+            "phase": "benchmark_workflow",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43677880,
+            "usage_event_timestamp": "2026-10-17T22:29:54.591Z",
+            "cumulative_usage": {
+              "input_tokens": 225951352,
+              "cached_input_tokens": 221526912,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 948060,
+              "reasoning_output_tokens": 328858,
+              "total_tokens": 226899412
+            },
+            "source_token_event_sha256": "31d8c899f2a00cc872a4c622446cbd69d56fa68b34bc03c54f524232865922e4",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 18.235959,
+            "accounting_level": "inclusive_workflow_overlaps_subphases",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "14cbafeaccd45713db7d4083",
+            "delta_usage": {
+              "input_tokens": 5221473,
+              "cached_input_tokens": 5136000,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 29075,
+              "reasoning_output_tokens": 10407,
+              "total_tokens": 5250548
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:16:28.535Z",
+            "positive_counter_span": true
+          }
+        },
+        "shared_scientific_annotation": {
+          "begin": {
+            "event_id": "56a0b70d0afeedbc4a7bb291",
+            "recorded_at": "2026-10-17T22:27:16.229178+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "shared",
+            "phase": "scientific_annotation",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43547586,
+            "usage_event_timestamp": "2026-10-17T22:27:04.434Z",
+            "cumulative_usage": {
+              "input_tokens": 225408766,
+              "cached_input_tokens": 220988160,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 940975,
+              "reasoning_output_tokens": 327618,
+              "total_tokens": 226349741
+            },
+            "source_token_event_sha256": "9b00b7c47697e4aab54adcc8f616ad2c61f9da4909520e717f9f0d1996ac861b",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 11.795178,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "db9017d1539278e0c7829de4",
+            "recorded_at": "2026-10-17T22:30:12.769061+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "shared",
+            "phase": "scientific_annotation",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43677880,
+            "usage_event_timestamp": "2026-10-17T22:29:54.591Z",
+            "cumulative_usage": {
+              "input_tokens": 225951352,
+              "cached_input_tokens": 221526912,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 948060,
+              "reasoning_output_tokens": 328858,
+              "total_tokens": 226899412
+            },
+            "source_token_event_sha256": "31d8c899f2a00cc872a4c622446cbd69d56fa68b34bc03c54f524232865922e4",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 18.178061,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "56a0b70d0afeedbc4a7bb291",
+            "delta_usage": {
+              "input_tokens": 542586,
+              "cached_input_tokens": 538752,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 7085,
+              "reasoning_output_tokens": 1240,
+              "total_tokens": 549671
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:27:04.434Z",
+            "positive_counter_span": true
+          }
+        },
+        "cuda_jl_reference_restoration": {
+          "begin": {
+            "event_id": "443b793caf8c5bdb46cf38c3",
+            "recorded_at": "2026-10-17T22:17:38.048636+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "cuda_jl",
+            "phase": "reference_restoration",
+            "boundary": "begin",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 42981231,
+            "usage_event_timestamp": "2026-10-17T22:17:28.308Z",
+            "cumulative_usage": {
+              "input_tokens": 221436518,
+              "cached_input_tokens": 217052672,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 920523,
+              "reasoning_output_tokens": 319078,
+              "total_tokens": 222357041
+            },
+            "source_token_event_sha256": "fb3c96e040b00de51967a5c5019c979792c41476edd745aa15e47f604ef73bcc",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 9.740636,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c"
+          },
+          "end": {
+            "event_id": "e866fb6a316f3d6182cb804f",
+            "recorded_at": "2026-10-17T22:23:23.690813+00:00",
+            "agent": "/root",
+            "benchmark": "attentionMultiHeadKVCache",
+            "implementation_model": "cuda_jl",
+            "phase": "reference_restoration",
+            "boundary": "end",
+            "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+            "rollout_byte_size_at_read": 43318420,
+            "usage_event_timestamp": "2026-10-17T22:23:12.819Z",
+            "cumulative_usage": {
+              "input_tokens": 223371639,
+              "cached_input_tokens": 218967552,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 933943,
+              "reasoning_output_tokens": 323729,
+              "total_tokens": 224305582
+            },
+            "source_token_event_sha256": "52c5f4b1904dcd09b76d964e50b1cc8ddc8b38b5190b2baa5ae3c8a991cd870c",
+            "note": "",
+            "measurement_kind": "observed_harness_cumulative_usage_boundary",
+            "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+            "marker_lag_seconds": 10.871813,
+            "accounting_level": "declared_activity_window; interleaving must be disclosed",
+            "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+            "begin_event_id": "443b793caf8c5bdb46cf38c3",
+            "delta_usage": {
+              "input_tokens": 1935121,
+              "cached_input_tokens": 1914880,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 13420,
+              "reasoning_output_tokens": 4651,
+              "total_tokens": 1948541
+            },
+            "elapsed_usage_event_start": "2026-10-17T22:17:28.308Z",
+            "positive_counter_span": true
+          }
+        }
+      },
+      "estimated_saved_source_tokens": 788,
+      "method": "Sourcechars/4proxy notconsumedtokens. Harnessactivitywindows includecached/repeatedcontext androotpaper/checkpoint/teamcoordination; approximateboundarylag disclosed, notexclusive/billedcost; workflowoverlapschildrennotadditive. Historicalcostunknown.",
+      "scope_review": "Referencephaseincludesshufflecommits, KAincludesregistry/checkpointupdate, annotationincludesbtree/MLPcommits; orderedmarginalreuse notindependentcoldstart."
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "2e9920eab427f8c8b9c5ab85",
+        "begin_event_id": "b51eafdc133e8362bf55369f",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T22:27:16.172789+00:00",
+        "usage_event_timestamp": "2026-10-17T22:27:04.434Z",
+        "elapsed_usage_event_start": "2026-10-17T22:25:05.458Z",
+        "delta_usage": {
+          "input_tokens": 872373,
+          "cached_input_tokens": 867712,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3929,
+          "reasoning_output_tokens": 2567,
+          "total_tokens": 876302
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 11.738789,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "9b00b7c47697e4aab54adcc8f616ad2c61f9da4909520e717f9f0d1996ac861b",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 9.260783,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/attentionMultiHeadKVCache/jacc_translation.jsonl",
+        "evidence_sha256": "333b5239ae52131e6da38c4eb59f026f6b916107e099749bd08602edebd0ac41",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/attentionMultiHeadKVCache-julia-jacc/manifest.json",
+    "selected_sha256": "4fd6644f2ba693d73d430ee7e392698e536c0104c72a6794b2a05e566ef4bcfe",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/attentionMultiHeadKVCache-julia-jacc/manifest.json",
+        "sha256": "4fd6644f2ba693d73d430ee7e392698e536c0104c72a6794b2a05e566ef4bcfe"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "43fd034772a8d78ee2fe1eca76378e647c6d8532",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "attentionMultiHeadKVCache",
+    "model": "jacc",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T222612665584Z_attentionMultiHeadKVCache/result.json",
+    "evidence": [
+      {
+        "path": "src/attentionMultiHeadKVCache-julia/attentionMultiHeadKVCache-julia-JACC/main.jl",
+        "sha256": "90dc05f77cb8deed8fe519d6352753bbb8f98c3de4c8901ba9938eeb5d497d9e"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T222612665584Z_attentionMultiHeadKVCache/result.json",
+        "sha256": "1929a3efb5c54f2ac2dcadc636ff9a0627b20e1fa7057cd753b849aa5cc29f6b"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/attentionMultiHeadKVCache.json",
+    "annotation_sha256": "097b4a7add74810bafec8f8062dcee18af510df414416bf1f7ed171406592b32",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

@@ -1,0 +1,605 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "d2q9-bgk",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/d2q9-bgk.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "algorithm": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+    "work_item_mapping": "Source128x1 threads; x-fast128cell group, periodic x/y,9-directionSoA storage; KA/JACC flattened groups preserve exact cell/group mapping.",
+    "storage_precision": "Float32 populations/velocity sums and Int32 obstacles/counts",
+    "compute_precision": "Float32",
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float64 exact encoding of actual Float32/Int32 values and scalars",
+    "memory_hierarchy": "9input+9output SoA populations;1024B block-local scratch; readonly obstacles; complete perstep group sums/counts",
+    "synchronization": "Block barrier before original thread1 serial128cell reduction; explicit whole CUDAcontext completion at source timerstart/end.",
+    "library_boundary": "Authored Julia device arithmetic; no native GPU call delegation. CUDA.jl/KA/JACC own actual framework arrays and launches.",
+    "host_control_boundary": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "bottleneck_hypothesis": "Periodic neighbor population access, collision arithmetic, serial group reduction and perstep launch/completion overhead; no profiler-counter attribution or measured roofline.",
+    "implementation_class": "framework_device_kernel",
+    "shared_scratch_mapping": "128Float32 velocity +128Int32 count scratch",
+    "source_evidence": [
+      {
+        "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-cuda.jl/main.jl",
+        "sha256": "a89b56af80abe65cd167632d0c7078e7ac0af6cb7a681061f9346f199ae60024"
+      },
+      {
+        "path": "src/d2q9-bgk-julia/device_common.jl",
+        "sha256": "d572ae30c1290749ae400a338d1a95be88f80489a98ee49f7d580bb44f43eecf"
+      }
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "julia_language_version": "1.12.6",
+    "work_item_mapping": "Source128x1 threads; x-fast128cell group, periodic x/y,9-directionSoA storage; KA/JACC flattened groups preserve exact cell/group mapping.",
+    "layout": null,
+    "storage_precision": "Float32 populations/velocity sums and Int32 obstacles/counts",
+    "compute_precision": "Float32",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float64 exact encoding of actual Float32/Int32 values and scalars",
+    "memory_hierarchy_and_access": "9input+9output SoA populations;1024B block-local scratch; readonly obstacles; complete perstep group sums/counts",
+    "synchronization": "Block barrier before original thread1 serial128cell reduction; explicit whole CUDAcontext completion at source timerstart/end.",
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": "Authored Julia device arithmetic; no native GPU call delegation. CUDA.jl/KA/JACC own actual framework arrays and launches.",
+    "host_control_boundary": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-cuda.jl/main.jl",
+        "sha256": "a89b56af80abe65cd167632d0c7078e7ac0af6cb7a681061f9346f199ae60024"
+      },
+      {
+        "path": "src/d2q9-bgk-julia/device_common.jl",
+        "sha256": "d572ae30c1290749ae400a338d1a95be88f80489a98ee49f7d580bb44f43eecf"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "d2q9-bgk",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "fluid_dynamics",
+      "scientific_task": "Two-dimensional nine-velocity BGK lattice Boltzmann flow",
+      "community_use_case": "Controlled mesoscopic flow transport, obstacle bounceback and conservation checks across three Julia GPU abstractions; a reusable numerical operator/verification resource, not a validated turbulent-flow simulation.",
+      "mathematical_operation": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+      "accuracy_requirements": "Independent Float64 tensor moments/equilibrium and periodic streaming; both final time levels, all block sums/counts at every step, actual inputs/guards exact, positive populations and mass drift<2e-4.",
+      "review_status": "source_reviewed",
+      "source_evidence": [
+        {
+          "path": "src/d2q9-bgk-cuda/main.cu",
+          "sha256": "16fe6f89ecab16a388f4c45a2fee2a121a204736688d08f9fa7e4a14fcc937b1"
+        }
+      ]
+    },
+    "primary_motif": "structured_periodic_stencil_BGK_bounceback_block_reduction",
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "algorithm": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+        "work_item_mapping": "Source128x1 threads; x-fast128cell group, periodic x/y,9-directionSoA storage; KA/JACC flattened groups preserve exact cell/group mapping.",
+        "storage_precision": "Float32 populations/velocity sums and Int32 obstacles/counts",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float64 exact encoding of actual Float32/Int32 values and scalars",
+        "memory_hierarchy": "9input+9output SoA populations;1024B block-local scratch; readonly obstacles; complete perstep group sums/counts",
+        "synchronization": "Block barrier before original thread1 serial128cell reduction; explicit whole CUDAcontext completion at source timerstart/end.",
+        "library_boundary": "Authored Julia device arithmetic; no native GPU call delegation. CUDA.jl/KA/JACC own actual framework arrays and launches.",
+        "host_control_boundary": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Periodic neighbor population access, collision arithmetic, serial group reduction and perstep launch/completion overhead; no profiler-counter attribution or measured roofline.",
+        "implementation_class": "framework_device_kernel",
+        "shared_scratch_mapping": "128Float32 velocity +128Int32 count scratch",
+        "source_evidence": [
+          {
+            "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-cuda.jl/main.jl",
+            "sha256": "a89b56af80abe65cd167632d0c7078e7ac0af6cb7a681061f9346f199ae60024"
+          },
+          {
+            "path": "src/d2q9-bgk-julia/device_common.jl",
+            "sha256": "d572ae30c1290749ae400a338d1a95be88f80489a98ee49f7d580bb44f43eecf"
+          }
+        ]
+      },
+      "ka": {
+        "algorithm": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+        "work_item_mapping": "Source128x1 threads; x-fast128cell group, periodic x/y,9-directionSoA storage; KA/JACC flattened groups preserve exact cell/group mapping.",
+        "storage_precision": "Float32 populations/velocity sums and Int32 obstacles/counts",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float64 exact encoding of actual Float32/Int32 values and scalars",
+        "memory_hierarchy": "9input+9output SoA populations;1024B block-local scratch; readonly obstacles; complete perstep group sums/counts",
+        "synchronization": "Block barrier before original thread1 serial128cell reduction; explicit whole CUDAcontext completion at source timerstart/end.",
+        "library_boundary": "Authored Julia device arithmetic; no native GPU call delegation. CUDA.jl/KA/JACC own actual framework arrays and launches.",
+        "host_control_boundary": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Periodic neighbor population access, collision arithmetic, serial group reduction and perstep launch/completion overhead; no profiler-counter attribution or measured roofline.",
+        "implementation_class": "framework_device_kernel",
+        "shared_scratch_mapping": "128Float32 velocity +128Int32 count scratch",
+        "source_evidence": [
+          {
+            "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-KA/main.jl",
+            "sha256": "8ec3c33edad1ae81fc0a5d597b7b9149fb1e59c88b22462deb6ed930ddcf8a18"
+          },
+          {
+            "path": "src/d2q9-bgk-julia/device_common.jl",
+            "sha256": "d572ae30c1290749ae400a338d1a95be88f80489a98ee49f7d580bb44f43eecf"
+          }
+        ]
+      },
+      "jacc": {
+        "algorithm": "Periodic pull streaming, positive conditional row forcing, density/momentum equilibrium, BGK relaxation, obstacle reversal and per128cell serial velocity/count reduction.",
+        "work_item_mapping": "Source128x1 threads; x-fast128cell group, periodic x/y,9-directionSoA storage; KA/JACC flattened groups preserve exact cell/group mapping.",
+        "storage_precision": "Float32 populations/velocity sums and Int32 obstacles/counts",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float64 exact encoding of actual Float32/Int32 values and scalars",
+        "memory_hierarchy": "9input+9output SoA populations;1024B block-local scratch; readonly obstacles; complete perstep group sums/counts",
+        "synchronization": "Block barrier before original thread1 serial128cell reduction; explicit whole CUDAcontext completion at source timerstart/end.",
+        "library_boundary": "Authored Julia device arithmetic; no native GPU call delegation. CUDA.jl/KA/JACC own actual framework arrays and launches.",
+        "host_control_boundary": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Periodic neighbor population access, collision arithmetic, serial group reduction and perstep launch/completion overhead; no profiler-counter attribution or measured roofline.",
+        "implementation_class": "framework_device_kernel",
+        "shared_scratch_mapping": "JACC one256F32template, exact0/1 integerencoding, extra256float preload/barrier",
+        "source_evidence": [
+          {
+            "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-JACC/main.jl",
+            "sha256": "bf7f53b47ea13976b7cb0492be7a37a9e7efefe75ef2bebcf0108b1b8f98d359"
+          },
+          {
+            "path": "src/d2q9-bgk-julia/device_common.jl",
+            "sha256": "d572ae30c1290749ae400a338d1a95be88f80489a98ee49f7d580bb44f43eecf"
+          }
+        ]
+      }
+    },
+    "numerical_contract": {
+      "atol": 2e-05,
+      "rtol": 0.0002,
+      "exact_guard_check": true,
+      "artifact_count": 439445,
+      "actual_input_prefix": 222853,
+      "exact_input_guard_count_positions": 276813,
+      "independent_scientific_oracle": "Float64 tensor equilibrium/moments; full final+penultimate distributions and all timestep/group velocity/count arrays; positivity/conservation.",
+      "raw_output_identity_claim": false,
+      "raw_identity_scope": "AllthreeJulia implementations bitidentical across15captures; native differs within predeclared FP32 tolerance. Raw identity not claimedall4."
+    },
+    "native_to_julia_mapping": {
+      "status": "source_algorithm_geometry_and_full_evolution_preserved",
+      "source_math_repairs": [],
+      "reference_qualification": "Original CLI host text obstacle-flag output defect bypassed in array contract, unchanged GPU body; exclude untouched-fullCLI inference.",
+      "scratch_mapping": "JACC lossless Float32 encoding of0/1 source int scratch, partitioned256element localmem; pure framework APIs."
+    },
+    "key_confounds": [
+      "Three named synthetic 128x8/256x16 flows, 1100/1101/1001steps; original DVC dataset missing; no grid convergence or general flow accuracy.",
+      "Source timer begins before t999:205 timed launches after2997 total untimed state advances across3cases. Source printed divisor would count202; preserve actual timer workload and report seconds without erroneous divisor.",
+      "Original final text obstacle flag indexes ii*nx+jj instead of ii+jj*nx: actual ASan host heap-buffer-overflow and976 flag mismatches. GPU source and numeric flow fields unaffected; original CLI display flags not accepted.",
+      "JACC shared scratch uses one256F32 partition with exact0/1 count encoding; source native/CUDAjl/KA use128F32+128I32. JACC preload256zeros and extra internal barrier are explicit covariates.",
+      "Whole-context fence/timing includes dispatch and final completion, not allocations/copies/CPUoracle/first999steps; no fullCLI runtime claim.",
+      "Sequential CUDAjl\u2192KA\u2192JACC inherited helpers/context. Token windows context-inclusive, not independent cold generation or exclusive billing. No counter-derived roofline/causal compiler claim."
+    ],
+    "known_native_scientific_defect": {
+      "scope": "host text obstacle flag memory safety/output correctness, not GPU mathematical flow defect",
+      "witness": "src/d2q9-bgk-julia/native_diagnostics/display_index_witness.json"
+    },
+    "native_reference_corrected": false,
+    "exclude_from_untouched_native_aggregate": true
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/d2q9-bgk-julia/d2q9-bgk-julia-cuda.jl/main.jl",
+    "sha256": "a89b56af80abe65cd167632d0c7078e7ac0af6cb7a681061f9346f199ae60024",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        19
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        8
+      ],
+      "barrier": [
+        9
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "source128x1_periodic_BGK_3fields_3202steps_source_t999_tail205_v1",
+      "run_id": "20261019T200458316242Z_d2q9-bgk",
+      "result": ".porting-state/portable_julia/runs/20261019T200458316242Z_d2q9-bgk/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": {
+        "kind": "known_native_host_output_defect_array_contract",
+        "timing_note": "Original timer work preserved; original printed denominator offbyone not used."
+      },
+      "reference_provenance": {
+        "source_GPU_body_unchanged": true,
+        "host_text_display_flag_defect": "src/d2q9-bgk-julia/native_diagnostics/display_index_witness.json",
+        "actual_CLI_numeric_field_audit": "src/d2q9-bgk-julia/native_diagnostics/cli_output_audit.json",
+        "scope": "Full GPU operator arrays and all timestep reduction states, not correct original CLI obstacle flags or external dataset."
+      },
+      "configuration_classification_adjudication": {
+        "path": "src/d2q9-bgk-julia/study_adjudications.json",
+        "sha256": "e1214a37f60f51350c9bcaf2645035d261515a3dc1356a5d59a0c4205f2729ad",
+        "run_id": "20261019T200458316242Z_d2q9-bgk",
+        "reason": "Known host text obstacle flag overread was diagnosed before target drafting. The accepted array contract bypasses that final file field while preserving source GPU math; qualify scope and exclude untouched-fullCLI aggregates. No changes to inputs, tolerances, accepted arrays, timings or trials.",
+        "recorded_at": "2026-10-19T20:11:00.567812+00:00",
+        "updated_fields": [
+          "exclude_untouched_native_aggregates",
+          "reference_provenance",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "e757f79c4b6622deb3378e978b16448908c6bfd8402177cbcc857b0e03d0d1d4",
+      "source_hash": "c2dd2171ce07e0edee4e6671d3ea8f7e4eb0c7ed48ee7cebd317f744fdd180de",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T200458316242Z_d2q9-bgk/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.001294211,
+        0.001300613,
+        0.0012974920000000001,
+        0.0012968000000000003,
+        0.0012923210000000001
+      ],
+      "mean_last_four_seconds": 0.0012968065000000001,
+      "contract": {
+        "cases": [
+          {
+            "nx": 128,
+            "ny": 8,
+            "steps": 1100,
+            "density": 0.20000000298023224,
+            "accel": 0.009999999776482582,
+            "omega": 1.0,
+            "densityaccel": 0.0020000000949949026,
+            "kind": "obstacle_channel",
+            "prefix_count": 37735,
+            "count": 74407,
+            "mass_initial": 204.80000495910645,
+            "mass_final_F64": 204.8000049590965,
+            "minimum_population_F64": 0.005256596542767759,
+            "source_timed_launches": 101,
+            "source_printed_divisor": 100
+          },
+          {
+            "nx": 256,
+            "ny": 16,
+            "steps": 1101,
+            "density": 0.20000000298023224,
+            "accel": 0.004999999888241291,
+            "omega": 1.2000000476837158,
+            "densityaccel": 0.0010000000474974513,
+            "kind": "periodic_islands",
+            "prefix_count": 148967,
+            "count": 293799,
+            "mass_initial": 819.2000198364258,
+            "mass_final_F64": 819.2000198363714,
+            "minimum_population_F64": 0.00513368016253422,
+            "source_timed_launches": 102,
+            "source_printed_divisor": 101
+          },
+          {
+            "nx": 128,
+            "ny": 8,
+            "steps": 1001,
+            "density": 0.20000000298023224,
+            "accel": 0.0,
+            "omega": 0.800000011920929,
+            "densityaccel": 0.0,
+            "kind": "equilibrium_control",
+            "prefix_count": 36151,
+            "count": 71239,
+            "mass_initial": 204.80000495910645,
+            "mass_final_F64": 204.80000495910645,
+            "minimum_population_F64": 0.0055555556900799274,
+            "source_timed_launches": 2,
+            "source_printed_divisor": 1
+          }
+        ],
+        "prefix_count": 222853,
+        "count": 439445,
+        "atol": 2e-05,
+        "rtol": 0.0002,
+        "oracle": "Independent Float64 tensor moments/equilibrium, periodic np.roll streaming, source-defined positive force, obstacle reversal; full final and penultimate distributions and every group velocity/count at every timestep. Exact actual inputs/guards/counts required separately.",
+        "source_timing": "Original loop starts its timer before t=999; preserve T-999 launches after999 evolves, without dividing by erroneous source T-1000 label. Reset all state per trial; complete-context fences; allocation/copy/oracle outside.",
+        "files": {
+          "initial1_f32.bin": {
+            "sha256": "65a7317353c8b24109299dda24eb6a781fac406ba2ea25dd0f4491fbc3fc0469",
+            "bytes": 147456
+          },
+          "initial0_f32.bin": {
+            "sha256": "9c48383c59f18e6794a6356943a3a23c761c855ae5a6bfc4b32848c8c88c3888",
+            "bytes": 36864
+          },
+          "initial2_f32.bin": {
+            "sha256": "9c48383c59f18e6794a6356943a3a23c761c855ae5a6bfc4b32848c8c88c3888",
+            "bytes": 36864
+          },
+          "obstacles0_i32.bin": {
+            "sha256": "69c1ee90f68bf7b946b02fd74587ba416e335617e990355eed2ae04ec53f09bd",
+            "bytes": 4096
+          },
+          "obstacles1_i32.bin": {
+            "sha256": "a6f19bbddba5e4fc12f9b90381ba840961f87186825c5bc8ebf7596302b6fb27",
+            "bytes": 16384
+          },
+          "obstacles2_i32.bin": {
+            "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7",
+            "bytes": 4096
+          },
+          "oracle_f64.bin": {
+            "sha256": "8e49c0a5d8f7cb7580954445200149b7876a459906738ac20843f6605517af47",
+            "bytes": 3515560
+          }
+        }
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "d2q9-bgk:cuda_jl_mixed_host_launch_tuple",
+        "benchmark_id": "d2q9-bgk",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B3",
+        "phase": "host_launch_API_after_GPU_compilation",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/d2q9-bgk.jsonl",
+        "evidence_line": 6,
+        "raw_event": {
+          "benchmark_id": "d2q9-bgk",
+          "event_id": "d2q9-bgk:cuda_jl_mixed_host_launch_tuple",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "code": "B3",
+          "phase": "host_launch_API_after_GPU_compilation",
+          "is_failure": true,
+          "root_cause": "CuDim3 rejects heterogeneousTupleInt64Int32; explicitInt dimensionsrepair, samebody passes.",
+          "evidence": {
+            "path": "src/d2q9-bgk-julia/reference_history/cuda_jl_launch01/diagnosis.json",
+            "sha256": "d9fe4483c69142a4c3aba11bd53deba90b979b4b9ca0883f08e55dc882416f25"
+          },
+          "program_evaluation": 1,
+          "actual_device_JIT": true,
+          "actual_successful_device_launches": 0
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 2,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 1,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "observed_context_inclusive_activity_window",
+      "input_tokens": 1536192,
+      "cached_input_tokens": 1516032,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 8643,
+      "reasoning_output_tokens": 1306,
+      "total_tokens": 1544835,
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/d2q9-bgk/cuda_jl_translation.jsonl",
+      "boundary_file_sha256": "368b3a38d22476c343d958618e573de5464e1754210312553fcbc725c88c7e60",
+      "begin_event_id": "52d204a706196cf4315f86b3",
+      "end_event_id": "4d6db133bd795b1910f58433",
+      "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+      "source_token_event_sha256": "19f43c7f14689dcc71d9bb4aca89111fabe94d16c1b2c3ebeb8ab0d5d29bb0c3",
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-19T19:48:34.965Z",
+        "context_event_sha256": "69d85e1c558a77a54c285430e3a2acfc334e4836341fd9bf9db576b3145686a8",
+        "source_snapshot_bytes": 125600666,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "marker_lag_begin_seconds": 23.254096,
+      "marker_lag_end_seconds": 0.554727,
+      "scope": "Observed context-inclusive target translation/verification and inherited/cached context; CUDAjl includes shared host/device harness creation. Shared native/annotation/coordination windows separate and overlapping, never add. Cached/reasoning counters subsets. No historical recovery/exclusive billing/independent cold-target cost.",
+      "estimates": null
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "4d6db133bd795b1910f58433",
+        "begin_event_id": "52d204a706196cf4315f86b3",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T20:02:41.910727+00:00",
+        "usage_event_timestamp": "2026-10-19T20:02:41.356Z",
+        "elapsed_usage_event_start": "2026-10-19T19:57:54.261Z",
+        "delta_usage": {
+          "input_tokens": 1536192,
+          "cached_input_tokens": 1516032,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8643,
+          "reasoning_output_tokens": 1306,
+          "total_tokens": 1544835
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 0.554727,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "19f43c7f14689dcc71d9bb4aca89111fabe94d16c1b2c3ebeb8ab0d5d29bb0c3",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "Dedicated CUDAjl translation/shared host-device harness. Two submitted program bundles and2Julia JIT processes: first GPUcompiled then host CuDim3 mixed Int64/Int32 tuple rejected before launch; explicit Int dimensions fixed, same mathbody passes all5 full439445-word checks and dual reference. Two earlier verifier config-binding rejections beforeJulia eval (oneunchangednative5trial extra/no receipt) separateT1; notadditionalGPUmathcandidates. FreshCPUfullcapture audit10rows. No cross-benchmark tasks performed inside window.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T19:48:34.965Z",
+          "context_event_sha256": "69d85e1c558a77a54c285430e3a2acfc334e4836341fd9bf9db576b3145686a8",
+          "source_snapshot_bytes": 125600666,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 23.254096,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/d2q9-bgk/cuda_jl_translation.jsonl",
+        "evidence_sha256": "368b3a38d22476c343d958618e573de5464e1754210312553fcbc725c88c7e60",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 1
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/d2q9-bgk-julia-cuda_jl/manifest.json",
+    "selected_sha256": "c027a595514aa7f8f57add3ff1317b1c809a255590494139100b475c15f7a4f8",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/d2q9-bgk-julia-cuda_jl/manifest.json",
+        "sha256": "c027a595514aa7f8f57add3ff1317b1c809a255590494139100b475c15f7a4f8"
+      },
+      {
+        "path": ".porting-state/porting_logs/d2q9-bgk-julia/manifest.json",
+        "sha256": "0841aa459c35d55bf0e581c559758261f0dff336732d405b55da8ac6e4a6c8ee"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "3a4ca4104839740a27bb999575048c52d2d90462",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261019T200458316242Z_d2q9-bgk/result.json",
+    "configuration_id": "source128x1_periodic_BGK_3fields_3202steps_source_t999_tail205_v1",
+    "unsupported_features": []
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/d2q9-bgk.json",
+    "annotation_sha256": "ba6f7567704c56ec74e83fc474cb9e033e1827bb3af78fe75aef4855a0bc9d69",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

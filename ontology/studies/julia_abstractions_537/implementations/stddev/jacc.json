@@ -1,0 +1,484 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "stddev",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/stddev.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Timed zero reset, sum-of-products shared/global atomic reduction, then divide byN-1 and square root.",
+    "mapping": "Grid128x8,256 lanes;32 columns x8 rows perblock, row-stride1024.",
+    "layout": "Row-major Float32 matrix,256 output scalars.",
+    "precision": {
+      "storage": "float32",
+      "compute": "float32 multiply, atomic sum, sqrt"
+    },
+    "implementation_detail": "128B stagedzero-template shared partials, JACC atomic adds; sample stage explicitshmem0.",
+    "memory": "128B dynamic shared and32-element global template.",
+    "synchronization": [
+      "initialization barrier",
+      "shared accumulation barrier",
+      "ordered kernels"
+    ],
+    "atomic_operations": [
+      "float32 shared add",
+      "float32 global add"
+    ],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/stddev-julia/stddev-julia-JACC/main.jl",
+        "sha256": "f1d687600c3844bcbd4fea50f77f1926dac31d9d7388843b7aa5f5159d994b03",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Timed zero reset, sum-of-products shared/global atomic reduction, then divide byN-1 and square root.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Grid128x8,256 lanes;32 columns x8 rows perblock, row-stride1024.",
+    "layout": "Row-major Float32 matrix,256 output scalars.",
+    "storage_precision": "float32",
+    "compute_precision": "float32 multiply, atomic sum, sqrt",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "128B dynamic shared and32-element global template.",
+    "synchronization": [
+      "initialization barrier",
+      "shared accumulation barrier",
+      "ordered kernels"
+    ],
+    "atomics_and_reductions": [
+      "float32 shared add",
+      "float32 global add"
+    ],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/stddev-julia/stddev-julia-JACC/main.jl",
+        "sha256": "f1d687600c3844bcbd4fea50f77f1926dac31d9d7388843b7aa5f5159d994b03",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "stddev",
+    "primary_motif": "uncentered_squared_norm_reduction_pipeline",
+    "storage_precision": [
+      "float32"
+    ],
+    "compute_precision": [
+      "float32"
+    ],
+    "synchronization": [
+      "workgroup_barriers",
+      "shared_and_global_float_atomics",
+      "ordered_two_kernel_pipeline"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same grid128x8 and256threads, partialsquare sums thennormalize/sqrt; uncenteredcontractpreserved"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "No mean subtraction; not centered statisticalstandarddeviation",
+      "Timed nativecudaMemset vs Juliafill! initialization",
+      "JACC sharedtemplate staging adds reads",
+      "Atomicorder nondeterminism; tol1e-3 ratherthan presumedbitwiseequality"
+    ],
+    "jacc_shared_memory_policy": "sop explicit_required_128_bytes; sample explicit_zero",
+    "observation": "research/observations/stddev.md",
+    "ontology_sha256": "edc7f8fbe0731d0d9897f1f6ea26e71b4e05d5da5f84b83d5a9b36e3b225f691",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "uncentered_feature_norm_statistics",
+      "scientific_task": "Compute square-root scaled sum of squares per column.",
+      "mathematical_operation": "sqrt(sum(row) x[row,col]^2 /4095); no mean subtraction.",
+      "discretization_or_topology": "4096 rows x256 features.",
+      "invariants": [
+        "Nonnegative output for finite fixture.",
+        "This equals neither general centered sample variance nor centered standard deviation."
+      ],
+      "accuracy_requirements": [
+        "All256 Float32 outputs absolute1e-3 against CPU and dual references; atomic order not assumed bitwise stable."
+      ],
+      "precision_sensitivity": "Float32 shared/global atomic accumulation and square root; reduction order nondeterministic.",
+      "input_size_regimes": "128x8 blocks256 lanes,10 repeats; selected bounded fixture only.",
+      "community_use_case": "Source statistical-feature reduction primitive, interpretable as scaled uncentered feature norm; no dataset established.",
+      "uncertainty": "Filename stddev does not establish centered statistics; source contains no centering stage.",
+      "provenance": [
+        {
+          "path": "src/stddev-cuda/main.cu",
+          "sha256": "e470a4b14698fd95d62f9ed6cd6503468d85ba0583dff90405343a35a5750e97",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/stddev-julia/study_common.jl",
+          "sha256": "860bf49ddb7190c44cba7d0fa883c87a3d25bc10e9190ce15afe58d11e335434",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:18:45.330115+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed zero reset, sum-of-products shared/global atomic reduction, then divide byN-1 and square root.",
+        "mapping": "Grid128x8,256 lanes;32 columns x8 rows perblock, row-stride1024.",
+        "layout": "Row-major Float32 matrix,256 output scalars.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 multiply, atomic sum, sqrt"
+        },
+        "implementation_detail": "128B static shared32-column partials, CUDA atomic adds.",
+        "memory": "128B static shared, global partial output.",
+        "synchronization": [
+          "initialization barrier",
+          "shared accumulation barrier",
+          "ordered kernels"
+        ],
+        "atomic_operations": [
+          "float32 shared add",
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/stddev-julia/stddev-julia-cuda.jl/main.jl",
+            "sha256": "ada5db9538a40c11d5c569d898201cee16c00a85c10a0bfd10aa7fa1c555d6c4",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed zero reset, sum-of-products shared/global atomic reduction, then divide byN-1 and square root.",
+        "mapping": "Grid128x8,256 lanes;32 columns x8 rows perblock, row-stride1024.",
+        "layout": "Row-major Float32 matrix,256 output scalars.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 multiply, atomic sum, sqrt"
+        },
+        "implementation_detail": "128B local32-column partials, Atomix shared/global adds.",
+        "memory": "128B static local, global partial output.",
+        "synchronization": [
+          "initialization barrier",
+          "shared accumulation barrier",
+          "ordered kernels"
+        ],
+        "atomic_operations": [
+          "float32 shared add",
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/stddev-julia/stddev-julia-KA/main.jl",
+            "sha256": "a5a7db64583923677eaf1a7c3de3522f6ff5330c366aad5d9942a63dc95b9acd",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Timed zero reset, sum-of-products shared/global atomic reduction, then divide byN-1 and square root.",
+        "mapping": "Grid128x8,256 lanes;32 columns x8 rows perblock, row-stride1024.",
+        "layout": "Row-major Float32 matrix,256 output scalars.",
+        "precision": {
+          "storage": "float32",
+          "compute": "float32 multiply, atomic sum, sqrt"
+        },
+        "implementation_detail": "128B stagedzero-template shared partials, JACC atomic adds; sample stage explicitshmem0.",
+        "memory": "128B dynamic shared and32-element global template.",
+        "synchronization": [
+          "initialization barrier",
+          "shared accumulation barrier",
+          "ordered kernels"
+        ],
+        "atomic_operations": [
+          "float32 shared add",
+          "float32 global add"
+        ],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/stddev-julia/stddev-julia-JACC/main.jl",
+            "sha256": "f1d687600c3844bcbd4fea50f77f1926dac31d9d7388843b7aa5f5159d994b03",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/stddev-julia/stddev-julia-JACC/main.jl",
+    "sha256": "f1d687600c3844bcbd4fea50f77f1926dac31d9d7388843b7aa5f5159d994b03",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        53,
+        54
+      ],
+      "local_storage": [],
+      "barrier": [
+        28,
+        31
+      ],
+      "atomic": [
+        30,
+        34
+      ],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        50
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_d256_n4096_sample_norm_reset_sop_sqrt_repeat10_v1",
+      "run_id": "20261017T000649765550Z_stddev",
+      "result": ".porting-state/portable_julia/runs/20261017T000649765550Z_stddev/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "32a3e61056fd6c1edf92b86eb8e803d246e5298f48c78a7451a0bfea0815ca90",
+      "source_hash": "287cedb341f72869affed1d632fe33ff854ddb90eaf43f2612c8a60b147b1fa6",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T000649765550Z_stddev/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0028062371,
+        9.75989e-05,
+        8.19098e-05,
+        8.12717e-05,
+        8.12507e-05
+      ],
+      "mean_last_four_seconds": 8.5507775e-05,
+      "contract": {
+        "precision": "float32",
+        "shape": [
+          4096,
+          256
+        ],
+        "fixture": "Float32(i%1024)/1024 zero-basedi",
+        "internal_repeats": 10,
+        "sample": true,
+        "coverage": "Originalalgorithm sqrt(sum(x*x)/(N-1)), no mean subtraction; do not reinterpret as centered statisticalstandarddeviation",
+        "timing_operation": "zerooutput + sop atomics + normalization/sqrt; nativecudaMemset vs Juliafill! included",
+        "mapping": "Samegrid128x8,256threads/group; JACC128B sharedtemplate staging addsreads"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "stddev-jacc-P1-retrospective-implementation",
+        "benchmark_id": "stddev",
+        "implementation_model": "jacc",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "jacc",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/stddev.jsonl",
+        "evidence_line": 3,
+        "raw_event": {
+          "event_id": "stddev-jacc-P1-retrospective-implementation",
+          "benchmark": "stddev",
+          "model": "jacc",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Original uncentered formula preserved; timed nativecudaMemset vsJuliafill! plus JACC template staging; not centered statistical standard deviation.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/stddev-cuda/main.cu",
+              "sha256": "e470a4b14698fd95d62f9ed6cd6503468d85ba0583dff90405343a35a5750e97",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/stddev-julia/stddev-julia-JACC/main.jl",
+              "sha256": "f1d687600c3844bcbd4fea50f77f1926dac31d9d7388843b7aa5f5159d994b03",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2741,
+      "output_tokens": 422,
+      "cached_tokens": null,
+      "total_tokens": 3163,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/stddev-cuda/main.cu",
+        "src/stddev-cuda/reference.h",
+        "src/stddev-julia/stddev-julia-cuda.jl/main.jl",
+        "src/stddev-julia/stddev-julia-KA/main.jl",
+        "src/stddev-julia/stddev-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/stddev-julia-jacc/manifest.json",
+    "selected_sha256": "149f15785fc219e5c0bd0cfb3f94fccf2203bf81e9ef7c166c52bdf83b60d399",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/stddev-julia-jacc/manifest.json",
+        "sha256": "149f15785fc219e5c0bd0cfb3f94fccf2203bf81e9ef7c166c52bdf83b60d399"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "0b291affc1854a4da819a3154e0b82a2b7bed658",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/stddev.json",
+    "annotation_sha256": "ab39dd6237dae6218725b8d5239649c7977951df2df0f32c63c41c6808c0b655",
+    "field": "implementation_class.julia-jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

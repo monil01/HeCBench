@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "benchmark_id": "layernorm",
+  "scientific_intent": {
+    "primary_family": "machine_learning",
+    "primary_domain": "neural_network_layer_normalization_forward",
+    "review_status": "source_reviewed",
+    "scientific_task": "Normalize each activation row by its channel mean and population variance, then apply channel-wise learned scale and bias",
+    "mathematical_operation": "mean=sum(x)/C; variance=sum((x-mean)^2)/C or mean(x^2)-mean(x)^2; rstd=1/sqrt(variance+Float32(1e-5)); out=(x-mean)*rstd*gamma+beta. Return full output, mean and rstd.",
+    "discretization": "Six Float32 bases with (rows,channels)=(5,256),(7,259),(3,1024), bounded textured and exact constant rows each. Three native algorithms and six block widths32..1024 give108paths, scalar tailC259 and alignedFloat4C256/1024.",
+    "accuracy_requirements": "All out/mean/rstd against independent Decimal80 central-variance oracle using actual Float32 epsilon, predeclared1e-5+2e-6|gold|; full actual input echo and guards exact, constant rows and zero gamma give exact bias outputs; finite positive rstd.",
+    "input_size_regime": "Selected small row counts and channel lengths, partial warp-per-row blocks at all widths; no full trained model or arbitrary large-offset variance conditioning.",
+    "precision_sensitivity": "Float32 reductions, FMA variance/affine arithmetic and reciprocal square root. Moment-variance algorithm has a different cancellation sensitivity than two-pass algorithms; selected bounded and exact constant fixtures all pass unchanged budget. Float4 load/store alignment retained.",
+    "community_use_case": "Repository identifies llm.c/GPT-2 layernorm forward as source context. This checks a neural-network normalization primitive, not trained-model accuracy, perplexity or backward gradients.",
+    "description": "Replace historical Julia affine touch kernel/fabricated success reports with all three real native layernorm algorithms and actual output arrays. Native source remains unchanged. Julia adds a shared-workspace read-lifetime barrier in block algorithm0; native tests pass, so static hazard is not an observed failure.",
+    "provenance": "Native header and reference.h identify layernorm forward/GPT-2; repository README layernorm links https://github.com/karpathy/llm.c . Native rmsnorm-cuda reduce/utils headers and installed CUDA cooperative_groups floating butterfly implementation reviewed. Earlier root RMSNorm helper patterns are reused with explicit provenance, not counted as independent cold framework implementation.",
+    "source_evidence": [
+      {
+        "path": "src/layernorm-cuda/main.cu",
+        "sha256": "d9a7657c3b2ab2579e39bd39d46ed67a51d473a116cc376dd42d7cff8e2b474f"
+      },
+      {
+        "path": "src/layernorm-cuda/reference.h",
+        "sha256": "74f8989ac8615ba193ec09f53527404919b3e0cd3c3c3a93bc770340cabbe3ea"
+      },
+      {
+        "path": "src/rmsnorm-cuda/reduce.cuh",
+        "sha256": "72abde04c81932ad59235c0021d75247b8daba3639378d1cc1665f12b8286df7"
+      },
+      {
+        "path": "src/rmsnorm-cuda/utils.cuh",
+        "sha256": "f470b88ee8e3325a1d19da0a5ed86ca3b23935cd99648247c354ed953080b425"
+      },
+      {
+        "path": "src/layernorm-julia/original_main.jl",
+        "sha256": "2fe867ff6e4aa8d3c0c1ce5e8764ca364d28575564698fd3fb930681c3f84e54"
+      },
+      {
+        "path": "src/layernorm-julia/scientific_witness.json",
+        "sha256": "1f1a7a605cb32067970f98b8a99cb5b004d217e55c843ed95751c4da87492110"
+      }
+    ]
+  },
+  "base_ontology": {
+    "path": "ontology/benchmarks/layernorm.yaml",
+    "frozen_sha256": "e3c443005f2956cf16fdf67ddb41f207be798d9933fcc1c6dc8082f4a7068c61",
+    "status": "inferred base; not measured evidence"
+  },
+  "historical_pass_method": "existing_cuda_jl_entrypoint_only",
+  "historical_pass_is_strengthened_verification": false,
+  "shared_observed_usage_windows": [
+    {
+      "event_id": "4fa6448ee9f67a1ae788ffb3",
+      "begin_event_id": "3b2d786f1edca813f20411c2",
+      "agent": "/root/stencil_ports",
+      "implementation_model": "shared",
+      "phase": "benchmark_workflow",
+      "boundary": "end",
+      "recorded_at": "2026-10-18T07:58:36.889525+00:00",
+      "usage_event_timestamp": "2026-10-18T07:58:28.080Z",
+      "elapsed_usage_event_start": "2026-10-18T07:46:22.985Z",
+      "delta_usage": {
+        "input_tokens": 7452720,
+        "cached_input_tokens": 7422592,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 23996,
+        "reasoning_output_tokens": 6715,
+        "total_tokens": 7476716
+      },
+      "positive_counter_span": true,
+      "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+      "marker_lag_seconds": 8.809525,
+      "accounting_level": "inclusive_workflow_overlaps_subphases",
+      "source_token_event_sha256": "70db65271bb5e43dbf01d0d38ef635aeba288a7c47fb5ef8e239f1242d33997d",
+      "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+      "note": "",
+      "measurement_status": null,
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "observed_model_metadata": null,
+      "begin_marker_lag_seconds": 21.270818,
+      "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/layernorm/shared_benchmark_workflow.jsonl",
+      "evidence_sha256": "e25855aaa829ac6f4c69226aa5ac8f1a40f144d53a10f7820e62da5914ed7e63",
+      "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+    }
+  ]
+}

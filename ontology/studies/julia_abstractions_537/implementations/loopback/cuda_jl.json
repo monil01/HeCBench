@@ -1,0 +1,909 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "loopback",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/loopback.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "loopback",
+    "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585",
+    "status": "verified",
+    "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+    "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+    "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+    "precision": {
+      "storage": [
+        "Float32_parameters_path_mean_samplevariance",
+        "UInt32_fourplane_rngseeds",
+        "Float64_RNGdiagnosticencoding_only"
+      ],
+      "compute": [
+        "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+        "UInt32_Taus_LCG_mod2pow32"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+      "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+    ],
+    "resource_policy": {
+      "shared_bytes": 15360,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled"
+    },
+    "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+    "backend_extensions": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_device_boundary": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+    "supported_features": [],
+    "fidelity_status": "adapted",
+    "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback",
+    "numerical_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.009161793000000001,
+      0.009139992000000001,
+      0.00910286,
+      0.009106792,
+      0.009084933
+    ],
+    "mean_last_four_seconds": 0.00910864425,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/loopback-julia/loopback-julia-cuda.jl/main.jl",
+        "sha256": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585"
+      },
+      {
+        "path": "src/loopback-julia/study_common.jl",
+        "sha256": "a4905f93ea94de15f7ae66939d4eb66987d59698c22f699f0140bb9de64487cf"
+      },
+      {
+        "path": "src/loopback-julia/lookback_math.jl",
+        "sha256": "b44f724e065df712e0dac2e1fa66ff2197e6c0d97113cdc4ccb8c8f4855c3a86"
+      }
+    ],
+    "implementation_source_digest": "ab29dbf6a119ca63f9abd5e552d830464b3b05b8657e954c3e1ef6942d654a64",
+    "numerical_agreement_kind": "tolerant_full_path_sample_mean_variance_with_exact_rng_controls",
+    "timed_authored_device_kernels": 1,
+    "untimed_RNG_consistency_kernels": 1,
+    "timed_storage_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "independent_output_audit": "src/loopback-julia/output_audit.json",
+    "native_reference_repaired": false,
+    "RNG_field_exact_checks": "Fullsixprobevalues/lane andallinputbits/guards exactindependentCPU, separatelyfrommeanvariancebudget",
+    "mathematical_functional": "sum_t max(S_t-S_terminal,0); no max-path reduction ordiscounting, notstandardlookbackprice",
+    "current_reference_gpu_candidates": 1,
+    "current_program_checks": 2,
+    "actual_GPUcompile_checks": 1,
+    "current_kernel_repairs": 0,
+    "historical_creation_cost_unknown": true
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+    "implementation_class": "CUDAjl_genuine_seeded_path_kernel_scoped_layout_and_zero_cycle_guard",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+    "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+    "storage_precision": [
+      "Float32_parameters_path_mean_samplevariance",
+      "UInt32_fourplane_rngseeds",
+      "Float64_RNGdiagnosticencoding_only"
+    ],
+    "compute_precision": [
+      "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+      "UInt32_Taus_LCG_mod2pow32"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+      "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": 15360,
+      "source_reviewed": true,
+      "actual_register_local_storage": "unprofiled"
+    },
+    "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+    "library_backend_boundary": [
+      "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+    ],
+    "host_control_boundary": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+    "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/loopback-julia/loopback-julia-cuda.jl/main.jl",
+        "sha256": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585"
+      },
+      {
+        "path": "src/loopback-julia/study_common.jl",
+        "sha256": "a4905f93ea94de15f7ae66939d4eb66987d59698c22f699f0140bb9de64487cf"
+      },
+      {
+        "path": "src/loopback-julia/lookback_math.jl",
+        "sha256": "b44f724e065df712e0dac2e1fa66ff2197e6c0d97113cdc4ccb8c8f4855c3a86"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "loopback",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "stochastic_statistics",
+      "primary_domain": "seeded_Monte_Carlo_GARCH_path_payoff_statistics",
+      "review_status": "source_reviewed",
+      "scientific_task": "Simulate seeded time-varying-volatility paths and compute the mean/sample variance of the source accumulated positive terminal-price-gap functional",
+      "mathematical_operation": "vol=sqrt(a0+a1*vol^2+a2*eps^2); eps=clip(NormalPair*vol,-1,1); Snext=S*exp(mu+eps). Payoff=sum_t max(S_t-S_terminal,0), then512-path Welford samplemean/unbiasedvariance. This is not the standard max-path lookback payoff or a discounted financial price.",
+      "discretization": "N256parameterlanes/one256threadblock,512paths each, T15/T2 stochastic stableGARCH, zero-vol+mu0T15 and T0 analyticalcontrols. Source15cycle/sharedpathcapacity retained, seedstridecompact256 undernamedcompileconfig vsdefault1m.",
+      "accuracy_requirements": "All2048mean/varianceoutputs finite/nonnegative vsindependentFloat64path/Welford oracle atpredeclared.002+.002|gold|; deterministiccontrols exact0. RNGprobe finalfourUInt32states andfirsttwoF32uniforms perlane exactindependentintegeroracle, allinputecho/guards exact. Probe is separateoutsideROI.",
+      "input_size_regime": "Four namedN256oneblockcases,512paths perlane, includingzero-cycle/zero-volcontrols. Nominal4*256*512pathcalls, notnative4096block/1mparameterCLI orstatisticalconvergencebenchmark.",
+      "precision_sensitivity": "ActualFloat32BoxMuller/GARCH/price/clamp/payoff/Welford versusCPUFloat64trajectoryoracle withsameUInt32state andactualFloat32uniforminputs. Juliaexplicitmuladd mapping ofsource defaultfusionintent; actualcompiledfusionsequence notisolated. Engineeringbudget notrigorousbound. u1 observed>=7.58e-7 andfiniteboundedprices/payoffs.",
+      "community_use_case": "SourceauthorsdescribeGARCHassetpath/lookback simulation, useful as a seeded Monte Carlo numerical workload. No market calibration, risk-neutral pricing, investment advice, standardoptionvaluation or distribution-quality inference is made.",
+      "description": "HistoricalJulia isgenuine stochasticpath implementation. Preserveoriginalsources andscope smallnativecompilelayout, matchfrozeninputs/RNG, complete512paths/mean/variance. Safe signed empty loophandlesnamedT0 whereoriginalJuliaunsignedrangewouldunderflow; originaldefaultCLIusesT15, noobservedhistoricalfailureclaim.",
+      "provenance": "NativeauthorsLeeHowes andDavidB.Thomas inmainheader; actualkernels.cu/loopback.h showTaus+LCG/BoxMuller/GARCH/pathsum/Welford. Codefunctionalusedverbatimratherthaninferredstandardlookbackfinanceformula. IndependentPythonunboundedintegerRNGmasking/Float64paths authoredreferencephase.",
+      "source_evidence": [
+        {
+          "path": "src/loopback-cuda/kernels.cu",
+          "sha256": "42718858d89071b0b48d860c9224200d1b805c1b7b9e860191b05f5c651c69e0"
+        },
+        {
+          "path": "src/loopback-cuda/loopback.h",
+          "sha256": "f8403c9bb3de49158d6f4ddeeb0cab69ba6ea2bc70ef8d57916058b8f4d413bb"
+        },
+        {
+          "path": "src/loopback-cuda/main.cu",
+          "sha256": "577e67da93621a4a6c21558dd07a08b1abf84a8b578c81f60e9fec286289b01c"
+        },
+        {
+          "path": "src/loopback-julia/original_main.jl",
+          "sha256": "f208a04a62c023a13d2e951ad4608108420160281c27ebede8584dbe99b6febb"
+        },
+        {
+          "path": "src/loopback-julia/scientific_witness.json",
+          "sha256": "2149ac2d4a2e5b0ff98e6ffbf2c605e6bae0c2cbcdc5617eb3debfd8a9428273"
+        }
+      ]
+    },
+    "primary_motif": "independent_seeded_path_recursions_with_online_moments",
+    "storage_precision": [
+      "Float32_parameters_path_mean_samplevariance",
+      "UInt32_fourplane_rngseeds",
+      "Float64_RNGdiagnosticencoding_only"
+    ],
+    "compute_precision": [
+      "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+      "UInt32_Taus_LCG_mod2pow32"
+    ],
+    "synchronization": [
+      "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+      "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same256lanes/512paths/15sharedcyclecapacity andTaus/LCG/BoxMuller/clampedGARCH/terminal-gapfunctional/Welford. Explicitnamedoneblockcompactseedstride vsoriginal4096blocks, Float32fusionintent mappedmuladd, JuliaT0guard, KAshared15360B/JACCsharedtemplateinitializationextra."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "CUDAjl_genuine_seeded_path_kernel_scoped_layout_and_zero_cycle_guard",
+      "ka": "KA_ordinary_Julia_math_rng_localpath_kernel_CUDA_hostharness",
+      "jacc": "JACC_ordinary_Julia_math_rng_sharedpath_kernel_CUDA_hostharness"
+    },
+    "timing_scope": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+    "verification_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+    "keyconfounds": [
+      "Explicitoneblockcompactseedstride256sourcecompileconfig vsoriginal4096blocks; GPUutilizationscale notgeneralized",
+      "CPUFloat64idealpathoracle vsFloat32GPUtranscendentals/fusion, engineeringbudgetnotprovenerrorbound",
+      "Actualpayoffsumpositivegaps isnotstandardlookback/discountedfinancialprice; nofinancialqualityclaim",
+      "Fixed512samplemeans/variances validatecomputation, nottrueexpectation/calibration/RNGdistributionquality orMonteCarloconvergence",
+      "RNGprobechecksfinalstates/first2uniform andCPUdomainbounds, notrawcaptureallgenerateddraws; outsideROIunguardeddiagnostic",
+      "KA15360Blocalpath vsJACCwholetemplate15360Bcopy/entrybarrier addsworkeven thoughsourceperlanepathneedsnoinitialization/barrier",
+      "Nativebodyunchanged underexplicitmacroconfiguration; originalJuliaunsignedT0range staticallyguarded, notobserveddefaultCLIbug",
+      "Sharedreferencehelper/RNGoracle reusedKAthenJACC; firstJuliahostadapterparseerror separatefromGPUkernelcandidate"
+    ],
+    "boundary_rounding_policy": "UInt32Taus+LCG modulo2^32, Float32u=2^-32*Float32(XORword), pairedBoxMuller phase. Sourceepsclamp[-1,1], exactFloat32PIliteral. Positiveu1 domain checkedallCPUdrawsselectedcases. Floatbudget.002+.002rel predeclared; RNGprobe/inputs/guards/zero-controls exact, no weakerinteger-toleranceacceptance.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "loopback",
+        "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585",
+        "status": "verified",
+        "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+        "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+        "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+        "precision": {
+          "storage": [
+            "Float32_parameters_path_mean_samplevariance",
+            "UInt32_fourplane_rngseeds",
+            "Float64_RNGdiagnosticencoding_only"
+          ],
+          "compute": [
+            "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+            "UInt32_Taus_LCG_mod2pow32"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+          "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes": 15360,
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled"
+        },
+        "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+        "backend_extensions": [
+          "CUDAdeviceallocation,initialization,synchronization andartifacttransfer inbenchmarkhostharness"
+        ],
+        "host_device_boundary": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback",
+        "numerical_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.009161793000000001,
+          0.009139992000000001,
+          0.00910286,
+          0.009106792,
+          0.009084933
+        ],
+        "mean_last_four_seconds": 0.00910864425,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/loopback-julia/loopback-julia-cuda.jl/main.jl",
+            "sha256": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585"
+          },
+          {
+            "path": "src/loopback-julia/study_common.jl",
+            "sha256": "a4905f93ea94de15f7ae66939d4eb66987d59698c22f699f0140bb9de64487cf"
+          },
+          {
+            "path": "src/loopback-julia/lookback_math.jl",
+            "sha256": "b44f724e065df712e0dac2e1fa66ff2197e6c0d97113cdc4ccb8c8f4855c3a86"
+          }
+        ],
+        "implementation_source_digest": "ab29dbf6a119ca63f9abd5e552d830464b3b05b8657e954c3e1ef6942d654a64",
+        "numerical_agreement_kind": "tolerant_full_path_sample_mean_variance_with_exact_rng_controls",
+        "timed_authored_device_kernels": 1,
+        "untimed_RNG_consistency_kernels": 1,
+        "timed_storage_precision": [
+          "Float32",
+          "UInt32"
+        ],
+        "independent_output_audit": "src/loopback-julia/output_audit.json",
+        "native_reference_repaired": false,
+        "RNG_field_exact_checks": "Fullsixprobevalues/lane andallinputbits/guards exactindependentCPU, separatelyfrommeanvariancebudget",
+        "mathematical_functional": "sum_t max(S_t-S_terminal,0); no max-path reduction ordiscounting, notstandardlookbackprice",
+        "current_reference_gpu_candidates": 1,
+        "current_program_checks": 2,
+        "actual_GPUcompile_checks": 1,
+        "current_kernel_repairs": 0,
+        "historical_creation_cost_unknown": true
+      },
+      "ka": {
+        "benchmark_id": "loopback",
+        "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "cfbb6f9d551af7c49b171357ed4a27323bd8e107b65aafddfc9fe3f4030ebe31",
+        "status": "verified",
+        "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+        "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+        "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+        "precision": {
+          "storage": [
+            "Float32_parameters_path_mean_samplevariance",
+            "UInt32_fourplane_rngseeds",
+            "Float64_RNGdiagnosticencoding_only"
+          ],
+          "compute": [
+            "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+            "UInt32_Taus_LCG_mod2pow32"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+          "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes": 15360,
+          "source_reviewed": true,
+          "actual_register_local_storage": "unprofiled"
+        },
+        "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+        "backend_extensions": [
+          "CUDAhostallocation/copy/completionharness only; ordinaryJuliaUInt32/log/sqrt/sin/cos/exp/muladd devicearithmetic, ownframeworkshared/index"
+        ],
+        "host_device_boundary": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback",
+        "numerical_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.009174393000000003,
+          0.009169771,
+          0.009124821,
+          0.009140213000000001,
+          0.009113652000000002
+        ],
+        "mean_last_four_seconds": 0.009137114250000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/loopback-julia/loopback-julia-KA/main.jl",
+            "sha256": "cfbb6f9d551af7c49b171357ed4a27323bd8e107b65aafddfc9fe3f4030ebe31"
+          },
+          {
+            "path": "src/loopback-julia/study_common.jl",
+            "sha256": "a4905f93ea94de15f7ae66939d4eb66987d59698c22f699f0140bb9de64487cf"
+          },
+          {
+            "path": "src/loopback-julia/lookback_math.jl",
+            "sha256": "b44f724e065df712e0dac2e1fa66ff2197e6c0d97113cdc4ccb8c8f4855c3a86"
+          }
+        ],
+        "implementation_source_digest": "c1bc7155922a8f9080c2b42bf54c1bd63a76a4bf4907dba23c74a083a701e2a3",
+        "numerical_agreement_kind": "tolerant_full_path_sample_mean_variance_with_exact_rng_controls",
+        "timed_authored_device_kernels": 1,
+        "untimed_RNG_consistency_kernels": 1,
+        "timed_storage_precision": [
+          "Float32",
+          "UInt32"
+        ],
+        "independent_output_audit": "src/loopback-julia/output_audit.json",
+        "native_reference_repaired": false,
+        "RNG_field_exact_checks": "Fullsixprobevalues/lane andallinputbits/guards exactindependentCPU, separatelyfrommeanvariancebudget",
+        "mathematical_functional": "sum_t max(S_t-S_terminal,0); no max-path reduction ordiscounting, notstandardlookbackprice"
+      },
+      "jacc": {
+        "benchmark_id": "loopback",
+        "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "1c8ecd08664cfa3aed9aed0a0db27d2297e78121adab070ff0b8a3d8ddf91a32",
+        "status": "verified",
+        "algorithm": "Eachthread seriallysimulates512paths withcontinuedfourUInt32state, cachedsecondGaussianoddcycle, resetvol/price perpath; writesearlierpricesintothreadprivateinterleavedsharedpath, reversepathpositive-terminal-gap sum, onlineWelfordmean/samplevariance.",
+        "work_item_mapping": "One independentparameter set/lane, one256-threadblock, sharedpathindex=t*256+lane,15cyclescapacity. UntimedRNGconsistencyonekernel/lane overexactdrawcount512*2*ceil(T/2).",
+        "layout": "Four UInt32seedplanes stride256, sevenFloat32parameter arrays andtwoFloat32outputs all8guards/side. SharedFloat32[3840]15360B usedperlaneonly. DiagnosticFloat64[1536]probe unguarded outsideROI, records4states+2uniforms/lane; noallgenerateddrawarraycapture.",
+        "precision": {
+          "storage": [
+            "Float32_parameters_path_mean_samplevariance",
+            "UInt32_fourplane_rngseeds",
+            "Float64_RNGdiagnosticencoding_only"
+          ],
+          "compute": [
+            "Float32_log_sqrt_sin_cos_exp_GARCH_Welford",
+            "UInt32_Taus_LCG_mod2pow32"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "No inter-thread device communication/barriers; sharedpath accessed onlysame lane acrosscyclecolumns",
+          "Hostcompletionafterfull512pathkernel; RNGprobecompletionseparateoutsideROI"
+        ],
+        "resource_policy": {
+          "shared_bytes": 15360,
+          "source_reviewed": true,
+          "extra_work": "JACC.shared whole3840floattemplate initialization+barrier",
+          "actual_register_local_storage": "unprofiled"
+        },
+        "launch_geometry": "Oneblock256threads per4case simulation andseparateuntimedprobe; original256threadblock maintained, original4096blockdefault unverified.",
+        "backend_extensions": [
+          "CUDAhostallocation/copy/completionharness only; ordinaryJuliaUInt32/log/sqrt/sin/cos/exp/muladd devicearithmetic, ownframeworkshared/index"
+        ],
+        "host_device_boundary": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim.",
+        "supported_features": [],
+        "fidelity_status": "adapted",
+        "support_boundary": "N256oneblock/T0,2,15/512paths stablefiniteclasses, fullsourcefunctionaloutputs. Defaultlargegrid/arbitraryzeroUniform/overflow/extremeparameters/distributionquality/optionpricingunverified; noframeworkunsupportedclaim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback",
+        "numerical_contract": "All20captures28295Float64losslesstypedwords/trial:8199exactprefix +20096fullfields.2048mean/varianceoutputs,6144exactRNGprobevalues,11264actualinputecho payloads and640guardchecks(592distinctphysicalguards). Fourfullarrays/bothGPUrefs andindependentCPUoracle; RNGstates/probes exactdespiteglobalfloatbudget. NoNaNpass, deterministiczero1024positions exact.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.009750406000000001,
+          0.009788617000000003,
+          0.009625596,
+          0.009595455000000001,
+          0.009588304
+        ],
+        "mean_last_four_seconds": 0.009649493000000002,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/loopback-julia/loopback-julia-JACC/main.jl",
+            "sha256": "1c8ecd08664cfa3aed9aed0a0db27d2297e78121adab070ff0b8a3d8ddf91a32"
+          },
+          {
+            "path": "src/loopback-julia/study_common.jl",
+            "sha256": "a4905f93ea94de15f7ae66939d4eb66987d59698c22f699f0140bb9de64487cf"
+          },
+          {
+            "path": "src/loopback-julia/lookback_math.jl",
+            "sha256": "b44f724e065df712e0dac2e1fa66ff2197e6c0d97113cdc4ccb8c8f4855c3a86"
+          }
+        ],
+        "implementation_source_digest": "c6c96cd6da8dd6fdb82d05f0d6dc3d26f46b181cab83331662b7c50dca287ae0",
+        "numerical_agreement_kind": "tolerant_full_path_sample_mean_variance_with_exact_rng_controls",
+        "timed_authored_device_kernels": 1,
+        "untimed_RNG_consistency_kernels": 1,
+        "timed_storage_precision": [
+          "Float32",
+          "UInt32"
+        ],
+        "independent_output_audit": "src/loopback-julia/output_audit.json",
+        "native_reference_repaired": false,
+        "RNG_field_exact_checks": "Fullsixprobevalues/lane andallinputbits/guards exactindependentCPU, separatelyfrommeanvariancebudget",
+        "mathematical_functional": "sum_t max(S_t-S_terminal,0); no max-path reduction ordiscounting, notstandardlookbackprice"
+      }
+    },
+    "source_sha256": {
+      "src/loopback-julia/loopback-julia-cuda.jl/main.jl": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585",
+      "src/loopback-julia/loopback-julia-KA/main.jl": "cfbb6f9d551af7c49b171357ed4a27323bd8e107b65aafddfc9fe3f4030ebe31",
+      "src/loopback-julia/loopback-julia-JACC/main.jl": "1c8ecd08664cfa3aed9aed0a0db27d2297e78121adab070ff0b8a3d8ddf91a32"
+    },
+    "ontology_sha256": null,
+    "native_reference_repaired": false,
+    "numerical_agreement_kind": "tolerant_full_path_sample_mean_variance_with_exact_rng_controls",
+    "independent_numerical_audit": "src/loopback-julia/output_audit.json",
+    "observed_distinct_primary_artifact_sha256": 1,
+    "all_twenty_artifacts_bitwise_identical": true,
+    "timed_storage_precision": [
+      "Float32",
+      "UInt32"
+    ],
+    "diagnostic_artifact_dtype": "Float64lossless_F32_U32encoding",
+    "sampling_uncertainty_estimated": false,
+    "RNG_statistical_quality_verified": false,
+    "option_valuation_verified": false,
+    "source_configuration": "N256oneblock,512paths,T0/2/15,seedstride256",
+    "hardware_mechanism_evidence": "unprofiled"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/loopback-julia/loopback-julia-cuda.jl/main.jl",
+    "sha256": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        13,
+        17
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+      "run_id": "20261018T082709673907Z_loopback",
+      "result": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "75801e57400fc967f6189370cd507c867feb68baa4f1185f3df0879f7ce00366",
+      "source_hash": "afd3b325e8b0a4c46a59480ea1874d95b259ca662091c051d1f5fe97389d0d1a",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.009161793000000001,
+        0.009139992000000001,
+        0.00910286,
+        0.009106792,
+        0.009084933
+      ],
+      "mean_last_four_seconds": 0.00910864425,
+      "contract": {
+        "inputs": "NamedN256oneblock sourcecompileconfig TAUSWORTHE_NUM_BLOCKS1 ratherthan4096, derivedcompactseedstride256, original256threads/512paths/15cyclemaxretained. FourfrozenstableGARCHparametercasesT15/T2/zerovolmu0T15/T0. ExactUInt32Taus+LCGseeds\u226516, actualFloat32parameterinputecho, nodefaultRand/randstreamclaim.",
+        "precision": "Float32GPU BoxMuller/GARCH/price/payoff/Welford, sourceFMAintentexplicitJulia. IndependentUInt32RNGandactualF32uniformrounding, Float64transcendental/path/statistic oracle withdeclaredengineeringatolrtol.002, notrigorouserrorbound. Allstate/firstuniformprobe exact separatelyfromfloatbudget; allCPUu1>0safeobserved.",
+        "operator": "Actualfunctional sum overt max(S_t-Sterminal,0), notusualmaxpathlookback/discountedoptionprice.512paths perparameter, meanandunbiasedsamplevariance, seededRNGcontinuesacrosspaths, oddphasepairedBoxMuller cache. Deterministiczerovolmu0 andzero-cycle outputszeroexact; JuliaunsignedemptyrangeguardextendsnamedT0 safely withoutclaimhistoricaldefaultbug.",
+        "metric": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "loopback:cuda_jl:20261018T082709673907Z_loopback:N3:accepted",
+        "benchmark_id": "loopback",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/loopback.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "loopback:cuda_jl:20261018T082709673907Z_loopback:N3:accepted",
+          "benchmark_id": "loopback",
+          "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+          "implementation_model": "cuda_jl",
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "source_revision": "1d6ef80f143fa90246815cc1795ea556942a6926292029988935937a714c3585",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": 1,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 8.273688401061463e-07; unchangedtolerance 0.002+0.002*abs(ref).",
+          "minimal_trigger": {
+            "inputs": "NamedN256oneblock sourcecompileconfig TAUSWORTHE_NUM_BLOCKS1 ratherthan4096, derivedcompactseedstride256, original256threads/512paths/15cyclemaxretained. FourfrozenstableGARCHparametercasesT15/T2/zerovolmu0T15/T0. ExactUInt32Taus+LCGseeds\u226516, actualFloat32parameterinputecho, nodefaultRand/randstreamclaim.",
+            "precision": "Float32GPU BoxMuller/GARCH/price/payoff/Welford, sourceFMAintentexplicitJulia. IndependentUInt32RNGandactualF32uniformrounding, Float64transcendental/path/statistic oracle withdeclaredengineeringatolrtol.002, notrigorouserrorbound. Allstate/firstuniformprobe exact separatelyfromfloatbudget; allCPUu1>0safeobserved.",
+            "operator": "Actualfunctional sum overt max(S_t-Sterminal,0), notusualmaxpathlookback/discountedoptionprice.512paths perparameter, meanandunbiasedsamplevariance, seededRNGcontinuesacrosspaths, oddphasepairedBoxMuller cache. Deterministiczerovolmu0 andzero-cycle outputszeroexact; JuliaunsignedemptyrangeguardextendsnamedT0 safely withoutclaimhistoricaldefaultbug.",
+            "metric": "Sum4hostinclusive full512-path kernel launch+completion regions. Source15KBthread-private-indexedsharedpath, fullsimulationevenzero-volcontrol. RNGconsistencyprobe separateoutsideROI; inputcopies/initialization/JITwarmup/readback/CPUoracle/serializationoutside. Fivecheckedinprocess trialsmean2\u20135, nofull4096blockCLI/scientificoptionvaluationthroughputclaim."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T082709673907Z_loopback/result.json",
+              "sha256": "75801e57400fc967f6189370cd507c867feb68baa4f1185f3df0879f7ce00366"
+            }
+          ],
+          "root_cause": "Acceptednumericaldrift, mechanismnotisolated; no inventedkernelrepair.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "loopback:cuda_jl:host_dotted_literal",
+        "benchmark_id": "loopback",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "T1",
+        "phase": "measurement_adapter_parse",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/loopback.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "loopback:cuda_jl:host_dotted_literal",
+          "benchmark_id": "loopback",
+          "configuration_id": "loopback_full512paths_N256_T15_2_zero_vol_zero_cycle_seeded_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "measurement_adapter_parse",
+          "code": "T1",
+          "is_failure": true,
+          "evidence_kind": "Ownhostadapterfrontenderror_notGPUkernelrejection",
+          "root_cause": "OwnJuliahostnumericdottedliteralparseer.002 .+.002 invalid; fixedto0.002 .+0.002",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T082204374412Z_loopback/cuda_jl_run1.log",
+              "sha256": "de884eaeaebd41c80dbbaec42d5f218fa0c1102ba33a59b03e5bf1e03c9cf396"
+            }
+          ],
+          "candidate_id": null,
+          "gpu_kernel_rejected": false,
+          "final_outcome": "verified_named_full_seeded_simulation"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "5cecc20d69f58125cc2a37c3",
+        "begin_event_id": "d6a4ec3c8ae42979240bdfa6",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T08:24:37.882201+00:00",
+        "usage_event_timestamp": "2026-10-18T08:24:27.032Z",
+        "elapsed_usage_event_start": "2026-10-18T08:15:51.469Z",
+        "delta_usage": {
+          "input_tokens": 4063400,
+          "cached_input_tokens": 4054400,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 19596,
+          "reasoning_output_tokens": 10099,
+          "total_tokens": 4082996
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 10.850201,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "049620d88ad008aae098057536f3fcfbd2ff4d4dbb1d8d91b91360b35f08b17c",
+        "meter_driver_sha256": "fb4cbdd9c5e828a2dff830f3523d96c90f42821ac39beb7dd3d8acd1c0ab709e",
+        "note": "",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 73.675563,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/loopback/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "5155ce87315f9eb54985b8113d62a3deae780769cd5aa9d6f5ad6810a8442bc7",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/loopback/measurement_scope_review.json",
+      "sha256": "86d634f453deceeb034bf22f3117279f8ffce4cadf377c280e0016440c0c9c66",
+      "record": {
+        "benchmark_id": "loopback",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "BEGINbeforecode/ENDafterverifiedinseparatetoolround",
+        "workflow_censoring": [
+          "Earlierbroadstaticplaceholderauditcostpredatescurrentworkflow"
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "separatenexttoolroundafterannotationcommandreply"
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/loopback-julia/manifest.json",
+    "selected_sha256": "3e5cc83907e326b3a760b515f047c768282d872653d2fdafb83423d336de7007",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/loopback-julia/manifest.json",
+        "sha256": "3e5cc83907e326b3a760b515f047c768282d872653d2fdafb83423d336de7007"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "CUDAjl_genuine_seeded_path_kernel_scoped_layout_and_zero_cycle_guard",
+    "annotation_path": ".porting-state/portable_julia/traits/loopback.json",
+    "annotation_sha256": "888840c8f0f46b1fda8be21fb4999423b319147665117f0e5c6f1d78e0a9f988",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/loopback-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "04cbf2ae72268e7b34e3ac501f85a4bdf99bd370bf5676e37b330eaa1b7d612b",
+      "record": {
+        "benchmark_id": "loopback",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_repair_sharedalgorithm_separate",
+        "candidate_attempts": 1,
+        "compiler_check_invocations": 2,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 153,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "Historicalgenuinepathoperatorpreservedarchive, namedsmalllayout/FMAintent/T0guard scope. FirstJuliahostadapterparsefailsbeforeGPUkernelcheck, secondprogramfirstactualGPUcandidatepasses. Nativefirst5reuseunchanged. Sharedpath/RNGhelper+independentoracle referenceauthored; nohistoricalcostclaim.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 4063400,
+          "cached_input_tokens": 4054400,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 19596,
+          "reasoning_output_tokens": 10099,
+          "total_tokens": 4082996
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/loopback/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/loopback-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "04cbf2ae72268e7b34e3ac501f85a4bdf99bd370bf5676e37b330eaa1b7d612b",
+    "record": {
+      "benchmark_id": "loopback",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_repair_sharedalgorithm_separate",
+      "candidate_attempts": 1,
+      "compiler_check_invocations": 2,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 153,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "Historicalgenuinepathoperatorpreservedarchive, namedsmalllayout/FMAintent/T0guard scope. FirstJuliahostadapterparsefailsbeforeGPUkernelcheck, secondprogramfirstactualGPUcandidatepasses. Nativefirst5reuseunchanged. Sharedpath/RNGhelper+independentoracle referenceauthored; nohistoricalcostclaim.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 4063400,
+        "cached_input_tokens": 4054400,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 19596,
+        "reasoning_output_tokens": 10099,
+        "total_tokens": 4082996
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/loopback/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost."
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

@@ -1,0 +1,572 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "columnarSolver",
+  "implementation_model": "jacc",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/columnarSolver.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "model": "jacc",
+    "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+    "implementation_class": "JACC custom functions",
+    "authored_gpu_kernel_definitions": 2,
+    "work_item_mapping": "One trajectory per thread; 32 blocks/groups x 32 threads; separate setup entry",
+    "memory_layout": "676 Float32 group scores; per-thread key30/backup30/helper30/plain397/best397/columns420/lengths30, Int32; 5336 declared bytes, not measured local allocation",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32 sequential score",
+      "Int32",
+      "UInt32 wrapping RNG"
+    ],
+    "synchronization": [
+      "group barrier after score preload",
+      "whole-device completion at matched ROI end"
+    ],
+    "resources": {
+      "group_size": 32,
+      "group_count": 32,
+      "decode_shared_bytes": 2704,
+      "setup_shared_bytes": 0
+    },
+    "host_boundary": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+    "algorithm": "Full150000 source proposals per1024 trajectories; original Float32 RNG draw order retained; five bounded index conversions; source best-state mathematics",
+    "source": "src/columnarSolver-julia/columnarSolver-julia-JACC/main.jl",
+    "source_sha256": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+    "limitations": [
+      "Conditional parser/index corrections and volatile native private storage workaround; excluded untouched-native aggregates",
+      "5336 declared private array bytes/thread may spill; no measured occupancy/roofline inference",
+      "One fixed supplied fixture, no general search-quality claim"
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Full150000 source proposals per1024 trajectories; original Float32 RNG draw order retained; five bounded index conversions; source best-state mathematics",
+    "implementation_class": "JACC custom functions",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One trajectory per thread; 32 blocks/groups x 32 threads; separate setup entry",
+    "layout": "676 Float32 group scores; per-thread key30/backup30/helper30/plain397/best397/columns420/lengths30, Int32; 5336 declared bytes, not measured local allocation",
+    "storage_precision": [
+      "Float32",
+      "Int32",
+      "UInt32"
+    ],
+    "compute_precision": [
+      "Float32 sequential score",
+      "Int32",
+      "UInt32 wrapping RNG"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "group barrier after score preload",
+      "whole-device completion at matched ROI end"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "columnarSolver",
+    "scientific_intent": {
+      "primary_family": "discrete_crypto",
+      "review_status": "source_reviewed",
+      "application_domain": "Fixed supplied academic columnar-transposition search fixture",
+      "scientific_question": "Does the complete source hill-climb retain coherent permutation, score and plaintext states and recover the supplied known plaintext?",
+      "operator": "LCG-driven permutation moves, ragged column transposition and adjacent-character bigram scoring",
+      "evidence": [
+        "src/columnarSolver-cuda/main.cu",
+        "src/columnarSolver-cuda/kernels.cu",
+        "src/columnarSolver-julia/full_saved_audit.json"
+      ],
+      "support_boundary": "Only supplied 397-character fixture, KEY_LENGTH30, 150000 moves per trajectory and 1024 trajectories. No external input, global optimality, RNG independence or general cryptanalysis claim.",
+      "source_hashes": {
+        "src/columnarSolver-cuda/main.cu": "679922cd86e80cf41beb0f693428863d99fb27457cc8bbc2df991ad34088b979",
+        "src/columnarSolver-cuda/kernels.cu": "65065de876d476ae90444c1745460d277016c2a060c271fa1656c400901e811d",
+        "src/columnarSolver-cuda/data": "0f82eade75ec3aa52a6f31a6bc025235022dc6a1c7eab019c600647fb8fc2905"
+      }
+    },
+    "primary_motif": "independent stochastic local search with private state",
+    "storage_precision": [
+      "Float32 scores",
+      "Int32 keys/plaintext",
+      "UInt32 RNG"
+    ],
+    "compute_precision": [
+      "Float32 scoring",
+      "UInt32 wrapping LCG",
+      "Int32 indexing"
+    ],
+    "timing_scope": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+    "verification_contract": "Exact full actual input prefix and complete outputs/diagnostics/guards vs CUDA+CUDA.jl and source CPU replay, independent mathematical reconstruction, known plaintext and Float64 score bound",
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Owned conditional parser/index/storage reference; portable private StaticArrays and explicitly initialized best buffer; original moves/draws/full iterations retained"
+    },
+    "keyconfounds": [
+      "Conditional parser/index corrections and volatile native private storage workaround; excluded untouched-native aggregates",
+      "5336 declared private array bytes/thread may spill; no measured occupancy/roofline inference",
+      "One fixed supplied fixture, no general search-quality claim"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "model": "cuda_jl",
+        "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+        "implementation_class": "CUDA.jl custom device kernels",
+        "authored_gpu_kernel_definitions": 2,
+        "work_item_mapping": "One trajectory per thread; 32 blocks/groups x 32 threads; separate setup entry",
+        "memory_layout": "676 Float32 group scores; per-thread key30/backup30/helper30/plain397/best397/columns420/lengths30, Int32; 5336 declared bytes, not measured local allocation",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 sequential score",
+          "Int32",
+          "UInt32 wrapping RNG"
+        ],
+        "synchronization": [
+          "group barrier after score preload",
+          "whole-device completion at matched ROI end"
+        ],
+        "resources": {
+          "group_size": 32,
+          "group_count": 32,
+          "decode_shared_bytes": 2704,
+          "setup_shared_bytes": 0
+        },
+        "host_boundary": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+        "algorithm": "Full150000 source proposals per1024 trajectories; original Float32 RNG draw order retained; five bounded index conversions; source best-state mathematics",
+        "source": "src/columnarSolver-julia/columnarSolver-julia-cuda.jl/main.jl",
+        "source_sha256": "c84e004f0c10cc85d59ae37dc37c7fa9e4daf82e1946f450fe1b8aee1943c9b9",
+        "limitations": [
+          "Conditional parser/index corrections and volatile native private storage workaround; excluded untouched-native aggregates",
+          "5336 declared private array bytes/thread may spill; no measured occupancy/roofline inference",
+          "One fixed supplied fixture, no general search-quality claim"
+        ]
+      },
+      "ka": {
+        "model": "ka",
+        "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+        "implementation_class": "KernelAbstractions custom kernels",
+        "authored_gpu_kernel_definitions": 2,
+        "work_item_mapping": "One trajectory per thread; 32 blocks/groups x 32 threads; separate setup entry",
+        "memory_layout": "676 Float32 group scores; per-thread key30/backup30/helper30/plain397/best397/columns420/lengths30, Int32; 5336 declared bytes, not measured local allocation",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 sequential score",
+          "Int32",
+          "UInt32 wrapping RNG"
+        ],
+        "synchronization": [
+          "group barrier after score preload",
+          "whole-device completion at matched ROI end"
+        ],
+        "resources": {
+          "group_size": 32,
+          "group_count": 32,
+          "decode_shared_bytes": 2704,
+          "setup_shared_bytes": 0
+        },
+        "host_boundary": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+        "algorithm": "Full150000 source proposals per1024 trajectories; original Float32 RNG draw order retained; five bounded index conversions; source best-state mathematics",
+        "source": "src/columnarSolver-julia/columnarSolver-julia-KA/main.jl",
+        "source_sha256": "4485faeec781908b2fa34f08275a6bf4d54f223b896e12d861e6b142a304ca11",
+        "limitations": [
+          "Conditional parser/index corrections and volatile native private storage workaround; excluded untouched-native aggregates",
+          "5336 declared private array bytes/thread may spill; no measured occupancy/roofline inference",
+          "One fixed supplied fixture, no general search-quality claim"
+        ]
+      },
+      "jacc": {
+        "model": "jacc",
+        "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+        "implementation_class": "JACC custom functions",
+        "authored_gpu_kernel_definitions": 2,
+        "work_item_mapping": "One trajectory per thread; 32 blocks/groups x 32 threads; separate setup entry",
+        "memory_layout": "676 Float32 group scores; per-thread key30/backup30/helper30/plain397/best397/columns420/lengths30, Int32; 5336 declared bytes, not measured local allocation",
+        "storage_precision": [
+          "Float32",
+          "Int32",
+          "UInt32"
+        ],
+        "compute_precision": [
+          "Float32 sequential score",
+          "Int32",
+          "UInt32 wrapping RNG"
+        ],
+        "synchronization": [
+          "group barrier after score preload",
+          "whole-device completion at matched ROI end"
+        ],
+        "resources": {
+          "group_size": 32,
+          "group_count": 32,
+          "decode_shared_bytes": 2704,
+          "setup_shared_bytes": 0
+        },
+        "host_boundary": "setupKernel plus full decode and whole-device completion; resets, readbacks, CPU checks and serialization excluded",
+        "algorithm": "Full150000 source proposals per1024 trajectories; original Float32 RNG draw order retained; five bounded index conversions; source best-state mathematics",
+        "source": "src/columnarSolver-julia/columnarSolver-julia-JACC/main.jl",
+        "source_sha256": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+        "limitations": [
+          "Conditional parser/index corrections and volatile native private storage workaround; excluded untouched-native aggregates",
+          "5336 declared private array bytes/thread may spill; no measured occupancy/roofline inference",
+          "One fixed supplied fixture, no general search-quality claim"
+        ]
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/columnarSolver-julia/columnarSolver-julia-JACC/main.jl",
+    "sha256": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        19,
+        20
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        17
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+      "run_id": "20261020T163059377094Z_columnarSolver",
+      "result": ".porting-state/portable_julia/runs/20261020T163059377094Z_columnarSolver/result.json",
+      "configuration_role": "corrected_reference_secondary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "original_source_hashes": {
+          "src/columnarSolver-cuda/main.cu": "679922cd86e80cf41beb0f693428863d99fb27457cc8bbc2df991ad34088b979",
+          "src/columnarSolver-cuda/kernels.cu": "65065de876d476ae90444c1745460d277016c2a060c271fa1656c400901e811d",
+          "src/columnarSolver-cuda/data": "0f82eade75ec3aa52a6f31a6bc025235022dc6a1c7eab019c600647fb8fc2905"
+        },
+        "repairs": [
+          "char[3] and%2s parser fixes ASan3-bytewriteinto2-bytebuffer",
+          "Only5keyindexconversions clamp integer30to29; RNGvalues/draws/definedmoveformulasotherwiseunchanged"
+        ],
+        "witnesses": [
+          "native_diagnostics/parser_asan.log",
+          "native_diagnostics/rng_domain_witness.json",
+          "native_diagnostics/cpu_bounds.log"
+        ],
+        "original_GPU_failure_observed": false,
+        "CPU_source_replay": "All1024original150000horizon:13keyindex30rejections/1011safefinishes; hostemulationevidence not originalGPUerror",
+        "storage_intervention": {
+          "qualifier": "volatileintbestLocalDecrypted397",
+          "cause_scope": "Storage/codegenworkaround ininstrumentedcorrectedGPUbody; originalalgorithmdefectnotdemonstrated",
+          "failed_intermediate_controls": [
+            "native_diagnostics/native_diagnostic01.log",
+            "native_diagnostics/native_diagnostic_nvcc129.log"
+          ],
+          "passing_full_control": "native_diagnostics/storage_control_full_CPU_agreement.json",
+          "source_allmath_state_CPUidentical": true,
+          "math_input_iterations_unchanged": true
+        },
+        "independent_peer_review": "MapsreadonlyCPUlastcandidatewitness sources/reports tobehashbound aftercompletedreview"
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "949ff846956395cc0df44506e32fc020c72d3b9741c5c9d38aeaee20e5705d2c",
+      "source_hash": "5ea5f665445d08f72d4bd6a6531c3c9cac8d41028208208a6613e0e863129273",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261020T163059377094Z_columnarSolver/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        39.076764469000004,
+        39.373734186,
+        39.077842967,
+        39.374867092,
+        39.076613626000004
+      ],
+      "mean_last_four_seconds": 39.225764467750004,
+      "contract": {
+        "benchmark": "columnarSolver",
+        "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+        "predeclared_before_native_GPU": true,
+        "parameters": {
+          "key_length": 30,
+          "climbings_per_thread": 150000,
+          "blocks": 32,
+          "threads_per_block": 32,
+          "trajectories": 1024,
+          "encrypted_length": 397,
+          "bigram_entries": 676
+        },
+        "scope": "Fixedsupplied397charplaintext/ciphertextanddeclaredoriginalbigramassetonly, no externaltargets/customcipherinputs",
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "original_source_hashes": {
+            "src/columnarSolver-cuda/main.cu": "679922cd86e80cf41beb0f693428863d99fb27457cc8bbc2df991ad34088b979",
+            "src/columnarSolver-cuda/kernels.cu": "65065de876d476ae90444c1745460d277016c2a060c271fa1656c400901e811d",
+            "src/columnarSolver-cuda/data": "0f82eade75ec3aa52a6f31a6bc025235022dc6a1c7eab019c600647fb8fc2905"
+          },
+          "repairs": [
+            "char[3] and%2s parser fixes ASan3-bytewriteinto2-bytebuffer",
+            "Only5keyindexconversions clamp integer30to29; RNGvalues/draws/definedmoveformulasotherwiseunchanged"
+          ],
+          "witnesses": [
+            "native_diagnostics/parser_asan.log",
+            "native_diagnostics/rng_domain_witness.json",
+            "native_diagnostics/cpu_bounds.log"
+          ],
+          "original_GPU_failure_observed": false,
+          "CPU_source_replay": "All1024original150000horizon:13keyindex30rejections/1011safefinishes; hostemulationevidence not originalGPUerror",
+          "storage_intervention": {
+            "qualifier": "volatileintbestLocalDecrypted397",
+            "cause_scope": "Storage/codegenworkaround ininstrumentedcorrectedGPUbody; originalalgorithmdefectnotdemonstrated",
+            "failed_intermediate_controls": [
+              "native_diagnostics/native_diagnostic01.log",
+              "native_diagnostics/native_diagnostic_nvcc129.log"
+            ],
+            "passing_full_control": "native_diagnostics/storage_control_full_CPU_agreement.json",
+            "source_allmath_state_CPUidentical": true,
+            "math_input_iterations_unchanged": true
+          },
+          "independent_peer_review": "MapsreadonlyCPUlastcandidatewitness sources/reports tobehashbound aftercompletedreview"
+        },
+        "input_contract": "ExactFloat32all676sourcebigramvalues,397Int32hardcodedcipherchars; actualseedstatesfromoriginalsetupKernelreadbackafterdecode(constinput); full1024outputs/initialandfinalpermutationkeys/finalbestscores/RNG/drawcounts/guards",
+        "acceptance": "Fullall1024candidatearrays/finalkey-score-RNGrecords vsCPUsource replay with independentlyvalidatedtransposition/bigrams/permutation/knownplaintextwinner. Defaultnativearithmetic inspected; no toleranceafterfailure. ExactIntoutputs, Float32scorebitsusedforsourcepathcomparison; independentFloat64score sum secondaryerrorreported.",
+        "GPU_body": "Source2kerneldefinitions retained;5key-indexclamps andtelemetryargs/stores/countersadded; mathematicalscopeconditionalcorrected, notoriginalbyte-verbatim",
+        "timing_region": "original_setupKernel_plus_full_decode_completed_whole_device",
+        "five_trials": "warmwholeworkload then5checkedtrials,mean2-5; H2D/reset/readbacks/oracle/serialization excludedall4",
+        "guard_scope": "256byteshead/tail all4sourceallocations+1diagnosticallocation; fullactualbuffers retained",
+        "storage_budget_new_bytes": 250000000,
+        "reserve_tmp_bytes": 3000000000,
+        "classification": "conditional_corrected_native_notexternalcryptanalysis_notframeworkunsupported",
+        "configuration_role": "corrected_reference_secondary",
+        "storage_control": {
+          "change": "volatilequalifieronlyonprivatebestLocalDecryptedarray; unchangedmathematicalequations/key/score/RNG/controlflow/fulliterations",
+          "reason": "NVCC12.0and12.9sameinstrumentedbodyproduce489wrongcharacter0outputs whileall1024finalkeys/bestscorebits/RNG/drawcounts exactlyCPU. Causeunresolved; no originalGPUscientificdefectclaim.",
+          "original_failed_source_sha256": "95deba0152bf026a3d097d83d2b723dc8c515f96557123c04f426337684be741",
+          "control_source_sha256": "e292ec5fda0c1df09404d16e1f13ccb618ead321b84634289087aa0ede2a3ab3",
+          "conditioned_performance": "Extrastoragevolatilememorytraffic, excludeuntouchednativecomparisons"
+        },
+        "predeclared_before_five_native_trials": true
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "input_tokens": 2639032,
+      "cached_input_tokens": 2628096,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 8668,
+      "reasoning_output_tokens": 6963,
+      "total_tokens": 2647700
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "2cf0e2ec9b8c2f439cf5963a",
+        "begin_event_id": "b4956a1ccdb48fa63136c56a",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "jacc",
+        "phase": "translation_feedback",
+        "boundary": "end",
+        "recorded_at": "2026-10-20T16:35:20.918126+00:00",
+        "usage_event_timestamp": "2026-10-20T16:35:10.522Z",
+        "elapsed_usage_event_start": "2026-10-20T16:30:26.104Z",
+        "delta_usage": {
+          "input_tokens": 2639032,
+          "cached_input_tokens": 2628096,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 8668,
+          "reasoning_output_tokens": 6963,
+          "total_tokens": 2647700
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 10.396126,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "07c63dcb6159510f1ddfb3e9b7282428feac6a45e7e88171b207ab1ff41c6f00",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "JACCfirstprogramall5full150000x1024 exactfullCPU/native/CUDAjl475697values/guards passed finalall4matched; own2functions/JACCsharedactual676scoreinput, explicit0/2704B and32x32. Sharedalgorithm/privateStaticArrays/sourceharness orderedreuse, no templateaddition/looptruncation/compilerrepair. ExactFloat32data+Intoutputs, knownplaintext361 fullmathcertificate; conditionalnativeparser/index/volatileclassification retained, no externaltargets.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-20T16:00:53.917Z",
+          "context_event_sha256": "7ab8ecf5d3dab1fd7887c62274cdab8cf5ac747773f77d2835fa211bd176cbe8",
+          "source_snapshot_bytes": 142134569,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 6.679067,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/columnarSolver/jacc_translation_feedback.jsonl",
+        "evidence_sha256": "baf1ba283122b16d968145e61292b1f5d92272df27eb6de514738f8c3e5c51ac",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/columnarSolver-julia-jacc/manifest.json",
+    "selected_sha256": "98e6a206ac88c13ac7c94c9868694137de86fc83667a43303840f692c09866f0",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/columnarSolver-julia-jacc/manifest.json",
+        "sha256": "98e6a206ac88c13ac7c94c9868694137de86fc83667a43303840f692c09866f0"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "d108435569da7fc133d51d8d5c425794b9e636fc",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "columnarSolver",
+    "model": "jacc",
+    "status": "verified",
+    "configuration_id": "columnarSolver_fixed397_fullKEY30_150000x1024_parser_index_volatile_corrected_v2",
+    "configuration_role": "corrected_reference_secondary",
+    "result_path": ".porting-state/portable_julia/runs/20261020T163059377094Z_columnarSolver/result.json",
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "original_source_hashes": {
+        "src/columnarSolver-cuda/main.cu": "679922cd86e80cf41beb0f693428863d99fb27457cc8bbc2df991ad34088b979",
+        "src/columnarSolver-cuda/kernels.cu": "65065de876d476ae90444c1745460d277016c2a060c271fa1656c400901e811d",
+        "src/columnarSolver-cuda/data": "0f82eade75ec3aa52a6f31a6bc025235022dc6a1c7eab019c600647fb8fc2905"
+      },
+      "repairs": [
+        "char[3] and%2s parser fixes ASan3-bytewriteinto2-bytebuffer",
+        "Only5keyindexconversions clamp integer30to29; RNGvalues/draws/definedmoveformulasotherwiseunchanged"
+      ],
+      "witnesses": [
+        "native_diagnostics/parser_asan.log",
+        "native_diagnostics/rng_domain_witness.json",
+        "native_diagnostics/cpu_bounds.log"
+      ],
+      "original_GPU_failure_observed": false,
+      "CPU_source_replay": "All1024original150000horizon:13keyindex30rejections/1011safefinishes; hostemulationevidence not originalGPUerror",
+      "storage_intervention": {
+        "qualifier": "volatileintbestLocalDecrypted397",
+        "cause_scope": "Storage/codegenworkaround ininstrumentedcorrectedGPUbody; originalalgorithmdefectnotdemonstrated",
+        "failed_intermediate_controls": [
+          "native_diagnostics/native_diagnostic01.log",
+          "native_diagnostics/native_diagnostic_nvcc129.log"
+        ],
+        "passing_full_control": "native_diagnostics/storage_control_full_CPU_agreement.json",
+        "source_allmath_state_CPUidentical": true,
+        "math_input_iterations_unchanged": true
+      },
+      "independent_peer_review": "MapsreadonlyCPUlastcandidatewitness sources/reports tobehashbound aftercompletedreview"
+    },
+    "source_candidates": 1,
+    "gpu_candidates": 1,
+    "source_sha256": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+    "numerical_agreement_claim": true,
+    "source_commit": "d108435569da7fc133d51d8d5c425794b9e636fc",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "d108435569da7fc133d51d8d5c425794b9e636fc",
+      "source": "src/columnarSolver-julia/columnarSolver-julia-JACC/main.jl",
+      "source_sha256": "a49ac23304783847d14108c797a7f8b5a33389b917147ae812f55ff652ba7f85",
+      "original_metadata": "src/columnarSolver-julia/reference_history/accounting_original_delivery_20261020/jacc_jacc.json_5fb293b75e4b.json",
+      "original_metadata_sha256": "5fb293b75e4b28e8bca21637bed29d092a72a6a210f1f188b1205a10aef428b9",
+      "review": "git-show verified main bytes unchanged; metadata only, counters and GPU evidence unchanged",
+      "recorded_at": "2026-10-20T16:46:54.545785+00:00"
+    }
+  }
+}

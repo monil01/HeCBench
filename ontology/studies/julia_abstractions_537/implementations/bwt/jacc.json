@@ -1,0 +1,500 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "bwt",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/bwt.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Generate cyclic indices,55 bitonic stages using lexicographic indirect comparisons, reconstruct predecessor symbols.",
+    "mapping": "Four blocks256 per stage; one compare-swap pair owner when xor partner exceedsindex.",
+    "layout": "Contiguous UInt8 sequence/output and Int32 padded index table.",
+    "precision": {
+      "storage": [
+        "uint8",
+        "int32"
+      ],
+      "compute": "int32 comparison/index control; character comparisons"
+    },
+    "memory": "Global indirect sequence loads and index swaps; no shared scratch.",
+    "synchronization": [
+      "57 ordered kernel launches in one stream"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 4,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "JACC CUDA backend custom kernels; no vendor sort library.",
+    "host_control_boundary": "Host loops issue the same55 network stage parameters; full pipeline timed, allocation/transfer excluded.",
+    "fidelity_status": "Complete selected cyclic-transform GPU pipeline and auxiliary table, exact matching.",
+    "configuration_id": "dna_cyclic_n1021_table1024_repeat3_gpupipeline_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Generate cyclic indices,55 bitonic stages using lexicographic indirect comparisons, reconstruct predecessor symbols.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "Four blocks256 per stage; one compare-swap pair owner when xor partner exceedsindex.",
+    "layout": "Contiguous UInt8 sequence/output and Int32 padded index table.",
+    "storage_precision": [
+      "uint8",
+      "int32"
+    ],
+    "compute_precision": "int32 comparison/index control; character comparisons",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global indirect sequence loads and index swaps; no shared scratch.",
+    "synchronization": [
+      "57 ordered kernel launches in one stream"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 4,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 4,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "JACC CUDA backend custom kernels; no vendor sort library.",
+    "host_control_boundary": "Host loops issue the same55 network stage parameters; full pipeline timed, allocation/transfer excluded.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Complete selected cyclic-transform GPU pipeline and auxiliary table, exact matching.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "bwt",
+    "primary_motif": "cyclic_string_rotation_sort_pipeline",
+    "storage_precision": [
+      "uint8 ASCII",
+      "int32 rotation indices"
+    ],
+    "compute_precision": [
+      "integer comparisons and indices"
+    ],
+    "floating_point_work": false,
+    "synchronization": [
+      "ordered kernel boundaries between bitonic stages"
+    ],
+    "native_to_julia_mapping": {
+      "status": "matched",
+      "reason": "Same index generation, bitonic compare-swap stage sequence and reconstruction, four256thread groups, no within-kernel synchronization."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "GPU generate+55sortstages+reconstruct pipeline only; 57 ordered launches per operation. Original native host allocation/transfer/string wrapper excluded consistently.",
+    "verification_contract": "raw_exact_transform_bytes_and_rotation_table",
+    "keyconfounds": [
+      "Named1021-byte DNA case and1024-entry padded sorttable, not the source million-byte default.",
+      "Native main implicit std::string construction excludes terminal NUL; study therefore sorts cyclic rotations without an included sentinel. Do not call the table a general sentinel-based suffix array.",
+      "57 host-issued GPU launches per operation; performance includes host orchestration. No FLOP roofline claim for this integer/string workload.",
+      "Original native end-to-end bwt() allocation/transfer/string lifecycle is outside the GPU-only measurement contract.",
+      "Large retained host-clock timing variation in cuda_jl: all four samples retained in required mean; cause unmeasured, do not interpret inflated mean as stable device-kernel cost."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "bioinformatics_sequence_transformation",
+      "secondary_domains": [
+        "sequence_indexing_and_compression_primitive"
+      ],
+      "scientific_task": "Compute the last column of lexicographically sorted cyclic rotations of a DNA-symbol sequence.",
+      "mathematical_operation": "Burrows-Wheeler cyclic rotation ordering, bitonic network sorting of rotation indices, and predecessor-symbol reconstruction.",
+      "discretization_or_topology": "Discrete linear DNA string with cyclic comparison topology and power-of-two padded index table.",
+      "invariants": [
+        "Transform preserves input symbol multiset.",
+        "Valid rotation indices form a permutation0..N-1, followed by negative padding.",
+        "Complete cyclic-rotation ordering is checked independently."
+      ],
+      "accuracy_requirements": [
+        "Exact all1021 transform bytes and1024 table entries against both GPU references and independent CPU materialized-rotation lexical sort.",
+        "Unique rotations are asserted for the fixture, avoiding undefined tie-order comparisons."
+      ],
+      "precision_sensitivity": "No floating arithmetic; byte ordering, modulo indices, negative padding and stage dependencies determine correctness.",
+      "input_size_regimes": "N1021, padded1024, three internal repeats; no default million-size scaling result.",
+      "community_use_case": "Native main explicitly identifies ATCG as a bioinformatics alphabet. This is a transform/indexing primitive, not an end-to-end read aligner or compression pipeline.",
+      "provenance": [
+        {
+          "path": "src/bwt-cuda/main.cpp",
+          "sha256": "126d3ba1c7d7b134b5c38d30f6aadb414139d8fd8fca7ef804457cedd416f261",
+          "source_locations": "DNA alphabet comment, CPU rotation comparator and implicit string construction"
+        },
+        {
+          "path": "src/bwt-cuda/bwt.cu",
+          "sha256": "07e114c18deb7b015936ae38ced8dcb0e457a5cd52392a4ca6f2ec5aba964be0",
+          "source_locations": "index generation, cyclic rotation comparator, bitonic stages and reconstruction"
+        }
+      ],
+      "uncertainty": "No real genome, biological downstream accuracy metric, sentinel-based inversion workflow or large-scale application dataset is measured."
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Generate cyclic indices,55 bitonic stages using lexicographic indirect comparisons, reconstruct predecessor symbols.",
+        "mapping": "Four blocks256 per stage; one compare-swap pair owner when xor partner exceedsindex.",
+        "layout": "Contiguous UInt8 sequence/output and Int32 padded index table.",
+        "precision": {
+          "storage": [
+            "uint8",
+            "int32"
+          ],
+          "compute": "int32 comparison/index control; character comparisons"
+        },
+        "memory": "Global indirect sequence loads and index swaps; no shared scratch.",
+        "synchronization": [
+          "57 ordered kernel launches in one stream"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 4,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "Custom framework CUDA kernels; no vendor sort or suffix library.",
+        "host_control_boundary": "Host loops issue the same55 network stage parameters; full pipeline timed, allocation/transfer excluded.",
+        "fidelity_status": "Complete selected cyclic-transform GPU pipeline and auxiliary table, exact matching.",
+        "configuration_id": "dna_cyclic_n1021_table1024_repeat3_gpupipeline_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Generate cyclic indices,55 bitonic stages using lexicographic indirect comparisons, reconstruct predecessor symbols.",
+        "mapping": "Four blocks256 per stage; one compare-swap pair owner when xor partner exceedsindex.",
+        "layout": "Contiguous UInt8 sequence/output and Int32 padded index table.",
+        "precision": {
+          "storage": [
+            "uint8",
+            "int32"
+          ],
+          "compute": "int32 comparison/index control; character comparisons"
+        },
+        "memory": "Global indirect sequence loads and index swaps; no shared scratch.",
+        "synchronization": [
+          "57 ordered kernel launches in one stream"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 4,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions CUDABackend custom kernels; no vendor sort library.",
+        "host_control_boundary": "Host loops issue the same55 network stage parameters; full pipeline timed, allocation/transfer excluded.",
+        "fidelity_status": "Complete selected cyclic-transform GPU pipeline and auxiliary table, exact matching.",
+        "configuration_id": "dna_cyclic_n1021_table1024_repeat3_gpupipeline_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Generate cyclic indices,55 bitonic stages using lexicographic indirect comparisons, reconstruct predecessor symbols.",
+        "mapping": "Four blocks256 per stage; one compare-swap pair owner when xor partner exceedsindex.",
+        "layout": "Contiguous UInt8 sequence/output and Int32 padded index table.",
+        "precision": {
+          "storage": [
+            "uint8",
+            "int32"
+          ],
+          "compute": "int32 comparison/index control; character comparisons"
+        },
+        "memory": "Global indirect sequence loads and index swaps; no shared scratch.",
+        "synchronization": [
+          "57 ordered kernel launches in one stream"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 4,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC CUDA backend custom kernels; no vendor sort library.",
+        "host_control_boundary": "Host loops issue the same55 network stage parameters; full pipeline timed, allocation/transfer excluded.",
+        "fidelity_status": "Complete selected cyclic-transform GPU pipeline and auxiliary table, exact matching.",
+        "configuration_id": "dna_cyclic_n1021_table1024_repeat3_gpupipeline_v1"
+      }
+    },
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          0.000218768333333,
+          0.000219012,
+          0.000218968666667,
+          0.000220768333333
+        ],
+        "minimum": 0.000218768333333,
+        "maximum": 0.000220768333333,
+        "sample_standard_deviation": 9.320627461168088e-07,
+        "coefficient_of_variation": 0.004248635146962321,
+        "max_to_min_ratio": 1.009142090948582,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          0.000239448666667,
+          0.000228892,
+          0.0176088043333,
+          0.000244565333333
+        ],
+        "minimum": 0.000228892,
+        "maximum": 0.0176088043333,
+        "sample_standard_deviation": 0.008685586951534666,
+        "coefficient_of_variation": 1.8962393343264408,
+        "max_to_min_ratio": 76.9306237583664,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          0.000299876,
+          0.000270638666667,
+          0.000253795666667,
+          0.000253448666667
+        ],
+        "minimum": 0.000253448666667,
+        "maximum": 0.000299876,
+        "sample_standard_deviation": 2.1819370635055073e-05,
+        "coefficient_of_variation": 0.08098051840916133,
+        "max_to_min_ratio": 1.1831823932772934,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          0.000557584666667,
+          0.000490910666667,
+          0.000479657666667,
+          0.000465517
+        ],
+        "minimum": 0.000465517,
+        "maximum": 0.000557584666667,
+        "sample_standard_deviation": 4.0790033116853167e-05,
+        "coefficient_of_variation": 0.08183908694384268,
+        "max_to_min_ratio": 1.1977750902050839,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/bwt-julia/bwt-julia-JACC/main.jl",
+    "sha256": "fd593e001ebb7f71318f057df3f1aebaac6ef83bafa040edad10b775d33638b9",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        32,
+        37,
+        42
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        30
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "dna_cyclic_n1021_table1024_repeat3_gpupipeline_v1",
+      "run_id": "20261017T170405304480Z_bwt",
+      "result": ".porting-state/portable_julia/runs/20261017T170405304480Z_bwt/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "1f869a17627f316eaba3895476a13be0bed0cff708d3baff3a09ba52a4273c6e",
+      "source_hash": "8fdfe7c44a333c07fd3188be7cf01e51fdb7025f6709da278e75525e2808d851",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T170405304480Z_bwt/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.000438540333333,
+        0.000557584666667,
+        0.000490910666667,
+        0.000479657666667,
+        0.000465517
+      ],
+      "mean_last_four_seconds": 0.00049841750000025,
+      "contract": {
+        "precision": "UInt8 ASCII DNA and Int32 rotationindices, no floatingcompute; losslessASCII->Int32 artifact widening",
+        "shape": {
+          "sequence_length": 1021,
+          "sort_table_size": 1024
+        },
+        "fixture": "UInt32LCG seed0x12345678, state=1664525*state+1013904223 wrapping, alphabetATCG[(state>>28)&3]. NoNUL included, matching native main implicitstringconstruction. Allrotationsunique checkedCPU.",
+        "internal_repeats": 3,
+        "scope": "Complete nativeGPUgenerate+55bitonicstages+reconstructpipeline; includesallBWTbytes+fullsorttablewith3padding-1. Originalnativebwt()hostallocations/transfers/stringwrap anddefaultmillionlength unmeasured.",
+        "kernel_launches_per_operation": 57,
+        "mapping": "Allkernels256threads/4blocks. Uniquecompare-swap pairs eachbitonicstage; orderedkernelboundaries ensure globalstageordering.",
+        "accuracy": "Exactall2045artifactInt32values againstindependentCPUexplicitrotationlexsort andbothGPUreferences.",
+        "reference_repair": "HistoricalCUDAjlmarker/PASSprogram preservedoriginal_main.jl; genuine3kernelpipeline replacement separatelycosted."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 1625,
+      "output_tokens": 348,
+      "cached_tokens": null,
+      "total_tokens": 1973,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/bwt-cuda/bwt.cu",
+        "src/bwt-julia/bwt-julia-cuda.jl/main.jl",
+        "src/bwt-julia/bwt-julia-KA/main.jl",
+        "src/bwt-julia/bwt-julia-JACC/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/bwt-julia-jacc/manifest.json",
+    "selected_sha256": "2b5aaabdbb45e5811a8d8965193ceb1d6052c45dec840e61ca969738bbacc763",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/bwt-julia-jacc/manifest.json",
+        "sha256": "2b5aaabdbb45e5811a8d8965193ceb1d6052c45dec840e61ca969738bbacc763"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "7ceb98d71cb13372c770f0d800e664610c4a3583",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "bwt",
+    "model": "jacc",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T170405304480Z_bwt/result.json"
+    ],
+    "contract": {
+      "precision": "UInt8 ASCII DNA and Int32 rotationindices, no floatingcompute; losslessASCII->Int32 artifact widening",
+      "shape": {
+        "sequence_length": 1021,
+        "sort_table_size": 1024
+      },
+      "fixture": "UInt32LCG seed0x12345678, state=1664525*state+1013904223 wrapping, alphabetATCG[(state>>28)&3]. NoNUL included, matching native main implicitstringconstruction. Allrotationsunique checkedCPU.",
+      "internal_repeats": 3,
+      "scope": "Complete nativeGPUgenerate+55bitonicstages+reconstructpipeline; includesallBWTbytes+fullsorttablewith3padding-1. Originalnativebwt()hostallocations/transfers/stringwrap anddefaultmillionlength unmeasured.",
+      "kernel_launches_per_operation": 57,
+      "mapping": "Allkernels256threads/4blocks. Uniquecompare-swap pairs eachbitonicstage; orderedkernelboundaries ensure globalstageordering.",
+      "accuracy": "Exactall2045artifactInt32values againstindependentCPUexplicitrotationlexsort andbothGPUreferences.",
+      "reference_repair": "HistoricalCUDAjlmarker/PASSprogram preservedoriginal_main.jl; genuine3kernelpipeline replacement separatelycosted."
+    },
+    "limitations": [
+      "Named1021-byte DNA case and1024-entry padded sorttable, not the source million-byte default.",
+      "Native main implicit std::string construction excludes terminal NUL; study therefore sorts cyclic rotations without an included sentinel. Do not call the table a general sentinel-based suffix array.",
+      "57 host-issued GPU launches per operation; performance includes host orchestration. No FLOP roofline claim for this integer/string workload.",
+      "Original native end-to-end bwt() allocation/transfer/string lifecycle is outside the GPU-only measurement contract."
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/bwt.json",
+    "annotation_sha256": "262c04ce3fd730467071a20daabd9590e622c8ae3db78d6dbce642159f55b556",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

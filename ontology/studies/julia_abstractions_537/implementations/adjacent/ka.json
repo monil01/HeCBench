@@ -1,0 +1,452 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "adjacent",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/adjacent.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified_existing_evidence",
+    "algorithm": "Two ordered blockwise neighbor-difference kernels, second stage in place.",
+    "mapping": "1024 blocks,256 threads,4 contiguous scalar values per lane.",
+    "layout": "Contiguous Int32; native int4 loads versus scalar Julia loads.",
+    "precision": {
+      "storage": "int32",
+      "compute": "int32 subtraction"
+    },
+    "implementation_detail": "Same scalar four-item algorithm with local scratch and one barrier per stage.",
+    "memory": "4096B static local allocated,256 boundary slots used.",
+    "synchronization": [
+      "one cooperative barrier per stage",
+      "ordered kernel boundary"
+    ],
+    "atomic_operations": [],
+    "implementation_class": "framework_device_kernel",
+    "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+    "provenance": [
+      {
+        "path": "src/adjacent-julia/adjacent-julia-KA/main.jl",
+        "sha256": "8f414c7b0809c45f4cf696aee72c603f66004edc0c0345453e206054d05276db",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+    "resource_policy": "See actual launch source; no occupancy or register-count inference."
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Two ordered blockwise neighbor-difference kernels, second stage in place.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "1024 blocks,256 threads,4 contiguous scalar values per lane.",
+    "layout": "Contiguous Int32; native int4 loads versus scalar Julia loads.",
+    "storage_precision": "int32",
+    "compute_precision": "int32 subtraction",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "4096B static local allocated,256 boundary slots used.",
+    "synchronization": [
+      "one cooperative barrier per stage",
+      "ordered kernel boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": "See actual launch source; no occupancy or register-count inference.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+    "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Named scope numerically verified; source-established adaptations disclosed.",
+    "source_review_evidence": [
+      {
+        "path": "src/adjacent-julia/adjacent-julia-KA/main.jl",
+        "sha256": "8f414c7b0809c45f4cf696aee72c603f66004edc0c0345453e206054d05276db",
+        "source_locations": "actual implementation, launch policy and precision"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "adjacent",
+    "primary_motif": "integer_neighbor_difference_pipeline",
+    "storage_precision": [
+      "int32"
+    ],
+    "compute_precision": [
+      "int32"
+    ],
+    "synchronization": [
+      "workgroup_barrier",
+      "two_ordered_kernels"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native CUB/int4 vs manualJulia/KA scalar boundaryscratch"
+    },
+    "implementation_class": {
+      "cuda": "framework_device_kernel",
+      "julia": "framework_device_kernel",
+      "julia-ka": "framework_device_kernel",
+      "julia-jacc": "framework_device_kernel"
+    },
+    "timing_scope": "kernel_launch_loop_per_internal_repeat",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native CUB/int4 vs manualJulia/KA scalar boundaryscratch",
+      "JACC completeinputtile staging vs boundary-only scratch",
+      "256thread case only; other block sizes unmeasured"
+    ],
+    "jacc_shared_memory_policy": "explicit_required_4096_bytes",
+    "observation": "research/observations/adjacent.md",
+    "ontology_sha256": "bd136bebc6cbf0adfa2f9777a0849553eaa618cbc90daf0b495122d1cfbcb7d1",
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "domain_neutral_primitives",
+      "primary_domain": "block_adjacent_difference_primitive",
+      "scientific_task": "Apply left then right adjacent subtraction within independent blocks.",
+      "mathematical_operation": "Left y_i=x_i-x_(i-1), blockfirst unchanged; right z_i=y_i-y_(i+1), blocklast unchanged.",
+      "discretization_or_topology": "1048576 Int32 values in1024 blocks of1024 items;4 items per256-thread lane.",
+      "invariants": [
+        "No neighbor crosses a1024-item block boundary.",
+        "Right stage consumes complete left-stage output before writes."
+      ],
+      "accuracy_requirements": [
+        "All1048576 Int32 outputs exact against CPU and dual references."
+      ],
+      "precision_sensitivity": "Exact integer arithmetic in boundedmod17 fixture; no floating-point reduction sensitivity.",
+      "input_size_regimes": "256-thread blocks only,10 two-kernel repetitions; other native thread counts unmeasured.",
+      "community_use_case": "CUB block collective primitive; no specific finite-difference PDE or scientific application established.",
+      "uncertainty": "Block endpoint policy makes it distinct from a global second-difference stencil.",
+      "provenance": [
+        {
+          "path": "src/adjacent-cuda/main.cu",
+          "sha256": "e624a044dc8af27104bcc280d56095ba1119b8d62ab691d1807583992b82564a",
+          "source_locations": "operator, arithmetic, source provenance and launch scope"
+        },
+        {
+          "path": "src/adjacent-julia/study_common.jl",
+          "sha256": "c7d638d72228bfb7dbce49df84cd5938dd4ac60d13cb74d91b9cd614a2cddb24",
+          "source_locations": "named fixture and CPU verification contract"
+        }
+      ],
+      "reviewed_at": "2026-10-17T17:17:45.830975+00:00",
+      "review_phase": "retrospective source annotation, no new GPU runs"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Two ordered blockwise neighbor-difference kernels, second stage in place.",
+        "mapping": "1024 blocks,256 threads,4 contiguous scalar values per lane.",
+        "layout": "Contiguous Int32; native int4 loads versus scalar Julia loads.",
+        "precision": {
+          "storage": "int32",
+          "compute": "int32 subtraction"
+        },
+        "implementation_detail": "Manual boundary exchange in static1024-element scratch instead of native CUB collective.",
+        "memory": "4096B static shared allocated,256 boundary slots used.",
+        "synchronization": [
+          "one cooperative barrier per stage",
+          "ordered kernel boundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adjacent-julia/adjacent-julia-cuda.jl/main.jl",
+            "sha256": "fe51e5396b29e34c518f5de50229d8a155b5d8eb216f93516e264498a0d8a21e",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "ka": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Two ordered blockwise neighbor-difference kernels, second stage in place.",
+        "mapping": "1024 blocks,256 threads,4 contiguous scalar values per lane.",
+        "layout": "Contiguous Int32; native int4 loads versus scalar Julia loads.",
+        "precision": {
+          "storage": "int32",
+          "compute": "int32 subtraction"
+        },
+        "implementation_detail": "Same scalar four-item algorithm with local scratch and one barrier per stage.",
+        "memory": "4096B static local allocated,256 boundary slots used.",
+        "synchronization": [
+          "one cooperative barrier per stage",
+          "ordered kernel boundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adjacent-julia/adjacent-julia-KA/main.jl",
+            "sha256": "8f414c7b0809c45f4cf696aee72c603f66004edc0c0345453e206054d05276db",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      },
+      "jacc": {
+        "status": "verified_existing_evidence",
+        "algorithm": "Two ordered blockwise neighbor-difference kernels, second stage in place.",
+        "mapping": "1024 blocks,256 threads,4 contiguous scalar values per lane.",
+        "layout": "Contiguous Int32; native int4 loads versus scalar Julia loads.",
+        "precision": {
+          "storage": "int32",
+          "compute": "int32 subtraction"
+        },
+        "implementation_detail": "Cooperatively stages whole1024-item tile before scalar neighbor reads and in-place writes.",
+        "memory": "4096B dynamic shared holds entire tile.",
+        "synchronization": [
+          "one cooperative barrier per stage",
+          "ordered kernel boundary"
+        ],
+        "atomic_operations": [],
+        "implementation_class": "framework_device_kernel",
+        "library_boundary": "Framework CUDA backend and scalar math/atomic lowering; no whole-operator vendor library.",
+        "host_control_boundary": "GPU operation launch loop; fixture initialization and artifact conversion outside timer.",
+        "fidelity_status": "Named scope numerically verified; source-established adaptations disclosed.",
+        "provenance": [
+          {
+            "path": "src/adjacent-julia/adjacent-julia-JACC/main.jl",
+            "sha256": "36e540c4ddd33c87e1bca880a568be1d010e4f267269fa7455b4bcd56cec29f2",
+            "source_locations": "actual implementation, launch policy and precision"
+          }
+        ],
+        "attempt_count_policy": "Existing raw effort records preserved; unavailable historical counts remain unknown.",
+        "resource_policy": "See actual launch source; no occupancy or register-count inference."
+      }
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/adjacent-julia/adjacent-julia-KA/main.jl",
+    "sha256": "8f414c7b0809c45f4cf696aee72c603f66004edc0c0345453e206054d05276db",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        3
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        19
+      ],
+      "barrier": [
+        27
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "int32_n1048576_threads256_left_then_inplace_right_repeat10_v1",
+      "run_id": "20261016T234815547451Z_adjacent",
+      "result": ".porting-state/portable_julia/runs/20261016T234815547451Z_adjacent/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "81a199f3e2654124145c9b689920d1b1c5e9c43ae8f7d853b8c6817a29cc0f31",
+      "source_hash": "a89695ed3aa81b69059747d65d21a5f9d5df9791a0150affdabf5262b540f2f1",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261016T234815547451Z_adjacent/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0068030568,
+        5.84405e-05,
+        4.46244e-05,
+        4.46674e-05,
+        4.46304e-05
+      ],
+      "mean_last_four_seconds": 4.8090674999999995e-05,
+      "contract": {
+        "precision": "int32",
+        "shape": [
+          1048576
+        ],
+        "fixture": "Int32(i%17), zero-based i",
+        "internal_repeats": 10,
+        "coverage": "256threads only, both adjacent directions, two-kernel pipeline with second stage in-place; other64/128/512/1024threadcasesunmeasured",
+        "mapping": "nativeCUB adjacent4items/thread vs inheritedmanual Julia/KA boundaryscratch vs JACC fullblockshared staging"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "adjacent-ka-P1-retrospective-implementation",
+        "benchmark_id": "adjacent",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "retrospective_source_review",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/adjacent.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "adjacent-ka-P1-retrospective-implementation",
+          "benchmark": "adjacent",
+          "model": "ka",
+          "phase": "retrospective_source_review",
+          "code": "P1",
+          "retrospective": true,
+          "is_failure": false,
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": null,
+          "symptom": "Native CUB/int4 versus manual scalar boundary exchange; JACC stages whole tile rather than only lane endpoints.",
+          "root_cause": "Source-established implementation or measurement scope difference.",
+          "resolution": "Preserve historical numerical/performance evidence and expose the adaptation in interpretation.",
+          "final_outcome": "verified_existing_named_scope",
+          "evidence": [
+            {
+              "path": "src/adjacent-cuda/main.cu",
+              "sha256": "e624a044dc8af27104bcc280d56095ba1119b8d62ab691d1807583992b82564a",
+              "source_locations": "operator, arithmetic, source provenance and launch scope"
+            },
+            {
+              "path": "src/adjacent-julia/adjacent-julia-KA/main.jl",
+              "sha256": "8f414c7b0809c45f4cf696aee72c603f66004edc0c0345453e206054d05276db",
+              "source_locations": "actual implementation, launch policy and precision"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 0,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2966,
+      "output_tokens": 628,
+      "cached_tokens": null,
+      "total_tokens": 3594,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/adjacent-cuda/main.cu",
+        "src/adjacent-julia/adjacent-julia-cuda.jl/main.jl",
+        "src/adjacent-julia/adjacent-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/adjacent-julia-ka/manifest.json",
+    "selected_sha256": "3ebc929f741336acce41504bb6170e8fdb7c977e5915067b46563a88c5d060a3",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/adjacent-julia-ka/manifest.json",
+        "sha256": "3ebc929f741336acce41504bb6170e8fdb7c977e5915067b46563a88c5d060a3"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "d335a3c0f87355b7729ac6193c71cd41bcc27553",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/adjacent.json",
+    "annotation_sha256": "5e1ece2d9321718840861a42ce3349224ee26ddf096aad764c87f5cb394e00d4",
+    "field": "implementation_class.julia-ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

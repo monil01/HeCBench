@@ -1,0 +1,618 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "blas-gemmStridedBatched",
+  "implementation_model": "ka",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/blas-gemmStridedBatched.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "algorithm": "Sequential32-term Float64 row dot product per output row.",
+    "mapping": "4096 active rows across16blocks256, independent row/batch linear index.",
+    "layout": "Same padded flat column-major buffers as native, ld64 and batch strides4096/64/64.",
+    "precision": {
+      "storage": "float64",
+      "compute": "float64"
+    },
+    "memory": "Global inputs and outputs; no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomic_operations": [],
+    "resource_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "library_boundary": "KernelAbstractions custom CUDA kernel; no vendor GEMM call.",
+    "host_control_boundary": "One complete batched row-dot launch, no timing of oracle/transfers/reset.",
+    "implementation_class": "framework_device_kernel",
+    "fidelity_status": "Same Float64 mathematical operation; algorithm/library mapping adapted.",
+    "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Sequential32-term Float64 row dot product per output row.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "4096 active rows across16blocks256, independent row/batch linear index.",
+    "layout": "Same padded flat column-major buffers as native, ld64 and batch strides4096/64/64.",
+    "storage_precision": "float64",
+    "compute_precision": "float64",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global inputs and outputs; no shared scratch.",
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "atomics_and_reductions": [],
+    "resource_policy": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "launch_geometry": {
+      "threads": 256,
+      "blocks": 16,
+      "dynamic_shared_bytes": 0
+    },
+    "library_backend_boundary": "KernelAbstractions custom CUDA kernel; no vendor GEMM call.",
+    "host_control_boundary": "One complete batched row-dot launch, no timing of oracle/transfers/reset.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Same Float64 mathematical operation; algorithm/library mapping adapted.",
+    "source_review_evidence": null,
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "blas-gemmStridedBatched",
+    "primary_motif": "batched_matrix_vector_products",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "synchronization": [
+      "kernel_boundary"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Native and historical CUDA.jl call strided-batched cuBLAS GEMM with n=1. KA/JACC implement genuine custom per-output row dot products; vendor internal mapping is opaque."
+    },
+    "implementation_class": {
+      "cuda_jl": "vendor_library_interop",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "One complete batched matrix-vector operation per internal repeat; vendor dispatch or custom launch included consistently.",
+    "verification_contract": "raw_numeric_outputs",
+    "keyconfounds": [
+      "Native/CUDA.jl vendor implementation versus custom serial-row dot kernels; comparisons include algorithm and library selection, not only abstraction overhead.",
+      "Only one Float64 square32 case with leading dimension64 and128batches. Native Float16/Float32 modes and dimension/default-batch sweeps remain unmeasured.",
+      "Allocated buffers4.125MiB fit V100 L2; active matrix subsets are smaller. No DRAM bandwidth claim.",
+      "Native missing CPU reference.h resolved by explicit include path to an existing sibling helper; native source unchanged.",
+      "Retained Julia trial3=705.3us versus other retained13.2\u201319.6us; retained native trial2=23.5us versus other4.5\u20134.6us. Mean includes allfour. Cause unmeasured; avoid treating mean as stablekernelcost."
+    ],
+    "scientific_intent": {
+      "review_status": "source_audited",
+      "primary_family": "linear_algebra",
+      "primary_domain": "batched_dense_linear_algebra",
+      "scientific_task": "Apply distinct dense square matrices to a batch of independent vectors.",
+      "mathematical_operation": "For each batch, C=A*B with alpha1,beta0 and n=1 under padded column-major strides.",
+      "discretization_or_topology": "Independent small dense matrices and vectors; no source-specific physical mesh or PDE.",
+      "invariants": [
+        "Each output row equals its matrix-row/vector dot product.",
+        "Inactive padded output positions retain zero under the study reset contract."
+      ],
+      "accuracy_requirements": [
+        "All8192 output positions, including4096 active results and4096 zero padding values, finite and within absolute1e-6 against CPU and both GPU references.",
+        "This matches the native Float64 verification criterion; native half/single precision accuracy is not inferred."
+      ],
+      "precision_sensitivity": "Float64 dot accumulation and vendor summation order; bounded non-dyadic inputs exercise rounding without changing precision.",
+      "input_size_regimes": "m=k32,n1,ld64,batch128; original dimension sweep and25000batch default unmeasured.",
+      "community_use_case": "Generic batched linear algebra primitive. Source alone does not identify a particular simulation, inference model or application dataset.",
+      "uncertainty": "Opaque cuBLAS implementation details and other precision-mode behavior remain unknown.",
+      "provenance": [
+        {
+          "path": "src/blas-gemmStridedBatched-cuda/main.cu",
+          "sha256": "1c95664c7fdb3e089fe852f4597e885d58ea8b304bcb5fb4fefb91ecbc93329a",
+          "source_locations": "cuBLAS strided-batched call and Float64 CPU check"
+        },
+        {
+          "path": "src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-cuda.jl/main.jl",
+          "sha256": "fc321f52add53f6fd36b34bd17db63fb1018afc6646b6278bb788ef6197842ff",
+          "source_locations": "padded views and gemm_strided_batched! wrapper"
+        }
+      ]
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "algorithm": "Vendor cuBLAS strided-batched Float64 GEMM with n1.",
+        "mapping": null,
+        "mapping_unknown_reason": "Vendor device launch, tiling and reduction schedule opaque; do not assign portable geometry.",
+        "layout": "Padded 3D CuArray views: ld64, matrix stride4096, vector/output stride64.",
+        "precision": {
+          "storage": "float64",
+          "compute": "Float64 Dgemm contract; vendor internal schedule opaque"
+        },
+        "memory": "Vendor internals unknown.",
+        "synchronization": [
+          "host CUDA synchronization at timed-region boundary"
+        ],
+        "atomic_operations": null,
+        "resource_geometry": null,
+        "library_boundary": "CUDA.jl cuBLAS wrapper selects cublasDgemmStridedBatched_64 under library12.0; native uses conventional API.",
+        "host_control_boundary": "One full vendor operation per evaluation; view construction and reference checks outside timing.",
+        "implementation_class": "vendor_library_interop",
+        "fidelity_status": "Matched mathematical operation/precision/strides; vendor API-width selection differs.",
+        "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1"
+      },
+      "ka": {
+        "status": "verified",
+        "algorithm": "Sequential32-term Float64 row dot product per output row.",
+        "mapping": "4096 active rows across16blocks256, independent row/batch linear index.",
+        "layout": "Same padded flat column-major buffers as native, ld64 and batch strides4096/64/64.",
+        "precision": {
+          "storage": "float64",
+          "compute": "float64"
+        },
+        "memory": "Global inputs and outputs; no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "KernelAbstractions custom CUDA kernel; no vendor GEMM call.",
+        "host_control_boundary": "One complete batched row-dot launch, no timing of oracle/transfers/reset.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "Same Float64 mathematical operation; algorithm/library mapping adapted.",
+        "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1"
+      },
+      "jacc": {
+        "status": "verified",
+        "algorithm": "Sequential32-term Float64 row dot product per output row.",
+        "mapping": "4096 active rows across16blocks256, independent row/batch linear index.",
+        "layout": "Same padded flat column-major buffers as native, ld64 and batch strides4096/64/64.",
+        "precision": {
+          "storage": "float64",
+          "compute": "float64"
+        },
+        "memory": "Global inputs and outputs; no shared scratch.",
+        "synchronization": [
+          "kernel_boundary"
+        ],
+        "atomic_operations": [],
+        "resource_geometry": {
+          "threads": 256,
+          "blocks": 16,
+          "dynamic_shared_bytes": 0
+        },
+        "library_boundary": "JACC custom CUDA kernel; no vendor GEMM call.",
+        "host_control_boundary": "One complete batched row-dot launch, no timing of oracle/transfers/reset.",
+        "implementation_class": "framework_device_kernel",
+        "fidelity_status": "Same Float64 mathematical operation; algorithm/library mapping adapted.",
+        "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1"
+      }
+    },
+    "precision_mode_coverage": {
+      "float16": "unmeasured",
+      "float32": "unmeasured",
+      "float64": "verified named configuration"
+    },
+    "performance_variability": {
+      "cuda": {
+        "retained_trial_seconds": [
+          2.35412e-05,
+          4.642e-06,
+          4.499e-06,
+          4.5111e-06
+        ],
+        "min": 4.499e-06,
+        "max": 2.35412e-05,
+        "sample_standard_deviation": 9.495470752372769e-06,
+        "coefficient_of_variation": 1.0212022866884916,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "cuda_jl": {
+        "retained_trial_seconds": [
+          1.95902e-05,
+          0.0007053229,
+          1.31982e-05,
+          1.40371e-05
+        ],
+        "min": 1.31982e-05,
+        "max": 0.0007053229,
+        "sample_standard_deviation": 0.0003448688629776348,
+        "coefficient_of_variation": 1.8340469140272575,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "ka": {
+        "retained_trial_seconds": [
+          1.00141e-05,
+          8.4351e-06,
+          8.2001e-06,
+          8.1261e-06
+        ],
+        "min": 8.1261e-06,
+        "max": 1.00141e-05,
+        "sample_standard_deviation": 8.899701774029658e-07,
+        "coefficient_of_variation": 0.10236778612501549,
+        "sample_count": 4,
+        "outlier_removed": false
+      },
+      "jacc": {
+        "retained_trial_seconds": [
+          1.42851e-05,
+          1.06361e-05,
+          9.5171e-06,
+          9.694e-06
+        ],
+        "min": 9.5171e-06,
+        "max": 1.42851e-05,
+        "sample_standard_deviation": 2.2229528265724993e-06,
+        "coefficient_of_variation": 0.20148080445138816,
+        "sample_count": 4,
+        "outlier_removed": false
+      }
+    },
+    "vendor_library_resolution": {
+      "benchmark": "blas-gemmStridedBatched",
+      "evidence_record": ".porting-state/portable_julia/vendor_resolution_20261017.json",
+      "evidence_sha256": "7161051c37759de1555b58b6fd06c88edff1162b049d8c160ce9c4ee69d33804",
+      "native": {
+        "path": "/lib/x86_64-linux-gnu/libcublas.so.12",
+        "realpath": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "version": "12.0.2",
+        "sha256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2"
+      },
+      "cuda_jl_and_ka": {
+        "VENDOR_RUNTIME": "12.0.0",
+        "VENDOR_CUSOLVER_PATH": "/lib/x86_64-linux-gnu/libcusolver.so",
+        "VENDOR_CUSOLVER_VERSION": "11.4.3",
+        "VENDOR_CUBLAS_PATH": "/lib/x86_64-linux-gnu/libcublas.so",
+        "VENDOR_CUBLAS_VERSION": "12.0.2",
+        "VENDOR_CUSOLVER_PATH_REAL": "/usr/lib/x86_64-linux-gnu/libcusolver.so.11.4.3.1",
+        "VENDOR_CUSOLVER_PATH_SHA256": "b737dd3f5b12a64801067a183d3217a2654ab46320ea3d5aaf4c9926153ff31b",
+        "VENDOR_CUBLAS_PATH_REAL": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "VENDOR_CUBLAS_PATH_SHA256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2"
+      },
+      "jacc": {
+        "VENDOR_RUNTIME": "12.0.0",
+        "VENDOR_CUSOLVER_PATH": "/lib/x86_64-linux-gnu/libcusolver.so",
+        "VENDOR_CUSOLVER_VERSION": "11.4.3",
+        "VENDOR_CUBLAS_PATH": "/lib/x86_64-linux-gnu/libcublas.so",
+        "VENDOR_CUBLAS_VERSION": "12.0.2",
+        "VENDOR_CUSOLVER_PATH_REAL": "/usr/lib/x86_64-linux-gnu/libcusolver.so.11.4.3.1",
+        "VENDOR_CUSOLVER_PATH_SHA256": "b737dd3f5b12a64801067a183d3217a2654ab46320ea3d5aaf4c9926153ff31b",
+        "VENDOR_CUBLAS_PATH_REAL": "/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224",
+        "VENDOR_CUBLAS_PATH_SHA256": "6571bf8344cf13f3b116e6d613dd234cefca081c2303c3667e71b25d0eba5ec2"
+      },
+      "limits": "Poststudy isolatedpinnedenvironmentqueries+defaultlinkerprobe,not contemporaneousstudymaps; envpreferences/packagehashesunchanged. Noadditionalbenchmark/timingseries. Versions/realpath/SHA256agree."
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-KA/main.jl",
+    "sha256": "24e1d4c75800def8737fb0e59a204360c6d3bf77597b513b261c349e33fd49e5",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp64_m32_k32_ld64_batch128_repeat10_v1",
+      "run_id": "20261017T164831384062Z_blas-gemmStridedBatched",
+      "result": ".porting-state/portable_julia/runs/20261017T164831384062Z_blas-gemmStridedBatched/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "775f4d0af3492acc41751f39f56c928b69154037b4d0f855386838d72778caef",
+      "source_hash": "7ec65c8674c3f294fcbc1c73e62eda9a8db4a031469def663abf03764cdef9db",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T164831384062Z_blas-gemmStridedBatched/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        1.02421e-05,
+        1.00141e-05,
+        8.4351e-06,
+        8.2001e-06,
+        8.1261e-06
+      ],
+      "mean_last_four_seconds": 8.69385e-06,
+      "contract": {
+        "precision": "float64 matrix/vector/output, native Dgemm and custom Float64 rowdot",
+        "shape": {
+          "active_m": 32,
+          "n": 1,
+          "active_k": 32,
+          "leading_dimension": 64,
+          "batch": 128
+        },
+        "fixture": "A[i]=Float64(i%31-15)/17,B[i]=Float64((7*i)%17-8)/19, zero-based physicalbufferi;alpha1,beta0;outputpadzero",
+        "internal_repeats": 10,
+        "scope": "One named square32 batchedGEMV case with paddedleading64; native Float16/Float32, dimension sweep/default25000batches unmeasured",
+        "mapping": "Native/CUDAjl actualcuBLAS stridedbatchedGEMM versus KA/JACC one outputrow/thread sequential32-term dot",
+        "library_boundary": "Native cublasDgemmStridedBatched; Julia wrapper selects64-bit variant forcuBLAS12; vendorinternals opaque. Portable targetcustomkernel, notvendorinterop.",
+        "accuracy": "All8192finiteFloat64outputpositions includingzero padding, scalarCPU anddualartifact abs1e-6 rtol0, matches nativeFloat64criterion",
+        "working_set_limitation": "~4.125MiB buffers fit V1006MiBL2; noDRAMbandwidthclaim",
+        "native_reference_build_repair": "Missingnative reference.h supplied through include-path to existing sibling blas-gemmBatched-cuda/reference.h. Native device/library logic unchanged."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "blas-gemmStridedBatched-ka-B1-native-missing-header",
+        "benchmark_id": "blas-gemmStridedBatched",
+        "implementation_model": "ka",
+        "taxonomy_code": "B1",
+        "phase": "native_reference_build",
+        "origin_model": "cuda",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/blas-gemmStridedBatched.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "event_id": "blas-gemmStridedBatched-ka-B1-native-missing-header",
+          "benchmark": "blas-gemmStridedBatched",
+          "model": "ka",
+          "origin_model": "cuda",
+          "phase": "native_reference_build",
+          "code": "B1",
+          "candidate_id": null,
+          "check_id": null,
+          "repair_id": 1,
+          "is_target_framework_failure": false,
+          "symptom": "fatal error: reference.h: No such file or directory",
+          "root_cause": "Native source distribution omits its CPU reference header; the same gemmBatched_ref template exists in sibling blas-gemmBatched-cuda.",
+          "resolution": "Add explicit include path to sibling header; record its exact source hash, leave native source unchanged.",
+          "final_outcome": "native_build_repaired",
+          "shared_phase_id": "batched_native_missing_cpu_header",
+          "evidence": [
+            {
+              "path": ".porting-state/porting_logs/blas-gemmStridedBatched-reference/native_build_attempt01.log",
+              "sha256": "2fdfdb4f6f2eb59c8c0405ba81f88c8f576e4bfb649a9fb116867d1a61bbd3c0",
+              "source_locations": "first unchanged native compile failure"
+            },
+            {
+              "path": "src/blas-gemmBatched-cuda/reference.h",
+              "sha256": "555aa1567c7b2199cbc14731977f22385496a9b3651eee0250be2673326eae5c",
+              "source_locations": "exact supplied CPU helper"
+            }
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "blas-gemmStridedBatched-ka-P1-vendor-to-custom",
+        "benchmark_id": "blas-gemmStridedBatched",
+        "implementation_model": "ka",
+        "taxonomy_code": "P1",
+        "phase": "translation",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/blas-gemmStridedBatched.jsonl",
+        "evidence_line": 4,
+        "raw_event": {
+          "event_id": "blas-gemmStridedBatched-ka-P1-vendor-to-custom",
+          "benchmark": "blas-gemmStridedBatched",
+          "model": "ka",
+          "phase": "translation",
+          "code": "P1",
+          "is_failed_attempt": false,
+          "candidate_id": 1,
+          "check_id": 1,
+          "repair_id": null,
+          "symptom": "Replace vendor strided-batched Dgemm with custom per-output sequential row-dot kernel.",
+          "root_cause": "Explicit framework-kernel target choice; vendor implementation is opaque.",
+          "resolution": "Preserve Float64 formula, strides, inputs and full operation timer; disclose algorithm/library confound.",
+          "final_outcome": "verified_named_scope",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T164831384062Z_blas-gemmStridedBatched/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "blas-gemmStridedBatched-ka-N3-rounding",
+        "benchmark_id": "blas-gemmStridedBatched",
+        "implementation_model": "ka",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "ka",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/blas-gemmStridedBatched.jsonl",
+        "evidence_line": 7,
+        "raw_event": {
+          "event_id": "blas-gemmStridedBatched-ka-N3-rounding",
+          "benchmark": "blas-gemmStridedBatched",
+          "model": "ka",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failed_attempt": false,
+          "symptom": "Full Float64 output differences remain within native absolute1e-6 criterion.",
+          "max_abs_error": 6.661338147750939e-16,
+          "root_cause": "Reduction/instruction-order differences observed; exact vendor instruction schedule unknown.",
+          "resolution": "Retain complete raw artifacts and scalar CPU check.",
+          "final_outcome": "verified_tolerated_drift",
+          "evidence": [
+            ".porting-state/portable_julia/runs/20261017T164831384062Z_blas-gemmStridedBatched/result.json"
+          ]
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2683,
+      "output_tokens": 149,
+      "cached_tokens": null,
+      "total_tokens": 2832,
+      "status": "partial_estimated",
+      "method": "ceil(saved source characters / 4), final source proxy",
+      "sources": [
+        "src/blas-gemmStridedBatched-cuda/main.cu",
+        "src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-cuda.jl/main.jl",
+        "src/blas-gemmStridedBatched-julia/blas-gemmStridedBatched-julia-KA/main.jl"
+      ],
+      "limitations": "Excludes conversation, reasoning, instructions/tool context, revisions, infrastructure and paper; not total billed usage. JACC sees KA."
+    },
+    "observed_harness_activity_windows": []
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": 1,
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/blas-gemmStridedBatched-julia-ka/manifest.json",
+    "selected_sha256": "b6d797ddee4ed11c26cb92d0f3f7cf4db65bf61ac635408e1acf9408c75b08cc",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/blas-gemmStridedBatched-julia-ka/manifest.json",
+        "sha256": "b6d797ddee4ed11c26cb92d0f3f7cf4db65bf61ac635408e1acf9408c75b08cc"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "9f2040b7da92d8c27e355c84d2fd93b77666790e",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "blas-gemmStridedBatched",
+    "model": "ka",
+    "status": "verified",
+    "evidence": [
+      ".porting-state/portable_julia/runs/20261017T164831384062Z_blas-gemmStridedBatched/result.json"
+    ],
+    "contract": {
+      "precision": "float64 matrix/vector/output, native Dgemm and custom Float64 rowdot",
+      "shape": {
+        "active_m": 32,
+        "n": 1,
+        "active_k": 32,
+        "leading_dimension": 64,
+        "batch": 128
+      },
+      "fixture": "A[i]=Float64(i%31-15)/17,B[i]=Float64((7*i)%17-8)/19, zero-based physicalbufferi;alpha1,beta0;outputpadzero",
+      "internal_repeats": 10,
+      "scope": "One named square32 batchedGEMV case with paddedleading64; native Float16/Float32, dimension sweep/default25000batches unmeasured",
+      "mapping": "Native/CUDAjl actualcuBLAS stridedbatchedGEMM versus KA/JACC one outputrow/thread sequential32-term dot",
+      "library_boundary": "Native cublasDgemmStridedBatched; Julia wrapper selects64-bit variant forcuBLAS12; vendorinternals opaque. Portable targetcustomkernel, notvendorinterop.",
+      "accuracy": "All8192finiteFloat64outputpositions includingzero padding, scalarCPU anddualartifact abs1e-6 rtol0, matches nativeFloat64criterion",
+      "working_set_limitation": "~4.125MiB buffers fit V1006MiBL2; noDRAMbandwidthclaim",
+      "native_reference_build_repair": "Missingnative reference.h supplied through include-path to existing sibling blas-gemmBatched-cuda/reference.h. Native device/library logic unchanged."
+    },
+    "limitations": [
+      "Native/CUDA.jl vendor implementation versus custom serial-row dot kernels; comparisons include algorithm and library selection, not only abstraction overhead.",
+      "Only one Float64 square32 case with leading dimension64 and128batches. Native Float16/Float32 modes and dimension/default-batch sweeps remain unmeasured.",
+      "Allocated buffers4.125MiB fit V100 L2; active matrix subsets are smaller. No DRAM bandwidth claim.",
+      "Native missing CPU reference.h resolved by explicit include path to an existing sibling helper; native source unchanged."
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/blas-gemmStridedBatched.json",
+    "annotation_sha256": "b7fc09cadc28d4c117710fcd0115eefacddcf6c5bf6e79da02ce1712cad9e735",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

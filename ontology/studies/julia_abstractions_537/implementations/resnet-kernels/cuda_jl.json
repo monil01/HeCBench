@@ -1,0 +1,1108 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "resnet-kernels",
+  "implementation_model": "cuda_jl",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/resnet-kernels.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "resnet-kernels",
+    "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+    "implementation_model": "cuda_jl",
+    "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+    "source_revision": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c",
+    "status": "verified",
+    "algorithm": "Four generalized CUDA.jl shared-tile kernels replace semantic placeholder; native matrices/transforms/chunked accumulation, register outer accumulators.",
+    "work_item_mapping": "CUDA blockIdx/threadIdx preserve original source tile/channel mapping; fixed physical geometry, dynamicshared hostbytes.",
+    "layout": "Dense flat row-major spatial/channel source layouts. Input290xC physicalWinograd source-stride16 with original256 channelvectors plus34 zero halo vectors; WT36xCxC, transformed36x16xC, innerproduct36x16xC, output16x16xC cropped14x14.1x1 input196xCi/weightCixCo/output196xCo. Fullintermediate/finalarrays +17sentinel guards; actualprefix floatbits exact.",
+    "precision": {
+      "storage": [
+        "Float32 inputs,weights,biases,scales,intermediates,outputs"
+      ],
+      "compute": [
+        "Float32 arithmetic/accumulation",
+        "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+      ]
+    },
+    "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+      "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+      "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+      "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+    ],
+    "resource_policy": {
+      "shared_bytes": "WinogradBT18432, inverse144; outer128=24576 and256=49152 in Julia vs native12840960/25649152;1x1paths44032,37888,38912,43008 bytes.",
+      "register_count": "Unprofiled for acceptedkernels. JACC candidates1/2 one_callback observed72regs/thread and1024-thread registerlimit failure.",
+      "atomics": "none",
+      "explicit": true,
+      "unprofiled": "No hardwarecounter or occupancy causalclaim."
+    },
+    "launch_geometry": "Exactsource six physical launchshapes; see work_item_mapping. Allmodels same source threadcounts including1024-thread1x1blocks.",
+    "backend_extensions": [
+      "CUDA hostallocation/synchronization/artifacttransfers; no vendorconvolutionlibrary or CUDAintrinsics in portabledevicecallbacks."
+    ],
+    "host_device_boundary": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+    "supported_features": [
+      "Float32 shared tiled loops",
+      "Workgroup synchronization/fullgroups",
+      "3D launchcoordinates",
+      "1024-thread blocks with explicit sharedmemory",
+      "ReLU and linear outputpaths"
+    ],
+    "fidelity_status": "adapted",
+    "support_boundary": "All6 named sourceGPUkernel paths verified on definedinitializedhalo fixture; originalCLI/filegenerator/offload/fullResNet/taskaccuracy unverified. Nativeallocation correction and Julia semantic reference repair separatecosts; no frameworkunsupported claim.",
+    "verification_bundle": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels",
+    "numerical_contract": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.019566538999999997,
+      0.000524205,
+      0.000508814,
+      0.0004898506666666666,
+      0.000494541
+    ],
+    "mean_last_four_seconds": 0.0005043526666666667,
+    "profile_ids": [],
+    "environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+    "historical_cost_available": false,
+    "source_evidence": [
+      {
+        "path": "src/resnet-kernels-julia/resnet-kernels-julia-cuda.jl/main.jl",
+        "sha256": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c"
+      },
+      {
+        "path": "src/resnet-kernels-julia/study_common.jl",
+        "sha256": "69e5a55a545dd9ff2754771e740f60b1db1edfb2bd16840b48b5c081def7e527"
+      },
+      {
+        "path": "src/resnet-kernels-julia/convolution_math.jl",
+        "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+      }
+    ],
+    "implementation_source_digest": "ee5945c53c09bf663a99c91051efc2b518aa6f9414c963873fb6bc7630fa2dfe"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Four generalized CUDA.jl shared-tile kernels replace semantic placeholder; native matrices/transforms/chunked accumulation, register outer accumulators.",
+    "implementation_class": "cuda_jl_device_kernel",
+    "declared_environment": {
+      "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+      "Julia": "1.12.6",
+      "CUDA_jl": "6.2.1",
+      "KernelAbstractions": null,
+      "JACC": null,
+      "CUDA_toolkit": "12.0",
+      "driver": "580.178.04",
+      "GPU": "Tesla V100-PCIE-32GB",
+      "GPU_visible_index": 6,
+      "file_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "CUDA blockIdx/threadIdx preserve original source tile/channel mapping; fixed physical geometry, dynamicshared hostbytes.",
+    "layout": "Dense flat row-major spatial/channel source layouts. Input290xC physicalWinograd source-stride16 with original256 channelvectors plus34 zero halo vectors; WT36xCxC, transformed36x16xC, innerproduct36x16xC, output16x16xC cropped14x14.1x1 input196xCi/weightCixCo/output196xCo. Fullintermediate/finalarrays +17sentinel guards; actualprefix floatbits exact.",
+    "storage_precision": [
+      "Float32 inputs,weights,biases,scales,intermediates,outputs"
+    ],
+    "compute_precision": [
+      "Float32 arithmetic/accumulation",
+      "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "See algorithm/source; no inferredtrafficcounter.",
+    "synchronization": [
+      "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+      "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+      "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+      "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "shared_bytes": "WinogradBT18432, inverse144; outer128=24576 and256=49152 in Julia vs native12840960/25649152;1x1paths44032,37888,38912,43008 bytes.",
+      "register_count": "Unprofiled for acceptedkernels. JACC candidates1/2 one_callback observed72regs/thread and1024-thread registerlimit failure.",
+      "atomics": "none",
+      "explicit": true,
+      "unprofiled": "No hardwarecounter or occupancy causalclaim."
+    },
+    "launch_geometry": "Exactsource six physical launchshapes; see work_item_mapping. Allmodels same source threadcounts including1024-thread1x1blocks.",
+    "library_backend_boundary": [
+      "CUDA hostallocation/synchronization/artifacttransfers; no vendorconvolutionlibrary or CUDAintrinsics in portabledevicecallbacks."
+    ],
+    "host_control_boundary": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+    "support_boundary": "All6 named sourceGPUkernel paths verified on definedinitializedhalo fixture; originalCLI/filegenerator/offload/fullResNet/taskaccuracy unverified. Nativeallocation correction and Julia semantic reference repair separatecosts; no frameworkunsupported claim.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "adapted",
+    "source_review_evidence": [
+      {
+        "path": "src/resnet-kernels-julia/resnet-kernels-julia-cuda.jl/main.jl",
+        "sha256": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c"
+      },
+      {
+        "path": "src/resnet-kernels-julia/study_common.jl",
+        "sha256": "69e5a55a545dd9ff2754771e740f60b1db1edfb2bd16840b48b5c081def7e527"
+      },
+      {
+        "path": "src/resnet-kernels-julia/convolution_math.jl",
+        "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "resnet-kernels",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "machine_learning",
+      "primary_domain": "convolutional_neural_network_operator_kernels",
+      "secondary_domains": [
+        "numerical_linear_algebra",
+        "image_feature_convolution"
+      ],
+      "review_status": "source_reviewed",
+      "scientific_task": "Evaluate fixed-shape ResNet-style channel-preserving Winograd3x3 and channel-reducing/expanding1x1 convolution operators with affine batch-normalization parameters and mode-specific ReLU.",
+      "mathematical_operation": "Winograd F(4x4,3x3): BT*d*B,36 independent channel GEMMs, AT*M*A, then perchannel scale/bias/ReLU. Four1x1 matrix products512->128,128->512,1024->256,256->1024 with affine and ReLU only on reducing paths; output paths intentionally linear.",
+      "discretization": "All six original source modes and full source14x14 feature region; Winograd stores16x16 feature maps and4x4 output tiles with lasttile croppedto2. Named deterministic seed20261018, signed dyadic input/weights/scales/biases, nonzero source padded borders. Original16x16 allocation is extended by34 initializedzero channelvectors for defined source-stride16 patch reads.",
+      "accuracy_requirements": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+      "input_size_regime": "Original feature dimensions and channels, no downscaled proxy; named synthetic parameters rather than original binary files/randomseed. Three complete launches/path for Winograd and one/path for1x1;3 repetitions perpath,5outertrials mean2-5. Does not include six-mode CLI host file IO/allocation/offload timing or full inference graph.",
+      "precision_sensitivity": "Float32GPU inputs/transforms/reductions/affine; independent Float64 CPU matrices/directconvolution. Native defaultO3FMA may differ from Julia expression fusion. Near-zero relative ratios are uninformative; fixed1e-4 absolutecontract and exact guards govern acceptance. No trained-model/task accuracy is inferred.",
+      "community_use_case": "Convolution and bottleneck operators in CNN scientific/image feature models; operator throughput/fidelity may inform implementation choices, without any dataset, trainedResNet, downstreamaccuracy, entireinference or system recommendation claim.",
+      "description": "Original native GPU kernels and launch geometries retained, but a source-proven native allocation OOB is corrected explicitly before measurement. Archived historical Julia elementwise affine/ReLU placeholder is replaced by genuine shared-tile convolution. KA and JACC preserve the channel/tile decompositions and complete three-stage pipeline. Julia outer accumulators are registers rather than native shared output; JACC adds shared template copying and requires fixed-dimension specialization to fit source1024-thread launches.",
+      "provenance": "Native CUDA source four kernel files and original data generator; explicit source-index bounds witness and immutable firsttrialflag/provenance; original Julia+Makefile archived byte-identically. Corrected native allocation stratum excluded from untouched-native aggregates, originalCLI unverified. Newly authored scalar shared helpers attributedonce to reference-repair phase; KA/JACC are marginal ordered reuse costs.",
+      "source_evidence": [
+        {
+          "path": "src/resnet-kernels-cuda/Kernel128_winograd.cu",
+          "sha256": "cce3396c4da96b5ad13f0e44f8910488914a37a91f96326150270c1c8cc28aa8"
+        },
+        {
+          "path": "src/resnet-kernels-cuda/Kernel256_winograd.cu",
+          "sha256": "bfa11555e76293fe052613078e5502c5f733fb49b24b2de02b79b2d2dd0c82b0"
+        },
+        {
+          "path": "src/resnet-kernels-cuda/Kernel128_one.cu",
+          "sha256": "e9b9c77148f7c0c47c99a4b992aa98afe2b73f11d50653b764838d5a85132371"
+        },
+        {
+          "path": "src/resnet-kernels-cuda/Kernel256_one.cu",
+          "sha256": "3adc37fe26c8c927406c4be74e9794f8d57c15ac3c90c1f49a3db8b582cec445"
+        },
+        {
+          "path": "src/resnet-kernels-cuda/data_generator.py",
+          "sha256": "6e6327d6b71c1ce4a3b722e73e2f589c4d4d6dce576cd24dcf094467575da9fb"
+        },
+        {
+          "path": "src/resnet-kernels-julia/reference_history/original_main.jl",
+          "sha256": "9ab1f66bfad88e07447f94b298a47037998601587ee94100c80a945e50a191fe"
+        },
+        {
+          "path": "src/resnet-kernels-julia/input_bounds_witness.json",
+          "sha256": "9f4bdc0486eacb5ec8456b0ecd8aaf8aee8a8c1ce222bcb5f0f7a881408ce235"
+        },
+        {
+          "path": "src/resnet-kernels-julia/reference_correction_provenance.json",
+          "sha256": "bcb1080a5510e6545ac374c2505c5130c150aa1a32ed656451a9943a5c0fdd6b"
+        },
+        {
+          "path": "src/resnet-kernels-julia/independent_artifact_audit.json",
+          "sha256": "ba36ada5b3ec07bc01a897f19e4f771b996c01f138b4012290338fcf0a66472e"
+        }
+      ]
+    },
+    "primary_motif": "shared_memory_tiled_winograd_transforms_and_channel_matrix_products",
+    "storage_precision": [
+      "Float32 inputs,weights,biases,scales,intermediates,outputs"
+    ],
+    "compute_precision": [
+      "Float32 arithmetic/accumulation",
+      "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+    ],
+    "synchronization": [
+      "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+      "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+      "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+      "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same six operators, source tilegeometry and chunkwise32-channel Winograd accumulation; generalized4Juliafunctions vs10native specializedkernels. Outer shared output replacedby scalarregister accumulators and unusednativeweightsstorage omitted; inverse sharedbias/scale replacedwithdirectglobalread. Nativeinputallocation initializedhalo correction visible. JACC callback3Dindices and Valfixed1x1dimensions are chosen implementation mappings."
+    },
+    "implementation_class": {
+      "cuda": "native_cuda",
+      "cuda_jl": "cuda_jl_device_kernel",
+      "ka": "pure_ka_device_kernel_cuda_benchmark_harness",
+      "jacc": "pure_jacc_device_kernel_cuda_benchmark_harness"
+    },
+    "timing_scope": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+    "verification_contract": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+    "keyconfounds": [
+      "Conditional native allocation/initialization repair; excluded untouched-native aggregates; originalCLI unsafe and unverified.",
+      "Synthetic fullsourcegeometry parameters, no trainedmodel/taskaccuracy.",
+      "Julia outer shared->register accumulators and inverse biasload mappingadaptation; registercounts acceptedkernels unprofiled.",
+      "JACC templatecopy/barrier and hostcachedspec/dictionary lookups; chosenmapping, notintrinsicframeworkoverhead.",
+      "JACC fixed1x1Val specialization afterR1 differs from dynamicvalueCUDAjl/KA kernels.",
+      "Original mode0 loads unusedbias file, omittedstudyoutsideROI; no GPUeffect.",
+      "Allfive rawtimes retained, onlyfirstexcluded; JACCtrial1~10.874ms retainedrawbutexcludedperprotocol, noadditionalseries."
+    ],
+    "boundary_rounding_policy": "NativeBTlasttile maxlinearvector289 vs originalmax255; extendedzero34vectors explicit. Inverseoutputboundarycrop14x14 andzero16x16borderexact. Source modes3/5 intentionally no ReLU. Float32 expressions/CUDAfusion vsFloat64oracle, fixedabsolute1e-4; guards exact.",
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "resnet-kernels",
+        "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+        "implementation_model": "cuda_jl",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c",
+        "status": "verified",
+        "algorithm": "Four generalized CUDA.jl shared-tile kernels replace semantic placeholder; native matrices/transforms/chunked accumulation, register outer accumulators.",
+        "work_item_mapping": "CUDA blockIdx/threadIdx preserve original source tile/channel mapping; fixed physical geometry, dynamicshared hostbytes.",
+        "layout": "Dense flat row-major spatial/channel source layouts. Input290xC physicalWinograd source-stride16 with original256 channelvectors plus34 zero halo vectors; WT36xCxC, transformed36x16xC, innerproduct36x16xC, output16x16xC cropped14x14.1x1 input196xCi/weightCixCo/output196xCo. Fullintermediate/finalarrays +17sentinel guards; actualprefix floatbits exact.",
+        "precision": {
+          "storage": [
+            "Float32 inputs,weights,biases,scales,intermediates,outputs"
+          ],
+          "compute": [
+            "Float32 arithmetic/accumulation",
+            "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+          "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+          "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+          "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+        ],
+        "resource_policy": {
+          "shared_bytes": "WinogradBT18432, inverse144; outer128=24576 and256=49152 in Julia vs native12840960/25649152;1x1paths44032,37888,38912,43008 bytes.",
+          "register_count": "Unprofiled for acceptedkernels. JACC candidates1/2 one_callback observed72regs/thread and1024-thread registerlimit failure.",
+          "atomics": "none",
+          "explicit": true,
+          "unprofiled": "No hardwarecounter or occupancy causalclaim."
+        },
+        "launch_geometry": "Exactsource six physical launchshapes; see work_item_mapping. Allmodels same source threadcounts including1024-thread1x1blocks.",
+        "backend_extensions": [
+          "CUDA hostallocation/synchronization/artifacttransfers; no vendorconvolutionlibrary or CUDAintrinsics in portabledevicecallbacks."
+        ],
+        "host_device_boundary": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+        "supported_features": [
+          "Float32 shared tiled loops",
+          "Workgroup synchronization/fullgroups",
+          "3D launchcoordinates",
+          "1024-thread blocks with explicit sharedmemory",
+          "ReLU and linear outputpaths"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All6 named sourceGPUkernel paths verified on definedinitializedhalo fixture; originalCLI/filegenerator/offload/fullResNet/taskaccuracy unverified. Nativeallocation correction and Julia semantic reference repair separatecosts; no frameworkunsupported claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels",
+        "numerical_contract": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.019566538999999997,
+          0.000524205,
+          0.000508814,
+          0.0004898506666666666,
+          0.000494541
+        ],
+        "mean_last_four_seconds": 0.0005043526666666667,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": false,
+        "source_evidence": [
+          {
+            "path": "src/resnet-kernels-julia/resnet-kernels-julia-cuda.jl/main.jl",
+            "sha256": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c"
+          },
+          {
+            "path": "src/resnet-kernels-julia/study_common.jl",
+            "sha256": "69e5a55a545dd9ff2754771e740f60b1db1edfb2bd16840b48b5c081def7e527"
+          },
+          {
+            "path": "src/resnet-kernels-julia/convolution_math.jl",
+            "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+          }
+        ],
+        "implementation_source_digest": "ee5945c53c09bf663a99c91051efc2b518aa6f9414c963873fb6bc7630fa2dfe"
+      },
+      "ka": {
+        "benchmark_id": "resnet-kernels",
+        "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+        "implementation_model": "ka",
+        "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+        "source_revision": "535aa92e09bfbc390d765045b4e6f8cb581d631dc59e8e6a82290d2381dd01d1",
+        "status": "verified",
+        "algorithm": "Four KA unsafe_indices=true kernels with full exact3Dgroups, @localmem and same scalar shared helpers. Val localmemoryshape allows staticallocation; runtime convolution dimensions remain Int32 values.",
+        "work_item_mapping": "KA Group/LocalNTuple indices samegeometry, exactfullndrange unsafeindices; onlylocalmemoryextent Val is compiletime.",
+        "layout": "Dense flat row-major spatial/channel source layouts. Input290xC physicalWinograd source-stride16 with original256 channelvectors plus34 zero halo vectors; WT36xCxC, transformed36x16xC, innerproduct36x16xC, output16x16xC cropped14x14.1x1 input196xCi/weightCixCo/output196xCo. Fullintermediate/finalarrays +17sentinel guards; actualprefix floatbits exact.",
+        "precision": {
+          "storage": [
+            "Float32 inputs,weights,biases,scales,intermediates,outputs"
+          ],
+          "compute": [
+            "Float32 arithmetic/accumulation",
+            "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+          "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+          "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+          "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+        ],
+        "resource_policy": {
+          "shared_bytes": "WinogradBT18432, inverse144; outer128=24576 and256=49152 in Julia vs native12840960/25649152;1x1paths44032,37888,38912,43008 bytes.",
+          "register_count": "Unprofiled for acceptedkernels. JACC candidates1/2 one_callback observed72regs/thread and1024-thread registerlimit failure.",
+          "atomics": "none",
+          "explicit": true,
+          "unprofiled": "No hardwarecounter or occupancy causalclaim.",
+          "allocation": "Static KA @localmem; compiler physicalresource allocation not independently profiled."
+        },
+        "launch_geometry": "Exactsource six physical launchshapes; see work_item_mapping. Allmodels same source threadcounts including1024-thread1x1blocks.",
+        "backend_extensions": [
+          "CUDA hostallocation/synchronization/artifacttransfers; no vendorconvolutionlibrary or CUDAintrinsics in portabledevicecallbacks."
+        ],
+        "host_device_boundary": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+        "supported_features": [
+          "Float32 shared tiled loops",
+          "Workgroup synchronization/fullgroups",
+          "3D launchcoordinates",
+          "1024-thread blocks with explicit sharedmemory",
+          "ReLU and linear outputpaths"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All6 named sourceGPUkernel paths verified on definedinitializedhalo fixture; originalCLI/filegenerator/offload/fullResNet/taskaccuracy unverified. Nativeallocation correction and Julia semantic reference repair separatecosts; no frameworkunsupported claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels",
+        "numerical_contract": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.011692962,
+          0.0006044120000000001,
+          0.0005380153333333334,
+          0.0005450580000000001,
+          0.0005268779999999999
+        ],
+        "mean_last_four_seconds": 0.0005535908333333334,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": null,
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/resnet-kernels-julia/resnet-kernels-julia-KA/main.jl",
+            "sha256": "535aa92e09bfbc390d765045b4e6f8cb581d631dc59e8e6a82290d2381dd01d1"
+          },
+          {
+            "path": "src/resnet-kernels-julia/study_common.jl",
+            "sha256": "69e5a55a545dd9ff2754771e740f60b1db1edfb2bd16840b48b5c081def7e527"
+          },
+          {
+            "path": "src/resnet-kernels-julia/convolution_math.jl",
+            "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+          }
+        ],
+        "implementation_source_digest": "0ceff365720fb16a560213bf98e56c48cbec00207e4ed17fd895da0882f0f975"
+      },
+      "jacc": {
+        "benchmark_id": "resnet-kernels",
+        "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+        "implementation_model": "jacc",
+        "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+        "source_revision": "884066cc3d02502f8a75fc91014b2ae329318bfe6c94a6a7b96e0b96ade1a274",
+        "status": "verified",
+        "algorithm": "Four pure JACC3D callbacks with explicit per-mode cached LaunchSpec/sharedsize, same tiles/math, JACC.shared templates. Candidate3 specializes1x1dimensions viaVal after72-register launch failure; remains1024threads.",
+        "work_item_mapping": "JACC3Dglobal callback coordinate reconstructs same tiles/localindices with boundedInt32 arithmetic.1x1Val dimensions introducedcandidate3 to meet1024-thread resourceconstraint, notalgorithm/numericalcontractchange.",
+        "layout": "Dense flat row-major spatial/channel source layouts. Input290xC physicalWinograd source-stride16 with original256 channelvectors plus34 zero halo vectors; WT36xCxC, transformed36x16xC, innerproduct36x16xC, output16x16xC cropped14x14.1x1 input196xCi/weightCixCo/output196xCo. Fullintermediate/finalarrays +17sentinel guards; actualprefix floatbits exact.",
+        "precision": {
+          "storage": [
+            "Float32 inputs,weights,biases,scales,intermediates,outputs"
+          ],
+          "compute": [
+            "Float32 arithmetic/accumulation",
+            "Int32 Julia logicalindices and nativeintindices; addressarithmetic maywiden"
+          ]
+        },
+        "memory_access": "See algorithm/source; no inferredtrafficcounter.",
+        "synchronization": [
+          "Workgroup barriers preserve complete tileload/read/overwrite ordering; exact full groups and no padding lanes.",
+          "Winograd input4 barriers, inverse3 barriers in Julia; outer2 barriers per32-channel chunk;1x1 initialbarrier+2 perchunk.",
+          "JACC.shared adds one copiedtemplate+barrier perkernel; original native duplicated shared bias writes are avoided by direct global bias/scale reads in Julia inverse transform.",
+          "Device synchronization brackets each six-path subclock; allocation,H2D,D2H,CPUchecks/artifacts outsidetimers."
+        ],
+        "resource_policy": {
+          "shared_bytes": "WinogradBT18432, inverse144; outer128=24576 and256=49152 in Julia vs native12840960/25649152;1x1paths44032,37888,38912,43008 bytes.",
+          "register_count": "Unprofiled for acceptedkernels. JACC candidates1/2 one_callback observed72regs/thread and1024-thread registerlimit failure.",
+          "atomics": "none",
+          "explicit": true,
+          "unprofiled": "No hardwarecounter or occupancy causalclaim.",
+          "allocation": "Explicit dynamicsharedbytes, neverdefault49152; JACC.shared copies whole global template beforetile initialization, repeated across y-lanes in backend source (actual machine DSE/traffic unprofiled)."
+        },
+        "launch_geometry": "Exactsource six physical launchshapes; see work_item_mapping. Allmodels same source threadcounts including1024-thread1x1blocks.",
+        "backend_extensions": [
+          "CUDA hostallocation/synchronization/artifacttransfers; no vendorconvolutionlibrary or CUDAintrinsics in portabledevicecallbacks."
+        ],
+        "host_device_boundary": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+        "supported_features": [
+          "Float32 shared tiled loops",
+          "Workgroup synchronization/fullgroups",
+          "3D launchcoordinates",
+          "1024-thread blocks with explicit sharedmemory",
+          "ReLU and linear outputpaths"
+        ],
+        "fidelity_status": "adapted",
+        "support_boundary": "All6 named sourceGPUkernel paths verified on definedinitializedhalo fixture; originalCLI/filegenerator/offload/fullResNet/taskaccuracy unverified. Nativeallocation correction and Julia semantic reference repair separatecosts; no frameworkunsupported claim.",
+        "verification_bundle": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels",
+        "numerical_contract": "Full20 artifacts each contain4096768 actual Float32inputprefix and917162 complete Float32transformed/innerproduct/finaloutputvalues+17guardseach. Everyvalue checked against Float64 matrixoracle at1e-4, allguards/borders exact independently; both references agree. Direct spatial3x3 oracle independently validates weight convention to<=5.22e-7.",
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.010874331333333336,
+          0.0009436756666666668,
+          0.0009165683333333334,
+          0.000929332,
+          0.0009255250000000001
+        ],
+        "mean_last_four_seconds": 0.00092877525,
+        "profile_ids": [],
+        "environment": {
+          "environment_id": "247f352869ac55d08d2f394572617f2b2c0d6b99563b46b204731b6fe8edecd9",
+          "Julia": "1.12.6",
+          "CUDA_jl": "6.2.1",
+          "KernelAbstractions": null,
+          "JACC": "1.4.0",
+          "CUDA_toolkit": "12.0",
+          "driver": "580.178.04",
+          "GPU": "Tesla V100-PCIE-32GB",
+          "GPU_visible_index": 6,
+          "file_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "evidence_kind": "source_review_plus_full_array_checks; bottlenecksnotmeasured",
+        "historical_cost_available": null,
+        "source_evidence": [
+          {
+            "path": "src/resnet-kernels-julia/resnet-kernels-julia-JACC/main.jl",
+            "sha256": "884066cc3d02502f8a75fc91014b2ae329318bfe6c94a6a7b96e0b96ade1a274"
+          },
+          {
+            "path": "src/resnet-kernels-julia/study_common.jl",
+            "sha256": "69e5a55a545dd9ff2754771e740f60b1db1edfb2bd16840b48b5c081def7e527"
+          },
+          {
+            "path": "src/resnet-kernels-julia/convolution_math.jl",
+            "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+          }
+        ],
+        "implementation_source_digest": "beed083abf9875f303e3a1e0a395ef07f078af807f76816c683fde18c205138f"
+      }
+    },
+    "source_sha256": {
+      "src/resnet-kernels-julia/resnet-kernels-julia-cuda.jl/main.jl": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c",
+      "src/resnet-kernels-julia/resnet-kernels-julia-KA/main.jl": "535aa92e09bfbc390d765045b4e6f8cb581d631dc59e8e6a82290d2381dd01d1",
+      "src/resnet-kernels-julia/resnet-kernels-julia-JACC/main.jl": "884066cc3d02502f8a75fc91014b2ae329318bfe6c94a6a7b96e0b96ade1a274"
+    },
+    "ontology_sha256": "ca76a0b5f7d45df32cd86dd5628d6f8373049fa72bc5c4001744def8544cf760"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/resnet-kernels-julia/resnet-kernels-julia-cuda.jl/main.jl",
+    "sha256": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        45,
+        46,
+        47,
+        50
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [
+        6,
+        7,
+        8,
+        16,
+        19,
+        26,
+        27,
+        34,
+        36,
+        37
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+      "run_id": "20261018T002436019929Z_resnet-kernels",
+      "result": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": {
+        "full_six_original_GPU_paths": true,
+        "original_file_driven_CLI": false,
+        "scientific_contract": "Winograd3x3 and1x1operators only, source-shape syntheticfixture, explicitdefinedhalo intervention. NotfullResNet/trainedmodel/downstreamaccuracy.",
+        "independent_oracles": "Float64matrixtransforms/GEMM plusdirectspatial3x3, full917162outputs/intermediates andallguards/borders.",
+        "physical_extension": "34channelvectors appended toflat16-stride input, not18x18image; originalwithin-allocationwrap behavior retained. Spatialoracle validates allcropped14x14outputs."
+      },
+      "reference_provenance": {
+        "provenance_file": {
+          "path": "src/resnet-kernels-julia/reference_correction_provenance.json",
+          "sha256": "bcb1080a5510e6545ac374c2505c5130c150aa1a32ed656451a9943a5c0fdd6b"
+        },
+        "bounds_witness": {
+          "path": "src/resnet-kernels-julia/input_bounds_witness.json",
+          "sha256": "9f4bdc0486eacb5ec8456b0ecd8aaf8aee8a8c1ce222bcb5f0f7a881408ce235"
+        },
+        "unchanged_original_kernels": true,
+        "corrected_host_allocation": "Source16x16xC becomes290xC initialized physicalvectors under unchangedstride16; original256vectors identical,34zeros appended; maxsourcevector289.",
+        "adapter_at_capture": {
+          "/home/imo/HeCBench_julia/src/resnet-kernels-julia/study_cuda.cu": "67d84535a105041b58c482305d528c08ba393fca5910f7e8f73fa17b21790b48",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel256_winograd.cu": "bfa11555e76293fe052613078e5502c5f733fb49b24b2de02b79b2d2dd0c82b0",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel256_one.cu": "3adc37fe26c8c927406c4be74e9794f8d57c15ac3c90c1f49a3db8b582cec445",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel128_winograd.h": "a1b4eb495bcf5a67e91ff3eb128d791ee18dbbba2c6350bb405a811227ef5923",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/main.cu": "e47e3a693e4cb59a47f5980dbc39e694867c96ac7cba53a4deaf7a3df94c2460",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/util.cu": "bbf5c03886e54e2313c649d9a094aa1439da2a6f8b875153533025a5059d19f0",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel128_winograd.cu": "cce3396c4da96b5ad13f0e44f8910488914a37a91f96326150270c1c8cc28aa8",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel256_winograd.h": "d31924e52826eaf957a671d09257c3c65feb971afe305d05de04bc3c643184d3",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel128_one.cu": "e9b9c77148f7c0c47c99a4b992aa98afe2b73f11d50653b764838d5a85132371",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel128_one.h": "c78efed95482b0391849cc155b4cce8ca5b2c8b951c14d7b9213490483715da5",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/Kernel256_one.h": "e47b91eb2999bbb8dca9e14c5a6cfee720f27aad5f71219fce0060fdc49e4cdb",
+          "/home/imo/HeCBench_julia/src/resnet-kernels-cuda/util.h": "ab192cf193cd6998e047e31f7da0435fdea0f419da6011f2add5a995c686ea45"
+        },
+        "original_CLI_verified": false
+      },
+      "configuration_classification_adjudication": {
+        "path": "src/resnet-kernels-julia/study_adjudications.json",
+        "sha256": "d312b2fafd609c803055045887699d6e9650498419cf146f080c9e6c9384a045",
+        "run_id": "20261018T002436019929Z_resnet-kernels",
+        "reason": "Clarify initializedhalo/nativeallocation correction alreadydeclaredbeforefirsttrial; preserve allrawruns,flags,tolerances,times andcommands. Full20artifact independentaudit ispostcapturevalidation, notnewmeasurement.",
+        "recorded_at": "2026-10-18T00:29:44.787837+00:00",
+        "updated_fields": [
+          "exclude_untouched_native_aggregates",
+          "native_reference_repaired",
+          "numerical_evidence_strength",
+          "reference_provenance",
+          "source_scope_adjudication"
+        ],
+        "immutable_execution_and_trials_unchanged": true
+      },
+      "result_sha256": "1f718e5e92ea5e5678469089cb1c55f255f376e7ec877fb95a302677349de99d",
+      "source_hash": "cee9be82cf2e5fc39ac6daea104057eaaa1cf71d7b7fddeb174a38f3c355973b",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.019566538999999997,
+        0.000524205,
+        0.000508814,
+        0.0004898506666666666,
+        0.000494541
+      ],
+      "mean_last_four_seconds": 0.0005043526666666667,
+      "contract": {
+        "paths": [
+          "winograd128",
+          "winograd256",
+          "one512to128relu",
+          "one128to512linear",
+          "one1024to256relu",
+          "one256to1024linear"
+        ],
+        "metric": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+        "fixtures": "Sourcefull14x14, fixedseed20261018signeddyadicinputs/nontrivialweights, scales/biasesbothsigns. Winogradsource16x16nonzero-borderinput plus34 explicitzero channelvectors todefine originalout-of-allocation6x6lasttile reads. Sameall4models.",
+        "artifact": "4096768 actualFloat32inputprefix +917162fullFloat32public/intermediateoutputs including17guardseach, borderzeros,transformedinputs/innerproducts/finaloutputs. AllvaluesFloat64independentCPUoracle1e-4; guards/borders exactlocal.",
+        "scope": "Namedkernelpipelines; correctednativeallocation/initialization stratum, notoriginalCLI norfullResNet inference/taskaccuracy. NativeGPUkernelsunchanged. Sharedtilemathpreserved; JuliaWinogradouteraccumulatorsregisters vsnativesharedoutput andunusednativeweightsstorage."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "complete_intermediate_and_final_arrays_with_exact_input_prefix_and_independent_float64_matrix_spatial_oracles"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "resnet-kernels:cuda_jl:20261018T002436019929Z_resnet-kernels:N3:accepted",
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "N3",
+        "phase": "numerical_verification",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/resnet-kernels.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "event_id": "resnet-kernels:cuda_jl:20261018T002436019929Z_resnet-kernels:N3:accepted",
+          "benchmark_id": "resnet-kernels",
+          "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+          "implementation_model": "cuda_jl",
+          "environment_id": "b7524b8b5b03851ca5fe2c68f6ff49b2bd95081ef824fe755bfae38b75bb6ec6",
+          "source_revision": "cc0cdc759f6fcf554eb35cda7788edd005509c05e61b5406775868560dc7416c",
+          "phase": "numerical_verification",
+          "code": "N3",
+          "is_failure": false,
+          "candidate_id": 4,
+          "check_id": 4,
+          "repair_id": null,
+          "exact_error": "Accepted maxabsoluteerror 2.240356366201013e-06; unchangedtolerance 0.0001+0*abs(ref).",
+          "minimal_trigger": {
+            "paths": [
+              "winograd128",
+              "winograd256",
+              "one512to128relu",
+              "one128to512linear",
+              "one1024to256relu",
+              "one256to1024linear"
+            ],
+            "metric": "Sum6independentcompleteconvolutionpaths, 3repetitions/path,5outertrialsmeanlast4; explicitcompilationwarmup; allocation/initialization/H2D/D2H/oracle/artifactsoutsidekernelclock. Winograd3launchesinsideeachpath. Nativefullsourcegeometryretained.",
+            "fixtures": "Sourcefull14x14, fixedseed20261018signeddyadicinputs/nontrivialweights, scales/biasesbothsigns. Winogradsource16x16nonzero-borderinput plus34 explicitzero channelvectors todefine originalout-of-allocation6x6lasttile reads. Sameall4models.",
+            "artifact": "4096768 actualFloat32inputprefix +917162fullFloat32public/intermediateoutputs including17guardseach, borderzeros,transformedinputs/innerproducts/finaloutputs. AllvaluesFloat64independentCPUoracle1e-4; guards/borders exactlocal.",
+            "scope": "Namedkernelpipelines; correctednativeallocation/initialization stratum, notoriginalCLI norfullResNet inference/taskaccuracy. NativeGPUkernelsunchanged. Sharedtilemathpreserved; JuliaWinogradouteraccumulatorsregisters vsnativesharedoutput andunusednativeweightsstorage."
+          },
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T002436019929Z_resnet-kernels/result.json",
+              "sha256": "1f718e5e92ea5e5678469089cb1c55f255f376e7ec877fb95a302677349de99d"
+            }
+          ],
+          "root_cause": "Accepted bounded numerical drift; all Juliaaccepted artifacts bit-identical, native maxcross3.0994415283203125e-6. Float32expression/nativefusion mechanism unisolated.",
+          "resolution": "passes_recorded_contract",
+          "final_outcome": "verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "resnet-kernels:cuda_jl:reference_semantic_audit:candidateNone:S1",
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "S1",
+        "phase": "reference_semantic_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/resnet-kernels.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "resnet-kernels:cuda_jl:reference_semantic_audit:candidateNone:S1",
+          "benchmark_id": "resnet-kernels",
+          "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_semantic_audit",
+          "code": "S1",
+          "is_failure": true,
+          "candidate_id": null,
+          "check_id": null,
+          "exact_error": "Archived baseline only max(input*scale+.125,0), not anynativeconvolution.",
+          "root_cause": "Source-reviewedsemanticplaceholder, oldnumericalPASSnotproof.",
+          "resolution": "Preserveoriginal; newgenuinefoursharedtilekernels/all6paths, separatecurrentreferencecost.",
+          "root_cause_evidence": [
+            {
+              "path": "src/resnet-kernels-julia/reference_history/original_main.jl",
+              "sha256": "9ab1f66bfad88e07447f94b298a47037998601587ee94100c80a945e50a191fe"
+            },
+            {
+              "path": "src/resnet-kernels-julia/convolution_math.jl",
+              "sha256": "041989988dda3da6e4c0f95380c01074c464a7f8034d9494dea4d55aca132206"
+            }
+          ],
+          "final_outcome": "conditional_reference_repaired_verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "resnet-kernels:cuda_jl:reference_frontend:candidate1:B2",
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B2",
+        "phase": "reference_frontend",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/resnet-kernels.jsonl",
+        "evidence_line": 7,
+        "raw_event": {
+          "event_id": "resnet-kernels:cuda_jl:reference_frontend:candidate1:B2",
+          "benchmark_id": "resnet-kernels",
+          "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_frontend",
+          "code": "B2",
+          "is_failure": true,
+          "candidate_id": 1,
+          "check_id": 1,
+          "exact_error": "ParseError invalid identifier at abspath(PROGRAM_FILE)==@__FILE__ &&",
+          "root_cause": "Macroguardparseambiguity.",
+          "resolution": "Parenthesize @__FILE__; noGPUmathrepair.",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T001652871117Z_resnet-kernels/cuda_jl_run1.log",
+              "sha256": "76741ed9d66fe013de2e77cadb28cb9282576e1347530b77cfb25b2707c9913c"
+            },
+            {
+              "path": "src/resnet-kernels-julia/reference_history/cuda_jl_candidate01.jl",
+              "sha256": "8f17503635c83fca3a1c5798a97ec1668607d5f0ff6d24fcb3f4c0c9225ac82c"
+            }
+          ],
+          "final_outcome": "conditional_reference_repaired_verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "resnet-kernels:cuda_jl:reference_host_launch_API:candidate2:B3",
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B3",
+        "phase": "reference_host_launch_API",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/resnet-kernels.jsonl",
+        "evidence_line": 8,
+        "raw_event": {
+          "event_id": "resnet-kernels:cuda_jl:reference_host_launch_API:candidate2:B3",
+          "benchmark_id": "resnet-kernels",
+          "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_host_launch_API",
+          "code": "B3",
+          "is_failure": true,
+          "candidate_id": 2,
+          "check_id": 2,
+          "exact_error": "MethodError no matching CuDim3 for mixed Int32/Int64 tuple",
+          "root_cause": "Mixedtypedhostthread/blockgeometry rejectedafterearlierkernelcompiles; noGPUdevicecompiler rejection.",
+          "resolution": "Convertallhostgeometrycomponents toInt; fixedphysicaldimensions unchanged.",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T001727290953Z_resnet-kernels/cuda_jl_run1.log",
+              "sha256": "4232abf122bf1dfe0addb158d0a613fe92b8972d078568c71da2f73dfa99bd66"
+            },
+            {
+              "path": "src/resnet-kernels-julia/reference_history/cuda_jl_candidate02.jl",
+              "sha256": "804ff6d85db42c0d0fb2d5d0e074029b45488a283544a8f584c2503c89b5db21"
+            }
+          ],
+          "final_outcome": "conditional_reference_repaired_verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "resnet-kernels:cuda_jl:reference_host_launch_API:candidate3:B3",
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "B3",
+        "phase": "reference_host_launch_API",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/resnet-kernels.jsonl",
+        "evidence_line": 9,
+        "raw_event": {
+          "event_id": "resnet-kernels:cuda_jl:reference_host_launch_API:candidate3:B3",
+          "benchmark_id": "resnet-kernels",
+          "configuration_id": "resnet6_source_tiles_defined_halo_v1",
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "phase": "reference_host_launch_API",
+          "code": "B3",
+          "is_failure": true,
+          "candidate_id": 3,
+          "check_id": 3,
+          "exact_error": "MethodError no matching CuDim3 for mixed Int32/Int64 tuple",
+          "root_cause": "Mixedtypedhostthread/blockgeometry rejectedafterearlierkernelcompiles; noGPUdevicecompiler rejection.",
+          "resolution": "Convertallhostgeometrycomponents toInt; fixedphysicaldimensions unchanged.",
+          "root_cause_evidence": [
+            {
+              "path": ".porting-state/portable_julia/runs/20261018T001822106378Z_resnet-kernels/cuda_jl_run1.log",
+              "sha256": "568540bd79d628a8ba7c79413d59be7122cc29552e885a89b503054380aeafd8"
+            },
+            {
+              "path": "src/resnet-kernels-julia/reference_history/cuda_jl_candidate03.jl",
+              "sha256": "e6a24167240ef1032d50af4fbcb604a52e7ef40a1340b5955af2906a93036364"
+            }
+          ],
+          "final_outcome": "conditional_reference_repaired_verified"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 4,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": null,
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "bccc73437df0ef24beb7ce6e",
+        "begin_event_id": "f3c04024ce042ade46723833",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-18T00:19:38.460749+00:00",
+        "usage_event_timestamp": "2026-10-18T00:19:29.697Z",
+        "elapsed_usage_event_start": "2026-10-18T00:12:07.440Z",
+        "delta_usage": {
+          "input_tokens": 1732685,
+          "cached_input_tokens": 1712640,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15081,
+          "reasoning_output_tokens": 3383,
+          "total_tokens": 1747766
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 8.763749,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "aa5308859b18eb8ccf487a2ab12d35dc72cadfd1b19d1f17a6a0c1e5a1ba77e9",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Reference candidate4 passes5trials and bothreferenceartifactagreement, nativecandidate2 build, unchangednativefivecapturereused. Prior1frontendParseError,2hostCuDim3APIrejections; nativeharnesssymbolconflict. Initializedhalo correction declaredbeforefirsttrial.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 7.309095,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "7b8bfe9ff7a60a97d619844788ee1b76df76b82c4ca516b40afbaf5be56ffbbf",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ],
+    "activity_window_scope_review": {
+      "path": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/measurement_scope_review.json",
+      "sha256": "8b8b1a87560aeaf9d23da41e37f9ae67e848c915b90b88645760e0b1e6501e6b",
+      "record": {
+        "benchmark_id": "resnet-kernels",
+        "prospective_current_workflow_before_native_algorithm_inspection": true,
+        "pre_existing_history_excluded": "Earlierbroadplaceholderauditcostnotrecovered; historicaloriginalCUDAjlcostunknown.",
+        "model_phase_windows": "ProspectiveBEGINbeforeeachcodephase; KA/JACCENDafterfullverifiedrunnerresult inlaterround. ReferenceENDlocalcheckscomplete/crossaggregationpending (censored).",
+        "workflow_censoring": [
+          "No coldstart/exclusivebilledcostclaim; repeatedcachedcontexts, coordination andpaperwork included.",
+          "ReferenceENDfollowedall5localchecksbutprecededfinalCPUcrosscomparisonaggregation; wholeworkflowcapturesaggregation.",
+          "KAwindowincludesbriefJACC3DbackendAPIreading/planning, nocodedraftedbeforeJACCBegin.",
+          "JACCwindowincludesparentrequesteduntouchedurng/warpexchangeownershiphandoffmetadata, nootherbenchmarkinspection/code."
+        ],
+        "interleaved_other_benchmark_code": false,
+        "no_exclusive_billed_cost_claim": true,
+        "no_sum_workflow_and_subphases": true,
+        "annotation_workflow_end": "AnnotationENDsameexecaslastauditmetadatawrites ->rightcensored; workflowENDseparatesubsequentexec ->wholeworkflowcomplete.",
+        "post_end_mechanical_usage_annex_unmetered": true
+      }
+    }
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/resnet-kernels-julia/manifest.json",
+    "selected_sha256": "b8934e1a442b4b9e218d71e94499f32bf9310879f584d01fbfa252436032ecb3",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/resnet-kernels-julia/manifest.json",
+        "sha256": "b8934e1a442b4b9e218d71e94499f32bf9310879f584d01fbfa252436032ecb3"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": null,
+  "declared_model_implementation_class": {
+    "value": "cuda_jl_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/resnet-kernels.json",
+    "annotation_sha256": "b2fbb9b17116fab9369cdf7467852e5813b1eb23f8784bcd7cd17c3215e26fa9",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  },
+  "current_reference_repair_effort_records": [
+    {
+      "path": ".porting-state/porting_logs/resnet-kernels-julia-cuda.jl/current_reference_effort_300.json",
+      "sha256": "f4bd5eeb0f6217c9f8d001d9b1b9d43aa15e908e038ed4fda029a241c63f7110",
+      "record": {
+        "benchmark_id": "resnet-kernels",
+        "implementation_model": "cuda_jl",
+        "phase": "current_reference_repair_sharedalgorithm_separate",
+        "candidate_attempts": 4,
+        "compiler_check_invocations": 4,
+        "historical_original_translation_cost_known": false,
+        "current_output_tokens_proxy": 641,
+        "current_input_tokens": null,
+        "current_total_tokens": null,
+        "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+        "shared_algorithm_counted_once": true,
+        "limitations": "Currentreferencecandidate1frontendParseError,2/3hostlaunchAPIrejections,4genuine6pathverification. Nativeadapter2buildcandidates separateinstrumentation. Newconvolutionmathhelper/oracleauthoredreferencephaseonce; unchangedhistoricalplaceholdernotvalidreference, oldcostunknown. Modelwindowsmarginalorderedreuse.",
+        "actual_harness_phase_usage": {
+          "input_tokens": 1732685,
+          "cached_input_tokens": 1712640,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15081,
+          "reasoning_output_tokens": 3383,
+          "total_tokens": 1747766
+        },
+        "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/cuda_jl_reference_repair.jsonl",
+        "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+        "frontend_rejections": 1,
+        "host_api_repair_rounds": 2,
+        "device_compiler_failures": 0,
+        "numerical_reference_repair_rounds": 1,
+        "native_allocation_intervention_separate": true,
+        "native_measurement_adapter_candidates": 2,
+        "first_successful_full_reference_candidate": 4,
+        "first_backend_device_compilation_candidate": 2
+      },
+      "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+    }
+  ],
+  "current_reference_repair_effort": {
+    "path": ".porting-state/porting_logs/resnet-kernels-julia-cuda.jl/current_reference_effort_300.json",
+    "sha256": "f4bd5eeb0f6217c9f8d001d9b1b9d43aa15e908e038ed4fda029a241c63f7110",
+    "record": {
+      "benchmark_id": "resnet-kernels",
+      "implementation_model": "cuda_jl",
+      "phase": "current_reference_repair_sharedalgorithm_separate",
+      "candidate_attempts": 4,
+      "compiler_check_invocations": 4,
+      "historical_original_translation_cost_known": false,
+      "current_output_tokens_proxy": 641,
+      "current_input_tokens": null,
+      "current_total_tokens": null,
+      "token_status": "partial_retained_reference_wrapper_proxy_separatefrom_observed_harness_usage",
+      "shared_algorithm_counted_once": true,
+      "limitations": "Currentreferencecandidate1frontendParseError,2/3hostlaunchAPIrejections,4genuine6pathverification. Nativeadapter2buildcandidates separateinstrumentation. Newconvolutionmathhelper/oracleauthoredreferencephaseonce; unchangedhistoricalplaceholdernotvalidreference, oldcostunknown. Modelwindowsmarginalorderedreuse.",
+      "actual_harness_phase_usage": {
+        "input_tokens": 1732685,
+        "cached_input_tokens": 1712640,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 15081,
+        "reasoning_output_tokens": 3383,
+        "total_tokens": 1747766
+      },
+      "actual_usage_file": ".porting-state/portable_julia/usage_boundaries_300/resnet-kernels/cuda_jl_reference_repair.jsonl",
+      "actual_scope": "Currentreferencephaseincludessharedsetup/nativeadapter/oraclesandcoordination, notexclusiveframeworkorhistoricaltranslationcost.",
+      "frontend_rejections": 1,
+      "host_api_repair_rounds": 2,
+      "device_compiler_failures": 0,
+      "numerical_reference_repair_rounds": 1,
+      "native_allocation_intervention_separate": true,
+      "native_measurement_adapter_candidates": 2,
+      "first_successful_full_reference_candidate": 4,
+      "first_backend_device_compilation_candidate": 2
+    },
+    "scope": "Current repair phase only; does not replace unknown historical original translation effort."
+  }
+}

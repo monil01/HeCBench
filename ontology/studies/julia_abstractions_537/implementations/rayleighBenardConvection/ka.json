@@ -1,0 +1,1000 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "rayleighBenardConvection",
+  "implementation_model": "ka",
+  "status": "verified_native_behavior_known_scientific_defect",
+  "scientific_intent_record": "../../domains/rayleighBenardConvection.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_model": "ka",
+    "review_status": "source_reviewed",
+    "implementation_status": "verified",
+    "implementation_class": "KA_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+    "authored_device_kernel_count": 7,
+    "authored_device_kernel_definitions": 7,
+    "primary_device_entrypoints": 6,
+    "executed_distinct_authored_entries": 6,
+    "shared_authored_math_body_definitions": 0,
+    "count_unit": "Seven source pointwiseentrydefinitions, sixexecuted/JITcompiled; AddXunusedandnotcertified. Onecompletecandidate/oneactualdeviceJITprogram pertarget; internalcompilerinvocationsunknown.96216selecteddispatches inclwarmup+5.",
+    "scientific_intent": {
+      "benchmark": "rayleighBenardConvection",
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "domain": "Thermoconvective transport / source Rayleigh\u2013B\u00e9nard-style temperature\u2013streamfunction model",
+      "scientific_question": "Advance a perturbed conducting temperature profile using three-stage RK3, finite-difference transport/diffusion and an instantaneous dense sine-transform biharmonic streamfunction solve at Ra1e8.",
+      "mathematical_operation": "1000RK3steps on500verticalboundary-inclusive\u00d71000horizontalgrid; interior498\u00d71000temperature,498\u00d7998spectralstreamfunction; fourGEMMs/G,threeG/step, cuBLASfinite-differencevectors and adaptiveCFL-like dt.",
+      "classification_rationale": "Temperature evolution and buoyancy-related streamfunction operator are source-reviewed physics intent; GEMM/stencil/pointwise motifs are implementation mechanisms. No pressure/fullNavier\u2013Stokes/equilibrium/turbulencevalidation inferred.",
+      "community_use_case": "Domain scientists comparing faithful solver pipelines and separating field accuracy from heat-diagnostic definitions and vendor/hostdispatch cost.",
+      "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+      "accuracy_requirements": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+      "scientific_validity": "qualified_source_method_accuracy_with_known_heat_diagnostic_definition",
+      "boundary_policy": "SourcebottomT1/topT0, psiwallzero, sourcehorizontalfinite-differencewalls andthird-orderpsiDxendpoints. SourceDX32vertical alsoapplieshorizontal, unlike hXinitialization2/(N-1); preserveeffectivegeometrydiscrepancy.",
+      "source_evidence": [
+        {
+          "path": "src/rayleighBenardConvection-julia/reference_history/main.cu",
+          "sha256": "d7890211792134c058650b668730c98568a06ae5529138b9f27f6fdfe4290ad5",
+          "bytes": 35042
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+          "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9",
+          "bytes": 1222
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+          "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8",
+          "bytes": 619
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/spatial_control_witness.json",
+          "sha256": "12062eecfacfd501d2190ee72fd9d7d04552923c9e2c030c263b995cf481f2bd",
+          "bytes": 337
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/reference_provenance.json",
+          "sha256": "79dd7c9499756453627c1bac371083ab7c9877e4826206911aebdb565e5cea9f",
+          "bytes": 1413
+        }
+      ],
+      "final_buffer_role_qualification": "SourceG reusesu forDzT*v andomega forscaledinverseinterior; retainednamesrepresentactualworkingbuffers, notallfinalphysicalvelocity/vorticityfields. Stagepsi/v/DxT correspondthirdGinputbeforeRK3Tfinalcombination."
+    },
+    "work_item_mapping": "256threads/source(63,32)groupslargepointwise,4groupssmallvectors,1threadadaptive. Flattened2016equivalent1Dgroups, samepadded516096lanes/explicitlengthguards; independentperlane, nocollective.",
+    "data_layout": "OriginalcudaMallocbuffersborrowedasCuArrayownfalse; Float32flatN1000horizontalcontiguous\u00d7498verticalinternalrows, spectral998\u00d7498. ActualinitializedinputsreadbackbeforeROI; completefinalmutableworkingfields and1000dt/3excessNu samplesafterROI. SourceuoverwrittenDzT*v, omegainverseinterior; lastGstagefields beforefinalRK3temperatureupdate. Nooriginalcanaries/exhaustivememorysafetyclaim.",
+    "storage_precision": [
+      "Float32source/device/serializedartifact"
+    ],
+    "compute_precision": [
+      "Float32GPU",
+      "sourceFloat32hostcoefficients/Float64sin/cosinitialization",
+      "Float64CPUindependentoracle"
+    ],
+    "synchronization": [
+      "OriginalcuBLAShandledefaultlegacy_stream0",
+      "CUDAlegacy_stream own targetdispatch",
+      "OriginalhostIsamax/GetVector",
+      "CommoncudaDeviceSynchronizeROIboundaries",
+      "CUDAdevice_synchronizeafterCABIreturn"
+    ],
+    "resources": {
+      "scope": "Sourceauthoredpointwiseentryresources only; vendorGPUkernelresources notprofiled",
+      "threads_large": 256,
+      "source_grid_large": [
+        63,
+        32
+      ],
+      "target_large_group_count": 2016,
+      "static_shared_bytes": 0,
+      "dynamic_shared_bytes": 0,
+      "registers_spills_occupancy": null
+    },
+    "host_boundary": "OriginalCPUcuBLAS/finite-difference/RK3controlretainedthroughCABI; ownframework pointwise dispatch, no selectednativeGPUfallbackwithnonnullcallback. LibrarycuBLASactualDSO/versionrecordedperprocess. No libraryalgorithmreplacement.",
+    "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+    "verification_contract": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+    "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+    "keyconfounds": [
+      "nativeCPUcontroller/vendorcuBLASsharedbytargets",
+      "knownexcess-versus-totalNulabel",
+      "Float32gridspacinghorizontalhX/FDmismatch",
+      "historyobserverreplacesNuprintf",
+      "nooriginalallocationguards",
+      "noPDEmeshconvergenceclaim",
+      "OriginalsingleV100/1000shorttransientsteps, physicaltime~3.20e-6; notsteadyconvection.",
+      "Vendor/cuBLAS/controller commonROI preventsisolatedpurekernelcausalclaims."
+    ],
+    "source_evidence": [
+      {
+        "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+        "bytes": 1718,
+        "sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/study_common.jl",
+        "bytes": 1679,
+        "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/full_study.cu",
+        "bytes": 4147,
+        "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+        "bytes": 1222,
+        "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+        "bytes": 6833,
+        "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+      }
+    ],
+    "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": true
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": null,
+    "implementation_class": "KA_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+    "declared_environment": null,
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "256threads/source(63,32)groupslargepointwise,4groupssmallvectors,1threadadaptive. Flattened2016equivalent1Dgroups, samepadded516096lanes/explicitlengthguards; independentperlane, nocollective.",
+    "layout": "OriginalcudaMallocbuffersborrowedasCuArrayownfalse; Float32flatN1000horizontalcontiguous\u00d7498verticalinternalrows, spectral998\u00d7498. ActualinitializedinputsreadbackbeforeROI; completefinalmutableworkingfields and1000dt/3excessNu samplesafterROI. SourceuoverwrittenDzT*v, omegainverseinterior; lastGstagefields beforefinalRK3temperatureupdate. Nooriginalcanaries/exhaustivememorysafetyclaim.",
+    "storage_precision": [
+      "Float32source/device/serializedartifact"
+    ],
+    "compute_precision": [
+      "Float32GPU",
+      "sourceFloat32hostcoefficients/Float64sin/cosinitialization",
+      "Float64CPUindependentoracle"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "OriginalcuBLAShandledefaultlegacy_stream0",
+      "CUDAlegacy_stream own targetdispatch",
+      "OriginalhostIsamax/GetVector",
+      "CommoncudaDeviceSynchronizeROIboundaries",
+      "CUDAdevice_synchronizeafterCABIreturn"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": null,
+    "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+    "native_to_model_mapping": null,
+    "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+        "bytes": 1718,
+        "sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/study_common.jl",
+        "bytes": 1679,
+        "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/full_study.cu",
+        "bytes": 4147,
+        "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+        "bytes": 1222,
+        "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+        "bytes": 6833,
+        "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "rayleighBenardConvection",
+    "primary_motif": "mixed_dense_transform_finite_difference_RK3",
+    "storage_precision": [
+      "Float32"
+    ],
+    "compute_precision": [
+      "Float32GPU",
+      "Float32hostcoefficients",
+      "Float64CPUindependentoracle"
+    ],
+    "synchronization": [
+      "CUDAlegacy/defaultstream source cuBLAS",
+      "hostcublasIsamax/GetVector",
+      "commonwholecontextdevicecompletionboundaries"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Originalmath/state/controller/vendorAPI retained; CUDAjl original2Dgroups, KA/JACC equivalentx-fast flattened1Dgroups; originalCPUcontrollerCABIborrowedcudabuffers; knownsourceexcessNuqualification."
+    },
+    "implementation_class": {
+      "cuda_jl": "CUDAjl_authored_pointwise_native_CPU_controller_cuBLAS_hybrid",
+      "ka": "KA_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+      "jacc": "JACC_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid"
+    },
+    "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+    "verification_contract": "Fullactualinputs/finalfields/dt/excessNu; exactdualGPUrefs and independentfullFloat64methodengineeringgate",
+    "keyconfounds": [
+      "nativeCPUcontroller/vendorcuBLASsharedbytargets",
+      "knownexcess-versus-totalNulabel",
+      "Float32gridspacinghorizontalhX/FDmismatch",
+      "historyobserverreplacesNuprintf",
+      "nooriginalallocationguards",
+      "noPDEmeshconvergenceclaim"
+    ],
+    "scientific_intent": {
+      "benchmark": "rayleighBenardConvection",
+      "primary_family": "pde_continuum",
+      "review_status": "source_reviewed",
+      "domain": "Thermoconvective transport / source Rayleigh\u2013B\u00e9nard-style temperature\u2013streamfunction model",
+      "scientific_question": "Advance a perturbed conducting temperature profile using three-stage RK3, finite-difference transport/diffusion and an instantaneous dense sine-transform biharmonic streamfunction solve at Ra1e8.",
+      "mathematical_operation": "1000RK3steps on500verticalboundary-inclusive\u00d71000horizontalgrid; interior498\u00d71000temperature,498\u00d7998spectralstreamfunction; fourGEMMs/G,threeG/step, cuBLASfinite-differencevectors and adaptiveCFL-like dt.",
+      "classification_rationale": "Temperature evolution and buoyancy-related streamfunction operator are source-reviewed physics intent; GEMM/stencil/pointwise motifs are implementation mechanisms. No pressure/fullNavier\u2013Stokes/equilibrium/turbulencevalidation inferred.",
+      "community_use_case": "Domain scientists comparing faithful solver pipelines and separating field accuracy from heat-diagnostic definitions and vendor/hostdispatch cost.",
+      "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+      "accuracy_requirements": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+      "scientific_validity": "qualified_source_method_accuracy_with_known_heat_diagnostic_definition",
+      "boundary_policy": "SourcebottomT1/topT0, psiwallzero, sourcehorizontalfinite-differencewalls andthird-orderpsiDxendpoints. SourceDX32vertical alsoapplieshorizontal, unlike hXinitialization2/(N-1); preserveeffectivegeometrydiscrepancy.",
+      "source_evidence": [
+        {
+          "path": "src/rayleighBenardConvection-julia/reference_history/main.cu",
+          "sha256": "d7890211792134c058650b668730c98568a06ae5529138b9f27f6fdfe4290ad5",
+          "bytes": 35042
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+          "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9",
+          "bytes": 1222
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+          "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8",
+          "bytes": 619
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/spatial_control_witness.json",
+          "sha256": "12062eecfacfd501d2190ee72fd9d7d04552923c9e2c030c263b995cf481f2bd",
+          "bytes": 337
+        },
+        {
+          "path": "src/rayleighBenardConvection-julia/reference_provenance.json",
+          "sha256": "79dd7c9499756453627c1bac371083ab7c9877e4826206911aebdb565e5cea9f",
+          "bytes": 1413
+        }
+      ],
+      "final_buffer_role_qualification": "SourceG reusesu forDzT*v andomega forscaledinverseinterior; retainednamesrepresentactualworkingbuffers, notallfinalphysicalvelocity/vorticityfields. Stagepsi/v/DxT correspondthirdGinputbeforeRK3Tfinalcombination."
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_model": "cuda_jl",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "CUDAjl_authored_pointwise_native_CPU_controller_cuBLAS_hybrid",
+        "authored_device_kernel_count": 7,
+        "authored_device_kernel_definitions": 7,
+        "primary_device_entrypoints": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 0,
+        "count_unit": "Seven source pointwiseentrydefinitions, sixexecuted/JITcompiled; AddXunusedandnotcertified. Onecompletecandidate/oneactualdeviceJITprogram pertarget; internalcompilerinvocationsunknown.96216selecteddispatches inclwarmup+5.",
+        "scientific_intent": {
+          "benchmark": "rayleighBenardConvection",
+          "primary_family": "pde_continuum",
+          "review_status": "source_reviewed",
+          "domain": "Thermoconvective transport / source Rayleigh\u2013B\u00e9nard-style temperature\u2013streamfunction model",
+          "scientific_question": "Advance a perturbed conducting temperature profile using three-stage RK3, finite-difference transport/diffusion and an instantaneous dense sine-transform biharmonic streamfunction solve at Ra1e8.",
+          "mathematical_operation": "1000RK3steps on500verticalboundary-inclusive\u00d71000horizontalgrid; interior498\u00d71000temperature,498\u00d7998spectralstreamfunction; fourGEMMs/G,threeG/step, cuBLASfinite-differencevectors and adaptiveCFL-like dt.",
+          "classification_rationale": "Temperature evolution and buoyancy-related streamfunction operator are source-reviewed physics intent; GEMM/stencil/pointwise motifs are implementation mechanisms. No pressure/fullNavier\u2013Stokes/equilibrium/turbulencevalidation inferred.",
+          "community_use_case": "Domain scientists comparing faithful solver pipelines and separating field accuracy from heat-diagnostic definitions and vendor/hostdispatch cost.",
+          "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+          "accuracy_requirements": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+          "scientific_validity": "qualified_source_method_accuracy_with_known_heat_diagnostic_definition",
+          "boundary_policy": "SourcebottomT1/topT0, psiwallzero, sourcehorizontalfinite-differencewalls andthird-orderpsiDxendpoints. SourceDX32vertical alsoapplieshorizontal, unlike hXinitialization2/(N-1); preserveeffectivegeometrydiscrepancy.",
+          "source_evidence": [
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_history/main.cu",
+              "sha256": "d7890211792134c058650b668730c98568a06ae5529138b9f27f6fdfe4290ad5",
+              "bytes": 35042
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+              "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9",
+              "bytes": 1222
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+              "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8",
+              "bytes": 619
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/spatial_control_witness.json",
+              "sha256": "12062eecfacfd501d2190ee72fd9d7d04552923c9e2c030c263b995cf481f2bd",
+              "bytes": 337
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_provenance.json",
+              "sha256": "79dd7c9499756453627c1bac371083ab7c9877e4826206911aebdb565e5cea9f",
+              "bytes": 1413
+            }
+          ],
+          "final_buffer_role_qualification": "SourceG reusesu forDzT*v andomega forscaledinverseinterior; retainednamesrepresentactualworkingbuffers, notallfinalphysicalvelocity/vorticityfields. Stagepsi/v/DxT correspondthirdGinputbeforeRK3Tfinalcombination."
+        },
+        "work_item_mapping": "256threads/source(63,32)groupslargepointwise,4groupssmallvectors,1threadadaptive. Original2Dgrid x-fast linearization.",
+        "data_layout": "OriginalcudaMallocbuffersborrowedasCuArrayownfalse; Float32flatN1000horizontalcontiguous\u00d7498verticalinternalrows, spectral998\u00d7498. ActualinitializedinputsreadbackbeforeROI; completefinalmutableworkingfields and1000dt/3excessNu samplesafterROI. SourceuoverwrittenDzT*v, omegainverseinterior; lastGstagefields beforefinalRK3temperatureupdate. Nooriginalcanaries/exhaustivememorysafetyclaim.",
+        "storage_precision": [
+          "Float32source/device/serializedartifact"
+        ],
+        "compute_precision": [
+          "Float32GPU",
+          "sourceFloat32hostcoefficients/Float64sin/cosinitialization",
+          "Float64CPUindependentoracle"
+        ],
+        "synchronization": [
+          "OriginalcuBLAShandledefaultlegacy_stream0",
+          "CUDAlegacy_stream own targetdispatch",
+          "OriginalhostIsamax/GetVector",
+          "CommoncudaDeviceSynchronizeROIboundaries",
+          "CUDAdevice_synchronizeafterCABIreturn"
+        ],
+        "resources": {
+          "scope": "Sourceauthoredpointwiseentryresources only; vendorGPUkernelresources notprofiled",
+          "threads_large": 256,
+          "source_grid_large": [
+            63,
+            32
+          ],
+          "target_large_group_count": 2016,
+          "static_shared_bytes": 0,
+          "dynamic_shared_bytes": 0,
+          "registers_spills_occupancy": null
+        },
+        "host_boundary": "OriginalCPUcuBLAS/finite-difference/RK3controlretainedthroughCABI; ownframework pointwise dispatch, no selectednativeGPUfallbackwithnonnullcallback. LibrarycuBLASactualDSO/versionrecordedperprocess. No libraryalgorithmreplacement.",
+        "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+        "verification_contract": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+        "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+        "keyconfounds": [
+          "nativeCPUcontroller/vendorcuBLASsharedbytargets",
+          "knownexcess-versus-totalNulabel",
+          "Float32gridspacinghorizontalhX/FDmismatch",
+          "historyobserverreplacesNuprintf",
+          "nooriginalallocationguards",
+          "noPDEmeshconvergenceclaim",
+          "OriginalsingleV100/1000shorttransientsteps, physicaltime~3.20e-6; notsteadyconvection.",
+          "Vendor/cuBLAS/controller commonROI preventsisolatedpurekernelcausalclaims."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-cuda.jl/main.jl",
+            "bytes": 1832,
+            "sha256": "a72c2c736cfd81e55f0a3436e89eb728a3399b85ce1c10e87f95fdcc9f46b502"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/study_common.jl",
+            "bytes": 1679,
+            "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/full_study.cu",
+            "bytes": 4147,
+            "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+            "bytes": 1222,
+            "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+            "bytes": 6833,
+            "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+          }
+        ],
+        "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+        "native_reference_repaired": false,
+        "native_behavior_known_scientific_defect": true
+      },
+      "ka": {
+        "implementation_model": "ka",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "KA_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+        "authored_device_kernel_count": 7,
+        "authored_device_kernel_definitions": 7,
+        "primary_device_entrypoints": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 0,
+        "count_unit": "Seven source pointwiseentrydefinitions, sixexecuted/JITcompiled; AddXunusedandnotcertified. Onecompletecandidate/oneactualdeviceJITprogram pertarget; internalcompilerinvocationsunknown.96216selecteddispatches inclwarmup+5.",
+        "scientific_intent": {
+          "benchmark": "rayleighBenardConvection",
+          "primary_family": "pde_continuum",
+          "review_status": "source_reviewed",
+          "domain": "Thermoconvective transport / source Rayleigh\u2013B\u00e9nard-style temperature\u2013streamfunction model",
+          "scientific_question": "Advance a perturbed conducting temperature profile using three-stage RK3, finite-difference transport/diffusion and an instantaneous dense sine-transform biharmonic streamfunction solve at Ra1e8.",
+          "mathematical_operation": "1000RK3steps on500verticalboundary-inclusive\u00d71000horizontalgrid; interior498\u00d71000temperature,498\u00d7998spectralstreamfunction; fourGEMMs/G,threeG/step, cuBLASfinite-differencevectors and adaptiveCFL-like dt.",
+          "classification_rationale": "Temperature evolution and buoyancy-related streamfunction operator are source-reviewed physics intent; GEMM/stencil/pointwise motifs are implementation mechanisms. No pressure/fullNavier\u2013Stokes/equilibrium/turbulencevalidation inferred.",
+          "community_use_case": "Domain scientists comparing faithful solver pipelines and separating field accuracy from heat-diagnostic definitions and vendor/hostdispatch cost.",
+          "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+          "accuracy_requirements": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+          "scientific_validity": "qualified_source_method_accuracy_with_known_heat_diagnostic_definition",
+          "boundary_policy": "SourcebottomT1/topT0, psiwallzero, sourcehorizontalfinite-differencewalls andthird-orderpsiDxendpoints. SourceDX32vertical alsoapplieshorizontal, unlike hXinitialization2/(N-1); preserveeffectivegeometrydiscrepancy.",
+          "source_evidence": [
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_history/main.cu",
+              "sha256": "d7890211792134c058650b668730c98568a06ae5529138b9f27f6fdfe4290ad5",
+              "bytes": 35042
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+              "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9",
+              "bytes": 1222
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+              "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8",
+              "bytes": 619
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/spatial_control_witness.json",
+              "sha256": "12062eecfacfd501d2190ee72fd9d7d04552923c9e2c030c263b995cf481f2bd",
+              "bytes": 337
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_provenance.json",
+              "sha256": "79dd7c9499756453627c1bac371083ab7c9877e4826206911aebdb565e5cea9f",
+              "bytes": 1413
+            }
+          ],
+          "final_buffer_role_qualification": "SourceG reusesu forDzT*v andomega forscaledinverseinterior; retainednamesrepresentactualworkingbuffers, notallfinalphysicalvelocity/vorticityfields. Stagepsi/v/DxT correspondthirdGinputbeforeRK3Tfinalcombination."
+        },
+        "work_item_mapping": "256threads/source(63,32)groupslargepointwise,4groupssmallvectors,1threadadaptive. Flattened2016equivalent1Dgroups, samepadded516096lanes/explicitlengthguards; independentperlane, nocollective.",
+        "data_layout": "OriginalcudaMallocbuffersborrowedasCuArrayownfalse; Float32flatN1000horizontalcontiguous\u00d7498verticalinternalrows, spectral998\u00d7498. ActualinitializedinputsreadbackbeforeROI; completefinalmutableworkingfields and1000dt/3excessNu samplesafterROI. SourceuoverwrittenDzT*v, omegainverseinterior; lastGstagefields beforefinalRK3temperatureupdate. Nooriginalcanaries/exhaustivememorysafetyclaim.",
+        "storage_precision": [
+          "Float32source/device/serializedartifact"
+        ],
+        "compute_precision": [
+          "Float32GPU",
+          "sourceFloat32hostcoefficients/Float64sin/cosinitialization",
+          "Float64CPUindependentoracle"
+        ],
+        "synchronization": [
+          "OriginalcuBLAShandledefaultlegacy_stream0",
+          "CUDAlegacy_stream own targetdispatch",
+          "OriginalhostIsamax/GetVector",
+          "CommoncudaDeviceSynchronizeROIboundaries",
+          "CUDAdevice_synchronizeafterCABIreturn"
+        ],
+        "resources": {
+          "scope": "Sourceauthoredpointwiseentryresources only; vendorGPUkernelresources notprofiled",
+          "threads_large": 256,
+          "source_grid_large": [
+            63,
+            32
+          ],
+          "target_large_group_count": 2016,
+          "static_shared_bytes": 0,
+          "dynamic_shared_bytes": 0,
+          "registers_spills_occupancy": null
+        },
+        "host_boundary": "OriginalCPUcuBLAS/finite-difference/RK3controlretainedthroughCABI; ownframework pointwise dispatch, no selectednativeGPUfallbackwithnonnullcallback. LibrarycuBLASactualDSO/versionrecordedperprocess. No libraryalgorithmreplacement.",
+        "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+        "verification_contract": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+        "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+        "keyconfounds": [
+          "nativeCPUcontroller/vendorcuBLASsharedbytargets",
+          "knownexcess-versus-totalNulabel",
+          "Float32gridspacinghorizontalhX/FDmismatch",
+          "historyobserverreplacesNuprintf",
+          "nooriginalallocationguards",
+          "noPDEmeshconvergenceclaim",
+          "OriginalsingleV100/1000shorttransientsteps, physicaltime~3.20e-6; notsteadyconvection.",
+          "Vendor/cuBLAS/controller commonROI preventsisolatedpurekernelcausalclaims."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+            "bytes": 1718,
+            "sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/study_common.jl",
+            "bytes": 1679,
+            "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/full_study.cu",
+            "bytes": 4147,
+            "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+            "bytes": 1222,
+            "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+            "bytes": 6833,
+            "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+          }
+        ],
+        "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+        "native_reference_repaired": false,
+        "native_behavior_known_scientific_defect": true
+      },
+      "jacc": {
+        "implementation_model": "jacc",
+        "review_status": "source_reviewed",
+        "implementation_status": "verified",
+        "implementation_class": "JACC_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+        "authored_device_kernel_count": 7,
+        "authored_device_kernel_definitions": 7,
+        "primary_device_entrypoints": 6,
+        "executed_distinct_authored_entries": 6,
+        "shared_authored_math_body_definitions": 0,
+        "count_unit": "Seven source pointwiseentrydefinitions, sixexecuted/JITcompiled; AddXunusedandnotcertified. Onecompletecandidate/oneactualdeviceJITprogram pertarget; internalcompilerinvocationsunknown.96216selecteddispatches inclwarmup+5.",
+        "scientific_intent": {
+          "benchmark": "rayleighBenardConvection",
+          "primary_family": "pde_continuum",
+          "review_status": "source_reviewed",
+          "domain": "Thermoconvective transport / source Rayleigh\u2013B\u00e9nard-style temperature\u2013streamfunction model",
+          "scientific_question": "Advance a perturbed conducting temperature profile using three-stage RK3, finite-difference transport/diffusion and an instantaneous dense sine-transform biharmonic streamfunction solve at Ra1e8.",
+          "mathematical_operation": "1000RK3steps on500verticalboundary-inclusive\u00d71000horizontalgrid; interior498\u00d71000temperature,498\u00d7998spectralstreamfunction; fourGEMMs/G,threeG/step, cuBLASfinite-differencevectors and adaptiveCFL-like dt.",
+          "classification_rationale": "Temperature evolution and buoyancy-related streamfunction operator are source-reviewed physics intent; GEMM/stencil/pointwise motifs are implementation mechanisms. No pressure/fullNavier\u2013Stokes/equilibrium/turbulencevalidation inferred.",
+          "community_use_case": "Domain scientists comparing faithful solver pipelines and separating field accuracy from heat-diagnostic definitions and vendor/hostdispatch cost.",
+          "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+          "accuracy_requirements": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+          "scientific_validity": "qualified_source_method_accuracy_with_known_heat_diagnostic_definition",
+          "boundary_policy": "SourcebottomT1/topT0, psiwallzero, sourcehorizontalfinite-differencewalls andthird-orderpsiDxendpoints. SourceDX32vertical alsoapplieshorizontal, unlike hXinitialization2/(N-1); preserveeffectivegeometrydiscrepancy.",
+          "source_evidence": [
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_history/main.cu",
+              "sha256": "d7890211792134c058650b668730c98568a06ae5529138b9f27f6fdfe4290ad5",
+              "bytes": 35042
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+              "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9",
+              "bytes": 1222
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+              "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8",
+              "bytes": 619
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/spatial_control_witness.json",
+              "sha256": "12062eecfacfd501d2190ee72fd9d7d04552923c9e2c030c263b995cf481f2bd",
+              "bytes": 337
+            },
+            {
+              "path": "src/rayleighBenardConvection-julia/reference_provenance.json",
+              "sha256": "79dd7c9499756453627c1bac371083ab7c9877e4826206911aebdb565e5cea9f",
+              "bytes": 1413
+            }
+          ],
+          "final_buffer_role_qualification": "SourceG reusesu forDzT*v andomega forscaledinverseinterior; retainednamesrepresentactualworkingbuffers, notallfinalphysicalvelocity/vorticityfields. Stagepsi/v/DxT correspondthirdGinputbeforeRK3Tfinalcombination."
+        },
+        "work_item_mapping": "256threads/source(63,32)groupslargepointwise,4groupssmallvectors,1threadadaptive. Flattened2016equivalent1Dgroups, samepadded516096lanes/explicitlengthguards; independentperlane, nocollective. LaunchSpeccachekey(threads,blocks), no mutablegeometryalias, explicit0shared/legacy stream.",
+        "data_layout": "OriginalcudaMallocbuffersborrowedasCuArrayownfalse; Float32flatN1000horizontalcontiguous\u00d7498verticalinternalrows, spectral998\u00d7498. ActualinitializedinputsreadbackbeforeROI; completefinalmutableworkingfields and1000dt/3excessNu samplesafterROI. SourceuoverwrittenDzT*v, omegainverseinterior; lastGstagefields beforefinalRK3temperatureupdate. Nooriginalcanaries/exhaustivememorysafetyclaim.",
+        "storage_precision": [
+          "Float32source/device/serializedartifact"
+        ],
+        "compute_precision": [
+          "Float32GPU",
+          "sourceFloat32hostcoefficients/Float64sin/cosinitialization",
+          "Float64CPUindependentoracle"
+        ],
+        "synchronization": [
+          "OriginalcuBLAShandledefaultlegacy_stream0",
+          "CUDAlegacy_stream own targetdispatch",
+          "OriginalhostIsamax/GetVector",
+          "CommoncudaDeviceSynchronizeROIboundaries",
+          "CUDAdevice_synchronizeafterCABIreturn"
+        ],
+        "resources": {
+          "scope": "Sourceauthoredpointwiseentryresources only; vendorGPUkernelresources notprofiled",
+          "threads_large": 256,
+          "source_grid_large": [
+            63,
+            32
+          ],
+          "target_large_group_count": 2016,
+          "static_shared_bytes": 0,
+          "dynamic_shared_bytes": 0,
+          "registers_spills_occupancy": null
+        },
+        "host_boundary": "OriginalCPUcuBLAS/finite-difference/RK3controlretainedthroughCABI; ownframework pointwise dispatch, no selectednativeGPUfallbackwithnonnullcallback. LibrarycuBLASactualDSO/versionrecordedperprocess. No libraryalgorithmreplacement.",
+        "timing_scope": "full_source_1000step_RK3_cuBLAS_and_pointwise_loop_plus_common_history_capture",
+        "verification_contract": "Exact actual initialized fullGPUinputbits and complete finalfield/dt/Nu-history dualcomparisons. FullFloat64CPU source-method RK3 underpredeclared0.3%-fieldLinfengineeringbudgets, adaptive dt independentlypredicted onactualstates/history. Not acontinuumPDEconvergence bound.",
+        "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+        "keyconfounds": [
+          "nativeCPUcontroller/vendorcuBLASsharedbytargets",
+          "knownexcess-versus-totalNulabel",
+          "Float32gridspacinghorizontalhX/FDmismatch",
+          "historyobserverreplacesNuprintf",
+          "nooriginalallocationguards",
+          "noPDEmeshconvergenceclaim",
+          "OriginalsingleV100/1000shorttransientsteps, physicaltime~3.20e-6; notsteadyconvection.",
+          "Vendor/cuBLAS/controller commonROI preventsisolatedpurekernelcausalclaims."
+        ],
+        "source_evidence": [
+          {
+            "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-JACC/main.jl",
+            "bytes": 1806,
+            "sha256": "91465c318d071b5774073099cb796429144de35ad8a44286fe3a4c470e73fdee"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/study_common.jl",
+            "bytes": 1679,
+            "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/full_study.cu",
+            "bytes": 4147,
+            "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+            "bytes": 1222,
+            "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+          },
+          {
+            "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+            "bytes": 6833,
+            "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+          }
+        ],
+        "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+        "native_reference_repaired": false,
+        "native_behavior_known_scientific_defect": true
+      }
+    },
+    "schema_version": 2,
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": true
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+    "sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17,
+        20
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+      "run_id": "20261020T053845137004Z_rayleighBenardConvection",
+      "result": ".porting-state/portable_julia/runs/20261020T053845137004Z_rayleighBenardConvection/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": true,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_reference_repaired": false,
+        "native_behavior_known_scientific_defect": true,
+        "intervention": "GPU mathematical bodies and solver algorithm unchanged; callbacks/readbacks/finaldevicecompletion and Nuprintf\u2192samepipelinehistorycapture instrumentation only.",
+        "known_diagnostic_definition": "Source NusseltCompute removes conducting T=1-z profile and reports excess heat diagnostic as Nusselt number; independent conduction witness gives0 instead of totalNu1. Fulltemperature/velocity solver scope retained, no inference of solver invalidity solely from diagnostic label.",
+        "witness": {
+          "path": "src/rayleighBenardConvection-julia/conduction_heat_flux_witness.json",
+          "sha256": "67538d02f49bf5ceabfb40965d7448b40b61c8a7f4c79e88b92008ce6c3b81a8"
+        },
+        "source_archive": {
+          "path": "src/rayleighBenardConvection-julia/source_archive.json",
+          "sha256": "a29a6efd7711f5e9c2198131a65fe850e64ca2b42a4d3bbff6cbc4c81b564a22"
+        },
+        "source_gpu_identity": {
+          "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+          "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+        },
+        "exclusion": "Known diagnostic-definition stratum; exclude untouched scientific/performance recommendations for totalheatflux. State validation remains bounded1000step source-method engineering accuracy.",
+        "declared_before_first_checked_five_trial_series": true
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "dba26f95fa4e5d3103fe0131f535c043a551fe3a0237d5f5bf7a5c1160cfae5b",
+      "source_hash": "0c708e9bc3c5e7eadeaf017609cd15252d7c79ee2453209f4e3b2a569c35ea38",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261020T053845137004Z_rayleighBenardConvection/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        30.844675174,
+        31.014832274,
+        30.732475553,
+        30.693644633,
+        31.012303825
+      ],
+      "mean_last_four_seconds": 30.863314071250002,
+      "contract": null,
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "begin_event_id": "3e0cd4872071d3e312b5757b",
+      "end_event_id": "38cc85ae43e629760b1e23d9",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/rayleighBenardConvection/ka_translation.jsonl",
+      "observed_usage": {
+        "input_tokens": 2396353,
+        "cached_input_tokens": 2353280,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 10958,
+        "reasoning_output_tokens": 6416,
+        "total_tokens": 2407311
+      },
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-20T05:17:41.765Z",
+        "context_event_sha256": "d2863dbbd22322e85c756c9f7bd45de1112e892414c5c57e9e68e029ac849259",
+        "source_snapshot_bytes": 123789754,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "marker_lag_seconds": 7.73608,
+      "scope": "Actualinclusiveorderedwindow/cachecontext/compiler/checkfeedback+samebenchcoordination; notexclusivebilling/intrinsicframeworkcost. Sharedverificationoverlapmustnotbesummed.",
+      "input_tokens": 2396353,
+      "cached_input_tokens": 2353280,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10958,
+      "reasoning_output_tokens": 6416,
+      "total_tokens": 2407311
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "38cc85ae43e629760b1e23d9",
+        "begin_event_id": "3e0cd4872071d3e312b5757b",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-20T05:38:08.198080+00:00",
+        "usage_event_timestamp": "2026-10-20T05:38:00.462Z",
+        "elapsed_usage_event_start": "2026-10-20T05:33:47.374Z",
+        "delta_usage": {
+          "input_tokens": 2396353,
+          "cached_input_tokens": 2353280,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 10958,
+          "reasoning_output_tokens": 6416,
+          "total_tokens": 2407311
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 7.73608,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "ad54e00b1a4a4d47713423f44e61c7b0b514e8b2359d0205281af85649c28c67",
+        "meter_driver_sha256": "0e31d5289655f86be51afe6f7ecf0e4e6d5f8db2aabb80050f977f5ffc688be0",
+        "note": "OneKAcandidate/deviceJITprogramPASSall5/dualnativeCUDAjl/full15artifactCPUreplay; allrawartifactSHAsidentical. Sharedcallbacksunchanged; samebenchCUDAmetadata/coordinationincluded, nootherbenchwork.7authoreddefs/6executed; nativeCPUcuBLAShybrid notpureportablepipeline.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-20T05:17:41.765Z",
+          "context_event_sha256": "d2863dbbd22322e85c756c9f7bd45de1112e892414c5c57e9e68e029ac849259",
+          "source_snapshot_bytes": 123789754,
+          "lookup_bytes_reviewed": 2097152,
+          "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+          "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+        },
+        "begin_marker_lag_seconds": 5.753503,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/rayleighBenardConvection/ka_translation.jsonl",
+        "evidence_sha256": "e5215e4a47deec09bb0ad6317f5c95bd303f25ffd806965aaa87f73e2484061e",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {},
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/rayleighBenardConvection-julia-ka/manifest.json",
+    "selected_sha256": "ad0bf62c31f29a972d52b4156dafd68f8bb220d533253f44c05b3b0847da1be5",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/rayleighBenardConvection-julia-ka/manifest.json",
+        "sha256": "ad0bf62c31f29a972d52b4156dafd68f8bb220d533253f44c05b3b0847da1be5"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "37c98ed561578636d9ffdce16ae213a0b7ec69a8",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark_id": "rayleighBenardConvection",
+    "implementation_model": "ka",
+    "status": "verified",
+    "configuration_id": "original500x1000_1000steps_fullRK3_cuBLAS_excessNu_qualified_v1",
+    "verification_result": ".porting-state/portable_julia/runs/20261020T053845137004Z_rayleighBenardConvection/result.json",
+    "candidate_attempts": 1,
+    "compiler_loop_attempts": 1,
+    "failed_target_compiler_checks": 0,
+    "actual_device_JIT_programs": 1,
+    "backend_internal_compiler_invocations": null,
+    "authored_device_kernel_count": 7,
+    "executed_distinct_authored_entries": 6,
+    "selected_dispatches_including_warmup": 96216,
+    "attempt_unit": "Seven source pointwiseentrydefinitions, sixexecuted/JITcompiled; AddXunusedandnotcertified. Onecompletecandidate/oneactualdeviceJITprogram pertarget; internalcompilerinvocationsunknown.96216selecteddispatches inclwarmup+5.",
+    "translation_tokens": {
+      "begin_event_id": "3e0cd4872071d3e312b5757b",
+      "end_event_id": "38cc85ae43e629760b1e23d9",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/rayleighBenardConvection/ka_translation.jsonl",
+      "observed_usage": {
+        "input_tokens": 2396353,
+        "cached_input_tokens": 2353280,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 10958,
+        "reasoning_output_tokens": 6416,
+        "total_tokens": 2407311
+      },
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-20T05:17:41.765Z",
+        "context_event_sha256": "d2863dbbd22322e85c756c9f7bd45de1112e892414c5c57e9e68e029ac849259",
+        "source_snapshot_bytes": 123789754,
+        "lookup_bytes_reviewed": 2097152,
+        "lookup_method": "Latest complete same-stream turn_context not later than the usage event, backward bounded-memory scan.",
+        "scope": "Observed configured identifier only; exact serving snapshot/seed/temperature unknown. No cross-stream inference and no historical token recovery."
+      },
+      "marker_lag_seconds": 7.73608,
+      "scope": "Actualinclusiveorderedwindow/cachecontext/compiler/checkfeedback+samebenchcoordination; notexclusivebilling/intrinsicframeworkcost. Sharedverificationoverlapmustnotbesummed."
+    },
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": true,
+    "reference_provenance": "src/rayleighBenardConvection-julia/reference_provenance.json",
+    "source_evidence": [
+      {
+        "path": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+        "bytes": 1718,
+        "sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/study_common.jl",
+        "bytes": 1679,
+        "sha256": "34aa6408853ab6237e74a9ea00ddbc892f09a2ec335c936a148e54fb60b2199b"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/full_study.cu",
+        "bytes": 4147,
+        "sha256": "a51dc46ccc54ac0f11df9b0bf4169ac2b434b8c7ea0f73319b6db6d16e9a3f83"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/source_body_identity.json",
+        "bytes": 1222,
+        "sha256": "585960ba0cd259c212d7160063d158530e18ff686d25ca5fb7a85ec634a91fd9"
+      },
+      {
+        "path": "src/rayleighBenardConvection-julia/scientific_witness.json",
+        "bytes": 6833,
+        "sha256": "68ce41e6962a536154ddb717c5edcb1f183eb8b0a0da5a0c60dbed9c7b14c8fa"
+      }
+    ],
+    "source_hash": "0c708e9bc3c5e7eadeaf017609cd15252d7c79ee2453209f4e3b2a569c35ea38",
+    "raw5times": [
+      30.844675174,
+      31.014832274,
+      30.732475553,
+      30.693644633,
+      31.012303825
+    ],
+    "mean_seconds": 30.863314071250002,
+    "support_boundary": "Original source M500/N1000/Ra1e8, all1000steps and3sampledexcessheatdiagnostics. No originalnamedpaper provenance claimed; recoveredheader expressly uncertain. Original unusedAddX definition translatedbutnotexecuted; unusedtrinitialization preserved without aphysicalquadratureclaim.",
+    "commit": null,
+    "source_commit": "37c98ed561578636d9ffdce16ae213a0b7ec69a8",
+    "commit_status": "committed",
+    "coordinator_source_commit_join": {
+      "commit": "37c98ed561578636d9ffdce16ae213a0b7ec69a8",
+      "source": "src/rayleighBenardConvection-julia/rayleighBenardConvection-julia-KA/main.jl",
+      "source_sha256": "815a2c3f79e51e33d5cceb15a042f39c4c47dc2f0764bc48f4e965ad482d518c",
+      "phase": "KA",
+      "review": "git-show source bytes equal current verified main; metadata-only join, observed usage and raw GPU evidence preserved",
+      "original_metadata": "src/rayleighBenardConvection-julia/reference_history/accounting_original_delivery_20261020/ka_status_before_commit_join_25b1215c4607.json",
+      "recorded_at": "2026-10-20T15:23:45.394938+00:00"
+    }
+  },
+  "declared_model_implementation_class": {
+    "value": "KA_authored_pointwise_CUDA_native_CPU_controller_cuBLAS_hybrid",
+    "annotation_path": ".porting-state/portable_julia/traits/rayleighBenardConvection.json",
+    "annotation_sha256": "f155f05de646bc4ffb7e2e5b952f6fd02275f2490baa05a816865f0226e7cbf7",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

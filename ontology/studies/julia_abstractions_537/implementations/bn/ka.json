@@ -1,0 +1,1306 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "bn",
+  "implementation_model": "ka",
+  "status": "conditionally_verified_native_reference_repaired",
+  "scientific_intent_record": "../../domains/bn.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "benchmark_id": "bn",
+    "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+    "implementation_model": "ka",
+    "status": "conditional_reference_repaired",
+    "implementation_class": "framework_device_kernel_with_original_CPU_FFI",
+    "algorithm": "Full source local K2 scoring, repaired paired score/index argmax, and original 100-order host search/top3 feedback via CPU-only C++ FFI.",
+    "work_item_mapping": "256 threads; one candidate-parent task per scoring thread, each scanning all nodes/data/state configurations; one 256-thread block per ordered node in this bounded cohort.",
+    "layout": "Row-major9-column Int32 data, node-major163-entry Float32 score table, guarded separate arrays; source fixed per-thread integer arrays.",
+    "precision": {
+      "storage": [
+        "Int32 binary samples/counts/indices",
+        "UInt8 actual parent masks",
+        "Float32 log-factorials/local scores/block scores",
+        "Float64 exact serialized expansion"
+      ],
+      "compute": [
+        "Float32 source K2 accumulation and graph-score sum",
+        "Int32 combinatorial/state counts",
+        "Float64 independent mathematical K2 oracle and forward budgets"
+      ]
+    },
+    "synchronization": [
+      "Ordered source host/GPU pipeline",
+      "Nine explicit barriers in corrected paired reduction",
+      "Context completion at every timed segment",
+      "Actual mask readbacks and independent full certificates outside ROI"
+    ],
+    "resources": {
+      "threads": 256,
+      "score_shared_bytes": 0,
+      "compute_shared_bytes": 2048,
+      "shared_allocation_kind": "static @localmem",
+      "compute_explicit_barriers": 9,
+      "JACC_additional_initialization": null,
+      "thread_local_values": "Source parent/state/count/pre arrays; immutable four-parent value across barriers for KA/JACC",
+      "atomics": false,
+      "actual_register_spill_counters": null
+    },
+    "host_device_boundary": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+    "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+    "source_evidence": [
+      {
+        "path": "src/bn-julia/bn-julia-KA/main.jl",
+        "sha256": "02a549589258cb10be37eb1cabc318277d53e1160c0932405b8812b919db0c30"
+      },
+      {
+        "path": "src/bn-julia/bayesian_device.jl",
+        "sha256": "b4080244c7d0e82e3f7d4d20a21c7842f33d47ee6c891cdfd5a6461d490490f9"
+      },
+      {
+        "path": "src/bn-julia/study_common.jl",
+        "sha256": "0497fceb51e686913245b7eeea8be305412ae0e8d20edcf14f06a8bcccdbcb4d"
+      },
+      {
+        "path": "src/bn-julia/bn_host.cpp",
+        "sha256": "d9a7a718f7408f839b64afd44b01967bef5ecb98aa8d3a25d90ce133a1437564"
+      },
+      {
+        "path": "src/bn-julia/bn_host_pipeline.h",
+        "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+      },
+      {
+        "path": "src/bn-julia/bn-julia-KA/immutable_parent.jl",
+        "sha256": "def551812951c2f8cf2207671472bcd1f88b3dab21107d3d38ea3e8f68d55597"
+      }
+    ],
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "native_reference_repaired": true,
+      "exclude_untouched_native_aggregates": true,
+      "configuration_role": "corrected_reference_secondary",
+      "original_source": {
+        "main": "src/bn-cuda/main.cu",
+        "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+        "kernel": "src/bn-cuda/kernels.h",
+        "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+      },
+      "corrections": [
+        "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+        "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+        "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+        "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+      ],
+      "resources": {
+        "original_compute_shared_bytes": 1024,
+        "corrected_compute_shared_bytes": 2048
+      },
+      "witnesses": [
+        {
+          "path": "src/bn-julia/native_contract_witness.json",
+          "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+        },
+        {
+          "path": "src/bn-julia/parent_zero_padding_witness.json",
+          "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+        },
+        {
+          "path": "src/bn-julia/reduction_tie_witness.json",
+          "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+        },
+        {
+          "path": "src/bn-julia/reduction_certificate_witness.json",
+          "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+        }
+      ],
+      "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+      "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+      "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+      "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+      "executed_corrected_sources": [
+        {
+          "path": "src/bn-julia/kernels.h",
+          "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+        },
+        {
+          "path": "src/bn-julia/bn_host_pipeline.h",
+          "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+        },
+        {
+          "path": "src/bn-julia/source_host_functions.inc",
+          "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+        },
+        {
+          "path": "src/bn-julia/source_top3_selection.inc",
+          "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+        },
+        {
+          "path": "src/bn-julia/reference.h",
+          "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+        }
+      ]
+    },
+    "candidate_attempts": 2,
+    "candidate_unit": "Distinct evaluated complete program/device-kernel candidates, not individual GPU launches or five measurement trials.",
+    "host_program_evaluations": 2,
+    "compiler_check_invocations": 2,
+    "authored_device_kernel_definitions": 2,
+    "authored_device_source_candidates": 2,
+    "authored_device_JIT_check_programs": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 1,
+    "numerical_GPU_repairs": 0,
+    "repair_detail": "Model-local helper returns immutable parent tuple instead of escaping mutable MVector4 across barriers; isolated change passes all full certificates after actual16-byte dynamic-device-allocation failure.",
+    "library_generated_support_kernels": "CUDA array fill/copy utilities may generate backend support kernels; actual launch count unprofiled and not counted as authored computational definitions.",
+    "environment_id": {
+      "Julia": "1.12.6",
+      "CUDA.jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "StaticArrays": "1.9.18",
+      "runtime": "localCUDA12.0",
+      "host_compiler": "g++13.3.0",
+      "environment_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "all_five_correct": true,
+    "trial_times_seconds": [
+      0.35230809699999904,
+      0.3502040000000013,
+      0.3537860609999999,
+      0.3527287940000003,
+      0.35551558400000083
+    ],
+    "mean_last_four_seconds": 0.3530586097500006,
+    "mean_last_four_constituents_seconds": {
+      "genScore_seconds": 0.13479497625,
+      "search_seconds": 0.21826363350000025
+    },
+    "host_library_sha256": "b9c02fc2287f2bcd3a4af9e0667538796cc84293ce39b12e553962c79a031c62"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Full source local K2 scoring, repaired paired score/index argmax, and original 100-order host search/top3 feedback via CPU-only C++ FFI.",
+    "implementation_class": "framework_device_kernel_with_original_CPU_FFI",
+    "declared_environment": {
+      "Julia": "1.12.6",
+      "CUDA.jl": "6.2.1",
+      "KA": "0.9.45",
+      "JACC": "1.4.0",
+      "StaticArrays": "1.9.18",
+      "runtime": "localCUDA12.0",
+      "host_compiler": "g++13.3.0",
+      "environment_hashes": {
+        "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+        "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+        "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+      }
+    },
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "256 threads; one candidate-parent task per scoring thread, each scanning all nodes/data/state configurations; one 256-thread block per ordered node in this bounded cohort.",
+    "layout": "Row-major9-column Int32 data, node-major163-entry Float32 score table, guarded separate arrays; source fixed per-thread integer arrays.",
+    "storage_precision": [
+      "Int32 binary samples/counts/indices",
+      "UInt8 actual parent masks",
+      "Float32 log-factorials/local scores/block scores",
+      "Float64 exact serialized expansion"
+    ],
+    "compute_precision": [
+      "Float32 source K2 accumulation and graph-score sum",
+      "Int32 combinatorial/state counts",
+      "Float64 independent mathematical K2 oracle and forward budgets"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": null,
+    "synchronization": [
+      "Ordered source host/GPU pipeline",
+      "Nine explicit barriers in corrected paired reduction",
+      "Context completion at every timed segment",
+      "Actual mask readbacks and independent full certificates outside ROI"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": null,
+    "launch_geometry": null,
+    "library_backend_boundary": null,
+    "host_control_boundary": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+    "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": "conditional_reference_repaired",
+    "source_review_evidence": [
+      {
+        "path": "src/bn-julia/bn-julia-KA/main.jl",
+        "sha256": "02a549589258cb10be37eb1cabc318277d53e1160c0932405b8812b919db0c30"
+      },
+      {
+        "path": "src/bn-julia/bayesian_device.jl",
+        "sha256": "b4080244c7d0e82e3f7d4d20a21c7842f33d47ee6c891cdfd5a6461d490490f9"
+      },
+      {
+        "path": "src/bn-julia/study_common.jl",
+        "sha256": "0497fceb51e686913245b7eeea8be305412ae0e8d20edcf14f06a8bcccdbcb4d"
+      },
+      {
+        "path": "src/bn-julia/bn_host.cpp",
+        "sha256": "d9a7a718f7408f839b64afd44b01967bef5ecb98aa8d3a25d90ce133a1437564"
+      },
+      {
+        "path": "src/bn-julia/bn_host_pipeline.h",
+        "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+      },
+      {
+        "path": "src/bn-julia/bn-julia-KA/immutable_parent.jl",
+        "sha256": "def551812951c2f8cf2207671472bcd1f88b3dab21107d3d38ea3e8f68d55597"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "bn",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "stochastic_statistics",
+      "review_status": "source_reviewed",
+      "scientific_task": "Bayesian-network structure scoring and ordered structure search",
+      "mathematical_operation": "K2 uniform-state-prior Dirichlet-multinomial local marginal scores over every zero-to-four-parent set, ordered parent optimization, and 100-order Metropolis search with top unique scored graphs.",
+      "community_use_case": "A bounded discrete probabilistic graphical-model structure-learning operator on synthesized binary data; no causal-discovery, posterior-calibration or real-data claim.",
+      "accuracy_requirements": "Every local score against independent contingency histograms and Float64 log-factorials with a per-point Float32/table error envelope; every selected parent set attains the actual within-order local maximum; full DAG/score/feedback/top-population certificates.",
+      "source_evidence": [
+        {
+          "path": "src/bn-cuda/main.cu",
+          "sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87"
+        },
+        {
+          "path": "src/bn-cuda/kernels.h",
+          "sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+        },
+        {
+          "path": "src/bn-cuda/data45.h",
+          "sha256": "deb3df73ab2bc21a756363f24cf25d4a10d8222b03a0c3ccc7dd0bd4a0678f99"
+        }
+      ],
+      "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+      "reference_condition": "Conditional owned corrected-native reference: log(0!) initialization, parent-code decoding, zero-padding interpretation and paired score/index argmax. Original and failed intermediate sources/captures remain preserved."
+    },
+    "primary_motif": "contingency_histogram_scoring_and_ordered_graph_argmax",
+    "storage_precision": [
+      "Int32 binary samples/counts/indices",
+      "UInt8 actual parent masks",
+      "Float32 log-factorials/local scores/block scores",
+      "Float64 exact serialized expansion"
+    ],
+    "compute_precision": [
+      "Float32 source K2 accumulation and graph-score sum",
+      "Int32 combinatorial/state counts",
+      "Float64 independent mathematical K2 oracle and forward budgets"
+    ],
+    "synchronization": [
+      "Ordered source host/GPU pipeline",
+      "Nine explicit barriers in corrected paired reduction",
+      "Context completion at every timed segment",
+      "Actual mask readbacks and independent full certificates outside ROI"
+    ],
+    "native_to_julia_mapping": {
+      "status": "adapted",
+      "reason": "Same two source computational bodies and 256-thread geometry, but explicitly repaired paired winner reduction and CPU parent interpretation; original CPU routines retained through a pure C++ FFI. Later models reuse scalar code."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel_with_original_CPU_FFI",
+      "ka": "framework_device_kernel_with_original_CPU_FFI",
+      "jacc": "framework_device_kernel_with_original_CPU_FFI"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "benchmark_id": "bn",
+        "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+        "implementation_model": "cuda_jl",
+        "status": "conditional_reference_repaired",
+        "implementation_class": "framework_device_kernel_with_original_CPU_FFI",
+        "algorithm": "Full source local K2 scoring, repaired paired score/index argmax, and original 100-order host search/top3 feedback via CPU-only C++ FFI.",
+        "work_item_mapping": "256 threads; one candidate-parent task per scoring thread, each scanning all nodes/data/state configurations; one 256-thread block per ordered node in this bounded cohort.",
+        "layout": "Row-major9-column Int32 data, node-major163-entry Float32 score table, guarded separate arrays; source fixed per-thread integer arrays.",
+        "precision": {
+          "storage": [
+            "Int32 binary samples/counts/indices",
+            "UInt8 actual parent masks",
+            "Float32 log-factorials/local scores/block scores",
+            "Float64 exact serialized expansion"
+          ],
+          "compute": [
+            "Float32 source K2 accumulation and graph-score sum",
+            "Int32 combinatorial/state counts",
+            "Float64 independent mathematical K2 oracle and forward budgets"
+          ]
+        },
+        "synchronization": [
+          "Ordered source host/GPU pipeline",
+          "Nine explicit barriers in corrected paired reduction",
+          "Context completion at every timed segment",
+          "Actual mask readbacks and independent full certificates outside ROI"
+        ],
+        "resources": {
+          "threads": 256,
+          "score_shared_bytes": 0,
+          "compute_shared_bytes": 2048,
+          "shared_allocation_kind": "dynamic shared storage",
+          "compute_explicit_barriers": 9,
+          "JACC_additional_initialization": null,
+          "thread_local_values": "Source parent/state/count/pre arrays; immutable four-parent value across barriers for KA/JACC",
+          "atomics": false,
+          "actual_register_spill_counters": null
+        },
+        "host_device_boundary": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+        "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+        "source_evidence": [
+          {
+            "path": "src/bn-julia/bn-julia-cuda.jl/main.jl",
+            "sha256": "fd298015fbf7c16bae36b651816f2ed1ba6731e6a1f4befbde272be4d47be1a4"
+          },
+          {
+            "path": "src/bn-julia/bayesian_device.jl",
+            "sha256": "b4080244c7d0e82e3f7d4d20a21c7842f33d47ee6c891cdfd5a6461d490490f9"
+          },
+          {
+            "path": "src/bn-julia/study_common.jl",
+            "sha256": "0497fceb51e686913245b7eeea8be305412ae0e8d20edcf14f06a8bcccdbcb4d"
+          },
+          {
+            "path": "src/bn-julia/bn_host.cpp",
+            "sha256": "d9a7a718f7408f839b64afd44b01967bef5ecb98aa8d3a25d90ce133a1437564"
+          },
+          {
+            "path": "src/bn-julia/bn_host_pipeline.h",
+            "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+          }
+        ],
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "exclude_untouched_native_aggregates": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "main": "src/bn-cuda/main.cu",
+            "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+            "kernel": "src/bn-cuda/kernels.h",
+            "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+          },
+          "corrections": [
+            "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+            "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+            "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+            "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+          ],
+          "resources": {
+            "original_compute_shared_bytes": 1024,
+            "corrected_compute_shared_bytes": 2048
+          },
+          "witnesses": [
+            {
+              "path": "src/bn-julia/native_contract_witness.json",
+              "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+            },
+            {
+              "path": "src/bn-julia/parent_zero_padding_witness.json",
+              "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+            },
+            {
+              "path": "src/bn-julia/reduction_tie_witness.json",
+              "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+            },
+            {
+              "path": "src/bn-julia/reduction_certificate_witness.json",
+              "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+            }
+          ],
+          "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+          "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+          "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+          "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+          "executed_corrected_sources": [
+            {
+              "path": "src/bn-julia/kernels.h",
+              "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+            },
+            {
+              "path": "src/bn-julia/bn_host_pipeline.h",
+              "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+            },
+            {
+              "path": "src/bn-julia/source_host_functions.inc",
+              "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+            },
+            {
+              "path": "src/bn-julia/source_top3_selection.inc",
+              "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+            },
+            {
+              "path": "src/bn-julia/reference.h",
+              "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+            }
+          ]
+        },
+        "candidate_attempts": 1,
+        "candidate_unit": "Distinct evaluated complete program/device-kernel candidates, not individual GPU launches or five measurement trials.",
+        "host_program_evaluations": 1,
+        "compiler_check_invocations": 1,
+        "authored_device_kernel_definitions": 2,
+        "authored_device_source_candidates": 1,
+        "authored_device_JIT_check_programs": 1,
+        "compiler_feedback_repairs": 0,
+        "runtime_repairs": 0,
+        "numerical_GPU_repairs": 0,
+        "repair_detail": "First evaluated CUDA.jl program passes.",
+        "library_generated_support_kernels": "CUDA array fill/copy utilities may generate backend support kernels; actual launch count unprofiled and not counted as authored computational definitions.",
+        "environment_id": {
+          "Julia": "1.12.6",
+          "CUDA.jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "StaticArrays": "1.9.18",
+          "runtime": "localCUDA12.0",
+          "host_compiler": "g++13.3.0",
+          "environment_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.3721403570000004,
+          0.33789295599999947,
+          0.3363605220000017,
+          0.34203982899999924,
+          0.33744212600000145
+        ],
+        "mean_last_four_seconds": 0.3384338582500005,
+        "mean_last_four_constituents_seconds": {
+          "genScore_seconds": 0.134346299,
+          "search_seconds": 0.20408755925000005
+        },
+        "host_library_sha256": "b9c02fc2287f2bcd3a4af9e0667538796cc84293ce39b12e553962c79a031c62"
+      },
+      "ka": {
+        "benchmark_id": "bn",
+        "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+        "implementation_model": "ka",
+        "status": "conditional_reference_repaired",
+        "implementation_class": "framework_device_kernel_with_original_CPU_FFI",
+        "algorithm": "Full source local K2 scoring, repaired paired score/index argmax, and original 100-order host search/top3 feedback via CPU-only C++ FFI.",
+        "work_item_mapping": "256 threads; one candidate-parent task per scoring thread, each scanning all nodes/data/state configurations; one 256-thread block per ordered node in this bounded cohort.",
+        "layout": "Row-major9-column Int32 data, node-major163-entry Float32 score table, guarded separate arrays; source fixed per-thread integer arrays.",
+        "precision": {
+          "storage": [
+            "Int32 binary samples/counts/indices",
+            "UInt8 actual parent masks",
+            "Float32 log-factorials/local scores/block scores",
+            "Float64 exact serialized expansion"
+          ],
+          "compute": [
+            "Float32 source K2 accumulation and graph-score sum",
+            "Int32 combinatorial/state counts",
+            "Float64 independent mathematical K2 oracle and forward budgets"
+          ]
+        },
+        "synchronization": [
+          "Ordered source host/GPU pipeline",
+          "Nine explicit barriers in corrected paired reduction",
+          "Context completion at every timed segment",
+          "Actual mask readbacks and independent full certificates outside ROI"
+        ],
+        "resources": {
+          "threads": 256,
+          "score_shared_bytes": 0,
+          "compute_shared_bytes": 2048,
+          "shared_allocation_kind": "static @localmem",
+          "compute_explicit_barriers": 9,
+          "JACC_additional_initialization": null,
+          "thread_local_values": "Source parent/state/count/pre arrays; immutable four-parent value across barriers for KA/JACC",
+          "atomics": false,
+          "actual_register_spill_counters": null
+        },
+        "host_device_boundary": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+        "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+        "source_evidence": [
+          {
+            "path": "src/bn-julia/bn-julia-KA/main.jl",
+            "sha256": "02a549589258cb10be37eb1cabc318277d53e1160c0932405b8812b919db0c30"
+          },
+          {
+            "path": "src/bn-julia/bayesian_device.jl",
+            "sha256": "b4080244c7d0e82e3f7d4d20a21c7842f33d47ee6c891cdfd5a6461d490490f9"
+          },
+          {
+            "path": "src/bn-julia/study_common.jl",
+            "sha256": "0497fceb51e686913245b7eeea8be305412ae0e8d20edcf14f06a8bcccdbcb4d"
+          },
+          {
+            "path": "src/bn-julia/bn_host.cpp",
+            "sha256": "d9a7a718f7408f839b64afd44b01967bef5ecb98aa8d3a25d90ce133a1437564"
+          },
+          {
+            "path": "src/bn-julia/bn_host_pipeline.h",
+            "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+          },
+          {
+            "path": "src/bn-julia/bn-julia-KA/immutable_parent.jl",
+            "sha256": "def551812951c2f8cf2207671472bcd1f88b3dab21107d3d38ea3e8f68d55597"
+          }
+        ],
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "exclude_untouched_native_aggregates": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "main": "src/bn-cuda/main.cu",
+            "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+            "kernel": "src/bn-cuda/kernels.h",
+            "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+          },
+          "corrections": [
+            "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+            "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+            "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+            "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+          ],
+          "resources": {
+            "original_compute_shared_bytes": 1024,
+            "corrected_compute_shared_bytes": 2048
+          },
+          "witnesses": [
+            {
+              "path": "src/bn-julia/native_contract_witness.json",
+              "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+            },
+            {
+              "path": "src/bn-julia/parent_zero_padding_witness.json",
+              "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+            },
+            {
+              "path": "src/bn-julia/reduction_tie_witness.json",
+              "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+            },
+            {
+              "path": "src/bn-julia/reduction_certificate_witness.json",
+              "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+            }
+          ],
+          "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+          "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+          "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+          "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+          "executed_corrected_sources": [
+            {
+              "path": "src/bn-julia/kernels.h",
+              "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+            },
+            {
+              "path": "src/bn-julia/bn_host_pipeline.h",
+              "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+            },
+            {
+              "path": "src/bn-julia/source_host_functions.inc",
+              "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+            },
+            {
+              "path": "src/bn-julia/source_top3_selection.inc",
+              "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+            },
+            {
+              "path": "src/bn-julia/reference.h",
+              "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+            }
+          ]
+        },
+        "candidate_attempts": 2,
+        "candidate_unit": "Distinct evaluated complete program/device-kernel candidates, not individual GPU launches or five measurement trials.",
+        "host_program_evaluations": 2,
+        "compiler_check_invocations": 2,
+        "authored_device_kernel_definitions": 2,
+        "authored_device_source_candidates": 2,
+        "authored_device_JIT_check_programs": 2,
+        "compiler_feedback_repairs": 0,
+        "runtime_repairs": 1,
+        "numerical_GPU_repairs": 0,
+        "repair_detail": "Model-local helper returns immutable parent tuple instead of escaping mutable MVector4 across barriers; isolated change passes all full certificates after actual16-byte dynamic-device-allocation failure.",
+        "library_generated_support_kernels": "CUDA array fill/copy utilities may generate backend support kernels; actual launch count unprofiled and not counted as authored computational definitions.",
+        "environment_id": {
+          "Julia": "1.12.6",
+          "CUDA.jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "StaticArrays": "1.9.18",
+          "runtime": "localCUDA12.0",
+          "host_compiler": "g++13.3.0",
+          "environment_hashes": {
+            "Project.toml": "98feb7e8ca6c43aedd938d9ac1286c27e3ee8ae5feca5a5c17ffe5ba15a6abf8",
+            "Manifest.toml": "7408d31a5ddf6bb183091de319eb0513133a1c13999a43140f4c7464500d9cc3",
+            "LocalPreferences.toml": "e62ff42227db2c9c8caaa02e870a75c2d484b5ff482759382d120338512039ba"
+          }
+        },
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.35230809699999904,
+          0.3502040000000013,
+          0.3537860609999999,
+          0.3527287940000003,
+          0.35551558400000083
+        ],
+        "mean_last_four_seconds": 0.3530586097500006,
+        "mean_last_four_constituents_seconds": {
+          "genScore_seconds": 0.13479497625,
+          "search_seconds": 0.21826363350000025
+        },
+        "host_library_sha256": "b9c02fc2287f2bcd3a4af9e0667538796cc84293ce39b12e553962c79a031c62"
+      },
+      "jacc": {
+        "benchmark_id": "bn",
+        "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+        "implementation_model": "jacc",
+        "status": "conditional_reference_repaired",
+        "implementation_class": "framework_device_kernel_with_original_CPU_FFI",
+        "algorithm": "Full source local K2 scoring, repaired paired score/index argmax, and original 100-order host search/top3 feedback via CPU-only C++ FFI.",
+        "work_item_mapping": "256 threads; one candidate-parent task per scoring thread, each scanning all nodes/data/state configurations; one 256-thread block per ordered node in this bounded cohort.",
+        "layout": "Row-major9-column Int32 data, node-major163-entry Float32 score table, guarded separate arrays; source fixed per-thread integer arrays.",
+        "precision": {
+          "storage": [
+            "Int32 binary samples/counts/indices",
+            "UInt8 actual parent masks",
+            "Float32 log-factorials/local scores/block scores",
+            "Float64 exact serialized expansion"
+          ],
+          "compute": [
+            "Float32 source K2 accumulation and graph-score sum",
+            "Int32 combinatorial/state counts",
+            "Float64 independent mathematical K2 oracle and forward budgets"
+          ]
+        },
+        "synchronization": [
+          "Ordered source host/GPU pipeline",
+          "Nine explicit barriers in corrected paired reduction",
+          "Context completion at every timed segment",
+          "Actual mask readbacks and independent full certificates outside ROI"
+        ],
+        "resources": {
+          "threads": 256,
+          "score_shared_bytes": 0,
+          "compute_shared_bytes": 2048,
+          "shared_allocation_kind": "dynamic shared storage",
+          "compute_explicit_barriers": 10,
+          "JACC_additional_initialization": "512 compile-time literal zero stores plus one barrier; no extra global input buffer",
+          "thread_local_values": "Source parent/state/count/pre arrays; immutable four-parent value across barriers for KA/JACC",
+          "atomics": false,
+          "actual_register_spill_counters": null
+        },
+        "host_device_boundary": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+        "support_boundary": "Nine nodes projected from the original 45-column/600-row synthesized data, plus mixed binary and constant controls. Two complete GPU bodies, all parent sets through four parents and full 100-order host feedback. Original 45-node CLI and global DAG optimality are unverified. Unpopulated top slots are retained, not certified as scored graphs.",
+        "source_evidence": [
+          {
+            "path": "src/bn-julia/bn-julia-JACC/main.jl",
+            "sha256": "9f0cf0ad0175ff8e8fc2989498d6c84cb887b2f8e73dc1a0b92ced710c938595"
+          },
+          {
+            "path": "src/bn-julia/bayesian_device.jl",
+            "sha256": "b4080244c7d0e82e3f7d4d20a21c7842f33d47ee6c891cdfd5a6461d490490f9"
+          },
+          {
+            "path": "src/bn-julia/study_common.jl",
+            "sha256": "0497fceb51e686913245b7eeea8be305412ae0e8d20edcf14f06a8bcccdbcb4d"
+          },
+          {
+            "path": "src/bn-julia/bn_host.cpp",
+            "sha256": "d9a7a718f7408f839b64afd44b01967bef5ecb98aa8d3a25d90ce133a1437564"
+          },
+          {
+            "path": "src/bn-julia/bn_host_pipeline.h",
+            "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+          },
+          {
+            "path": "src/bn-julia/bn-julia-JACC/immutable_parent.jl",
+            "sha256": "a28263834a88f05d95706f796a9dd7b282eccc8dd55193a4c37e086f2ca8caa1"
+          }
+        ],
+        "native_reference_repaired": true,
+        "reference_provenance": {
+          "native_reference_repaired": true,
+          "exclude_untouched_native_aggregates": true,
+          "configuration_role": "corrected_reference_secondary",
+          "original_source": {
+            "main": "src/bn-cuda/main.cu",
+            "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+            "kernel": "src/bn-cuda/kernels.h",
+            "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+          },
+          "corrections": [
+            "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+            "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+            "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+            "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+          ],
+          "resources": {
+            "original_compute_shared_bytes": 1024,
+            "corrected_compute_shared_bytes": 2048
+          },
+          "witnesses": [
+            {
+              "path": "src/bn-julia/native_contract_witness.json",
+              "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+            },
+            {
+              "path": "src/bn-julia/parent_zero_padding_witness.json",
+              "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+            },
+            {
+              "path": "src/bn-julia/reduction_tie_witness.json",
+              "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+            },
+            {
+              "path": "src/bn-julia/reduction_certificate_witness.json",
+              "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+            }
+          ],
+          "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+          "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+          "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+          "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+          "executed_corrected_sources": [
+            {
+              "path": "src/bn-julia/kernels.h",
+              "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+            },
+            {
+              "path": "src/bn-julia/bn_host_pipeline.h",
+              "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+            },
+            {
+              "path": "src/bn-julia/source_host_functions.inc",
+              "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+            },
+            {
+              "path": "src/bn-julia/source_top3_selection.inc",
+              "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+            },
+            {
+              "path": "src/bn-julia/reference.h",
+              "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+            }
+          ]
+        },
+        "candidate_attempts": 1,
+        "candidate_unit": "Distinct evaluated complete program/device-kernel candidates, not individual GPU launches or five measurement trials.",
+        "host_program_evaluations": 1,
+        "compiler_check_invocations": 1,
+        "authored_device_kernel_definitions": 2,
+        "authored_device_source_candidates": 1,
+        "authored_device_JIT_check_programs": 1,
+        "compiler_feedback_repairs": 0,
+        "runtime_repairs": 0,
+        "numerical_GPU_repairs": 0,
+        "repair_detail": "Inherits the preceding KA immutable-value repair before first JACC draft.",
+        "library_generated_support_kernels": "CUDA array fill/copy utilities may generate backend support kernels; actual launch count unprofiled and not counted as authored computational definitions.",
+        "environment_id": {
+          "Julia": "1.12.6",
+          "CUDA.jl": "6.2.1",
+          "KA": "0.9.45",
+          "JACC": "1.4.0",
+          "StaticArrays": "1.9.18",
+          "runtime": "localCUDA12.0",
+          "host_compiler": "g++13.3.0",
+          "environment_hashes": {
+            "Project.toml": "0fcdf6ad33a7dfa96aa69c9e07bd10a75cf38a2cfae6f14fcefa379b41cf7f49",
+            "Manifest.toml": "b6610213656fc663122d3d67ac2e424628db3444fd0e16338d50697f5836e784",
+            "LocalPreferences.toml": "692ec1b6b85fed281b54f040e9c04775745990b44f3f4a4da1e53e0a194ddb51"
+          }
+        },
+        "all_five_correct": true,
+        "trial_times_seconds": [
+          0.36923127600000105,
+          0.3688290269999993,
+          0.36834998499999927,
+          0.36909452999999964,
+          0.36930871899999884
+        ],
+        "mean_last_four_seconds": 0.3688955652499993,
+        "mean_last_four_constituents_seconds": {
+          "genScore_seconds": 0.134805318,
+          "search_seconds": 0.23409024724999955
+        },
+        "host_library_sha256": "b9c02fc2287f2bcd3a4af9e0667538796cc84293ce39b12e553962c79a031c62"
+      }
+    },
+    "timing_scope": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+    "verification_contract": {
+      "cases": [
+        "First9columnsofsource45node600rows synthesizeddata",
+        "Manufactured600rowbinarymixeddependence",
+        "Allconstantzero/emptycontingency/tiedK2control"
+      ],
+      "size": "9nodes600rows2states,163parentsetspernode(all0..4parents),100Metropolisorders percase,3cases",
+      "pipeline": "All2source computationalkernels andsource100orderhostfeedback/uniqueTop3state; originalCPUFFIcontrolsnotGPUlaunching. No original45node/defaultCLI/globalDAGoptimalityclaim. Unpopulatedtopslotsrawretained but notcertifiedasvalidscoredoutputs.",
+      "arithmetic": "Canonicalg++13.3sourceFloat32LGtablebitsexactdeviceinput all4, sourceInt32countsandFloat32scorearithmetic. IndependentFloat64trueK2score+forwardperpointtable/roundoffenvelope precomputedbeforeGPU. Float64exactartifactexpansion.",
+      "roi": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+      "geometry": "256threads; source candidateenumeration/localScore; correctedpairedargmax2KBshared vsoriginaldestructive1KBindextrace; maxthenloweroriginalthreadindex tie; originalCPUhostFFI withdeclareddecoding/paddingfixes.",
+      "tolerance": "Declared1e-3+2e-6reference artifactcomparison; exactprefixinputbits andindependentfullintegerparent/graphchecks; K2mathematicalcheck usesperpointforwardbudget derivedfromLGquantization+Float32arithmetic, notfittedtoGPUerror."
+    },
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "native_reference_repaired": true,
+      "exclude_untouched_native_aggregates": true,
+      "configuration_role": "corrected_reference_secondary",
+      "original_source": {
+        "main": "src/bn-cuda/main.cu",
+        "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+        "kernel": "src/bn-cuda/kernels.h",
+        "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+      },
+      "corrections": [
+        "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+        "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+        "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+        "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+      ],
+      "resources": {
+        "original_compute_shared_bytes": 1024,
+        "corrected_compute_shared_bytes": 2048
+      },
+      "witnesses": [
+        {
+          "path": "src/bn-julia/native_contract_witness.json",
+          "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+        },
+        {
+          "path": "src/bn-julia/parent_zero_padding_witness.json",
+          "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+        },
+        {
+          "path": "src/bn-julia/reduction_tie_witness.json",
+          "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+        },
+        {
+          "path": "src/bn-julia/reduction_certificate_witness.json",
+          "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+        }
+      ],
+      "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+      "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+      "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+      "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+      "executed_corrected_sources": [
+        {
+          "path": "src/bn-julia/kernels.h",
+          "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+        },
+        {
+          "path": "src/bn-julia/bn_host_pipeline.h",
+          "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+        },
+        {
+          "path": "src/bn-julia/source_host_functions.inc",
+          "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+        },
+        {
+          "path": "src/bn-julia/source_top3_selection.inc",
+          "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+        },
+        {
+          "path": "src/bn-julia/reference.h",
+          "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+        }
+      ]
+    },
+    "keyconfounds": [
+      "Conditional native block reduction uses 2KB shared storage instead of original 1KB; original reduction semantics are not certified.",
+      "Nine-node/600-row cases and 100 sampled orders do not establish original 45-node runtime or global structure optimality.",
+      "Canonical serialized Float32 log-factorials remove compiler-host overload differences; native NVCC-host diagnostic table differs in 73 entries by at most3.05176e-5.",
+      "Host C++ FFI, Julia/CUDA reset APIs, dispatch, segmented transfers and host selection all contribute to the measured regions.",
+      "JACC.shared initializes512 constant zeros and adds one barrier; KA has an immutable-parent repair prompted by an actual device allocation failure.",
+      "All targets reuse pure scalar code and later targets inherit preceding feedback. Actual token windows are marginal ordered activity, not cold-start or billed cost.",
+      "No instruction/resource/traffic profiler counters; no bottleneck or roofline inference."
+    ]
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/bn-julia/bn-julia-KA/main.jl",
+    "sha256": "02a549589258cb10be37eb1cabc318277d53e1160c0932405b8812b919db0c30",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [
+        4,
+        8
+      ],
+      "jacc_parallel_loop": [],
+      "local_storage": [
+        12
+      ],
+      "barrier": [
+        13,
+        20
+      ],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": true,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+      "run_id": "20261019T172136421593Z_bn",
+      "result": ".porting-state/portable_julia/runs/20261019T172136421593Z_bn/result.json",
+      "configuration_role": "corrected_reference_secondary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": true,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": false,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": {
+        "native_reference_repaired": true,
+        "exclude_untouched_native_aggregates": true,
+        "configuration_role": "corrected_reference_secondary",
+        "original_source": {
+          "main": "src/bn-cuda/main.cu",
+          "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+          "kernel": "src/bn-cuda/kernels.h",
+          "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+        },
+        "corrections": [
+          "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+          "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+          "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+          "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+        ],
+        "resources": {
+          "original_compute_shared_bytes": 1024,
+          "corrected_compute_shared_bytes": 2048
+        },
+        "witnesses": [
+          {
+            "path": "src/bn-julia/native_contract_witness.json",
+            "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+          },
+          {
+            "path": "src/bn-julia/parent_zero_padding_witness.json",
+            "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+          },
+          {
+            "path": "src/bn-julia/reduction_tie_witness.json",
+            "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+          },
+          {
+            "path": "src/bn-julia/reduction_certificate_witness.json",
+            "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+          }
+        ],
+        "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+        "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+        "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+        "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+        "executed_corrected_sources": [
+          {
+            "path": "src/bn-julia/kernels.h",
+            "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+          },
+          {
+            "path": "src/bn-julia/bn_host_pipeline.h",
+            "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+          },
+          {
+            "path": "src/bn-julia/source_host_functions.inc",
+            "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+          },
+          {
+            "path": "src/bn-julia/source_top3_selection.inc",
+            "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+          },
+          {
+            "path": "src/bn-julia/reference.h",
+            "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+          }
+        ]
+      },
+      "configuration_classification_adjudication": null,
+      "result_sha256": "fc4df09f21dafb9eca78294b1b0d15ab9d8d467ac57ea8011d04fbf57ac56400",
+      "source_hash": "e5b11f91a0f0640d4b97d2c8215fa507ae46a226c62ca4e120f38fe9512c32d5",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T172136421593Z_bn/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.35230809699999904,
+        0.3502040000000013,
+        0.3537860609999999,
+        0.3527287940000003,
+        0.35551558400000083
+      ],
+      "mean_last_four_seconds": 0.3530586097500006,
+      "contract": {
+        "cases": [
+          "First9columnsofsource45node600rows synthesizeddata",
+          "Manufactured600rowbinarymixeddependence",
+          "Allconstantzero/emptycontingency/tiedK2control"
+        ],
+        "size": "9nodes600rows2states,163parentsetspernode(all0..4parents),100Metropolisorders percase,3cases",
+        "pipeline": "All2source computationalkernels andsource100orderhostfeedback/uniqueTop3state; originalCPUFFIcontrolsnotGPUlaunching. No original45node/defaultCLI/globalDAGoptimalityclaim. Unpopulatedtopslotsrawretained but notcertifiedasvalidscoredoutputs.",
+        "arithmetic": "Canonicalg++13.3sourceFloat32LGtablebitsexactdeviceinput all4, sourceInt32countsandFloat32scorearithmetic. IndependentFloat64trueK2score+forwardperpointtable/roundoffenvelope precomputedbeforeGPU. Float64exactartifactexpansion.",
+        "roi": "Sum3cases: genScore memset+kernel+contextcompletion; 100orders\u00d79nodes segmented matched reset/maskH2D/completion then kernel/blockresultD2H/CPUbestselection/completion. ActualmaskD2H echo betweensegments outsideROI; sourceorderproposal/Metropolis/top3 plusallocation/fixturetransfers/fullcaptures/math/DAGgate outsideROI. Not originalCLIwalltime.",
+        "geometry": "256threads; source candidateenumeration/localScore; correctedpairedargmax2KBshared vsoriginaldestructive1KBindextrace; maxthenloweroriginalthreadindex tie; originalCPUhostFFI withdeclareddecoding/paddingfixes.",
+        "tolerance": "Declared1e-3+2e-6reference artifactcomparison; exactprefixinputbits andindependentfullintegerparent/graphchecks; K2mathematicalcheck usesperpointforwardbudget derivedfromLGquantization+Float32arithmetic, notfittedtoGPUerror."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "bn:ka:R1:mutable_parent_device_heap",
+        "benchmark_id": "bn",
+        "implementation_model": "ka",
+        "taxonomy_code": "R1",
+        "phase": "GPU_execution_warmup",
+        "origin_model": "ka",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/bn.jsonl",
+        "evidence_line": 5,
+        "raw_event": {
+          "event_id": "bn:ka:R1:mutable_parent_device_heap",
+          "implementation_model": "ka",
+          "origin_model": "ka",
+          "phase": "GPU_execution_warmup",
+          "code": "R1",
+          "is_failure": true,
+          "root_cause": "Actual16-byte dynamic GPU allocation failure with mutable MVector4 parent live across KA barriers. Isolated model-local immutable tuple return succeeds; exact low-level allocation provenance not separately profiled.",
+          "candidate_id": 1,
+          "repair_candidate_id": 2,
+          "log": ".porting-state/portable_julia/runs/20261019T171750838600Z_bn/ka_run1.log",
+          "source": {
+            "path": "src/bn-julia/reference_history/KA_candidate01_mutable_parent_escape.jl",
+            "sha256": "e204b8fa0b153b6e7fa9fc1c7c8eff77fef93cce4cacef95858c3d896086764c"
+          },
+          "benchmark_id": "bn"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 2,
+    "compiler_checks": 2,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 1,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "input_tokens": 2446851,
+      "cached_input_tokens": 2265472,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5081,
+      "reasoning_output_tokens": 2110,
+      "total_tokens": 2451932,
+      "status": "observed_context_inclusive_window",
+      "scope": "Target translation/compiler/runtime feedback and verification; native preparation separately closed first. Cached input is subset of input, reasoning subset of output. Overlapping verification not additive; not exclusive or billed effort.",
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/bn/ka_translation.jsonl"
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "31669d6365b5bb75f07942bc",
+        "begin_event_id": "28e0ad9bfaf08af6e76a508a",
+        "agent": "/root/stencil_ports",
+        "implementation_model": "ka",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T17:20:11.741740+00:00",
+        "usage_event_timestamp": "2026-10-19T17:20:00.354Z",
+        "elapsed_usage_event_start": "2026-10-19T17:16:38.858Z",
+        "delta_usage": {
+          "input_tokens": 2446851,
+          "cached_input_tokens": 2265472,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5081,
+          "reasoning_output_tokens": 2110,
+          "total_tokens": 2451932
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "be690c2bfc7dcb326cb5a24444651d3036ead6d3f802c9d8f0f9f5bd3fe5e395",
+        "marker_lag_seconds": 11.38774,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "663e7324565bc7ff447b205245060906f49e8f07ad71fe9dbdade642ce85cc5e",
+        "meter_driver_sha256": "709250f613707c472ae55c56dc50a7f668fc761533d3f97c722a0c0b316348ab",
+        "note": "SecondKAcompleteprogram/actualGPUJITcandidate fixes16byte runtimeheapallocation byreturningimmutableparenttuple inmodel-localhelper beforebarriers; samecalculation/index/precision/shared2KB. All5full434116wordcertificates anddualrefbitexact PASS. Firstsource/log/runtimefailure retainedR1, notunsupported; no sharedpassedfilechange. Rootccltransfer coordinationinsidewindow disclosed, no cclcodework.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 12.506374,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/bn/ka_translation.jsonl",
+        "evidence_sha256": "cf6dd9255bccf83926f41475ff0b8ec2a7b6e7ccc6b47cdd827480760f6232ce",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 2
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 1
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/bn-julia-ka/manifest.json",
+    "selected_sha256": "b14d7ac2c4508e918fb0db553217b6fffd7e65ab9b7214d44006991e26d1f7f1",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/bn-julia-ka/manifest.json",
+        "sha256": "b14d7ac2c4508e918fb0db553217b6fffd7e65ab9b7214d44006991e26d1f7f1"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "002c182918804a74ac68080c1c157b8b8dde5c26",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "status": "verified",
+    "implementation_model": "ka",
+    "configuration_id": "full2kernel_9node600row_3cases100order_K2search_paired_argmax_conditional_v1",
+    "configuration_role": "corrected_reference_secondary",
+    "native_reference_repaired": true,
+    "reference_provenance": {
+      "native_reference_repaired": true,
+      "exclude_untouched_native_aggregates": true,
+      "configuration_role": "corrected_reference_secondary",
+      "original_source": {
+        "main": "src/bn-cuda/main.cu",
+        "main_sha256": "4119576f065acdaef7a3438c2633ee48155c0d9fc9ca81359259c7d50e320f87",
+        "kernel": "src/bn-cuda/kernels.h",
+        "kernel_sha256": "8665c5b5f40f53f6981cc348ae05d1ae1e6170d81c1bd3b2cc7807c7c5c540b3"
+      },
+      "corrections": [
+        "InitializeLG0=log0factorial=0, mathematicallyrequireduninitializedinputrepair.",
+        "Decodeexcluded-selfparentcode<=node, not<node, ownedhost+CPUreference.",
+        "Stopzero/nonpositiveparentpadding as alreadyexistingCPUreference; preserve rawzeros.",
+        "Replacedestructiveblockscore/indextrace withpairedstablescore/indexargmax, loweroriginalthreadindex tie. Candidateenumeration/localscoringunchanged."
+      ],
+      "resources": {
+        "original_compute_shared_bytes": 1024,
+        "corrected_compute_shared_bytes": 2048
+      },
+      "witnesses": [
+        {
+          "path": "src/bn-julia/native_contract_witness.json",
+          "sha256": "90871df9fe2a2363e37f3bd1efec3ccea0cfe811713522353e0a9e8886b389be"
+        },
+        {
+          "path": "src/bn-julia/parent_zero_padding_witness.json",
+          "sha256": "d704fb05ac39c20e0336473fbb8385ec52056d839d72d19cf9620d10dc728eb8"
+        },
+        {
+          "path": "src/bn-julia/reduction_tie_witness.json",
+          "sha256": "83677e20bfdb2cc09e5eab7b1c190c25fb9e04bd46859c4ed5e2b48d7d840598"
+        },
+        {
+          "path": "src/bn-julia/reduction_certificate_witness.json",
+          "sha256": "13aacdb46e3c59480872a6fc4769f2c5f273198c3157ed80f907a0090f7d338a"
+        }
+      ],
+      "actual_native_original_control": "Nine-nodeprojectedoriginalfullCLI sourceCPUchecksPASS but4selfedges intop3; sameprojectioncorrectedhostdecodecontrol0selfedges. SourceCPUchecksnotindependentgraphcertificate.",
+      "canonical_inputs": "First9columnsoriginal600synthesizedrows plusmixedbinary+allconstantcontrols. LGtableFloat32serializedfromg++13.3sourceequation; all4 loadexactbits. NVCC-hostLG differs73entries/max3.05176e-5 retaineddiagnostically, notpooled.",
+      "support_boundary": "Allparentsetsupto4 andfull100orderMetropolis/top3statepipeline9nodes600samples, notoriginal45node/defaultCLI. Independentwithinorderoptimality/DAGscore, noglobalDAGoptimalityclaim; unusedtopslotsrawretainedandexplicitlynotcertified.",
+      "strict_gate": "All434116-wordartifactstates/inputprefix220714/2700orderedargmaxnodechecks/300DAGsearchgraphs+topgraphs/4401independentK2scorebounds; externalCPUauditorbeforeeachacceptedtrialrow.",
+      "executed_corrected_sources": [
+        {
+          "path": "src/bn-julia/kernels.h",
+          "sha256": "a558267b4ea2a8055362676d823bbcf85ac76d478d9b9de2b69627ba3ba99992"
+        },
+        {
+          "path": "src/bn-julia/bn_host_pipeline.h",
+          "sha256": "291f75a2f70a0e79a42b05a7c0f902818ee1a906794539b8d7d0ec176760e70a"
+        },
+        {
+          "path": "src/bn-julia/source_host_functions.inc",
+          "sha256": "78f9990b901dfbb8f45bb979fa5d50c597f871d05265221b68580860adb7bd75"
+        },
+        {
+          "path": "src/bn-julia/source_top3_selection.inc",
+          "sha256": "0b27644f2142753408f365879c0b32eff285f3e1a33f4d90ac59d8c7d1ddd5cb"
+        },
+        {
+          "path": "src/bn-julia/reference.h",
+          "sha256": "7a1c5a6aaa4b702bb617855f068f2782992ccabc1cd3fe143302b08bd3a567d0"
+        }
+      ]
+    },
+    "verification_bundle": ".porting-state/portable_julia/runs/20261019T172136421593Z_bn",
+    "commit_status": "pending_root"
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel_with_original_CPU_FFI",
+    "annotation_path": ".porting-state/portable_julia/traits/bn.json",
+    "annotation_sha256": "178a17cc1ab19088a110ff89e2e28f2cbb773f5bf23ae16c161eb5215398fd63",
+    "field": "implementation_class.ka",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}

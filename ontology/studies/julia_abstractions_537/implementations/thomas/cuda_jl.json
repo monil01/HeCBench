@@ -1,0 +1,593 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "thomas",
+  "implementation_model": "cuda_jl",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/thomas.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "status": "verified",
+    "review_status": "source_reviewed",
+    "actual_algorithm": "Serial forward elimination/back substitution per system; finalupper andRHS preserved across3orderedupdates",
+    "work_item_mapping": "One lane per system;128threads; floor(N/128)+1 blocks foreachN5,257,33",
+    "data_layout": "Flat interleaved coefficient arrays, contiguous batch dimension and strided along each line",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "memory_access": "Global arrays, no algorithmic shared memory or atomics",
+    "synchronization": [
+      "Same-streamorderedlaunches",
+      "Synchronizedtrialboundaries"
+    ],
+    "resource_policy": {
+      "threads": 128,
+      "dynamic_shared_bytes": 0,
+      "source": "No shared data in any kernel; JACC explicit zero reservation",
+      "registers": null,
+      "spills": null
+    },
+    "library_boundary": "CUDA backend allocation/runtime and scalar Float64 operations; no GPU solver library. CPU LinearAlgebra.Tridiagonal is verification only, excluded from timer.",
+    "host_control_boundary": "Common CUDA CuArray fixture driver in all Julia versions; threecases x3orderedkernelcalls; reset/inputcopy/oracle/outputcopy excluded; host launch and finalsync included. No cross-backend execution tested.",
+    "backend_extensions": [],
+    "native_to_model_mapping": {
+      "status": "retained",
+      "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+    },
+    "fidelity_scope": "Same nativekernel recurrence, geometry and source3mutationcontract; numericalnamedfixtures, not arbitraryCLI/matrixconditioning/PDEsolver certification",
+    "source_evidence": {
+      "path": "src/thomas-julia/thomas-julia-cuda.jl/main.jl",
+      "sha256": "e5683a26b2750c3f87594824acadc6c7df0963a75b11c9dcd98ef3c1c5c2e406"
+    },
+    "study_entrypoint": {
+      "path": "src/thomas-julia/thomas-julia-cuda.jl/study.jl",
+      "sha256": "8752b1d08aca6452ea8f9e9f50e1913c05f92905314bc5bde637504be8bf517d"
+    },
+    "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "profiling_status": "Unprofiled; no causal bottleneck claim"
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Serial forward elimination/back substitution per system; finalupper andRHS preserved across3orderedupdates",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+    "package_versions": null,
+    "julia_language_version": null,
+    "work_item_mapping": "One lane per system;128threads; floor(N/128)+1 blocks foreachN5,257,33",
+    "layout": "Flat interleaved coefficient arrays, contiguous batch dimension and strided along each line",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": null,
+    "artifact_encoding": null,
+    "memory_hierarchy_and_access": "Global arrays, no algorithmic shared memory or atomics",
+    "synchronization": [
+      "Same-streamorderedlaunches",
+      "Synchronizedtrialboundaries"
+    ],
+    "atomics_and_reductions": null,
+    "resource_policy": {
+      "threads": 128,
+      "dynamic_shared_bytes": 0,
+      "source": "No shared data in any kernel; JACC explicit zero reservation",
+      "registers": null,
+      "spills": null
+    },
+    "launch_geometry": null,
+    "library_backend_boundary": "CUDA backend allocation/runtime and scalar Float64 operations; no GPU solver library. CPU LinearAlgebra.Tridiagonal is verification only, excluded from timer.",
+    "host_control_boundary": "Common CUDA CuArray fixture driver in all Julia versions; threecases x3orderedkernelcalls; reset/inputcopy/oracle/outputcopy excluded; host launch and finalsync included. No cross-backend execution tested.",
+    "support_boundary": null,
+    "native_to_model_mapping": {
+      "status": "retained",
+      "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+    },
+    "timing_scope": null,
+    "fidelity_status_and_scope": "Same nativekernel recurrence, geometry and source3mutationcontract; numericalnamedfixtures, not arbitraryCLI/matrixconditioning/PDEsolver certification",
+    "source_review_evidence": {
+      "path": "src/thomas-julia/thomas-julia-cuda.jl/main.jl",
+      "sha256": "e5683a26b2750c3f87594824acadc6c7df0963a75b11c9dcd98ef3c1c5c2e406"
+    },
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "thomas",
+    "scientific_intent": {
+      "primary_family": "linear_algebra",
+      "application_domain": "Batched linear systems",
+      "scientific_task": "Solve independent diagonally dominant tridiagonal systems and preserve source repeated in-place state transformations",
+      "mathematical_method": "Thomas forward elimination and backward substitution, one serial system per GPU work item",
+      "accuracy_requirements": [
+        "Signed finite comparisons of all13048 finalupper/RHS values",
+        "First-step manufactured solution, source-CPU residuals and independent pivoted tridiagonal checks",
+        "Repeated launches mutate coefficients/RHS; same-original-system reuse is not claimed"
+      ],
+      "community_use_case": "Batched line solves useful in implicit diffusion/ADI and other structured scientific methods; native benchmark is not a full PDE application",
+      "review_status": "source_reviewed",
+      "scope": "M/N2/5,17/257,65/33; three mutations; signed dyadic deterministic inputs; all20inputprefix bytes identical",
+      "evidence": [
+        {
+          "path": "src/thomas-cuda/main.cu",
+          "sha256": "692983dfb5aed982a6025e2f18e7d52ea9b565bfc9f36512e5051688b1f6159f"
+        },
+        {
+          "path": "src/thomas-cuda/cuThomasBatch.cu",
+          "sha256": "dd32aa5f074e9958e0d1c9e9a10e464a1791a62c4910ea41037866aaf2c25348"
+        },
+        {
+          "path": "src/thomas-julia/study_common.jl",
+          "sha256": "4e4e4690af396eb336713b2dc73e9e494d90daa118dd5e5f75942fb12b8cec97"
+        }
+      ]
+    },
+    "primary_motif": "batched_tridiagonal_serial_intrasystem_elimination",
+    "storage_precision": [
+      "float64"
+    ],
+    "compute_precision": [
+      "float64"
+    ],
+    "synchronization": [
+      "same_stream_ordered_updates",
+      "host_sync_before_after_composite_trial"
+    ],
+    "native_to_julia_mapping": {
+      "status": "retained",
+      "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "timing_scope": "Sum3cases each3inplaceupdates dividedby3; reset/H2D/D2H/CPUoracles excluded",
+    "verification_contract": "Complete signed finalupper/RHS arrays with inputprefix; CPUsource/residual/pivotedTridiagonal/manufacturedfirstsolution",
+    "keyconfounds": [
+      "Named smaller systems, not originaldefault1024x16384",
+      "Repeatedmutatedcoefficients/RHS, not repeatedoriginallinearsystems",
+      "Native32bitindices versus CUDAjl mixed32/64 and KA/JACC globalintegerindices",
+      "Hostdispatch/synchronization included; register/spill/occupancy counters unmeasured"
+    ],
+    "implementation_traits": {
+      "cuda_jl": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Serial forward elimination/back substitution per system; finalupper andRHS preserved across3orderedupdates",
+        "work_item_mapping": "One lane per system;128threads; floor(N/128)+1 blocks foreachN5,257,33",
+        "data_layout": "Flat interleaved coefficient arrays, contiguous batch dimension and strided along each line",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global arrays, no algorithmic shared memory or atomics",
+        "synchronization": [
+          "Same-streamorderedlaunches",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "dynamic_shared_bytes": 0,
+          "source": "No shared data in any kernel; JACC explicit zero reservation",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "CUDA backend allocation/runtime and scalar Float64 operations; no GPU solver library. CPU LinearAlgebra.Tridiagonal is verification only, excluded from timer.",
+        "host_control_boundary": "Common CUDA CuArray fixture driver in all Julia versions; threecases x3orderedkernelcalls; reset/inputcopy/oracle/outputcopy excluded; host launch and finalsync included. No cross-backend execution tested.",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+        },
+        "fidelity_scope": "Same nativekernel recurrence, geometry and source3mutationcontract; numericalnamedfixtures, not arbitraryCLI/matrixconditioning/PDEsolver certification",
+        "source_evidence": {
+          "path": "src/thomas-julia/thomas-julia-cuda.jl/main.jl",
+          "sha256": "e5683a26b2750c3f87594824acadc6c7df0963a75b11c9dcd98ef3c1c5c2e406"
+        },
+        "study_entrypoint": {
+          "path": "src/thomas-julia/thomas-julia-cuda.jl/study.jl",
+          "sha256": "8752b1d08aca6452ea8f9e9f50e1913c05f92905314bc5bde637504be8bf517d"
+        },
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Unprofiled; no causal bottleneck claim"
+      },
+      "ka": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Serial forward elimination/back substitution per system; finalupper andRHS preserved across3orderedupdates",
+        "work_item_mapping": "One lane per system;128threads; floor(N/128)+1 blocks foreachN5,257,33",
+        "data_layout": "Flat interleaved coefficient arrays, contiguous batch dimension and strided along each line",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global arrays, no algorithmic shared memory or atomics",
+        "synchronization": [
+          "Same-streamorderedlaunches",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "dynamic_shared_bytes": 0,
+          "source": "No shared data in any kernel; JACC explicit zero reservation",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "CUDA backend allocation/runtime and scalar Float64 operations; no GPU solver library. CPU LinearAlgebra.Tridiagonal is verification only, excluded from timer.",
+        "host_control_boundary": "Common CUDA CuArray fixture driver in all Julia versions; threecases x3orderedkernelcalls; reset/inputcopy/oracle/outputcopy excluded; host launch and finalsync included. No cross-backend execution tested.",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+        },
+        "fidelity_scope": "Same nativekernel recurrence, geometry and source3mutationcontract; numericalnamedfixtures, not arbitraryCLI/matrixconditioning/PDEsolver certification",
+        "source_evidence": {
+          "path": "src/thomas-julia/thomas-julia-KA/main.jl",
+          "sha256": "e874dec0762b776d8ac56b30c08c45c9b72d9fd0cfae178b3aeb9393de3cf17b"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Unprofiled; no causal bottleneck claim"
+      },
+      "jacc": {
+        "status": "verified",
+        "review_status": "source_reviewed",
+        "actual_algorithm": "Serial forward elimination/back substitution per system; finalupper andRHS preserved across3orderedupdates",
+        "work_item_mapping": "One lane per system;128threads; floor(N/128)+1 blocks foreachN5,257,33",
+        "data_layout": "Flat interleaved coefficient arrays, contiguous batch dimension and strided along each line",
+        "storage_precision": [
+          "float64"
+        ],
+        "compute_precision": [
+          "float64"
+        ],
+        "memory_access": "Global arrays, no algorithmic shared memory or atomics",
+        "synchronization": [
+          "Same-streamorderedlaunches",
+          "Synchronizedtrialboundaries"
+        ],
+        "resource_policy": {
+          "threads": 128,
+          "dynamic_shared_bytes": 0,
+          "source": "No shared data in any kernel; JACC explicit zero reservation",
+          "registers": null,
+          "spills": null
+        },
+        "library_boundary": "CUDA backend allocation/runtime and scalar Float64 operations; no GPU solver library. CPU LinearAlgebra.Tridiagonal is verification only, excluded from timer.",
+        "host_control_boundary": "Common CUDA CuArray fixture driver in all Julia versions; threecases x3orderedkernelcalls; reset/inputcopy/oracle/outputcopy excluded; host launch and finalsync included. No cross-backend execution tested.",
+        "backend_extensions": [],
+        "native_to_model_mapping": {
+          "status": "retained",
+          "reason": "Same interleaved system layout, one lane/system,128threads, native floor(N/128)+1 extra-block geometry; Julia loop index widths differ."
+        },
+        "fidelity_scope": "Same nativekernel recurrence, geometry and source3mutationcontract; numericalnamedfixtures, not arbitraryCLI/matrixconditioning/PDEsolver certification",
+        "source_evidence": {
+          "path": "src/thomas-julia/thomas-julia-JACC/main.jl",
+          "sha256": "cb95a3a2d618c4226ed656f78d17cd925bf7899752bd93cfe1fb6c9e1b69bd69"
+        },
+        "study_entrypoint": null,
+        "environment_id": "julia1.12.6_cuda6.2.1_ka0.9.45_jacc1.4.0_v100_localcuda12",
+        "profiling_status": "Unprofiled; no causal bottleneck claim"
+      }
+    },
+    "reference_checks": {
+      "source_native_checker_sign_insensitive": true,
+      "original_cuda_jl_checker_sign_insensitive": true,
+      "known_scientific_defect": false,
+      "strengthening": "Strict signed finite fullstate comparisons; nativekernel and retained Julia body unchanged"
+    }
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/thomas-julia/thomas-julia-cuda.jl/main.jl",
+    "sha256": "e5683a26b2750c3f87594824acadc6c7df0963a75b11c9dcd98ef3c1c5c2e406",
+    "syntax_features": {
+      "cuda_kernel_launch": [
+        140
+      ],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": []
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp64_interleaved_M2x5_M17x257_M65x33_mutating3_steps_v1",
+      "run_id": "20261017T182242607281Z_thomas",
+      "result": ".porting-state/portable_julia/runs/20261017T182242607281Z_thomas/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "aef53b3bef444f259e9d46d8364c9b4ee7030b730a3a70c8e8dd7e6297569708",
+      "source_hash": "df74f9fb2da53be47bbe33e5c1438537779bbaa3bc863f22ec43ffbe32dbf5e1",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261017T182242607281Z_thomas/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.0218379516667,
+        0.000124031,
+        0.000117104333333,
+        0.000115261,
+        0.000112017666667
+      ],
+      "mean_last_four_seconds": 0.0001171035,
+      "contract": {
+        "cases": [
+          [
+            2,
+            5
+          ],
+          [
+            17,
+            257
+          ],
+          [
+            65,
+            33
+          ]
+        ],
+        "precision": "Float64",
+        "block_size": 128,
+        "internal_repeats": 3,
+        "fixture": "Explicit signed dyadic diagonally dominant systems and manufactured first solution. Input arrays prefixed in every artifact.",
+        "state_contract": "Source mutates upper-diagonal and RHS across three launches; this is repeated in-place transformation, not three solves of the same original matrix. Trial resets are outside timing.",
+        "scope": "Sum of three named batched cases normalized by three updates, no default-size or arbitrary-CLI claim. Full final upper/RHS state, signed comparisons, source-CPU/residual and independent pivoted Tridiagonal oracles.",
+        "kernel_geometry": "Native extra floor(N/128)+1 block retained in all models."
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [
+      {
+        "event_id": "1570c89a087d0c473835",
+        "benchmark_id": "thomas",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "T1",
+        "phase": "reference_checker_audit",
+        "origin_model": "cuda_jl",
+        "is_failure": true,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/thomas.jsonl",
+        "evidence_line": 1,
+        "raw_event": {
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "T1",
+          "phase": "reference_checker_audit",
+          "cause": "Historical calc_error compares abs(abs(expected)-abs(got)); opposite signs have zero reportederror and NaN can evade max-update.",
+          "witness": {
+            "expected": -1,
+            "got": 1,
+            "historical_error": 0,
+            "signed_absolute_error": 2
+          },
+          "is_failure": true,
+          "repair": "Strengthen named study adapter to signed finite fullstate checks and independent oracles; preserve oldsource, genuine GPUkernel unchanged.",
+          "outcome": "verified_named_configuration",
+          "source_evidence": {
+            "path": "src/thomas-julia/thomas-julia-cuda.jl/original_main.jl",
+            "sha256": "8ff9e7f46b1451b26be07de261647c224bae4c0b756aee98e9ef6c870ab7d395"
+          }
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      },
+      {
+        "event_id": "35eaec129e35d23ed790",
+        "benchmark_id": "thomas",
+        "implementation_model": "cuda_jl",
+        "taxonomy_code": "P1",
+        "phase": "scientific_scope",
+        "origin_model": "cuda_jl",
+        "is_failure": false,
+        "evidence_path": ".porting-state/portable_julia/failure_events_300/thomas.jsonl",
+        "evidence_line": 2,
+        "raw_event": {
+          "implementation_model": "cuda_jl",
+          "origin_model": "cuda_jl",
+          "error_tag": "P1",
+          "phase": "scientific_scope",
+          "is_failure": false,
+          "cause": "Three sourcefaithful in-place U/RHS mutations do not solve same originalsystem three times; allstates and firstsystemmathematicalcontract explicit.",
+          "outcome": "verified_named_configuration"
+        },
+        "classification_basis": "explicit event code or explicit coded status; no count imputation"
+      }
+    ],
+    "observed_failure_event_count": 1,
+    "history_completeness": "partial",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": null,
+    "compiler_checks": null,
+    "compiler_feedback_repairs": null,
+    "runtime_repairs": null,
+    "numerical_repairs": null,
+    "translation_tokens": {
+      "status": "prospective_activity_window_and_partial_source_proxy",
+      "input_tokens": null,
+      "output_tokens": null,
+      "cached_tokens": null,
+      "total_tokens": null,
+      "estimated_saved_source_tokens": 1235,
+      "method": "Savedsourcecharacters/4 is only a partial proxy, not consumedcost. Separate observedactivitywindows include cachedcontext, coordination andverification; phaseboundaries prospective, alignmentapproximate. Cachedinput/reasoning are subsets, no billing/exclusivecost claim.",
+      "observed_activity_windows": [
+        {
+          "path": ".porting-state/portable_julia/usage_boundaries_300/thomas/cuda_jl_reference_repair.jsonl",
+          "event_id": "3ee8f4465e0a313df4db03dc",
+          "delta_usage": {
+            "input_tokens": 1091399,
+            "cached_input_tokens": 1082624,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 5353,
+            "reasoning_output_tokens": 599,
+            "total_tokens": 1096752
+          },
+          "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them."
+        }
+      ],
+      "historical_cuda_jl_total_unknown": true
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "3ee8f4465e0a313df4db03dc",
+        "begin_event_id": "08243bbb459792df39a540ee",
+        "agent": "/root",
+        "implementation_model": "cuda_jl",
+        "phase": "reference_repair",
+        "boundary": "end",
+        "recorded_at": "2026-10-17T18:21:15.535452+00:00",
+        "usage_event_timestamp": "2026-10-17T18:21:02.144Z",
+        "elapsed_usage_event_start": "2026-10-17T18:18:18.331Z",
+        "delta_usage": {
+          "input_tokens": 1091399,
+          "cached_input_tokens": 1082624,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 5353,
+          "reasoning_output_tokens": 599,
+          "total_tokens": 1096752
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 13.391452,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "214c4d73f7cc6926bee5d0964e789d8cacdd3836b77c38fb0748b4f2847431ff",
+        "meter_driver_sha256": "a5de0feaa28577d3fec47abb7f2fbd2f3a53d0783c22e9ae36697135627fa82c",
+        "note": "Native and retained genuine CUDA.jl kernels passed five trials; all39144 artifact values agree, including26096 input-prefix values and13048 final upper/RHS values. Reference-only runner exit2 means no portable target requested, not a failed reference. No compiler feedback repair. AES commit coordination occurred inside this nonexclusive activity window.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": null,
+        "begin_marker_lag_seconds": 9.710819,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/thomas/cuda_jl_reference_repair.jsonl",
+        "evidence_sha256": "ff87e4131f43eb7217ec0d0237e8657355f7eae4762fffca0c7306791ac366bc",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_checks": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": null
+      },
+      "status": "missing_or_noninteger"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/thomas-julia-cuda/manifest.json",
+    "selected_sha256": "7b81fe80513704ccd71869deccb42a3d09705ba31f460c8db71d84f8a028645a",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/thomas-julia-cuda/manifest.json",
+        "sha256": "7b81fe80513704ccd71869deccb42a3d09705ba31f460c8db71d84f8a028645a"
+      },
+      {
+        "path": ".porting-state/porting_logs/thomas-julia/manifest.json",
+        "sha256": "c621721827f924895f8d4b0aab592077a6d21bae4099813a6eb7805f2b7b80f1"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": null,
+  "source_commit_field": null,
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "benchmark": "thomas",
+    "model": "cuda_jl",
+    "status": "verified_named_configuration",
+    "result": ".porting-state/portable_julia/runs/20261017T182242607281Z_thomas/result.json",
+    "reason": "Complete source-faithful signed finalstate against both GPUrefs and independent mathematical checks",
+    "evidence": [
+      {
+        "path": "src/thomas-julia/thomas-julia-cuda.jl/main.jl",
+        "sha256": "e5683a26b2750c3f87594824acadc6c7df0963a75b11c9dcd98ef3c1c5c2e406"
+      },
+      {
+        "path": ".porting-state/portable_julia/runs/20261017T182242607281Z_thomas/result.json",
+        "sha256": "aef53b3bef444f259e9d46d8364c9b4ee7030b730a3a70c8e8dd7e6297569708"
+      }
+    ]
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/thomas.json",
+    "annotation_sha256": "9017ce110aa849e92760026bddc33b94c6ecbea256fb251c6af79320eb034fac",
+    "field": "implementation_class.cuda_jl",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}
