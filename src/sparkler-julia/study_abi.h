@@ -1,0 +1,4 @@
+#pragma once
+#include <cstdint>
+#include <cstddef>
+extern "C" {int study_start(const char*,const char*);void study_barrier();uint64_t study_sum_u64(uint64_t);double study_sum_f64(double);void*study_blas_start(void*);void study_blas_linked_symbol(void*);void study_blas_step(void*,int,int,int,const float*,int,const float*,int,float*,int);void study_blas_finish(void*);void study_prep_begin(void*);double study_prep_end(void*,int);void study_begin_trial(int);void study_input_frame(const unsigned char*,size_t,int,int,int,int,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);void study_output_frame(const unsigned char*,size_t,int,int,int,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);void study_guard_frame(const unsigned char*,int,int,int,int);void study_write_trial(int,double,const uint64_t*,const double*);void study_finish();}
