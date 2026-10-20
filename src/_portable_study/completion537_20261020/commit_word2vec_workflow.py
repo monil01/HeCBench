@@ -1,3 +1,6 @@
+"""Recorded one-time coordinator operation, not a resume entrypoint.
+Do not rerun after source receipts exist; resume from the joint checkpoint.
+"""
 import json,pathlib,hashlib,subprocess
 r=pathlib.Path('/home/imo/HeCBench_julia');p=r/'src/word2vec-julia/async_workflow';ready=json.loads((p/'ready_support_files.json').read_text());archive=r/'src/word2vec-julia/reference_history/before_async_workflow_commits_20261020';archive.mkdir(parents=True,exist_ok=True);original={}
 for name,sha in ready['file_hashes'].items():assert hashlib.sha256((r/name).read_bytes()).hexdigest()==sha,name

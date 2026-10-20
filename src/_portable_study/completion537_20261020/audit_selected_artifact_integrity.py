@@ -42,6 +42,7 @@ def main():
             if not all(isinstance(t,(int,float)) and math.isfinite(t) and t>=0 for t in times):errors.append(model+':invalid_time')
             elif len(times)==5 and not math.isclose(sum(times[1:])/4,record.get('mean_seconds',-1),rel_tol=1e-12,abs_tol=1e-18):errors.append(model+':mean_not_last_four')
             if not record.get('complete') or not record.get('provenance_valid',True):errors.append(model+':incomplete_or_invalid_provenance')
+            if record.get('status')!='native_check_pass':errors.append(model+':recorded_model_status_not_pass')
             for trial in trials:
                 counts['trial_rows']+=1
                 if trial.get('correct') is not True:errors.append(model+':recorded_self_check_not_pass')
