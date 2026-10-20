@@ -1,0 +1,83 @@
+const SI_BLAS="/usr/lib/x86_64-linux-gnu/libcublas.so.12.0.2.224"
+const SI_RUNTIME="/lib/x86_64-linux-gnu/libcudart.so.12"
+const SI_GUARD=-1234567f0
+function si_check(status)
+    status==0||error("CUDA/cuBLAS APIstatus$status");nothing
+end
+function si_create()
+    h=Ref{Ptr{Cvoid}}();si_check(ccall((:cublasCreate_v2,SI_BLAS),Cint,(Ref{Ptr{Cvoid}},),h));h[]
+end
+si_destroy(h)=si_check(ccall((:cublasDestroy_v2,SI_BLAS),Cint,(Ptr{Cvoid},),h))
+function si_gemm(h,m,n,k,b,ldb,a,lda,out,ldout)
+    alpha=Ref(1f0);beta=Ref(0f0)
+    si_check(ccall((:cublasSgemm_v2,SI_BLAS),Cint,(Ptr{Cvoid},Cint,Cint,Cint,Cint,Cint,Ref{Float32},CuPtr{Float32},Cint,CuPtr{Float32},Cint,Ref{Float32},CuPtr{Float32},Cint),h,0,0,m,n,k,alpha,pointer(b),ldb,pointer(a),lda,beta,pointer(out),ldout))
+end
+function si_dataset(file,partition)
+    io=IOBuffer(read(file));k=Int(read(io,UInt32));u=Int(read(io,UInt32))+1;total=Int(read(io,UInt64));sizes=Int.(read!(io,Vector{UInt32}(undef,k)));elements=read!(io,Vector{UInt32}(undef,total));@assert eof(io)
+    offsets=zeros(Int,k);for i=2:k;offsets[i]=offsets[i-1]+sizes[i-1];end
+    p=min(k,partition);tiles=[(i,min(i+p-1,k)) for i=1:p:k];(k=k,u=u,p=p,sizes=sizes,elements=elements,offsets=offsets,tiles=tiles)
+end
+function si_pack_A!(out,c,first,last)
+    idx=0
+    @inbounds for i=first:last
+        for j=c.offsets[i]+1:c.offsets[i]+c.sizes[i];out[idx*c.u+Int(c.elements[j])+1]=1f0;end
+        idx+=1
+    end
+    nothing
+end
+function si_pack_B!(out,c,first,last)
+    idx=0
+    @inbounds for i=first:last
+        for j=c.offsets[i]+1:c.offsets[i]+c.sizes[i];out[Int(c.elements[j])*c.p+idx+1]=1f0;end
+        idx+=1
+    end
+    nothing
+end
+function si_execute(c,repaired)
+    N=c.u*c.p;M=c.p*c.p;A=zeros(Float32,N);B=zeros(Float32,N);counts=zeros(Float32,(length(c.tiles)*(length(c.tiles)+1)÷2)*M);guard=fill(SI_GUARD,17);prefix=Float32[];outputs=Float32[];correct=true;seconds=0.;run=0
+    CUDA.device_synchronize(blocking=true);start=time_ns()
+    a=si_allocate(N+17);b=si_allocate(N+17);out=si_allocate(M+17);handle=si_create()
+    seconds+=(time_ns()-start)*1e-9
+    copyto!(a,N+1,guard,1,17);copyto!(b,N+1,guard,1,17);copyto!(out,M+1,guard,1,17)
+    CUDA.device_synchronize(blocking=true)
+    start=time_ns()
+    for (i,(af,al)) in enumerate(c.tiles)
+        si_pack_A!(A,c,af,al);copyto!(a,1,A,1,N);CUDA.device_synchronize(blocking=true)
+        seconds+=(time_ns()-start)*1e-9
+        actual=Array(a);correct&=actual[1:N]==A&&actual[N+1:end]==guard;append!(prefix,actual)
+        start=time_ns()
+        for (bf,bl) in c.tiles[i:end]
+            si_pack_B!(B,c,bf,bl);copyto!(b,1,B,1,N);CUDA.device_synchronize(blocking=true)
+            seconds+=(time_ns()-start)*1e-9
+            actual=Array(b);correct&=actual[1:N]==B&&actual[N+1:end]==guard;append!(prefix,actual)
+            start=time_ns()
+            if repaired
+                si_check(ccall((:cudaMemset,SI_RUNTIME),Cint,(CuPtr{Cvoid},Cint,Csize_t),pointer(out),0,M*4))
+            end
+            lenA=al-af+1;lenB=bl-bf+1
+            si_gemm(handle,lenB,lenA,c.u,b,repaired ? c.p : lenB,a,c.u,out,repaired ? c.p : lenB)
+            copyto!(counts,run*M+1,out,1,M);CUDA.device_synchronize(blocking=true)
+            seconds+=(time_ns()-start)*1e-9
+            tail=Vector{Float32}(undef,17);copyto!(tail,1,out,M+1,17);append!(outputs,@view(counts[run*M+1:(run+1)*M]));append!(outputs,tail);run+=1
+            start=time_ns();fill!(B,0f0)
+        end
+        fill!(A,0f0)
+    end
+    si_release(a);si_release(b);si_release(out);si_destroy(handle);CUDA.device_synchronize(blocking=true)
+    seconds+=(time_ns()-start)*1e-9
+    prefix,outputs,seconds,correct
+end
+function si_study()
+    @assert get(ENV,"JULIA_CUDA_MEMORY_POOL","")=="none"
+    CUDA.stream!(CUDA.legacy_stream())
+    file=ARGS[1];p=parse(Int,ARGS[2]);fixed=parse(Int,ARGS[3])==1;c=si_dataset(file,p);oracle=collect(reinterpret(Float32,read(ARGS[4])))
+    h=si_create();version=Ref{Cint}();math=Ref{Cint}();pmode=Ref{Cint}();si_check(ccall((:cublasGetVersion_v2,SI_BLAS),Cint,(Ptr{Cvoid},Ref{Cint}),h,version));si_check(ccall((:cublasGetMathMode,SI_BLAS),Cint,(Ptr{Cvoid},Ref{Cint}),h,math));si_check(ccall((:cublasGetPointerMode_v2,SI_BLAS),Cint,(Ptr{Cvoid},Ref{Cint}),h,pmode));si_destroy(h);@assert math[]==0&&pmode[]==0
+    println("STUDY_SOFTWARE {\"cublas_version\":$(version[]),\"math_mode\":$(math[]),\"pointer_mode\":$(pmode[]),\"cublas_path\":\"$(Libdl.dlpath(Libdl.dlopen(SI_BLAS)))\",\"cublas_sha256\":\"$(bytes2hex(sha256(read(SI_BLAS))))\",\"authored_GPU_kernel_definitions\":0,\"JULIA_CUDA_MEMORY_POOL\":\"none\",\"stream_kind\":\"legacy\"}")
+    for trial=0:5
+        inputs,out,t,ok=si_execute(c,fixed);both=vcat(inputs,out);ok&=both==oracle&&all(isfinite,both)
+        if trial==0&&ok;continue;end
+        path=joinpath(ENV["STUDY_OUTPUT_DIR"],"trial$trial.bin");write(path,both)
+        println("STUDY_TRIAL {\"trial\":$trial,\"time_seconds\":$t,\"correct\":$ok,\"checked_values\":$(length(out)),\"max_abs_error\":null,\"max_rel_error\":null,\"timing_region\":\"sum_source_alloc_handle_hostpacking_completed_H2D_SGEMM_completed_D2H_hostclear_free_destroy_segments_excluding_actualinput_guard_readbacks\",\"timing_valid\":$(trial>0),\"jit_excluded\":true,\"input_prefix_count\":$(length(inputs)),\"authored_GPU_kernel_definitions\":0,\"source_timing_instrumented_segments\":true,\"output_artifact\":{\"path\":\"$path\",\"dtype\":\"float32\",\"count\":$(length(both))}}")
+        flush(stdout);ok||exit(1)
+    end
+end
