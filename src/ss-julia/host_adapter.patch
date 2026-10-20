@@ -1,0 +1,151 @@
+--- reference_history/main.cu
++++ configured_main.cuh
+@@ -25,7 +25,7 @@
+ #include <chrono>
+ #include <cuda.h>
+ #include "StringSearch.h"
+-#include "kernels.cu"
++#include "reference_history/kernels.cu"
+ 
+ int verify(uint* resultCount, uint workGroupCount, 
+     uint* result, uint searchLenPerWG, 
+@@ -37,7 +37,7 @@
+     uint found = resultCount[i];
+     if(found > 0)
+     {
+-      memcpy((result + count), (result + (i * searchLenPerWG)),
++      memmove((result + count), (result + (i * searchLenPerWG)),
+           found * sizeof(uint));
+       count += found;
+     }
+@@ -61,7 +61,7 @@
+   }
+ }
+ 
+-int main(int argc, char* argv[])
++int source_main(int argc, char* argv[])
+ {
+   if (argc != 4) {
+     printf("Usage: %s <path to file> <substring> <repeat>\n", argv[0]);
+@@ -168,14 +168,14 @@
+   std::cout << "CPU: found " << cpuResults.size() << " times\n"; 
+ 
+   uchar *textBuf;
+-  cudaMalloc((void**)&textBuf, textLength);
+-  cudaMemcpy(textBuf, text, textLength, cudaMemcpyHostToDevice);
++  study_allocate((void**)&textBuf,textLength);
++  SS_CUDA_CHECK(cudaMemcpy(textBuf, text, textLength, cudaMemcpyHostToDevice));
+ 
+   // Move subStr data host to device
+   const uchar* ss = (const uchar*) subStr.c_str();
+   uchar *subStrBuf;
+-  cudaMalloc((void**)&subStrBuf, subStrLength);
+-  cudaMemcpy(subStrBuf, ss, subStrLength, cudaMemcpyHostToDevice);
++  study_allocate((void**)&subStrBuf,subStrLength);
++  SS_CUDA_CHECK(cudaMemcpy(subStrBuf, ss, subStrLength, cudaMemcpyHostToDevice));
+ 
+   uint totalSearchPos = textLength - subStrLength + 1;
+   uint searchLenPerWG = SEARCH_BYTES_PER_WORKITEM * LOCAL_SIZE;
+@@ -185,15 +185,16 @@
+   uint* result = (uint*) malloc((textLength - subStrLength + 1) * sizeof(uint));
+ 
+   uint *resultCountBuf;
+-  cudaMalloc((void**)&resultCountBuf, workGroupCount * sizeof(uint));
++  study_allocate((void**)&resultCountBuf,workGroupCount * sizeof(uint));
+ 
+   uint *resultBuf;
+-  cudaMalloc((void**)&resultBuf, (textLength - subStrLength + 1) * sizeof(uint));
++  study_allocate((void**)&resultBuf,(textLength - subStrLength + 1) * sizeof(uint));
+ 
+   dim3 block (LOCAL_SIZE);
+   dim3 grid (workGroupCount);
+ 
+   double time = 0.0;
++  study_before(textBuf,textLength,subStrBuf,subStrLength,resultBuf,resultCountBuf,workGroupCount,totalSearchPos,searchLenPerWG,text,ss);
+ 
+   if(subStrLength == 1)
+   {
+@@ -206,24 +207,27 @@
+     auto start = std::chrono::steady_clock::now();
+ 
+     for(int i = 0; i < iterations; i++)
+-      StringSearchNaive<<<grid, block, subStrLength>>>(
++      {SSCall q={0,int(block.x),int(grid.x),int(subStrLength),textLength,subStrLength,searchLenPerWG,0,{textBuf,subStrBuf,resultBuf,resultCountBuf}};study_counts[0]++;if(study_callback){if(study_callback(&q))throw std::runtime_error("authoredframeworkcallbackfailed");}else StringSearchNaive<<<grid, block, subStrLength>>>(
+           textBuf,
+           textLength,
+           subStrBuf, 
+           subStrLength,
+           resultBuf, 
+           resultCountBuf, 
+-          searchLenPerWG);
+-
+-    cudaDeviceSynchronize();
++          searchLenPerWG); SS_CUDA_CHECK(cudaGetLastError());}
++
++    SS_CUDA_CHECK(cudaDeviceSynchronize());
+     auto end = std::chrono::steady_clock::now();
++    study_roi_seconds(std::chrono::duration<double>(end-start).count());
+     time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+ 
+     // Read Results Count per workGroup
+-    cudaMemcpy(resultCount, resultCountBuf, workGroupCount * sizeof(uint), cudaMemcpyDeviceToHost);
+-    cudaMemcpy(result, resultBuf, (textLength - subStrLength + 1) * sizeof(uint), cudaMemcpyDeviceToHost);
+-
+-    verify(resultCount, workGroupCount, result, searchLenPerWG, cpuResults); 
++    SS_CUDA_CHECK(cudaMemcpy(resultCount, resultCountBuf, workGroupCount * sizeof(uint), cudaMemcpyDeviceToHost));
++    SS_CUDA_CHECK(cudaMemcpy(result, resultBuf, (textLength - subStrLength + 1) * sizeof(uint), cudaMemcpyDeviceToHost));
++
++    study_device_outputs();
++    int study_verify_status=verify(resultCount, workGroupCount, result, searchLenPerWG, cpuResults);
++    study_source_final(resultCount,workGroupCount,result,cpuResults,study_verify_status); 
+   }
+ 
+   if(subStrLength > 1) 
+@@ -234,32 +238,35 @@
+     auto start = std::chrono::steady_clock::now();
+ 
+     for(int i = 0; i < iterations; i++)
+-      StringSearchLoadBalance<<<grid, block, subStrLength>>>(
++      {SSCall q={1,int(block.x),int(grid.x),int(subStrLength),textLength,subStrLength,searchLenPerWG,0,{textBuf,subStrBuf,resultBuf,resultCountBuf}};study_counts[1]++;if(study_callback){if(study_callback(&q))throw std::runtime_error("authoredframeworkcallbackfailed");}else StringSearchLoadBalance<<<grid, block, subStrLength>>>(
+           textBuf,
+           textLength,
+           subStrBuf, 
+           subStrLength,
+           resultBuf, 
+           resultCountBuf, 
+-          searchLenPerWG);
+-
+-    cudaDeviceSynchronize();
++          searchLenPerWG); SS_CUDA_CHECK(cudaGetLastError());}
++
++    SS_CUDA_CHECK(cudaDeviceSynchronize());
+     auto end = std::chrono::steady_clock::now();
++    study_roi_seconds(std::chrono::duration<double>(end-start).count());
+     time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+ 
+     // Read Results Count per workGroup
+-    cudaMemcpy(resultCount, resultCountBuf, workGroupCount * sizeof(uint), cudaMemcpyDeviceToHost);
+-    cudaMemcpy(result, resultBuf, (textLength - subStrLength + 1) * sizeof(uint), cudaMemcpyDeviceToHost);
+-
+-    verify(resultCount, workGroupCount, result, searchLenPerWG, cpuResults); 
++    SS_CUDA_CHECK(cudaMemcpy(resultCount, resultCountBuf, workGroupCount * sizeof(uint), cudaMemcpyDeviceToHost));
++    SS_CUDA_CHECK(cudaMemcpy(result, resultBuf, (textLength - subStrLength + 1) * sizeof(uint), cudaMemcpyDeviceToHost));
++
++    study_device_outputs();
++    int study_verify_status=verify(resultCount, workGroupCount, result, searchLenPerWG, cpuResults);
++    study_source_final(resultCount,workGroupCount,result,cpuResults,study_verify_status); 
+   }
+ 
+   printf("Average kernel execution time: %f (us)\n", (time * 1e-3f) / iterations);
+ 
+-  cudaFree(resultCountBuf);
+-  cudaFree(resultBuf);
+-  cudaFree(subStrBuf);
+-  cudaFree(textBuf);
++  study_free(resultCountBuf);
++  study_free(resultBuf);
++  study_free(subStrBuf);
++  study_free(textBuf);
+   free(text);
+   free(result);
+   free(resultCount);

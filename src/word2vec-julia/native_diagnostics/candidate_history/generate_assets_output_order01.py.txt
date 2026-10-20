@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Deterministic, finite source-kernel fixtures and independent Float64 CBOW oracle."""
+import argparse,pathlib,json,hashlib,struct,numpy as np
+P=pathlib.Path(__file__).resolve().parent;SENT=6150;GUARD=17;N=1024;T=8192
+
+def oracle(c,s0,s1,sen,rng,table,exp):
+ a=c['aligned'];d=c['dim'];v=c['vocab'];out0=s0.astype(np.float64).copy().reshape(-1);out1=s1.astype(np.float64).copy();rr=rng.copy();dotmargins=[]
+ if c['cold']:out1[:v*a]=0
+ # Cold full-position control has disjoint positive/negative targets and zero
+ # hidden error, so independent per-position evaluation cannot serialize a race.
+ # Hot controls intentionally launch one original block/position only.
+ for pos in range(N if c['blocks']>1 else 1):
+  seed=int(rr[pos])
+  for si in range(c['sentences']):
+   seed=(seed*1664525+1013904223)&0xffffffff;b=seed%c['window'];word=int(sen[si*N+pos]);ctx=[pos-c['window']+z for z in range(b,2*c['window']+1-b)if z!=c['window']and 0<=pos-c['window']+z<N]
+   if not ctx:continue
+   rows=[int(sen[si*N+w])for w in ctx];hidden=np.mean(np.stack([out0[w*a:w*a+d]for w in rows]),axis=0);err=np.zeros(d);alpha=float(sen[SENT-6+si:SENT-5+si].view(np.float32)[0])
+   for neg in range(c['negative']+1):
+    if neg==0:target=word;label=1
+    else:
+     seed=(seed*1664525+1013904223)&0xffffffff;target=int(table[seed%T]);target=seed%(v-1)+1 if target==0 else target
+     if target==word:continue
+     label=0
+    vec=out1[target*a:target*a+d].copy();dot=float(np.dot(hidden,vec))
+    if dot>6:prob=1.
+    elif dot< -6:prob=0.
+    else:
+     index=int((dot+6)*83);assert 0<=index<1000;prob=float(exp[index]);dotmargins.append(abs((dot+6)*83-round((dot+6)*83)))
+    g=(label-prob)*alpha;err+=g*vec;out1[target*a:target*a+d]+=g*hidden
+   for w in rows:out0[w*a:w*a+d]+=err
+  rr[pos]=seed
+ return [out0,out1,rr.astype(np.float64)],min(dotmargins)if dotmargins else None
+
+def make(out):
+ out.mkdir(parents=True,exist_ok=True);cases=[];initial=[];gold=[];layout=[];off=0;original=[]
+ defs=[dict(name='cold_full1024_dim200',dim=200,sentences=1,blocks=1025,cold=True,mode='cold'),dict(name='hot_lookup_oneposition_dim128',dim=128,sentences=6,blocks=1,cold=False,mode='lookup'),dict(name='hot_positiveclip_oneposition_dim64',dim=64,sentences=6,blocks=1,cold=False,mode='high'),dict(name='hot_negativeclip_oneposition_dim200',dim=200,sentences=6,blocks=1,cold=False,mode='low')]
+ for ci,c in enumerate(defs):
+  c.update(aligned=((c['dim']+31)//32)*32,vocab=2049,window=1,negative=1,table_size=T);a=c['aligned'];v=c['vocab'];d=c['dim'];count=v*a;ii=np.arange(count,dtype=np.int64);s0=((ii%29)-14).astype(np.float32)*np.float32(.002);s1=((ii%23)-11).astype(np.float32)*np.float32(.003)
+  if c['mode']in ['high','low']:s0[:]=np.float32(.5);s1[:]=np.float32(1 if c['mode']=='high'else -1)
+  # Padding is defined and checked, source loops do not update it.
+  s0=s0.reshape(v,a);s1=s1.reshape(v,a);s0[:,d:]=np.float32(.03125);s1[:,d:]=np.float32(-.0625);s0=s0.ravel();s1=s1.ravel()
+  s0=np.r_[s0,np.full(GUARD,.125,np.float32)].astype(np.float32);s1=np.r_[s1,np.full(GUARD,-.25,np.float32)].astype(np.float32)
+  sen=np.full(SENT+GUARD,1234567,np.int32)
+  for si in range(6):sen[si*N:(si+1)*N]=np.arange(1,N+1,dtype=np.int32)
+  sen[SENT-6:SENT]=np.full(6,.025,np.float32).view(np.int32)
+  rng=np.r_[np.arange(1,N+1,dtype=np.uint32),np.full(GUARD,0x13579bdf,np.uint32)];table=np.full(T+GUARD,2,np.int32)
+  for pos in range(N):
+   seed=((pos+1)*1664525+1013904223)&0xffffffff;seed=(seed*1664525+1013904223)&0xffffffff;table[seed%T]=pos+1025
+  table[T:]=7654321
+  # Sigmoid table supplied as actual device input; independent math exp evaluated
+  # at source table knots. Kernel's integer83 index arithmetic is preserved.
+  exp=(1/(1+np.exp(-((np.arange(1000)/1000*2-1)*6)))).astype(np.float32)
+  physical=[s0,s1,sen,rng,table,exp];inp=[x.copy()for x in physical]
+  if c['cold']:inp[1][:count]=0
+  g,margin=oracle(c,*inp);c['independent_lookup_boundary_margin']=margin
+  desired=[g[0],g[1],g[2],sen.astype(np.float64),table.astype(np.float64),exp.astype(np.float64)]
+  for label,vals in [('input_'+str(j),x.astype(np.float64))for j,x in enumerate(inp)]:initial.append(vals);layout.append(dict(case=c['name'],field=label,kind='exact_input',offset=off,count=len(vals)));off+=len(vals)
+  cases.append(c);original.append(physical);gold.append(desired)
+ prefix=off
+ for c,fields in zip(cases,gold):
+  for j,vals in enumerate(fields):layout.append(dict(case=c['name'],field='output_'+str(j),kind='exact'if j>=2 else 'float',offset=off,count=len(vals)));off+=len(vals)
+ final=np.concatenate(initial+[x for row in gold for x in row]);assert len(final)==off;final.astype('<f8').tofile(out/'oracle.f64')
+ with open(out/'fixture.bin','wb')as f:
+  f.write(struct.pack('<I',len(cases)))
+  for c,fields in zip(cases,original):
+   f.write(struct.pack('<9I',*[c[k]for k in ['dim','aligned','vocab','window','negative','sentences','blocks','table_size','cold']]))
+   for x in fields:f.write(x.tobytes())
+ meta=dict(benchmark='word2vec',cases=cases,fields=layout,input_prefix_count=prefix,output_count=off,guard_words_per_physical_array=GUARD,constant_symbol_guard='Original fixed1000-element expTable has no appended device guard; entireconstant readbackchecked.',dtype='float64',atol=1e-6,rtol=2e-5,oracle_scope='IndependentFloat64 mean/dot/gradient evaluator; no sourceGPU code execution/transcription of128-lane reduction. Cold targetdisjointness removes crossblock sharedwrites to nonzero state; no generic Hogwild schedule claim.',numpy=np.__version__,files={})
+ for name in ['fixture.bin','oracle.f64']:
+  p=out/name;meta['files'][name]=dict(bytes=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest())
+ (out/'manifest.json').write_text(json.dumps(meta,indent=2)+'\n');print(json.dumps({k:meta[k]for k in ['input_prefix_count','output_count','files']}))
+if __name__=='__main__':
+ p=argparse.ArgumentParser();p.add_argument('--output',type=pathlib.Path,required=True);make(p.parse_args().output)

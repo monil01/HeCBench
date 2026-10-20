@@ -1,0 +1,150 @@
+--- reference_history/src/numeric.cu
++++ corrected_numeric.cuh
+@@ -65,25 +65,19 @@
+       subCol = csr_c_idx_dev[subColPos + woffset];
+       while(offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+       {
+-        if (tidInWarp + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+-        {
+-
++        const bool active = tidInWarp + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol];
++        unsigned ridx = 0;
++        if (active) {
+           subColElem = sym_c_ptr_dev[subCol] + tidInWarp + offset;
+-          unsigned ridx = sym_r_idx_dev[subColElem];
+-
+-          if (ridx == currentCol)
+-          {
+-            s[wid] = val_dev[subColElem];
+-          }
+-          //Threads in a warp are always synchronized
+-          //__syncthreads();
+-          if (ridx > currentCol)
+-          {
+-            //elem in currentCol same row with subColElem might be 0, so
+-            //clearing tmpMem is necessary
+-            atomicAdd(&val_dev[subColElem], -tmpMem[ridx+n*bid]*s[wid]);
+-          }
++          ridx = sym_r_idx_dev[subColElem];
++          if (ridx == currentCol) s[wid] = val_dev[subColElem];
+         }
++        // All32 lanes of this source warp participate, including partial tails.
++        __syncwarp();
++        if (active && ridx > currentCol)
++          atomicAdd(&val_dev[subColElem], -tmpMem[ridx+n*bid]*s[wid]);
++        // Finish readers before a later warp iteration may publish another value.
++        __syncwarp();
+         offset += 32;
+       }
+     }
+@@ -129,6 +123,10 @@
+ 
+   extern __shared__ REAL s[];
+ 
++  if (tid == 0 && currentLColSize > 0 && abs(val_dev[l_col_ptr_dev[currentCol]]) < pert)
++    val_dev[l_col_ptr_dev[currentCol]] = pert;
++  __syncthreads();
++
+   //update current col
+ 
+   int offset = 0;
+@@ -137,9 +135,6 @@
+     if (tid + offset < currentLColSize)
+     {
+       unsigned ridx = sym_r_idx_dev[currentLPos + offset];
+-
+-      if (abs(val_dev[l_col_ptr_dev[currentCol]]) < pert)
+-        val_dev[l_col_ptr_dev[currentCol]] = pert;
+ 
+       val_dev[currentLPos + offset] /= val_dev[l_col_ptr_dev[currentCol]];
+       tmpMem[bid*n + ridx]= val_dev[currentLPos + offset];
+@@ -164,25 +159,19 @@
+       subCol = csr_c_idx_dev[subColPos + woffset];
+       while(offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+       {
+-        if (tidInWarp + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+-        {
+-
++        const bool active = tidInWarp + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol];
++        unsigned ridx = 0;
++        if (active) {
+           subColElem = sym_c_ptr_dev[subCol] + tidInWarp + offset;
+-          unsigned ridx = sym_r_idx_dev[subColElem];
+-
+-          if (ridx == currentCol)
+-          {
+-            s[wid] = val_dev[subColElem];
+-          }
+-          //Threads in a warp are always synchronized
+-          //__syncthreads();
+-          if (ridx > currentCol)
+-          {
+-            //elem in currentCol same row with subColElem might be 0, so
+-            //clearing tmpMem is necessary
+-            atomicAdd(&val_dev[subColElem], -tmpMem[ridx+n*bid]*s[wid]);
+-          }
++          ridx = sym_r_idx_dev[subColElem];
++          if (ridx == currentCol) s[wid] = val_dev[subColElem];
+         }
++        // All32 lanes of this source warp participate, including partial tails.
++        __syncwarp();
++        if (active && ridx > currentCol)
++          atomicAdd(&val_dev[subColElem], -tmpMem[ridx+n*bid]*s[wid]);
++        // Finish readers before a later warp iteration may publish another value.
++        __syncwarp();
+         offset += 32;
+       }
+     }
+@@ -250,6 +239,10 @@
+   const unsigned currentLColSize = sym_c_ptr_dev[currentCol + 1] - l_col_ptr_dev[currentCol] - 1;
+   const unsigned currentLPos = l_col_ptr_dev[currentCol] + tid + 1;
+ 
++  if (tid == 0 && currentLColSize > 0 && abs(val_dev[l_col_ptr_dev[currentCol]]) < pert)
++    val_dev[l_col_ptr_dev[currentCol]] = pert;
++  __syncthreads();
++
+   //update current col
+ 
+   int offset = 0;
+@@ -258,9 +251,6 @@
+     if (tid + offset < currentLColSize)
+     {
+       unsigned ridx = sym_r_idx_dev[currentLPos + offset];
+-
+-      if (abs(val_dev[l_col_ptr_dev[currentCol]]) < pert)
+-        val_dev[l_col_ptr_dev[currentCol]] = pert;
+ 
+       val_dev[currentLPos + offset] /= val_dev[l_col_ptr_dev[currentCol]];
+       tmpMem[stream * n + ridx]= val_dev[currentLPos + offset];
+@@ -293,21 +283,17 @@
+   subCol = csr_c_idx_dev[subColPos];
+   while(offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+   {
+-    if (tid + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol])
+-    {
++    const bool active = tid + offset < sym_c_ptr_dev[subCol + 1] - sym_c_ptr_dev[subCol];
++    unsigned ridx = 0;
++    if (active) {
+       subColElem = sym_c_ptr_dev[subCol] + tid + offset;
+-      unsigned ridx = sym_r_idx_dev[subColElem];
+-
+-      if (ridx == currentCol)
+-      {
+-        s = val_dev[subColElem];
+-      }
+-      __syncthreads();
+-      if (ridx > currentCol)
+-      {
+-        atomicAdd(&val_dev[subColElem], -tmpMem[stream * n + ridx] * s);
+-      }
+-    }
++      ridx = sym_r_idx_dev[subColElem];
++      if (ridx == currentCol) s = val_dev[subColElem];
++    }
++    __syncthreads();
++    if (active && ridx > currentCol)
++      atomicAdd(&val_dev[subColElem], -tmpMem[stream * n + ridx] * s);
++    __syncthreads();
+     offset += blockDim.x;
+   }
+ }

@@ -1,0 +1,157 @@
+using Printf
+include("thermodynamic_device.jl")
+include("recurrence_bodies.jl")
+include("stage_device.jl")
+const PRNA_ROOT=@__DIR__
+struct PRNAGuarded{T}
+ base::CuArray{T,1}
+ payload::CuArray{T,1}
+ initial::Vector{T}
+ n::Int
+end
+function PRNAGuarded(a::Vector{T}) where T
+ guard=T===Float32 ? T(-987654.25) : reinterpret(T,UInt32(0xa5a5a5a5))
+ initial=vcat(fill(guard,17),a,fill(guard,17));base=CuArray(initial)
+ payload=unsafe_wrap(CuArray,pointer(base,18),length(a);own=false)
+ PRNAGuarded(base,payload,initial,length(a))
+end
+prna_reset!(g::PRNAGuarded)=(copyto!(g.base,g.initial);nothing)
+function prna_take(g::PRNAGuarded)
+ a=Array(g.base)
+ @assert reinterpret(UInt32,a[1:17])==reinterpret(UInt32,g.initial[1:17])
+ @assert reinterpret(UInt32,a[end-16:end])==reinterpret(UInt32,g.initial[end-16:end])
+ a
+end
+function prna_readonly(g)
+ @assert reinterpret(UInt32,prna_take(g))==reinterpret(UInt32,g.initial)
+ nothing
+end
+function prna_prefix!(out,g)
+ append!(out,Float64.(reinterpret(UInt32,prna_take(g))));nothing
+end
+function prna_read(name,::Type{T}) where T
+ open(joinpath(PRNA_ROOT,name),"r") do f
+  n=filesize(f);@assert n%sizeof(T)==0
+  a=Vector{T}(undef,n÷sizeof(T));read!(f,a);@assert eof(f);a
+ end
+end
+struct PRNACase
+ n::Int32
+ seq::PRNAGuarded{Int32}
+ bcp::PRNAGuarded{Int32}
+ fields::NamedTuple
+end
+function PRNACase(s,bcp)
+ n=length(s)
+ sizes=(v=n*n,w5=n+1,w3=n+1,z=n*n,yl=n*n,y=n*n,wq=n*(n-1)÷2,w=2n,wl=2n,xl=2n,x=5n)
+ f=map(k->PRNAGuarded(fill(Float32(Inf),k)),sizes)
+ PRNACase(Int32(n),PRNAGuarded(s),PRNAGuarded(bcp),f)
+end
+function prna_reset!(c::PRNACase)
+ foreach(prna_reset!,values(c.fields));nothing
+end
+function prna_prefix!(out,c::PRNACase)
+ prna_prefix!(out,c.seq);prna_prefix!(out,c.bcp)
+ for g in values(c.fields);prna_prefix!(out,g);end
+ nothing
+end
+prna_context(c,par)=(;seq=c.seq.payload,bcp=c.bcp.payload,params=par.payload,(name=>g.payload for(name,g)in pairs(c.fields))...)
+function launch_pipeline(c,n)
+ launch_init(c,n)
+ for d in Int32(0):n-Int32(2)
+  launch_stage!(Val(1),c,n,d);launch_stage!(Val(2),c,n,d);launch_stage!(Val(3),c,n,d);launch_stage!(Val(4),c,n,d)
+  launch_stage!(Val(5),c,n,d);launch_stage!(Val(6),c,n,d);launch_stage!(Val(7),c,n,d);launch_stage!(Val(8),c,n,d)
+ end
+ nothing
+end
+@inline function prna_encode!(out,x::Float32)
+ cls=isfinite(x) ? 0 : isnan(x) ? 2 : x>0 ? 1 : -1
+ push!(out,cls==0 ? Float64(x) : 0.0);push!(out,Float64(cls));push!(out,ldexp(Float64(reinterpret(UInt32,x)),-64))
+ nothing
+end
+function prna_collect!(c,gold,at,out,maxerr)
+ for g in values(c.fields)
+  a=prna_take(g)
+  for k in eachindex(a)
+   x=a[k];@assert !isnan(x)
+   if 17<k<=17+g.n
+    at+=1;y=gold[at];@assert !isnan(y)&&isinf(x)==isinf(y)
+    if isinf(x)
+     @assert x==y
+    else
+     er=abs(Float64(x)-Float64(y));maxerr=max(maxerr,er)
+     if er>.002+2e-5*abs(Float64(y))
+      error("PRNA_CPU_STATE_MISMATCH offset=$(at-1) actual=$x expected=$y error=$er")
+     end
+    end
+   end
+   prna_encode!(out,x)
+  end
+ end
+ prna_readonly(c.seq);prna_readonly(c.bcp)
+ at,maxerr
+end
+function prna_probabilities(c,tiny,which)
+ n=Int(c.n);v=prna_take(c.fields.v)[18:end-17];w3=prna_take(c.fields.w3)[18:end-17];w5=prna_take(c.fields.w5)[18:end-17]
+ bcp=c.bcp.initial[18:end-17]
+ @assert w5[1]==0&&w5[2]==0&&w3[n]==0&&w3[n+1]==0
+ @assert abs(Float64(w5[n+1])-w3[1])<=.002+2e-5*abs(Float64(w3[1]))
+ mask(i,j)=i!=j&&(i<j ? bcp[j*(j-1)÷2+i+1] : bcp[i*(i-1)÷2+j+1])!=0
+ p=zeros(Float32,n*n)
+ for i in 0:n-1
+  mass=0.0
+  for j in 0:n-1
+   prob=mask(i,j) ? exp(-Float32((v[i*n+j+1]+v[j*n+i+1])-w3[1])) : 0f0
+   @assert isfinite(prob)&&0<=prob<=1.002
+   p[i*n+j+1]=prob;mass+=Float64(prob)
+   if !mask(i,j);@assert prob==0;end
+  end
+  @assert mass<=1.002
+ end
+ for i in 0:n-1,j in 0:n-1;@assert p[i*n+j+1]==p[j*n+i+1];end
+ if which==2
+  @assert abs(w3[1]-tiny[1])<2e-6&&abs(p[7]-tiny[2])<2e-6&&abs(p[n+6]-tiny[3])<2e-6
+ elseif which==3
+  @assert w3[1]==0&&all(iszero,p)
+ elseif which==4
+  @assert abs(w3[1]-tiny[4])<2e-6&&abs(p[7]-tiny[5])<2e-6
+ end
+ p
+end
+function prna_study()
+ par=PRNAGuarded(prna_read("params_u32.bin",UInt32));@assert par.n*4==1974524
+ raw=prna_read("sequences_i32.bin",Int32);bp=prna_read("base_can_pair_i32.bin",Int32);at=2;bt=1;cases=PRNACase[]
+ for k in 1:Int(raw[1])
+  n=Int(raw[at]);at+=1;s=raw[at:at+n-1];at+=n;nb=n*(n-1)÷2;b=bp[bt:bt+nb-1];bt+=nb;push!(cases,PRNACase(s,b))
+ end
+ @assert at==length(raw)+1&&bt==length(bp)+1&&length(cases)==5
+ gold=prna_read("CPU_final_states_f32.bin",Float32);tracegold=prna_read("CPU_trace27_allstages_f32.bin",Float32);tiny=prna_read("tiny_oracle_f64.bin",Float64)
+ @assert length(gold)==392059&&length(tracegold)==756580
+ trace=PRNACase(copy(cases[5].seq.initial[18:end-17]),copy(cases[5].bcp.initial[18:end-17]));tc=prna_context(trace,par);contexts=[prna_context(c,par)for c in cases]
+ for(c,ctx)in zip(cases,contexts);launch_pipeline(ctx,c.n);end
+ CUDA.device_synchronize(blocking=true)
+ for trial in 1:5
+  out=Float64[];times=Float64[];prna_prefix!(out,par)
+  for c in cases;prna_reset!(c);prna_prefix!(out,c);end
+  prna_reset!(trace);prna_prefix!(out,trace);prefix=length(out);@assert prefix==935631
+  for(c,ctx)in zip(cases,contexts)
+   CUDA.device_synchronize(blocking=true);t=time_ns();launch_pipeline(ctx,c.n);CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-t)*1e-9)
+  end
+  at=0;maxerr=0.0
+  for(q,c)in enumerate(cases)
+   at,maxerr=prna_collect!(c,gold,at,out,maxerr)
+   for x in prna_probabilities(c,tiny,q);prna_encode!(out,x);end
+  end
+  @assert at==length(gold)
+  traceat=0;launch_init(tc,trace.n);CUDA.device_synchronize(blocking=true);traceat,maxerr=prna_collect!(trace,tracegold,traceat,out,maxerr)
+  for d in Int32(0):trace.n-Int32(2),s in 1:8
+   launch_stage!(Val(s),tc,trace.n,d);CUDA.device_synchronize(blocking=true);traceat,maxerr=prna_collect!(trace,tracegold,traceat,out,maxerr)
+  end
+  @assert traceat==length(tracegold);prna_readonly(par);@assert length(out)==4880172
+  path=joinpath(ENV["STUDY_OUTPUT_DIR"],"trial$(trial).bin");write(path,out)
+  @printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":true,\"checked_values\":%d,\"max_abs_error\":%.17g,\"max_rel_error\":null,\"timing_region\":\"sum_fivecases_init_plus8perdiagonal_kernels_devicecompletion_excludes_reset_capture_probhost_and27trace\",\"timing_valid\":true,\"jit_excluded\":true,\"input_prefix_count\":%d,\"untimed_trace27_snapshots\":209,\"lossless_output_representation\":\"Float32finite_value_class_and_rawUInt32_times2powminus64\",\"NaN_output_rejected\":true,\"all_impossible_state_classes_exact_CPU\":true,\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float64\",\"count\":%d},\"case_seconds\":[",trial,sum(times),length(gold)+length(tracegold),maxerr,prefix,path,length(out))
+  for(k,t)in enumerate(times);@printf("%s%.17g",k==1 ? "" : ",",t);end
+  println("]}");flush(stdout)
+ end
+ CUDA.device_synchronize(blocking=true)
+end

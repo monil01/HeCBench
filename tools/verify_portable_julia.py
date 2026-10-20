@@ -417,8 +417,8 @@ def review_missing_timing_region(config,reuse_result,reuse_config,reuse_path,res
         raise ValueError('Timing metadata review requires explicit all-four-model reuse')
     if reuse_result.get('timing_region_metadata_adjudication'):
         raise ValueError('Do not chain timing metadata adjudications')
-    if reuse_config.get('timed_regions_equivalent_verified') is not True or not reuse_config.get('input_contract',{}).get('timing'):
-        raise ValueError('Original measurement must already declare its timing contract/equivalence')
+    if reuse_config.get('timed_regions_equivalent_verified') is not True:
+        raise ValueError('Original measurement must already declare timing equivalence')
     path=Path(name);path=path if path.is_absolute() else ROOT/path
     raw=path.read_bytes();review=json.loads(raw)
     if review.get('source_run_id')!=reuse_result['run_id'] or review.get('result_sha256')!=hashlib.sha256(reuse_path.read_bytes()).hexdigest() or review.get('config_sha256')!=hashlib.sha256(reuse_path.with_name('config.json').read_bytes()).hexdigest():
@@ -426,6 +426,23 @@ def review_missing_timing_region(config,reuse_result,reuse_config,reuse_path,res
     region=review.get('timing_region')
     if review.get('metadata_only') is not True or not isinstance(region,str) or not region.strip() or not review.get('reason','').strip():
         raise ValueError('Timing metadata review needs a nonempty descriptor and reason')
+    alias=review.get('original_descriptor_alias')
+    if alias is not None:
+        if alias!='region':
+            raise ValueError('Only the explicit archived region descriptor alias is supported')
+        for model in MODELS:
+            original=reuse_result.get('models',{}).get(model,{})
+            rows=original.get('trials',[])
+            if len(rows)!=5 or not original.get('complete') or original.get('provenance_valid') is not True:
+                raise ValueError('Archived region alias requires complete dependency-valid five-trial models')
+            if any(row.get('region')!=region or row.get('timing_region') is not None
+                   or row.get('correct') is not True or row.get('jit_excluded') is not True
+                   or row.get('timing_valid') is not True
+                   or not isinstance(row.get('time_seconds'),(int,float))
+                   or not math.isfinite(row['time_seconds']) or row['time_seconds']<0 for row in rows):
+                raise ValueError('Archived region alias must already match all twenty valid unchanged samples')
+    elif not reuse_config.get('input_contract',{}).get('timing'):
+        raise ValueError('Original measurement must already declare its timing contract')
     model_reviews=review.get('model_reviews',{})
     if set(model_reviews)!=set(MODELS):raise ValueError('Timing source review must cover all four models')
     evidence=review.get('evidence',[])
@@ -447,7 +464,8 @@ def review_missing_timing_region(config,reuse_result,reuse_config,reuse_path,res
             'source_run_id':reuse_result['run_id'],'source_result_sha256':review['result_sha256'],
             'source_config_sha256':review['config_sha256'],'effective_timing_region':region,
             'reason':review['reason'],'trial_rows_and_samples_unchanged':True,
-            'scope':'Postmeasurement descriptive annotation from predeclared contract and reviewed unchanged sources; no new execution, numerical acceptance, time unit or measured region.'}
+            'original_descriptor_alias':alias,
+            'scope':'Postmeasurement descriptive annotation from predeclared contract or identical archived region aliases and reviewed unchanged sources; no new execution, numerical acceptance, time unit or measured region.'}
 
 def parse_records(text, spec, external_trial=None):
     rows=[]

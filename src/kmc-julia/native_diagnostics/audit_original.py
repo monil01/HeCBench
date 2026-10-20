@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Independent full real-data Float64 Gram/RBF controls, no GPU timings."""
+from pathlib import Path
+import numpy as np,json,hashlib,sys
+R=Path(__file__).resolve().parents[3];D=R/'.porting-state/diagnostics/kmc/raw_capture';P=Path(__file__).resolve().parent
+n,d,calls=np.fromfile(D/'geometry_i32.bin',dtype='<i4');assert(n,d,calls)==(513,5001,513)
+x=np.fromfile(D/'parsed_tva_f32.bin',dtype='<f4').reshape((n,d));A=np.fromfile(D/'actual_A_f32.bin',dtype='<f4').reshape((d,n)).T;v=np.fromfile(D/'actual_vectors_f32.bin',dtype='<f4').reshape((n,d));assert np.array_equal(x.view('u4'),A.view('u4'))and np.array_equal(x.view('u4'),v.view('u4'))
+dots=np.fromfile(D/'actual_dots_f32.bin',dtype='<f4').reshape((n,n)).astype(np.float64);kernel=np.fromfile(D/'actual_kernel_f64.bin',dtype='<f8').reshape((n,n+1));gamma=float(np.fromfile(D/'gamma_f32.bin',dtype='<f4')[0]);assert np.array_equal(kernel[:,0],np.arange(1,n+1))
+y=x.astype(np.float64);dotref=y@y.T;absdot=np.abs(y)@np.abs(y).T;norm=(x*x).astype(np.float64).sum(axis=1);idealnorm=(y*y).sum(axis=1);u=2**-24;g=d*u/(1-d*u);dotbudget=g*absdot+1e-6
+assert np.all(np.abs(dots-dotref)<=dotbudget)
+# Source norm accumulates Float32 squares in Float64; source RBF doubleexp.
+source_formula=np.exp(-gamma*(norm[:,None]+norm[None,:]-2*dots));source_exp_error=np.abs(kernel[:,1:]-source_formula);assert np.all(source_exp_error<=2e-13*np.maximum(1,np.abs(source_formula)))
+canonical=np.exp(-gamma*np.maximum(0,idealnorm[:,None]+idealnorm[None,:]-2*dotref));normbudget=np.abs(norm-idealnorm);eb=gamma*(normbudget[:,None]+normbudget[None,:]+2*dotbudget)+1e-12;rbfbudget=canonical*np.expm1(eb)+2e-13;assert np.all(np.abs(kernel[:,1:]-canonical)<=rbfbudget)
+assert np.all(np.isfinite(dots))and np.all(np.isfinite(kernel))
+report={'benchmark':'kmc','status':'pass','original_kernel_matrix_full_values':int(n*(n+1)),'actual_GEMV_dot_values':int(n*n),'actual_device_matrix_and_vectors_exact':True,'source_norm_precision':'Float32element-squares accumulatedFloat64','oracle':'IndependentCPUFloat64Gram+EuclideandistanceGaussianRBF, allmatrixentries; exactactualdeviceA/xvsoriginalparsedsourcefixture; sourcehostexpformula separatelychecked','gamma':gamma,'max_dot_abs_error':float(np.max(np.abs(dots-dotref))),'max_dot_theoretical_budget':float(np.max(dotbudget)),'max_RBF_vs_canonical_error':float(np.max(np.abs(kernel[:,1:]-canonical))),'max_RBF_theoretical_budget':float(np.max(rbfbudget)),'max_source_host_formula_error':float(source_exp_error.max()),'kernel_max_asymmetry':float(np.max(np.abs(kernel[:,1:]-kernel[:,1:].T))),'kernel_max_diagonal_error':float(np.max(np.abs(np.diag(kernel[:,1:])-1))),'budget_basis':'Standardgamma_d dot-producterrorbound plusactualFloat32squarequantizationnormerror andexpintervalpropagation; predeclared beforeprimary/targets, sourceCPUformula residual2e-13 engineeringceiling.','original_timing_invalid_for_capture':True,'source_actual_CLI_CV_percent':90.6433,'CV_not_independent_application_quality_certificate':True,'numpy':np.__version__,'python':sys.version,'files':[{'path':str(f.relative_to(R)),'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size}for f in sorted(D.iterdir())if f.is_file()]}
+(P/'original_full_matrix_audit.json').write_text(json.dumps(report,indent=2)+'\n');print({k:v for k,v in report.items()if k!='files'})

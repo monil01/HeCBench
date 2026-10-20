@@ -7,7 +7,7 @@ from pathlib import Path
 from study_evidence import effective_config
 import verify_portable_julia as verifier
 root=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');p.add_argument('--evidence-refresh',action='store_true');p.add_argument('--measurement-repair',action='store_true');p.add_argument('--variant-archive',type=Path,action='append',default=[]);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True);p.add_argument('--result',type=Path,action='append',required=True);p.add_argument('--variant',choices=['KA','JACC']);p.add_argument('--shared',action='store_true');p.add_argument('--reviewed-dependency-change',default='');p.add_argument('--performance-tuning',action='store_true');p.add_argument('--evidence-refresh',action='store_true');p.add_argument('--measurement-repair',action='store_true');p.add_argument('--variant-archive',type=Path,action='append',default=[]);p.add_argument('--combined-reference-review',type=Path);a=p.parse_args()
 if bool(a.variant)==bool(a.shared):p.error('choose exactly one of --variant or --shared')
 if a.shared and a.variant_archive:p.error('variant archives belong in their variant commit')
 if a.measurement_repair and (a.evidence_refresh or a.performance_tuning):p.error('measurement repair is a separate phase from evidence-only refresh and tuning')
@@ -86,16 +86,34 @@ if conditional:
  if any(c.get('native_reference_repaired') and not c.get('reference_provenance') for _,c,_ in data):raise SystemExit('Corrected native references require explicit provenance.')
  title=('Repair '+a.benchmark+' native study reference with preserved witnesses') if a.shared else ('Conditionally verify '+a.benchmark+' '+a.variant+' against corrected native reference')
 known_defect=any(c.get('native_behavior_known_scientific_defect') for _,c,_ in data)
-if known_defect and conditional:raise SystemExit('Known-defect reproduction and corrected-native evidence need separate commit strata.')
+combined_review=None
+if known_defect and conditional:
+ if not a.combined_reference_review:raise SystemExit('Known-defect reproduction and corrected-native evidence need separate commit strata or an explicit disjoint-scope review.')
+ review_path=a.combined_reference_review
+ if not review_path.is_absolute():review_path=root/review_path
+ if not review_path.resolve().is_relative_to(parent.resolve()):raise SystemExit('Combined qualification review must be benchmark-owned')
+ combined_review=json.loads(review_path.read_text())
+ if combined_review.get('benchmark')!=a.benchmark or combined_review.get('corrected_scope_and_retained_defect_are_distinct') is not True or not combined_review.get('corrected_scope') or not combined_review.get('retained_known_defect_scope') or combined_review.get('scientific_validity_claim') is not False or combined_review.get('exclude_untouched_and_scientific_fidelity_aggregates') is not True:raise SystemExit('Incomplete disjoint qualification review')
+ bound=combined_review.get('results',{})
+ for d,c,path in data:
+  if bound.get(d['run_id'])!=verifier.file_sha256(path):raise SystemExit('Combined qualification result hash mismatch')
+ if not combined_review.get('evidence'):raise SystemExit('Combined qualification requires hashed independent witnesses')
+ for e in combined_review['evidence']:
+  f=root/e['path']
+  if not f.resolve().is_relative_to(parent.resolve()) or verifier.file_sha256(f)!=e['sha256']:raise SystemExit('Combined qualification evidence hash mismatch')
+ paths.append(review_path)
+
 if known_defect and any(c.get('native_behavior_known_scientific_defect') and not c.get('reference_provenance') for _,c,_ in data):raise SystemExit('Known scientific defects require witness provenance.')
 revised_acceptance=any(c.get('verification_contract_revised') for _,c,_ in data)
 if revised_acceptance and not conditional and not known_defect:
  title=('Record '+a.benchmark+' revised secondary verification contract') if a.shared else ('Conditionally verify '+a.benchmark+' '+a.variant+' under revised acceptance contract')
 if not paths:raise SystemExit('No owned files to commit')
 subprocess.run(['git','add','-f','--',*[str(f.relative_to(root)) for f in paths]],cwd=root,check=True)
-if known_defect:
+if known_defect and conditional:
+ title=('Record '+a.benchmark+' corrected host setup with retained scientific limitation') if a.shared else ('Conditionally verify '+a.benchmark+' '+a.variant+' with retained scientific limitation')
+elif known_defect:
  title=('Record '+a.benchmark+' original native behavior with known scientific defect') if a.shared else ('Verify '+a.benchmark+' '+a.variant+' native behavior with known scientific defect')
-body=('Post-observation revised secondary acceptance contract; original rejected criterion retained, fresh measurements, excluded from untouched-native aggregates. Native algorithm unchanged unless separately stated.\n\n' if revised_acceptance else '')+('Reproduced original native behavior with an independently witnessed scientific defect; not certification of intended algorithm, excluded from scientific-fidelity aggregates.\n\n' if known_defect else '')+('Conditional corrected-native stratum; no untouched-native agreement or aggregate claim.\n\n' if conditional else '')+'Evidence: '+', '.join(d['run_id'] for d,_,_ in data)+'. All five configured output checks pass; time means exclude trial1. Preserve numerical evidence strength, scope, attempt accounting and limitations.\n\nGenerated-By: OpenAI Codex'
+body=('Disjoint scope qualification review: '+str(a.combined_reference_review)+'; corrected host/storage scope and retained scientific defect remain separately witnessed.\n\n' if combined_review else '')+('Post-observation revised secondary acceptance contract; original rejected criterion retained, fresh measurements, excluded from untouched-native aggregates. Native algorithm unchanged unless separately stated.\n\n' if revised_acceptance else '')+('Reproduced original native behavior with an independently witnessed scientific defect; not certification of intended algorithm, excluded from scientific-fidelity aggregates.\n\n' if known_defect else '')+('Conditional corrected-native stratum; no untouched-native agreement or aggregate claim.\n\n' if conditional else '')+'Evidence: '+', '.join(d['run_id'] for d,_,_ in data)+'. All five configured output checks pass; time means exclude trial1. Preserve numerical evidence strength, scope, attempt accounting and limitations.\n\nGenerated-By: OpenAI Codex'
 subprocess.run(['git','commit','-m',title,'-m',body],cwd=root,check=True);sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
 if key:
  m=root/'.porting-state/porting_logs'/(a.benchmark+'-julia-'+key)/'manifest.json'

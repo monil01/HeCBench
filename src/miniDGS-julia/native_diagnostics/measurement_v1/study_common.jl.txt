@@ -1,0 +1,115 @@
+using Printf
+const STUDY_PARENT=@__DIR__
+const FIXTURE_DIR=joinpath(STUDY_PARENT,"fixtures")
+const MPI_LIBRARY=joinpath(STUDY_PARENT,"libstudy_mpi.so")
+mutable struct StudyBuffer{T,A,V}
+    name::String
+    base::A
+    data::V
+    initial::Vector{T}
+    n::Int
+end
+function read_typed(::Type{T},path,n)where T
+    filesize(path)==n*sizeof(T)||error("extent $path expected $(n*sizeof(T))")
+    return open(path)do io;read!(io,Vector{T}(undef,n));end
+end
+asset(rank,name)=joinpath(FIXTURE_DIR,"rank$(rank)_$(name).bin")
+function make_buffer(::Type{T},name,n,file,rank)where T
+    guard=T===Float32 ? T(4096.25) : T(0x13579bdf)
+    initial=fill(guard,n+256);fill!(view(initial,129:n+128),zero(T))
+    if file!==nothing;copyto!(view(initial,129:n+128),read_typed(T,asset(rank,file),n));end
+    base=alloc_backend(T,n+256);copyto!(base,initial);data=view(base,129:n+128)
+    return StudyBuffer{T,typeof(base),typeof(data)}(name,base,data,initial,n)
+end
+samebits(a,b)=reinterpret(UInt8,a)==reinterpret(UInt8,b)
+function capture_prefix(buffers)
+    pre=Float64[];sizehint!(pre,1658468)
+    for b in buffers
+        actual=Array(b.base);samebits(actual,b.initial)||error("actual device input $(b.name)")
+        append!(pre,Float64.(actual))
+    end
+    return pre
+end
+function capture_final(buffers)
+    values=Float64[];sizehint!(values,1658468)
+    for b in buffers
+        a=Array(b.base);samebits(a[1:128],b.initial[1:128])&&samebits(a[end-127:end],b.initial[end-127:end])||error("guard $(b.name)")
+        if b.name in ("D","L","G","S","map");samebits(a,b.initial)||error("readonly $(b.name)");end
+        if b.name=="tmp";allzero=reinterpret(UInt32,a[129+12768:end-128]);all(iszero,allzero)||error("tmp tail");end
+        all(isfinite,a)||error("nonfinite $(b.name)");append!(values,Float64.(a))
+    end
+    return values
+end
+const ORACLE_CACHE=Dict{Tuple{Int,Int,String},Tuple{Vector{Float64},Vector{Float64}}}()
+function oracle(rank,field,stage)
+    get!(ORACLE_CACHE,(rank,stage,field))do
+        (read_typed(Float64,asset(rank,"stage$(stage)_$(field)_reference_f64"),294336),read_typed(Float64,asset(rank,"stage$(stage)_$(field)_bound_f64"),294336))
+    end
+end
+function scientific_check(actual,rank,field,stage,indices=nothing)
+    reference,budget=oracle(rank,field,stage);maxerr=0.0;maxratio=0.0
+    for j in eachindex(actual)
+        i=indices===nothing ? j : Int(indices[j])+1
+        err=abs(Float64(actual[j])-reference[i]);isfinite(actual[j])&&err<=budget[i]||error("oracle rank$rank stage$stage $field $i error$err budget$(budget[i])")
+        maxerr=max(maxerr,err);maxratio=max(maxratio,err/budget[i])
+    end
+    return maxerr,maxratio
+end
+function dump_trace(values,rank,field,stage)
+    path=joinpath(ENV["STUDY_OUTPUT_DIR"],"rank$(rank)_stage$(stage)_$(field).bin")
+    open(path,"w")do io;write(io,values);end
+end
+function main()
+    rank=Int(ccall((:study_mpi_init,MPI_LIBRARY),Cint,()))
+    map=read_typed(Int32,asset(rank,"parmapOUT"),12768);peermap=read_typed(Int32,asset(1-rank,"parmapOUT"),12768)
+    a=Float32.(read_typed(Float64,asset(rank,"rk4a_f64"),5));b=Float32.(read_typed(Float64,asset(rank,"rk4b_f64"),5))
+    for trial in 0:5
+        Q=make_buffer(Float32,"Q",294336,"initial_Q",rank);rhs=make_buffer(Float32,"rhs",294336,"initial_rhs",rank);res=make_buffer(Float32,"res",294336,"initial_res",rank)
+        tmp=make_buffer(Float32,"tmp",294336,nothing,rank);part=make_buffer(Float32,"part",12768,nothing,rank)
+        D=make_buffer(Float32,"D",36864,"DrDsDt",rank);L=make_buffer(Float32,"L",9408,"LIFT",rank);G=make_buffer(Float32,"G",6132,"vgeo",rank);S=make_buffer(Float32,"S",400624,"surfinfo",rank);M=make_buffer(Int32,"map",12768,"parmapOUT",rank)
+        buffers=(Q,rhs,res,tmp,part,D,L,G,S,M);prefix=capture_prefix(buffers);send=Vector{Float32}(undef,12768);recv=similar(send)
+        maxerr=0.0;maxratio=0.0
+        CUDA.device_synchronize();start=ccall((:study_mpi_time,MPI_LIBRARY),Cdouble,());ccall((:study_mpi_barrier,MPI_LIBRARY),Cvoid,())
+        GC.@preserve send recv begin
+            for stage in 1:5
+                run_gather!(Q.data,M.data,tmp.data);copyto!(send,view(tmp.data,1:12768));CUDA.device_synchronize()
+                ccall((:study_mpi_start,MPI_LIBRARY),Cvoid,(Ptr{Float32},Ptr{Float32},Cint),send,recv,12768)
+                if trial==0;dump_trace(send,rank,"gathered",stage);end
+                run_volume!(Q.data,D.data,G.data,rhs.data)
+                if trial==0
+                    v=Array(rhs.data);e,r=scientific_check(v,rank,"volume_rhs",stage);maxerr=max(maxerr,e);maxratio=max(maxratio,r);dump_trace(v,rank,"volume_rhs",stage)
+                end
+                ccall((:study_mpi_finish,MPI_LIBRARY),Cvoid,());copyto!(part.data,recv)
+                if trial==0;dump_trace(recv,rank,"received",stage);end
+                run_surface!(Q.data,part.data,L.data,S.data,rhs.data)
+                if trial==0
+                    v=Array(rhs.data);e,r=scientific_check(v,rank,"surface_rhs",stage);maxerr=max(maxerr,e);maxratio=max(maxratio,r);dump_trace(v,rank,"surface_rhs",stage)
+                end
+                run_rk!(Q.data,res.data,rhs.data,a[stage],b[stage],Float32(.0005))
+                if trial==0
+                    for (buffer,field)in((Q,"Q"),(res,"res"))
+                        v=Array(buffer.data);e,r=scientific_check(v,rank,field,stage);maxerr=max(maxerr,e);maxratio=max(maxratio,r);dump_trace(v,rank,field,stage)
+                    end
+                end
+            end
+        end
+        CUDA.device_synchronize();seconds=ccall((:study_mpi_time,MPI_LIBRARY),Cdouble,())-start;ccall((:study_mpi_barrier,MPI_LIBRARY),Cvoid,())
+        for (buffer,field)in((Q,"Q"),(rhs,"surface_rhs"),(res,"res"))
+            e,r=scientific_check(Array(buffer.data),rank,field,5);maxerr=max(maxerr,e);maxratio=max(maxratio,r)
+        end
+        for (v,ref_rank,idx)in((send,rank,map),(recv,1-rank,peermap))
+            e,r=scientific_check(v,ref_rank,"Q",4,idx);maxerr=max(maxerr,e);maxratio=max(maxratio,r)
+        end
+        values=capture_final(buffers)
+        if trial>0
+            base=joinpath(ENV["STUDY_OUTPUT_DIR"],"rank$(rank)_trial$(trial)")
+            open(base*".bin","w")do io;write(io,prefix);write(io,values);end
+            open(base*".json","w")do io
+                @printf(io,"{\"trial\":%d,\"rank\":%d,\"time_seconds\":%.17g,\"max_abs_error\":%.17g,\"max_normalized_budget_ratio\":%.17g,\"prefix_count\":%d,\"output_count\":%d,\"correct\":true}",trial,rank,seconds,maxerr,maxratio,length(prefix),length(values))
+            end
+            @printf("STUDY_RANK_TRIAL rank%d trial%d seconds%.17g correcttrue\n",rank,trial,seconds);flush(stdout)
+        end
+        for buffer in buffers;CUDA.unsafe_free!(buffer.base);end
+    end
+    ccall((:study_mpi_finalize,MPI_LIBRARY),Cvoid,())
+end

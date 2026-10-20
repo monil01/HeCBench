@@ -1,0 +1,29 @@
+import pathlib,shutil,re,json,hashlib
+P=pathlib.Path('/home/imo/HeCBench_julia/src/mmcsf-julia'); S=P/'secondary_fp64_atomic';S.mkdir(exist_ok=False)
+for name in ['configured','full_study.cpp','study_interface.h','csf_oracle.h','build_program.py']:
+ a=P/name;b=S/name
+ if a.is_dir():shutil.copytree(a,b)
+ else:shutil.copy2(a,b)
+k=S/'configured/kernels.cu';t=k.read_text();assert len(re.findall(r'DTYPE\s*\*__restrict__ dU0',t))==7;t=re.sub(r'DTYPE\s*\*__restrict__ dU0','double *__restrict__ dU0',t);assert t.count('(float*)p.pointers[8]')==7;t=t.replace('(float*)p.pointers[8]','(double*)p.pointers[8]');k.write_text(t)
+p=S/'full_study.cpp';t=p.read_text();t=t.replace('static std::vector<float> before;','static double* double_base=nullptr;static double* double_out=nullptr;static float* original_output=nullptr;static size_t double_count=0;static constexpr size_t GUARD=64;static constexpr double GUARD_VALUE=1234567.25;static std::vector<double> double_readback;\nstatic std::vector<float> before;')
+old='void mm_dispatch(const MMLaunch&p){if(p.op<0||p.op>=7)throw std::runtime_error("Invalidop");dispatch_counts[p.op]++;if(mm_callback){if(mm_callback(&p))throw std::runtime_error("JuliaGPUcallbackrejected");}else mm_native_launch(p);}'
+new='''void mm_dispatch(const MMLaunch&original){MMLaunch p=original;if(p.op<0||p.op>=7)throw std::runtime_error("Invalidop");if(!double_out||p.pointers[8]!=original_output)throw std::runtime_error("Separateoutputaliascontract");for(int j=9;j<12;j++)if(p.pointers[j]==p.pointers[8]&&p.pointers[j])throw std::runtime_error("Inputoutputalias");p.pointers[8]=double_out;p.lengths[8]=double_count;dispatch_counts[p.op]++;if(mm_callback){if(mm_callback(&p))throw std::runtime_error("JuliaGPUcallbackrejected");}else mm_native_launch(p);}'''
+assert old in t;t=t.replace(old,new)
+old='void mm_mode_begin(int mode,float*dU,const unsigned int*,const TiledTensor*parts){ck(cudaDeviceSynchronize());Observe timer;'
+new='''void mm_mode_begin(int mode,float*dU,const unsigned int*,const TiledTensor*parts){ck(cudaDeviceSynchronize());if(double_base)throw std::runtime_error("LivepreviousmodeDoubleOut");if(mm_rank>32)throw std::runtime_error("Secondaryrankgreaterthan32notcertified");double_count=dims[mode]*mm_rank;original_output=dU+offsets[mode];std::vector<double> initial(double_count+2*GUARD,0);std::fill(initial.begin(),initial.begin()+GUARD,GUARD_VALUE);std::fill(initial.end()-GUARD,initial.end(),GUARD_VALUE);ck(cudaMalloc((void**)&double_base,initial.size()*8));double_out=double_base+GUARD;ck(cudaMemcpy(double_base,initial.data(),initial.size()*8,cudaMemcpyHostToDevice));ck(cudaDeviceSynchronize());Observe timer;std::vector<double> actual(initial.size());ck(cudaMemcpy(actual.data(),double_base,actual.size()*8,cudaMemcpyDeviceToHost));if(actual!=initial)throw std::runtime_error("ActualDoubleOutinitialbits");prefix.insert(prefix.end(),actual.begin(),actual.end());'''
+assert old in t;t=t.replace(old,new)
+old='void mm_mode_end(int mode,float*dU,const unsigned int*,const TiledTensor*){ck(cudaDeviceSynchronize());Observe timer;'
+new='''void mm_mode_end(int mode,float*dU,const unsigned int*,const TiledTensor*){ck(cudaDeviceSynchronize());double_readback.resize(double_count+2*GUARD);ck(cudaMemcpy(double_readback.data(),double_base,double_readback.size()*8,cudaMemcpyDeviceToHost));std::vector<float> projected(double_count);for(size_t j=0;j<double_count;j++)projected[j]=(float)double_readback[GUARD+j];ck(cudaMemcpy(original_output,projected.data(),projected.size()*4,cudaMemcpyHostToDevice));ck(cudaFree(double_base));double_base=nullptr;double_out=nullptr;ck(cudaDeviceSynchronize());Observe timer;for(size_t j=0;j<GUARD;j++)if(double_readback[j]!=GUARD_VALUE||double_readback[GUARD+double_count+j]!=GUARD_VALUE)scientific_ok=false;for(size_t j=0;j<double_count;j++){long double delta=fabsl((long double)double_readback[GUARD+j]-gold[j]),budget=.01L+2e-5L*fabsl(gold[j]);if(!std::isfinite(delta)||delta>budget)scientific_ok=false;}outputs.insert(outputs.end(),double_readback.begin(),double_readback.end());'''
+assert old in t;t=t.replace(old,new)
+t=t.replace('all_original_GPU_bodies_unchanged','source_contribution_statements_unchanged_output_atomic_precision_promoted')
+t=t.replace('full_source_tensor_load_format_allmode_GPU_pipeline_minus_added_observations','qualified_full_source_pipeline_including_FP64_output_allocation_projection_minus_added_observations')
+old='aux_dir=std::string(aux)+"/process_"+std::to_string(getpid());fs::create_directories(aux_dir);'
+new='fs::create_directories(aux);std::string pattern=std::string(aux)+"/process_"+std::to_string(getpid())+"_XXXXXX";std::vector<char> tmp(pattern.begin(),pattern.end());tmp.push_back(0);if(!mkdtemp(tmp.data()))throw std::runtime_error("Auxmkdtempfailed");aux_dir=tmp.data();'
+assert old in t;t=t.replace(old,new);p.write_text(t)
+proof={'scope':'Separately named accuracy intervention, not native defect proof; original blocked primary unchanged. Seven output pointer formal types and seven native dispatch casts change to double; no other configured source or GPU contribution statement changes. All scalar/private math remains Float32, implicit cast occurs after full atomic contribution expression. Separate guarded double output per mode is projected to original Float32 factor storage; all intervention allocation/transfers/projection/free stay inside ROI. All input/factor reset semantics retained; rank<=32 named scope.','files':[]}
+for a in (P/'configured').iterdir():
+ if a.is_file():
+  b=S/'configured'/a.name;proof['files'].append({'name':a.name,'primary_sha256':hashlib.sha256(a.read_bytes()).hexdigest(),'secondary_sha256':hashlib.sha256(b.read_bytes()).hexdigest(),'changed':a.read_bytes()!=b.read_bytes()})
+(S/'intervention_provenance.json').write_text(json.dumps(proof,indent=2)+'\n')
+shutil.copy2('/tmp/create_mm_secondary.py',S/'create_secondary.py')
+print(S)

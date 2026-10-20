@@ -1,0 +1,39 @@
+--- original_cints.cc
++++ CPU_oracle_cints_tight.cc
+@@ -29,8 +29,8 @@
+ #define M_PI 3.14159265358979323846
+ #endif
+ 
+-#define ITMAX 100
+-#define EPS 1.0e-9
++#define ITMAX 1000
++#define EPS 1.0e-14
+ #define FPMIN 1.0e-30
+ #define SMALL 1.0e-11
+ 
+@@ -387,11 +387,20 @@
+ int binomial(int a, int b){return fact(a)/(fact(b)*fact(a-b));}
+ 
+ double Fgamma(double m, double x){
+-  double val;
+-  if (fabs(x) < SMALL) x = SMALL;
+-  val = gamm_inc(m+0.5,x);
+-  /* if (val < SMALL) return 0.; */ /* Gives a bug for D orbitals. */
+-  return 0.5*pow(x,-m-0.5)*val; 
++  assert(x >= 0.0);
++  // Independent CPU oracle precision qualification only. Exact zero-limit and
++  // convergent integral series replace the original fixed-small-x clamp.
++  if (x <= 1.0) {
++    double term = 1.0, total = 1.0/(2.0*m+1.0);
++    for (int k=1; k<1000; ++k) {
++      term *= -x/k;
++      double add = term/(2.0*m+2.0*k+1.0);
++      total += add;
++      if (fabs(add) < 1.0e-17*fabs(total)) return total;
++    }
++    assert(false);
++  }
++  return 0.5*pow(x,-m-0.5)*gamm_inc(m+0.5,x);
+ }
+ 
+ double gamm_inc(double a, double x){ /* Taken from NR routine gammap */

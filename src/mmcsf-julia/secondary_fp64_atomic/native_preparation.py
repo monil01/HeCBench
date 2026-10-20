@@ -1,0 +1,5 @@
+from pathlib import Path
+import subprocess,time,json,resource,hashlib
+R=Path('/home/imo/HeCBench_julia');L=R/'.porting-state/porting_logs/mmcsf-julia-shared';P=R/'src/mmcsf-julia/secondary_fp64_atomic';D=Path('/tmp/hecbench-stencil-ports-mmcsf-secondary-prepare');D.mkdir(exist_ok=True);resource.setrlimit(resource.RLIMIT_FSIZE,(512*1024**2,512*1024**2));cmd=['/tmp/mmcsf-f64-atomic-native',str(L/'fixtures_v1'),str(L/'canonical_inputs_v1'),str(D/'aux'),'--prepare'];t=time.monotonic()
+with (D/'native_prepare01.log').open('w')as f:p=subprocess.run(cmd,cwd=D,stdout=f,stderr=subprocess.STDOUT,timeout=900)
+v={'command':cmd,'returncode':p.returncode,'elapsed_seconds':time.monotonic()-t,'log':str(D/'native_prepare01.log'),'log_sha256':hashlib.sha256((D/'native_prepare01.log').read_bytes()).hexdigest(),'scope':'One qualified FP64 output atomic intervention native fullscope scientific readiness, not timed five-trial result; original strict primary unchanged.'};(P/'native_prepare01.json').write_text(json.dumps(v,indent=2)+'\n');print(json.dumps(v));raise SystemExit(p.returncode)

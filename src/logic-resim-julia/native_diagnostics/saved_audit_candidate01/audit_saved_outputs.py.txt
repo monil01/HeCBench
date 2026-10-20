@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Full saved-bit audit + independent metadata/event/occupancy interpretation.
+All20 files scanned byte-for-byte; baseline every semantic field checked from
+source graph/CPU initial inputs/independently evaluated complete waveform oracle.
+"""
+from pathlib import Path
+import json,hashlib,itertools
+import numpy as np
+P=Path(__file__).resolve().parent;R=P.parent.parent;F=R/'.porting-state/portable_julia/runs/20261019T224741519352Z_logic-resim/result.json';d=json.load(open(F));assert d['matched_performance_valid']and d['reference_agreement']and all(d['variant_verified'].values())
+def sha(p):
+ h=hashlib.sha256()
+ with open(p,'rb')as f:
+  for x in iter(lambda:f.read(4<<20),b''):h.update(x)
+ return h.hexdigest()
+initial=np.memmap(P/'initial_waves_u64.bin',dtype='<u8',mode='r');oracle=np.memmap(P/'oracle_waves_u64.bin',dtype='<u8',mode='r');graph=np.memmap(P/'graph_u64.bin',dtype='<u8',mode='r');truth=np.fromfile(P/'truth_table_u8.bin',dtype='u1');nw=int(initial[0]);off=1;iwaves=[];owaves=[]
+for i in range(nw):
+ wire,n=map(int,initial[off:off+2]);assert wire==i+4;off+=2;iwaves.append(initial[off:off+2*n].reshape(-1,2));off+=2*n
+assert off==len(initial);off=1
+for i in range(nw):
+ wire,n=map(int,oracle[off:off+2]);assert wire==i+4;off+=2;owaves.append(oracle[off:off+2*n].reshape(-1,2));off+=2*n
+assert off==len(oracle)
+batches=[];at=9;producer=np.full(nw,-1,dtype=np.int32)
+for b in range(int(graph[3])):
+ block,gpu,n,pop,dele,add=map(int,graph[at:at+6]);at+=6;ps=graph[at:at+pop];at+=pop;ds=graph[at:at+dele];at+=dele;ads=graph[at:at+add];at+=add;g=graph[at:at+81*n].reshape(n,81);at+=81*n;producer[g[:,1].astype('i8')]=b;batches.append((gpu,ps,ds,ads,g))
+assert at==len(graph)
+files=[];basepath=Path(d['models']['cuda']['trials'][0]['output_artifact']['saved_path']);base=np.memmap(basepath,dtype='<u8',mode='r');PREFIX=33498270;COUNT=49972265;END=(1<<64)-1;GT=END-7;GUARD=16
+assert len(base)==COUNT and basepath.stat().st_size==COUNT*8
+k=0
+def take(n):
+ global k
+ a=base[k:k+n];assert len(a)==n;k+=n;return a
+def exact(actual,expected,why):assert np.array_equal(actual,expected),why
+exact(take(5),np.array([0x4c4f474943,20000000,16,GT,7],dtype='u8'),'resourceheader');exact(take(len(graph)),graph,'sourcegraph');exact(take(len(initial)),initial,'CPUinitialinputs');exact(take(len(truth)),truth.astype('u8'),'truth')
+alive=np.ones(nw,dtype=bool);added=np.zeros(nw,dtype=bool);resident={};arena_used=0;meta=[]
+def wave_before(w,b):
+ a=owaves[w]if 0<=producer[w]<b else iwaves[w]
+ end=bool(a[-1,0]==END);return a,end
+def count_before(w,b):
+ if not alive[w]:return 0
+ a,end=wave_before(w,b);return len(a)+(int(added[w]and not end))
+for b,(gpu,pops,deletes,adds,gates)in enumerate(batches[:23]):
+ assert gpu;alive[deletes.astype('i8')]=False
+ for w in pops:resident.pop(int(w),None)
+ for wu in adds:
+  w=int(wu);added[w]=True;count=count_before(w,b);assert count>0;resident[w]=(arena_used+16,count,count);arena_used+=count+32
+ n=len(gates);output_reservations=[]
+ for g in gates:
+  arity=int(g[2]);cap=2+sum(count_before(int(w),b)for w in g[3:3+arity]);output_reservations.append((arena_used+16,cap));arena_used+=cap+32
+ exact(take(2),[b,n],'batchmetadata');fields=take(n*80).reshape(n,80)
+ exact(fields[:,0],gates[:,0],'GPUfunc');exact(fields[:,1],gates[:,2],'GPUarity');exact(fields[:,8:],gates[:,9:],'GPUdelays')
+ seen=sorted({int(w)for g in gates for w in g[3:3+int(g[2])]});assert int(take(1)[0])==len(seen)
+ for w in seen:
+  wire,offset,count,capacity=map(int,take(4));assert wire==w+4 and(offset,count,capacity)==resident[w]
+  a=take((count+32)*2).reshape(-1,2);exact(a[:16],np.tile([GT,7],(16,1)).astype('u8'),'leftinputguard');exact(a[-16:],np.tile([GT,7],(16,1)).astype('u8'),'rightinputguard');expected,end=wave_before(w,b);data=a[16:-16];exact(data[:len(expected)],expected,'actualGPUinputalltime/value')
+  if not end:exact(data[-1],[END,3],'inputsentinel');assert count==len(expected)+1
+  else:assert count==len(expected)
+ for row,g in enumerate(gates):
+  arity=int(g[2]);exact(fields[row,2:2+arity],[resident[int(w)][0]for w in g[3:3+arity]],'GPUinputoffsetmapping');exact(fields[row,2+arity:8],np.zeros(6-arity,dtype='u8'),'unuseddefinedinputoffsets')
+ meta.append((gates,output_reservations))
+ for g,(offset,cap)in zip(gates,output_reservations):resident[int(g[1])]=(offset,len(owaves[int(g[1])]),cap)
+assert k==PREFIX,('prefixcount',k)
+# Actual GPU round-control and every GPU event history, not merely final SAIF scores.
+for b,(gates,reservations)in enumerate(meta):
+ n=len(gates);exact(take(3),[b,1,n],'actualonepasscontrol');rounds=take(n*4).reshape(n,4)
+ for i,(g,(offset,cap))in enumerate(zip(gates,reservations)):
+  expected=owaves[int(g[1])];exact(rounds[i],[0,len(expected),cap,offset],'actualGPUflags_sizes_cap_offsets')
+ exact(take(2),[b,n],'GPUoutputbatch')
+ for g in gates:
+  w=int(g[1]);expected=owaves[w];exact(take(2),[w+4,len(expected)],'GPUoutputIDsize');exact(take(len(expected)*2).reshape(-1,2),expected,'fullactualGPUoutputEvents')
+assert int(take(1)[0])==nw;occupancy=np.fromfile(P/'oracle_occupancy_u64.bin',dtype='<u8').reshape(nw,3)
+for w in range(nw):
+ expected=owaves[w];exact(take(2),[w+4,len(expected)],'finalnetIDsize');exact(take(len(expected)*2).reshape(-1,2),expected,'fullfinalwave');exact(take(3),occupancy[w],'allnumericSAIFoccupancy');assert int(occupancy[w].sum())==300000000
+assert k==COUNT
+# Every actual saved trial scanned, no SHA-only numerical substitution.
+for model,v in d['models'].items():
+ assert v['status']=='native_check_pass'and len(v['trials'])==5
+ for t in v['trials']:
+  artifact=t['output_artifact'];p=Path(artifact['saved_path']);assert p.stat().st_size==COUNT*8;assert sha(p)==artifact['sha256']
+  x=np.memmap(p,dtype='<u8',mode='r')
+  for off in range(0,COUNT,1<<20):exact(x[off:off+(1<<20)],base[off:off+(1<<20)],'fullsavedtrialexacttransitiveoracle')
+  files.append({'model':model,'trial':t['trial'],'path':str(p),'sha256':artifact['sha256'],'bytes':p.stat().st_size,'all_values_scanned':COUNT,'independent_oracle_equivalence':'Fullbitwiseequalitytofullyindependentlyparsednativeartifact; processalsoindependentlycheckedfullwavesinitsownexecution.'})
+bindings=[]
+for model,v in d['models'].items():
+ for name,expected in v['adapter_file_hashes'].items():
+  p=Path(name);p=p if p.is_absolute()else Path(v['adapter_source_path'])/p;assert sha(p)==expected;bindings.append({'model':model,'path':str(p),'sha256':expected})
+report={'benchmark':'logic-resim','status':'pass','result':str(F.relative_to(R)),'result_sha256':sha(F),'source_original_independent_waves_audit':'src/logic-resim-julia/native_diagnostics/wave_oracle_audit.json','baseline_full_independent_semantic_parse':True,'actual_all_GPUinput_event_fields_checked':True,'all23_GPUcomplete_outputwaveforms_checked':True,'all109batch_finalnets':nw,'allfinalevents':5545944,'SAIFnumeric_values_checked':nw*3,'all20_saved_values_scanned':COUNT*20,'count_each':COUNT,'input_prefix_count':PREFIX,'all6pairs_times5': [{'models':[a,b],'trials':5,'status':'exactfullartifactpass_by_fullbitwise_transitivity','no_hashonly_comparison':True}for a,b in itertools.combinations(d['models'],2)],'files':files,'source_binding_checks':len(bindings),'source_bindings':bindings,'numpy':np.__version__,'alluint64_sentinels_exact_no_floatcast':True,'semantic_pointer_offset_conversion_only_not_output_canonicalization':True,'unused_event_struct_padding_not_numericalfields':True,'source_CPUfallback_retained_not_translated':True,'original_fulltime_not_quadcertified':True}
+(P/'saved_output_audit.json').write_text(json.dumps(report,indent=2)+'\n');print('PASS fullsemanticparse +all20fullbytewiseoracle/all30pairs;',len(bindings),'boundfiles')

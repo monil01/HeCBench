@@ -1,0 +1,40 @@
+for k in 0:3
+    j=tid+128*k;globalj=gid*512+j
+    v=globalj<n ? input[globalj+1] : UInt32(0)
+    storeword!(s,4*j,v)
+end
+SYNC
+offset=1;d=256
+while d>0
+    for k in 0:3
+        j=tid+128*k
+        if j<d
+            ai=offset*(2*j+1)-1;bi=offset*(2*j+2)-1
+            storeword!(s,4*bi,loadword(s,4*bi)+loadword(s,4*ai))
+        end
+    end
+    SYNC
+    offset*=2;d>>=1
+end
+if tid==0
+    sums[gid+1]=loadword(s,4*511);storeword!(s,4*511,UInt32(0))
+end
+SYNC
+d=1
+while d<512
+    offset>>=1
+    for k in 0:3
+        j=tid+128*k
+        if j<d
+            ai=offset*(2*j+1)-1;bi=offset*(2*j+2)-1
+            a=loadword(s,4*ai);b=loadword(s,4*bi)
+            storeword!(s,4*ai,b);storeword!(s,4*bi,a+b)
+        end
+    end
+    SYNC
+    d*=2
+end
+for k in 0:3
+    j=tid+128*k;globalj=gid*512+j
+    if globalj<n;out[globalj+1]=loadword(s,4*j);end
+end

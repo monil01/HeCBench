@@ -1,0 +1,54 @@
+using CUDA,Libdl
+readarray(T,p)=collect(reinterpret(T,read(p)))
+function runstudy(allocate)
+    d=5001;all=reshape(readarray(Float32,"input_rows_f32.bin"),d,513)
+    prefixRef=readarray(Float64,"oracle_prefix_f64.bin");expected=readarray(Float64,"oracle_output_f64.bin");budget=readarray(Float64,"oracle_budget_f64.bin")
+    gamma=Float32(1/5000);g=Float64(gamma)
+    println("STUDY_ENV cublas_version=$(CUDA.CUBLAS.version()) loaded_path=$(Libdl.dlpath(CUDA.CUBLAS.libcublas))");flush(stdout)
+    guard(n)=vcat(fill(-2047.5f0,16),zeros(Float32,n),fill(-2047.5f0,16))
+    for trial=0:5
+        prefix=Float64[];outputs=Float64[];seconds=0.0
+        for n in (1,257,513)
+            tva=copy(all[:,1:n]);tr_ar=permutedims(tva);sq=zeros(Float64,n);kernel=zeros(Float64,n+1,n)
+            for row=1:n,feature=1:d
+                v=tva[feature,row];sq[row]+=Float64(v*v)
+            end
+            Abase=allocate(guard(n*d));xbase=allocate(guard(d));ybase=allocate(guard(n))
+            copyto!(Abase,17,vec(tr_ar),1,n*d)
+            A=reshape(view(Abase,17:n*d+16),n,d);x=view(xbase,17:d+16);y=view(ybase,17:n+16)
+            append!(prefix,Float64[n,d,gamma]);append!(prefix,Float64.(Array(Abase)));append!(prefix,Float64.(Array(ybase)))
+            rowinputs=Float64[];dots=Float64[];dp=zeros(Float32,n);rows=[copy(tva[:,row])for row=1:n]
+            for row=1:n
+                host=rows[row];CUDA.device_synchronize(blocking=true)
+                start=time_ns()
+                copyto!(xbase,17,host,1,d)
+                CUDA.CUBLAS.gemv!('N',1f0,A,x,0f0,y)
+                copyto!(dp,1,ybase,17,n)
+                seconds+=(time_ns()-start)*1e-9
+                kernel[1,row]=row
+                for col=1:n
+                    kernel[col+1,row]=exp(-g*(sq[row]+sq[col]-2.0*Float64(dp[col])))
+                end
+                append!(rowinputs,Float64.(Array(xbase)));yy=Array(ybase)
+                dp==yy[17:n+16]||error("D2H output/capture mismatch")
+                append!(dots,Float64.(yy))
+            end
+            append!(prefix,rowinputs);append!(outputs,sq);append!(outputs,dots);append!(outputs,vec(kernel))
+        end
+        correct=length(prefix)==length(prefixRef)&&reinterpret(UInt64,prefix)==reinterpret(UInt64,prefixRef)&&length(outputs)==length(expected)
+        maxerr=0.0;maxrel=0.0
+        for i in eachindex(outputs)
+            err=abs(outputs[i]-expected[i]);maxerr=max(maxerr,err)
+            if expected[i]!=0;maxrel=max(maxrel,err/abs(expected[i]));end
+            if !isfinite(outputs[i])||err>budget[i]
+                correct&&println(stderr,"CPUoracle failure index$i actual$(outputs[i]) expected$(expected[i]) error$err budget$(budget[i])")
+                correct=false
+            end
+        end
+        correct||error("Full KMC prefix/math/guard checks rejected")
+        trial==0&&continue
+        append!(prefix,outputs);path=joinpath(ENV["STUDY_OUTPUT_DIR"],"kmc_trial$trial.bin");write(path,prefix)
+        println("STUDY_TRIAL {\"trial\":$trial,\"time_seconds\":$seconds,\"correct\":true,\"checked_values\":$(length(prefix)),\"max_abs_error\":$maxerr,\"max_rel_error\":$maxrel,\"jit_excluded\":true,\"timing_region\":\"sum771_rowH2D_SGEMV_dotD2H_completion_excludes_hostRBF_and_capture\",\"internal_repeats\":771,\"iterations\":771,\"authored_device_kernel_definitions\":0,\"output_artifact\":{\"path\":\"$path\",\"dtype\":\"float64\",\"count\":$(length(prefix)),\"byte_order\":\"little\"}}")
+        flush(stdout)
+    end
+end

@@ -1,0 +1,26 @@
+from pathlib import Path
+import sys,json,collections,hashlib,datetime,argparse
+parser=argparse.ArgumentParser();parser.add_argument('--source-root',type=Path,default=Path(__file__).resolve().parents[3]);parser.add_argument('--output',type=Path,required=True);args=parser.parse_args();R=args.source_root.resolve();sys.path.insert(0,str(R/'tools'));from study_evidence import effective_config
+T=R/'.porting-state/portable_julia';cohort=json.load(open(T/'baseline_537.json'));print('baselinekeys',list(cohort));names={x if isinstance(x,str)else x.get('bench',x.get('benchmark',x.get('benchmark_id',x.get('name'))))for x in cohort['benchmarks']}
+latest={};bad=[];accepted=collections.defaultdict(list)
+for p in sorted((T/'runs').glob('*/result.json')):
+ try:d=json.load(open(p))
+ except Exception as e:bad.append({'path':str(p),'error':str(e)});continue
+ b=d.get('benchmark')
+ if b not in names:continue
+ if not(d.get('reference_agreement')and all(d.get('variant_verified',{}).get(m)for m in['ka','jacc'])):continue
+ try:c=effective_config(p,json.load(open(p.with_name('config.json'))))
+ except Exception as e:bad.append({'path':str(p),'error':str(e)});continue
+ models=d.get('models',{});checks=[]
+ for m in ['cuda','cuda_jl','ka','jacc']:
+  v=models.get(m,{});rows=v.get('trials',[]);checks.append(v.get('complete')and v.get('provenance_valid',True)and len(rows)==5 and all(r.get('correct')is True for r in rows))
+ if not all(checks):continue
+ kind=c.get('numerical_agreement_kind',d.get('numerical_agreement_kind','declared_numeric_artifact_contract'));outcome='property_equivalence'if kind=='property_equivalence_not_identical_raw_values'else'execution_only'if kind=='no_numerical_outputs_execution_only'else'named_numerical'
+ qualification='known_native_defect'if c.get('native_behavior_known_scientific_defect')else'corrected_native'if c.get('native_reference_repaired')else'revised_acceptance'if c.get('verification_contract_revised')else'multidevice'if str(c.get('gpu',6))!='6'else'adapted'if c.get('exclude_untouched_native_aggregates')or c.get('native_integration_adapted')else'ordinary_named'
+ row={'benchmark':b,'result':str(p.relative_to(R)),'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'raw_config_sha256':hashlib.sha256(p.with_name('config.json').read_bytes()).hexdigest(),'configuration_id':d.get('configuration_id'),'role':c.get('configuration_role','primary'),'excluded_aggregate':bool(c.get('exclude_from_aggregate',False)),'outcome':outcome,'qualification':qualification,'numerical_agreement_claim':d.get('numerical_agreement_claim',outcome=='named_numerical'),'known_defect':bool(c.get('native_behavior_known_scientific_defect')),'corrected_native':bool(c.get('native_reference_repaired')),'revised_acceptance':bool(c.get('verification_contract_revised')),'scope_review':c.get('input_contract'), 'models':{m:{'mean':models[m].get('mean_seconds'),'checked_values':[x.get('checked_values')for x in models[m]['trials']]}for m in models}}
+ accepted[b].append(row)
+ if not c.get('exclude_from_aggregate',False)and row['role']in['primary','corrected_reference_secondary']:latest[b]=row
+missing=sorted(names-set(latest));s={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'native_names':len(names),'accepted_named_contract_names':len(latest),'exclusive_outcome_counts':dict(collections.Counter(x['outcome']for x in latest.values())),'exclusive_qualification_counts':dict(collections.Counter(x['qualification']for x in latest.values())),'qualification_by_outcome':{k:dict(collections.Counter(x['qualification']for x in latest.values()if x['outcome']==k))for k in ['named_numerical','property_equivalence','execution_only']},'no_aggregate_eligible_accepted_contract_names':missing,'accepted_any_role_names':len(accepted),'exceptions':bad,'rows':[latest[b]for b in sorted(latest)],'limitations':'Read-only metadata/countaudit, notnewartifactfullhash/correctnesscertification; mostrecenteligiblefullfiveall4savedcontract selected. Named numerical includesexplicitlimitedscopes, qualifiers do NOT mean fulloriginalCLIscientificverification.'}
+for b in missing:
+ s.setdefault('remaining_assessments',[]).append({'benchmark':b,'accepted_any_role':[{'configuration_id':x['configuration_id'],'role':x['role'],'excluded_aggregate':x['excluded_aggregate']}for x in accepted.get(b,[])],'status_files':{m:json.load(open(T/f'status_300/{b}/{m}.json'))if(T/f'status_300/{b}/{m}.json').exists()else None for m in['cuda_jl','ka','jacc']}})
+s['audit_source_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();s['known_scope_gaps']={'tsne':'RevisedlosslessFourierunits I1only; noallocationredzones yet, I3integergridfailure/I1000fulltrajectoryunverified; perplexity50infeasiblefor31support.','word2vec':'NamedCBOWkernelcomponent only; trailingguards/noallarrayleadingguards; no fullasync corpus/embeddingagreement or trainingqualitycertificate.'};out=args.output.resolve();out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(s,indent=2)+'\n');print(json.dumps({k:v for k,v in s.items()if k not in['rows','remaining_assessments','exceptions']}));print('exceptions',len(bad));print('remaining',missing)

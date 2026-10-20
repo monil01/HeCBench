@@ -2,7 +2,7 @@
 import copy,hashlib,json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-ALLOWED={'verification_contract_revised','numerical_evidence_strength','native_reference_repaired','native_behavior_known_scientific_defect','reference_provenance','exclude_from_scientific_fidelity_aggregates','exclude_untouched_native_aggregates','exclude_from_aggregate','source_scope_adjudication','input_contract_metadata_erratum','reported_metric_definition_erratum'}
+ALLOWED={'verification_contract_revised','numerical_evidence_strength','native_reference_repaired','native_behavior_known_scientific_defect','reference_provenance','exclude_from_scientific_fidelity_aggregates','exclude_untouched_native_aggregates','exclude_from_aggregate','source_scope_adjudication','input_contract_metadata_erratum','reported_metric_definition_erratum','exclusion_reason','measurement_disposition'}
 def effective_config(result_path,config):
     result_path=Path(result_path);raw_result=result_path.read_bytes();result=json.loads(raw_result)
     sidecar=ROOT/'src'/(result['benchmark']+'-julia')/'study_adjudications.json'
@@ -15,6 +15,8 @@ def effective_config(result_path,config):
     if len(entries)!=1:raise ValueError('Ambiguous run classification supplement: '+str(sidecar))
     e=entries[0]
     if not e.get('classification_only') or set(e['updates'])-ALLOWED:raise ValueError('Supplement attempts to change execution or acceptance: '+str(sidecar))
+    if {'exclusion_reason','measurement_disposition'} & set(e['updates']):
+        if e['updates'].get('exclude_from_aggregate') is not True or not isinstance(e['updates'].get('exclusion_reason'),str) or not e['updates']['exclusion_reason'].strip() or e['updates'].get('measurement_disposition')!='superseded_measurement_contract':raise ValueError('Descriptive measurement exclusion requires preserved superseded samples, not changed execution or acceptance')
     if e['result_sha256']!=hashlib.sha256(raw_result).hexdigest() or e['config_sha256']!=hashlib.sha256(result_path.with_name('config.json').read_bytes()).hexdigest():raise ValueError('Classification supplement hash mismatch: '+str(sidecar))
     c=copy.deepcopy(config);c.update(e['updates']);c['configuration_classification_adjudication']={'path':str(sidecar.relative_to(ROOT)),'sha256':hashlib.sha256(raw_sidecar).hexdigest(),'run_id':result['run_id'],'reason':e['reason'],'recorded_at':e.get('recorded_at'),'updated_fields':sorted(e['updates']),'immutable_execution_and_trials_unchanged':True}
     return c
