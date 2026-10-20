@@ -272,13 +272,26 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False):
             'executed_command':executed}
 
 
-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None):
+def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False):
     plan = json.loads(plan_path.read_text())
     if plan['blocking_gates'] or not plan.get('staged'):
         return {'plan': str(plan_path), 'status': 'not_executed_plan_blocked_or_not_staged'}
     slot = plan_path.parent
     if (slot / 'profile_provenance.json').exists():
         return {'plan': str(plan_path), 'status': 'existing_profile_preserved'}
+    tensor_loader = None
+    tensor_binding_inventory = {}
+    if tensor_modes:
+        if plan['benchmark'] != 'wmma':
+            raise RuntimeError('Tensor mode opt-in is reviewed for WMMA only')
+        loader_path = root/'tools/v100_roofline_tensor_modes.py'
+        loader_source = loader_path.read_bytes()
+        tensor_loader = types.ModuleType('bound_tensor_modes')
+        tensor_loader.__file__ = str(loader_path)
+        exec(compile(loader_source,str(loader_path),'exec'),tensor_loader.__dict__)
+        tensor_binding_inventory = tensor_loader.required_bindings(plan['benchmark'],plan['model'])
+        tensor_binding_inventory[str(loader_path)] = hashlib.sha256(loader_source).hexdigest()
+        (slot/'tensor_mode_loader_source.py').write_bytes(loader_source)
     scratch = Path(plan['scratch_cwd']).resolve()
     scratch.relative_to(slot.resolve())
     scratch.relative_to(Path('/tmp'))
@@ -375,7 +388,13 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             fcntl.flock(lock, fcntl.LOCK_EX)
             bindings(plan)
             current_bindings = supplemental_bindings(plan,root)
+            for name, expected in tensor_binding_inventory.items():
+                if sha(name) != expected:
+                    raise RuntimeError('Tensor review dependency changed: '+name)
+                current_bindings[name] = expected
             provenance['additional_current_profile_input_bindings'] = current_bindings
+            if tensor_loader:
+                provenance['tensor_mode_bindings_before_profile'] = tensor_binding_inventory
             provenance['additional_binding_scope'] = 'New profile only; never retroactive certification of historical correctness captures.'
             provenance['device_before'] = wait_idle_snapshot(provenance,slot)
             if shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
@@ -422,7 +441,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         if actual_pci!=expected_pci:
                             raise ValueError('Profiler device PCI identity mismatch: '+repr(actual_pci))
                     provenance['profile_device_identity_verified']='All counter rows match NVML UUID-to-PCI mapping'
-                    context = {k: plan[k] for k in ('benchmark','model','configuration_id','reference_result_sha256')}
+                    context = {k: plan[k] for k in ('benchmark','model','configuration_id','reference_result_sha256','raw_config_sha256')}
                     context.update(ROI_stage='unassigned', ROI_coverage='partial_first_function_geometry',
                                    first_invocation_may_be_warmup=True,
                                    cache_policy='all_cold_replay',clock_control='none',
@@ -442,12 +461,37 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         raise ValueError('Packed-half calibration device mismatch')
                     provenance['operation_calibration']={'path':str(calibration.relative_to(root)),
                         'sha256':sha(calibration),'half_lane_factor':2,
-                        'tensor_conversion_enabled':False,
-                        'reason':'Tensor target arithmetic mode requires per-kernel source/SASS review; presence remains recorded.'}
+                        'default_tensor_conversion_enabled':False,
+                        'reason':'Each tensor conversion requires explicit per-row typed approval; default disabled. See tensor_mode_decisions when opt-in enabled.'}
                     context.update(gpu_sm70=True,
                         fp16_work_semantics='Physical executed packed lanes, including unused scalarhalf high lanes; distinct from useful work.')
-                    records = [parser.derive(g,half_lanes=2,
-                        half_provenance=provenance['operation_calibration'],context=context)for g in groups]
+                    records = []
+                    tensor_decisions = []
+                    for group in groups:
+                        row_context = dict(context)
+                        tensor_args = {}
+                        if tensor_loader:
+                            decision = tensor_loader.load_tensor_mode(
+                                benchmark=plan['benchmark'],model=plan['model'],
+                                kernel_name=group['identity']['Kernel Name'],
+                                kernel_name_base='demangled',context=row_context,
+                                metrics=group['metrics'],captured_bindings=current_bindings)
+                            tensor_decisions.append({'identity':group['identity'],'decision':decision})
+                            if decision['approved']:
+                                row_context.update(tensor_precision_mode=decision['tensor_precision_mode'],
+                                    selected_target_SASS_observed=decision['selected_target_SASS_observed'],
+                                    tensor_mode_basis='Source/API lowering proof, exact prospective dependency binding; no selected target SASS observation.')
+                                tensor_args = {key:decision[key] for key in
+                                    ('tensor_flops_per_instruction','tensor_convention_evidence')}
+                        records.append(parser.derive(group,half_lanes=2,
+                            half_provenance=provenance['operation_calibration'],
+                            context=row_context,**tensor_args))
+                    if tensor_loader:
+                        dump(slot/'tensor_mode_decisions.json',{'schema_version':1,
+                            'loader_sha256':sha(slot/'tensor_mode_loader_source.py'),
+                            'profile_input_bindings':current_bindings,'records':tensor_decisions})
+                        provenance['tensor_mode_approved_rows']=sum(x['decision']['approved'] for x in tensor_decisions)
+                        provenance['tensor_mode_decisions_sha256']=sha(slot/'tensor_mode_decisions.json')
                     derived = {'schema_version': 1, 'input_csv': str(csv_path),
                         'input_sha256': csv_sha, 'parser_sha256': hashlib.sha256(parser_source).hexdigest(),
                         'kernel_count': len(records), 'records': records,
@@ -456,7 +500,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                     dump(slot/'derived.json', derived)
                     provenance['kernel_count'] = len(records)
                     if selection_override:
-                        provenance['selection_expected_launch_count_matches']=(len(records)==selection_override['expected_matching_launches'])
+                        provenance['selection_expected_launch_count_matches']=(len(records)==selection_override['expected_matching_launches'] if selection_override['expected_matching_launches'] is not None else None)
                 except (ValueError, KeyError) as error:
                     provenance['counter_parse_error'] = str(error)
                     if provenance['status'] == 'profile_process_completed':
@@ -513,9 +557,10 @@ def main():
     ap.add_argument('--reserve-mib',type=int,default=2048)
     ap.add_argument('--retain-auxiliary',action='store_true')
     ap.add_argument('--selection-overrides',type=Path)
+    ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
     a=ap.parse_args()
     for p in sorted(a.plan_root.glob('*/*/plan.json')):
-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides)
+        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes)
         print(json.dumps(result),flush=True)
 
 

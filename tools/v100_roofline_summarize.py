@@ -37,7 +37,8 @@ def freeze(slot, target, root):
                  'plan_diff.json','build_manifest.json','compiler_manifest.json',
                  'plan_before_interpreters.json','interpreter_plan_diff.json',
                  'build_outcome.json','counter_snapshot_at_derivation.csv',
-                 'counter_snapshot_recovery.json'):
+                 'counter_snapshot_recovery.json','tensor_mode_loader_source.py',
+                 'tensor_mode_decisions.json'):
         source = slot/name
         if not source.is_file():
             continue
@@ -186,6 +187,7 @@ def main():
         score=(int(effective_status=='profile_process_completed' and not quality),
                int(bool(prov.get('retained_window_expected_count_confirmed'))),
                int(bool(prov.get('selection_expected_launch_count_matches'))),
+               int(any(row.get('tensor_convention_enabled') and row.get('tensor_flops',0) for row in records)),
                int(bool(prov.get('additional_current_profile_input_bindings'))),
                int(bool(prov.get('filesystem_write_guard'))),
                int(bool(prov.get('profile_device_identity_verified'))),
@@ -200,8 +202,10 @@ def main():
             for precision,point in record['scalar_precision_projections'].items():
                 if point['executed_scalar_flops'] is not None and point['executed_scalar_flops']>0:
                     regimes[precision+':'+point['roofline_regime']]+=1
+            if record.get('tensor_convention_enabled') and record.get('tensor_flops',0):
+                regimes['tensor_fp16_inputs_fp32_accumulation:'+record['tensor_precision_projections']['dram']['roofline_regime']]+=1
         state.update(profiling_status=effective_status,
-            selected_capture_policy='Qualified completion, retained-trial count proof, selector-count proof, source binding, write guard, PCI verification, kernel observations, lexical batch tie-break; latest attempt remains separate.',
+            selected_capture_policy='Qualified completion, retained-trial count proof, selector-count proof, typed tensor approval, source binding, write guard, PCI verification, kernel observations, lexical batch tie-break; latest attempt remains separate.',
             selected_capture_score=list(score),
             profile_process_status=prov['status'],
             profile_quality_review=({'path':str(quality_path.relative_to(root)),'sha256':quality_sha,'entry':quality} if quality else None),
@@ -227,7 +231,7 @@ def main():
         else:
             state.pop('kernel_observations',None)
         dump(path,ledger);imported.append((benchmark,model))
-    slots=[];points=[];kernel_audit=[];hierarchical=[];statuses=collections.Counter();latest_statuses=collections.Counter();names=set();attempt_count=0
+    slots=[];points=[];tensor_points=[];kernel_audit=[];hierarchical=[];statuses=collections.Counter();latest_statuses=collections.Counter();names=set();attempt_count=0
     for path in sorted((study/'benchmarks').glob('*.json')):
         ledger=json.loads(path.read_text())
         for model,state in ledger['models'].items():
@@ -244,6 +248,10 @@ def main():
                 'revised_acceptance':(ledger.get('accepted_named_contract')or{}).get('revised_acceptance'),
                 'profiling_status':status,'plan_status':state.get('profile_plan_status'),
                 'latest_attempt_status':state.get('latest_profile_attempt',{}).get('status'),
+                'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
+                'sampled_precision_regime_counts':json.dumps(state.get('sampled_kernel_precision_regimes',{}),sort_keys=True),
+                'sampled_resource_prediction_counts':json.dumps(state.get('sampled_kernel_predicted_resource_limits',{}),sort_keys=True),
+                'classification_scope':'Kernel samples only; whole elapsed ROI and causal bottleneck require separate evidence.',
                 'selected_capture_policy':state.get('selected_capture_policy'),
                 'gpu_uuid':'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d',
                 'primary_unprofiled_mean_seconds':(ledger.get('accepted_named_contract')or{}).get('models',{}).get(model,{}).get('mean'),
@@ -284,6 +292,14 @@ def main():
                     'SM_utilization_pct':k.get('measured_utilization_pct',{}).get('SM'),
                     'DRAM_utilization_pct':k.get('measured_utilization_pct',{}).get('DRAM'),
                     'observed_bottleneck':'unknown','warnings':'; '.join(k['warnings'])})
+                for tier, projection in k.get('tensor_precision_projections',{}).items():
+                    if k.get('tensor_convention_enabled') and projection.get('executed_flops',0):
+                        tensor_points.append({**common,'precision':'tensor_fp16_inputs_fp32_accumulation',
+                            'precision_class':k['precision_class'],
+                            'tensor_precision_mode':k['tensor_target_precision_scope'],
+                            'selected_target_SASS_observed':k['scope_context'].get('selected_target_SASS_observed'),
+                            'tensor_flops_per_instruction':k['tensor_flops_per_instruction'],
+                            **projection})
                 for tier,precision_points in k.get('scalar_precision_projections_by_memory_tier',{}).items():
                     for precision,p in precision_points.items():
                         n=p.get('executed_scalar_flops',p.get('executed_flops'))
@@ -317,21 +333,26 @@ def main():
                         'L2_bytes':k['L2_transaction_bytes'],
                         **p,'evidence_manifest':state.get('profile_evidence_manifest')})
     for filename,rows in [('model_audit.csv',slots),('kernel_audit.csv',kernel_audit),
-                          ('kernel_roofline_points.csv',points),('kernel_hierarchical_points.csv',hierarchical)]:
+                          ('kernel_roofline_points.csv',points),('kernel_hierarchical_points.csv',hierarchical),
+                          ('kernel_tensor_roofline_points.csv',tensor_points)]:
         if not rows:continue
         temporary=study/(filename+'.new')
         with temporary.open('w',newline='') as f:
-            writer=csv.DictWriter(f,fieldnames=list(rows[0]))
+            writer=csv.DictWriter(f,fieldnames=list(rows[0]),lineterminator='\n')
             writer.writeheader();writer.writerows(rows)
         temporary.replace(study/filename)
     progress={'schema_version':1,'updated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'status':'active','benchmark_population':537,'model_slots':2148,
         'status_counts':dict(statuses),'names_with_any_kernel_observation':len(names),
+        'names_with_completed_qualified_kernel_observations':len({x['benchmark']for x in slots if x['profiling_status']=='profile_process_completed' and x['kernel_count']>0}),
+        'names_with_all_four_completed_profiles':sum(all(x['profiling_status']=='profile_process_completed'for x in slots if x['benchmark']==name)for name in {x['benchmark']for x in slots}),
+        'names_with_all_four_completed_kernel_observations':sum(all(x['profiling_status']=='profile_process_completed' and x['kernel_count']>0 for x in slots if x['benchmark']==name)for name in {x['benchmark']for x in slots}),
         'status_count_scope':'Best selected qualified capture/status per model slot; latest attempts and all historical failures remain separate.',
         'latest_attempt_status_counts':dict(latest_statuses),'retained_profile_attempts':attempt_count,
         'scalar_precision_kernel_projection_rows':len(points),
         'kernel_observations':len(kernel_audit),
         'hierarchical_scalar_projection_rows':len(hierarchical),
+        'typed_tensor_memory_tier_projection_rows':len(tensor_points),
         'whole_ROI_classifications':sum(bool(x['whole_ROI_roofline_region'])for x in slots),
         'measured_causal_bottleneck_classifications':sum(bool(x['observed_bottleneck'])for x in slots),
         'interpretation':'Kernel samples and partial coverage only; inventory, profile success and whole-benchmark diagnosis are distinct.',

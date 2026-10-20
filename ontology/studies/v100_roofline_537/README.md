@@ -55,6 +55,8 @@ The serial `tools/v100_roofline_campaign.py` controller stages one benchmark at 
 - `kernel_audit.csv`: every sampled kernel, including non-floating work; raw precision counts, DRAM/L2 traffic, replay time and stage qualifiers.
 - `kernel_roofline_points.csv`: scalar per-precision DRAM projections; each row is a kernel sample, never a benchmark average.
 - `kernel_hierarchical_points.csv`: separately labeled DRAM/L2 projections when corresponding counters exist.
+- `kernel_tensor_roofline_points.csv`: separately typed FP16 input/FP32 accumulation tensor projections, only with prospective source/dependency approvals; target SASS observation remains explicitly qualified.
+- `retained_roi_aggregates/`: complete source-counted scientific-family sums for admitted configurations; FLOPs/bytes and summed replay times are distinct from elapsed host ROI.
 - `profiles/`: losslessly compressed raw counters/logs/plans/provenance and per-attempt manifests; later collectors also snapshot exact collector/parser sources. Historical profile attempts remain preserved.
 - `measurement_events.jsonl` and `measurement_effort.json`: profiling infrastructure failures and shared inference accounting, separate from translation failure/cost records.
 
@@ -113,3 +115,24 @@ checks hashes and derivations; it does not prove scientific correctness, source
 ROI membership or causal bottlenecks. Queue completion never implies complete
 scientific analysis. Keep raw evidence outside the paper repository.
 
+
+## Resume and interpret partial coverage
+
+`PROGRESS.json` is the current measurement census; `NATIVE_POPULATION_AUDIT.json`
+confirms that all 537 native CUDA directories are represented. Presence in the
+registry does not mean a measurement completed. Inspect qualified-completion,
+all-four-model and retained-phase counts separately. The live controller list and
+sessions are in `.porting-state/portable_julia/active_work_537.json`; the periodic
+CPU supervisor updates integrity, figures, ontology, publication and checkpoints.
+
+Some first-specialization/geometry captures include warmup and source candidates.
+A typed tensor approval confirms a physical work convention, not timed-region
+membership. Partial captures, unavailable arithmetic modes, unsupported replay,
+foreign-GPU contention and hardware barriers remain explicit. In particular,
+SLU has a bounded first-specialization followup after expensive full-geometry
+replay; that sampling change cannot certify an entire factorization trajectory.
+
+No kernel samples are equally averaged into a benchmark classification, and the
+geometric region is never silently promoted to a causal bottleneck. Preserve
+primary five-run timings and mean runs2–5. New profiler failures are measurement
+failures, separate from accepted translation results and compiler-feedback cost.

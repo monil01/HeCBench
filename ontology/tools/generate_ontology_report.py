@@ -236,6 +236,8 @@ def load_roofline_registry(root, population):
                 for point in obs.get('scalar_precision_projections', {}).values():
                     if isinstance(point, dict) and (point.get('executed_scalar_flops') or 0) > 0:
                         regimes.append(point.get('roofline_regime'))
+                if obs.get('tensor_convention_enabled') and (obs.get('tensor_flops')or 0)>0:
+                    regimes.append(get(obs,'tensor_precision_projections.dram.roofline_regime'))
             ids = distinct(observed_configs + [entry.get('profile_plan_configuration_id') or config])
             causal = entry.get('observed_bottleneck') or entry.get('causal_bottleneck') or 'unknown'
             recorded = entry.get('sampled_kernel_count')

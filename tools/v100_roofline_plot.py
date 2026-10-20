@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot per-kernel scalar roofline projections; CPU-only, no benchmark aggregation.
+"""Plot per-kernel precision-specific roofline projections; CPU-only, no benchmark aggregation.
 
 Default CSV is the campaign export. Only stdlib and matplotlib are required.
 Unknown stage identities remain visibly pending. Explicit setup/audit/non-ROI
@@ -11,6 +11,7 @@ import hashlib
 import io
 import json
 import gzip
+import fcntl
 import math
 import re
 from collections import Counter
@@ -26,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODELS = ('cuda', 'cuda_jl', 'ka', 'jacc')
 TITLES = {'cuda': 'Native CUDA', 'cuda_jl': 'CUDA.jl', 'ka': 'KA', 'jacc': 'JACC'}
 COLORS = {'cuda': '#32688e', 'cuda_jl': '#c66928', 'ka': '#33856a', 'jacc': '#8d5a99'}
-MARKERS = {'fp16': '^', 'fp32': 'o', 'fp64': 's'}
+MARKERS = {'fp16': '^', 'fp32': 'o', 'fp64': 's', 'tensor_fp16_fp32':'D'}
 PENDING = {'', 'unassigned', 'unknown', 'unreviewed', 'pending', 'none', 'null'}
 # Stage metadata is authoritative; never infer exclusion from a kernel name.
 EXCLUDED_STAGE = re.compile(
@@ -145,17 +146,17 @@ def draw(points, output_prefix):
                                alpha=.28 if pending else .85, zorder=3)
         ax.set_title(TITLES[model], color=COLORS[model], loc='left', fontweight='bold')
         pending_count = sum(p['pending_stage_review'] for p in selected)
-        ax.text(.98, .04, f'{len(selected)} scalar projection rows\n'
+        ax.text(.98, .04, f'{len(selected)} precision projection rows\n'
                 f'{pending_count} warmup or phase/stage pending', transform=ax.transAxes,
                 ha='right', va='bottom', fontsize=8, color='#555555')
         if not selected:
-            ax.text(.5, .5, 'No compatible scalar points', transform=ax.transAxes,
+            ax.text(.5, .5, 'No compatible precision points', transform=ax.transAxes,
                     ha='center', color='#777777')
     handles = [Line2D([], [], color='#343434', lw=1.4, label='Modeled roof: min(x, 1)')]
     for precision, marker in MARKERS.items():
         if any(p['precision'] == precision for p in points):
             handles.append(Line2D([], [], marker=marker, ls='none', color='#555555',
-                                  markersize=5, label=precision.upper()))
+                                  markersize=5, label=('Tensor FP16→FP32' if precision=='tensor_fp16_fp32' else precision.upper())))
     handles.extend([
         Line2D([], [], marker='o', ls='none', color='#555555', markersize=5,
                label='Solid: sole precision'),
@@ -163,7 +164,7 @@ def draw(points, output_prefix):
                markersize=5, label='Hollow: mixed projection'),
         Line2D([], [], marker='o', ls='none', color='#555555', alpha=.28,
                markersize=5, label='Faint: warmup or phase/stage pending')])
-    fig.suptitle('V100 kernel observations — normalized scalar rooflines', y=.98, fontsize=13)
+    fig.suptitle('V100 kernel observations — normalized precision rooflines', y=.98, fontsize=13)
     fig.text(.5, .938, 'Partial first-launch / warmup samples; source stages may be unassigned',
              ha='center', fontsize=9, color='#555555')
     fig.supxlabel('DRAM intensity / precision-compatible ridge  (I / R)', y=.19)
@@ -171,7 +172,7 @@ def draw(points, output_prefix):
     fig.legend(handles=handles, loc='lower center', bbox_to_anchor=(.5, .085),
                frameon=False, ncol=3, fontsize=8, handletextpad=.5, columnspacing=1.3)
     fig.text(.5, .025, 'Each point is one kernel–precision observation; no benchmark averaging or causal diagnosis.\n'
-             'Clock-adjusted modeled ceilings; add/mul/FMA only. SFU, integer and atomic costs are omitted.',
+             'Clock-adjusted modeled ceilings; scalar add/mul/FMA and reviewed tensor work. Other costs omitted.',
              ha='center', va='bottom', fontsize=8, color='#555555')
     fig.subplots_adjust(left=.105, right=.98, top=.88, bottom=.26, hspace=.24, wspace=.13)
     outputs = []
@@ -189,13 +190,34 @@ def main():
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'ontology/studies/v100_roofline_537/figures')
     args = parser.parse_args()
     # One byte snapshot prevents a concurrent summarizer refresh mixing rows/hashes.
-    raw = args.input.read_bytes()
+    tensor_path=args.input.with_name('kernel_tensor_roofline_points.csv')
+    tensor_raw=None
+    with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+        fcntl.flock(lock,fcntl.LOCK_SH)
+        raw = args.input.read_bytes()
+        if tensor_path.is_file():tensor_raw=tensor_path.read_bytes()
     rows = list(csv.DictReader(io.StringIO(raw.decode('utf-8-sig'))))
+    if tensor_raw:
+        for item in csv.DictReader(io.StringIO(tensor_raw.decode('utf-8-sig'))):
+            if item['memory_tier']!='dram':continue
+            rows.append({**item,'precision':'tensor_fp16_fp32',
+                'executed_scalar_flops':item['executed_flops'],
+                'dram_arithmetic_intensity_flop_per_byte':item['arithmetic_intensity_flop_per_byte']})
     points, exclusions = select_points(rows)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     prefix = args.output_dir / 'normalized_kernel_rooflines'
     input_snapshot = prefix.with_suffix('.input.csv.gz')
     input_snapshot.write_bytes(gzip.compress(raw,mtime=0))
+    tensor_input=None
+    if tensor_raw:
+        tensor_snapshot=prefix.with_suffix('.tensor.input.csv.gz')
+        tensor_snapshot.write_bytes(gzip.compress(tensor_raw,mtime=0))
+        tensor_input={'path':str(tensor_path.resolve()),'sha256':sha256_bytes(tensor_raw),
+            'snapshot':str(tensor_snapshot.resolve()),
+            'snapshot_compressed_sha256':sha256_bytes(tensor_snapshot.read_bytes()),
+            'precision':'FP16inputs_FP32accumulation_HMMA884_sm70',
+            'selected_target_SASS_observed':False,
+            'basis':'Source/API-mode proof with calibration and prospective exact input bindings; not target SASS observation.'}
     outputs, plot_limits = draw(points, prefix)
     manifests = []
     for value in sorted({p['evidence_manifest'] for p in points if p.get('evidence_manifest')}):
@@ -209,10 +231,12 @@ def main():
                   'snapshot':str(input_snapshot.resolve()),
                   'snapshot_compressed_sha256':sha256_bytes(input_snapshot.read_bytes())},
         'script': {'path': str(Path(__file__).resolve()), 'sha256': sha256_bytes(Path(__file__).read_bytes())},
+        'tensor_input':tensor_input,
         'matplotlib_version': matplotlib.__version__,
         'outputs': [{'path': str(p.resolve()), 'sha256': sha256_bytes(p.read_bytes())} for p in outputs],
         'evidence_manifests': manifests,
-        'counts': {'input_rows': len(rows), 'plotted_scalar_projection_rows': len(points),
+        'counts': {'input_rows': len(rows), 'plotted_scalar_projection_rows': sum(p['precision']!='tensor_fp16_fp32'for p in points),
+                   'plotted_tensor_projection_rows':sum(p['precision']=='tensor_fp16_fp32'for p in points),
                    'excluded_rows': len(exclusions),
                    'by_model': dict(Counter(p['model'] for p in points)),
                    'by_precision': dict(Counter(p['precision'] for p in points)),
@@ -227,7 +251,7 @@ def main():
                             'excluded_stage_regex': EXCLUDED_STAGE.pattern,
                             'ridge_guide': 1, 'no_near_ridge_classification_added': True},
         'scope': 'Kernel precision projections; phase/coverage metadata distinguishes source-counted retained windows, warmup and unassigned samples. No complete elapsed-ROI, benchmark-average or causal bottleneck claims.',
-        'counter_scope': 'Conventional add+mul+2FMA; SFU, integer, address/control and atomic costs omitted. Mixed precision remains separate hollow projections.',
+        'counter_scope': 'Conventional scalar add+mul+2FMA; approved tensor points separately labeled; SFU, integer, address/control and atomic costs omitted. Mixed precision remains separate hollow projections.',
         'ceiling_kind': 'modeled_theoretical_clock_adjusted; not empirically calibrated sustained throughput',
         'plotted_points': points, 'excluded_points': exclusions,
     }

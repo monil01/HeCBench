@@ -48,6 +48,7 @@ def main():
    p=study/'benchmarks'/(name+'.json');ledgers[name]=j(p)if p.exists()else{}
    p=root/'ontology/studies/julia_abstractions_537/domains'/(name+'.json');domains[name]=j(p)if p.exists()else{}
   kernel_rows=table(study/'kernel_audit.csv');scalar_rows=table(study/'kernel_roofline_points.csv');hier_rows=table(study/'kernel_hierarchical_points.csv')
+  if(study/'kernel_tensor_roofline_points.csv').is_file():hier_rows+=table(study/'kernel_tensor_roofline_points.csv')
   # Record compact model export as cross-reference, but use all537 ledgers for denominator authority.
   if(study/'model_audit.csv').exists():read(study/'model_audit.csv')
   receipt=j(a.usage_receipt.resolve())if a.usage_receipt else None

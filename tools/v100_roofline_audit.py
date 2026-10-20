@@ -92,6 +92,31 @@ def main():
                         exec(compile(source, module.__file__, 'exec'), module.__dict__)
                         parsers[parser_sha] = module
                     parser = parsers[parser_sha]
+                    if any(x.get('tensor_convention_enabled') for x in report['records']):
+                        require('tensor_mode_decisions.json' in files and 'tensor_mode_loader_source.py' in files,
+                                'Enabled tensor projection lacks frozen typed approval')
+                        decisions = json.loads(files['tensor_mode_decisions.json'])
+                        require(sha(files['tensor_mode_decisions.json']) == prov['tensor_mode_decisions_sha256'], 'Tensor decision SHA mismatch')
+                        require(sha(files['tensor_mode_loader_source.py']) == decisions['loader_sha256'], 'Tensor loader SHA mismatch')
+                        loader = types.ModuleType('retained_tensor_mode_inventory')
+                        loader.__file__ = str(root/'tools/v100_roofline_tensor_modes.py')
+                        exec(compile(files['tensor_mode_loader_source.py'],loader.__file__,'exec'),loader.__dict__)
+                        expected = loader.required_bindings(plan['benchmark'],plan['model'])
+                        require(decisions['profile_input_bindings'] == prov['additional_current_profile_input_bindings'], 'Tensor decision/provenance binding mismatch')
+                        for name,digest in expected.items():
+                            require(prov['tensor_mode_bindings_before_profile'].get(name) == digest, 'Missing prospective tensor binding')
+                            require(decisions['profile_input_bindings'].get(name) == digest, 'Tensor dependency receipt mismatch')
+                        require(prov.get('binding_recheck_after') == 'unchanged', 'Tensor dependencies not rechecked')
+                        require(len(decisions['records']) == len(report['records']), 'Tensor decision row count mismatch')
+                        for saved, item in zip(report['records'],decisions['records']):
+                            require(item['identity'] == saved['identity'], 'Tensor decision kernel identity mismatch')
+                            if not saved.get('tensor_convention_enabled'): continue
+                            decision = item['decision']
+                            require(decision['approved'] is True and decision['readonly_bindings'] == expected, 'Unapproved tensor conversion')
+                            require(decision['tensor_flops_per_instruction'] == saved['tensor_flops_per_instruction'] == 512, 'Tensor factor mismatch')
+                            require(decision['tensor_convention_evidence'] == saved['tensor_convention_evidence'], 'Tensor arithmetic evidence mismatch')
+                            require(decision['tensor_precision_mode'] == saved['scope_context']['tensor_precision_mode'] == loader.PRECISION_MODE, 'Tensor mode mismatch')
+                            require(saved['scope_context'].get('selected_target_SASS_observed') is False, 'Unobserved target SASS incorrectly promoted')
                     csv_path = Path(temp) / 'counters.csv'
                     csv_path.write_bytes(files['counters.csv'])
                     groups, digest = parser.read_csv(csv_path)

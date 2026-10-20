@@ -73,6 +73,15 @@ def main():
                 for source in export.iterdir():
                     if source.is_file():
                         next_path=dest/(source.name+'.next');shutil.copy2(source,next_path);next_path.replace(dest/source.name)
+        with tempfile.TemporaryDirectory(prefix='roofline-retained-family-',dir='/tmp') as workspace:
+            export=Path(workspace)/'export'
+            if run('retained_family_aggregation',[sys.executable,str(root/'tools/export_v100_retained_roi.py'),'--source-root',str(root),'--output-root',str(export)]):
+                with Path('/tmp/hecbench-roofline-metadata.lock').open('a') as lock:
+                    fcntl.flock(lock,fcntl.LOCK_EX)
+                    dest=study/'retained_roi_aggregates';dest.mkdir(exist_ok=True)
+                    for source in export.iterdir():
+                        if source.is_file():
+                            next_path=dest/(source.name+'.next');shutil.copy2(source,next_path);next_path.replace(dest/source.name)
         run('joint_checkpoint',[sys.executable,str(root/'tools/checkpoint_portable_study.py'),'--population','537','--roofline-active'])
     note(dict(event='CPU_refresh_supervisor_started',pid=os.getpid(),tracked_process_start_times=tracked,
               meaning='Live derivative exports only. No automatic source/paper commits, claims of complete ROI or causal classification.'))
