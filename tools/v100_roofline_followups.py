@@ -18,7 +18,10 @@ def main():
     ap.add_argument('--raw-root',type=Path,required=True)
     ap.add_argument('--plan-root',type=Path,action='append',required=True)
     ap.add_argument('--timeout',type=int,default=180)
+    ap.add_argument('--exclude-benchmark',action='append',default=[])
+    ap.add_argument('--skip-qualified-selected',action='store_true')
     ap.add_argument('--selection-overrides',type=Path,action='append',default=[])
+    ap.add_argument('--large-artifacts',action='store_true',help='Only reviewed Perlin/ZMDDFT roots; collector enforces bounded policy')
     ap.add_argument('--journal',type=Path,required=True)
     a=ap.parse_args();root=a.source_root.resolve();raw=a.raw_root.resolve()
     if not raw.is_relative_to('/tmp') or raw==Path('/tmp'):
@@ -40,6 +43,9 @@ def main():
         command=[sys.executable,str(root/'tools/v100_roofline_collect.py'),
             '--source-root',str(root),'--plan-root',str(planroot),'--timeout',str(a.timeout)]
         benchmarks={json.loads(p.read_text())['benchmark'] for p in planroot.glob('*/*/plan.json')}
+        if a.large_artifacts:command+=['--large-artifacts']
+        for excluded in a.exclude_benchmark:command+=['--exclude-benchmark',excluded]
+        if a.skip_qualified_selected:command+=['--skip-qualified-selected']
         if len(benchmarks)==1 and next(iter(benchmarks)) in selections:
             command+=['--selection-overrides',str(selections[next(iter(benchmarks))])]
         result=subprocess.run(command,

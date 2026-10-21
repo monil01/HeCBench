@@ -11,6 +11,8 @@ def number(x):
  return v if math.isfinite(v) and v>=0 else None
 
 def read_csv(path):
+ # Long Julia specialization names are valid CSV fields; retain a finite 64MiB cap.
+ csv.field_size_limit(64*1024*1024)
  raw=path.read_bytes();ls=raw.decode(errors='replace').splitlines()
  start=next((i for i,l in enumerate(ls) if l.startswith('"ID"') or l.startswith('ID,')),None)
  if start is None:raise ValueError('No NCU CSV ID header')

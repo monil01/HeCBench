@@ -6,6 +6,7 @@ shared ledgers, GPU commands, or benchmark-level averaging. All537x4 slots remai
 """
 import argparse,collections,contextlib,csv,fcntl,hashlib,io,json,math,pathlib,sys
 sys.dont_write_bytecode=True
+csv.field_size_limit(64*1024*1024)
 P=pathlib.Path;MODELS=('cuda','cuda_jl','ka','jacc');LABELS={'cuda':'CUDA','cuda_jl':'CUDA.jl','ka':'KA','jacc':'JACC'}
 COMPLETE='profile_process_completed';REGIMES={'memory_side','near_ridge','compute_side'}
 def sha(b):return hashlib.sha256(b).hexdigest()

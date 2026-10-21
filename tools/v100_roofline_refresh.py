@@ -7,6 +7,8 @@ Finishing a queue never marks the scientific campaign complete.
 import argparse
 import datetime
 import fcntl
+import gzip
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -82,6 +84,37 @@ def main():
                     for source in export.iterdir():
                         if source.is_file():
                             next_path=dest/(source.name+'.next');shutil.copy2(source,next_path);next_path.replace(dest/source.name)
+        with tempfile.TemporaryDirectory(prefix='roofline-benchmark-assessment-',dir='/tmp') as workspace:
+            export=Path(workspace)/'export'
+            family=study/'retained_roi_aggregates/audit.json'
+            command=[sys.executable,str(root/'tools/export_v100_benchmark_assessment.py'),
+                     '--source-root',str(root),'--output-root',str(export)]
+            if family.is_file():command+=['--retained-family-audit',str(family)]
+            if run('benchmark_assessment',command):
+                with Path('/tmp/hecbench-roofline-metadata.lock').open('a') as lock:
+                    fcntl.flock(lock,fcntl.LOCK_EX)
+                    dest=study/'benchmark_assessment_snapshot';dest.mkdir(exist_ok=True)
+                    manifest={}
+                    for source in export.iterdir():
+                        if not source.is_file():continue
+                        packed=source.name in ('assessment.json','kernel_stage_observations.json')
+                        name=source.name+('.gz' if packed else '')
+                        temporary=dest/(name+'.next')
+                        if packed:
+                            with source.open('rb') as inp, temporary.open('wb') as raw_out:
+                                with gzip.GzipFile(filename='',mode='wb',fileobj=raw_out,mtime=0) as zipped:
+                                    shutil.copyfileobj(inp,zipped)
+                        else:shutil.copy2(source,temporary)
+                        data=temporary.read_bytes()
+                        manifest[name]={'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),
+                                        'uncompressed_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
+                                        'uncompressed_bytes':source.stat().st_size}
+                        temporary.replace(dest/name)
+                    snapshot={'schema_version':1,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                              'files':manifest,'registry_assessment_complete':True,'GPU_ROI_campaign_complete':False,
+                              'scope':'All537x4 statuses, selected-stage geometric projections and strictly admitted scientific families. No causal or complete elapsed ROI claims.'}
+                    temporary=dest/'snapshot_manifest.json.next'
+                    temporary.write_text(json.dumps(snapshot,indent=2)+'\n');temporary.replace(dest/'snapshot_manifest.json')
         run('joint_checkpoint',[sys.executable,str(root/'tools/checkpoint_portable_study.py'),'--population','537','--roofline-active'])
     note(dict(event='CPU_refresh_supervisor_started',pid=os.getpid(),tracked_process_start_times=tracked,
               meaning='Live derivative exports only. No automatic source/paper commits, claims of complete ROI or causal classification.'))

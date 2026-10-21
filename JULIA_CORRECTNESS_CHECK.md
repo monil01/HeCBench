@@ -97,6 +97,53 @@ checks hashes and derivations; it does not prove scientific correctness, source
 ROI membership or causal bottlenecks. Queue completion never implies complete
 scientific analysis. Keep raw evidence outside the paper repository.
 
+### Completion, recovery and evidence scope — 21 October 2026
+
+Continue until every repairable profiling slot has been measured or has an
+explicit, source-supported applicability or hardware/method assessment. An
+exhaustive 537×4 assessment registry is not a claim of complete GPU ROI profiles.
+Use `tools/export_v100_benchmark_assessment.py` for hash-bound per-model,
+semantic-stage, precision and memory-tier distributions; its compact descriptor
+and CSVs retain missingness. Only the separate strict source-counted family audit
+admits integrated family comparisons. Cold-replay family coordinates and original
+five-run mean timings remain different experiments; do not fit whole-benchmark
+speedup correlations to partial or warmup kernel samples.
+
+Resume live processes before launching anything: inspect the active-work JSON,
+PID/start-time and owned journals. `v100_roofline_handoff.py` resumes the main
+queue only at an acknowledged benchmark boundary. `v100_roofline_retry.py`
+freezes a finite, hash-bound retry frontier; it retains failed attempts and can
+use a narrower reviewed specialization selector, explicitly recording reduced
+geometry coverage. Batched metadata freezing never discards finished raw attempts.
+Root owns all GPU execution and shared metadata, under the existing GPU6 lock.
+
+Operational repairs require exact parent/source/config/result bindings and
+unchanged scientific checks. Valid long CSV fields use a bounded 64 MiB parser
+limit. A CPU-only rederivation may recover an otherwise successful capture only
+when its exact parent counters, execution facts, sources, historical parser and
+new parser/receipt remain archived; it is not a new GPU or compiler attempt.
+Source-reviewed runtime/API/DMA cases with no profiled device kernels receive
+`roofline_not_applicable_no_device_kernels`, retaining all five checks, primary
+timing and parent evidence. Do not invent zero FLOPs, traffic or framework failures.
+The integrity audit checks selected provenance joins as well as frozen bytes.
+
+Large profile observer outputs need an explicit per-file/total budget and free
+space reserve. Only reviewed Perlin and ZMDDFT collectors may use the local 2 GiB
+child file limit (`--large-artifacts`), with final exact expected payload sizes
+and live auxiliary/reserve checks. A successful process with short payloads is
+not a complete artifact capture. Preserve prior truncated attempts, raw counters
+and failures. No global OS or device changes, privilege escalation or sudo.
+
+`v100_roofline_refresh.py` exports validated compact assessments and compressed
+large tables under `ontology/studies/v100_roofline_537`, regenerates the ontology
+explorer and updates the combined paper checkpoint. Keep all primary captures
+and large research outside paper Git/Overleaf. Separate translation failures
+from measurement infrastructure failures (contention, timeout, paths, host
+checker dependency, parser and output limits). Record prospective shared tokens
+and counter lag/censoring; overlapping review/profiling windows are not exclusive
+per-benchmark translation costs. Publish only audited denominators and clearly
+qualified scientific observations; never mark pending measurements complete.
+
 ## Historical completion request — 20 October 2026
 
 The user requests finishing all benchmarks with verification. Resume from `.porting-state/portable_julia/active_work_537.json`, canonical `batch_537.json`, and the latest joint paper checkpoint. Read `AGENT_INSTRUCTIONS_CODEX_Julia.md`, `JULIA_CORRECTNESS_CHECK.md` and `paper_writing.md` together. Older completion statements describe frozen cohorts, not the open 537-name task. Root alone commits source; preserve each verified implementation in a separate commit. Continue repairable work and paper integration until complete; retain actual hardware and workflow blockers explicitly. Never invoke sudo/sudoedit, wrappers or another privilege-escalation mechanism; no OS updates are needed.

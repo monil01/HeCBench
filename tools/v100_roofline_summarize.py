@@ -38,7 +38,11 @@ def freeze(slot, target, root):
                  'plan_before_interpreters.json','interpreter_plan_diff.json',
                  'build_outcome.json','counter_snapshot_at_derivation.csv',
                  'counter_snapshot_recovery.json','tensor_mode_loader_source.py',
-                 'tensor_mode_decisions.json'):
+                 'tensor_mode_decisions.json','parent_profile_provenance.json',
+                 'parent_parser_source.py','half_calibration_snapshot.json',
+                 'recovery_tool_source.py','counter_derivation_recovery.json',
+                 'completion_source_proof.json','patches.json',
+                 'plan_before_replay_review.json','replay_metadata_derivation.json'):
         source = slot/name
         if not source.is_file():
             continue
@@ -67,6 +71,10 @@ def main():
     quality_path=study/'profile_quality_reviews.json'
     quality_reviews=json.loads(quality_path.read_text()).get('profiles',{}) if quality_path.exists() else {}
     quality_sha=sha(quality_path.read_bytes()) if quality_path.exists() else None
+    applicability_path=study/'completion_reviews/infra_am/runtime_no_kernel_applicability.json'
+    applicability_doc=json.loads(applicability_path.read_text())if applicability_path.exists()else{}
+    applicability={(row['benchmark'],row['model']):row for row in applicability_doc.get('rows',[])}
+    applicability_sha=sha(applicability_path.read_bytes())if applicability_path.exists()else None
     reviews={};review_hashes={}
     review_path=study/'ROI_REVIEW.json.gz'
     if review_path.exists():
@@ -96,6 +104,11 @@ def main():
         if quality and quality['raw_provenance_sha256']!=sha(provpath.read_bytes()):
             raise RuntimeError('Profile quality review provenance mismatch')
         effective_status=('profile_completed_quality_unverified' if quality and prov['status']=='profile_process_completed' else prov['status'])
+        runtime_review=applicability.get((benchmark,model))
+        runtime_applicable=(runtime_review is not None and runtime_review['parent_profile']['sha256']==sha(provpath.read_bytes())
+            and prov['status']=='profile_completed_counter_derivation_failed'
+            and prov.get('profile',{}).get('returncode')==0 and prov.get('profile',{}).get('stop_reason')is None)
+        if runtime_applicable:effective_status='roofline_not_applicable_no_device_kernels'
         manifest=freeze(slot,target,root)
         contract=study/'selected_contracts'/benchmark
         contract.mkdir(parents=True,exist_ok=True)
@@ -205,6 +218,11 @@ def main():
             if record.get('tensor_convention_enabled') and record.get('tensor_flops',0):
                 regimes['tensor_fp16_inputs_fp32_accumulation:'+record['tensor_precision_projections']['dram']['roofline_regime']]+=1
         state.update(profiling_status=effective_status,
+            profile_provenance_sha256=sha(provpath.read_bytes()),
+            profile_applicability_review=({'path':str(applicability_path.relative_to(root)),
+                'sha256':applicability_sha,'entry':benchmark+'/'+model,
+                'reason':runtime_review['scope'],'parent_provenance_sha256':runtime_review['parent_profile']['sha256']}
+                if runtime_applicable else None),
             selected_capture_policy='Qualified completion, retained-trial count proof, selector-count proof, typed tensor approval, source binding, write guard, PCI verification, kernel observations, lexical batch tie-break; latest attempt remains separate.',
             selected_capture_score=list(score),
             profile_process_status=prov['status'],
@@ -216,7 +234,7 @@ def main():
             sampled_kernel_precision_regimes=dict(regimes),
             sampled_kernel_predicted_resource_limits=({key.replace('memory_side','memory_bound_roofline_prediction').replace('compute_side','compute_bound_roofline_prediction').replace('near_ridge','ridge_transition'):count for key,count in regimes.items()} if effective_status=='profile_process_completed' and not quality and benchmark not in ('zerocopy','halo-finder') else {}),
             dram_roofline_applicability=('not_applicable_host_mapped_primary_data_requires_PCIe_tier' if benchmark in ('zerocopy','halo-finder') else 'HBM_tier_projection_only_primary_memory_domain_requires_source_review'),
-            roi_coverage=('not_collected_no_derived_counter_report' if not observation.is_file() else
+            roi_coverage=('not_applicable_no_profiled_device_kernels_source_reviewed' if runtime_applicable else 'not_collected_no_derived_counter_report' if not observation.is_file() else
                           'source_counted_retained_trial2_scientific_family_not_elapsed_ROI' if prov.get('retained_window_expected_count_confirmed') else
                           'partial_source_candidates_only_ROI_unresolved' if review and review.get('_candidate_review_only') else
                           'partial_source_family_reviewed_not_complete_ROI' if review else

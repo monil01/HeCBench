@@ -71,6 +71,22 @@ def main():
                     data = frozen(study / 'selected_contracts' / plan['benchmark'] / (name+'.gz'))
                     require(sha(data) == plan[key], 'Selected contract SHA mismatch: '+name)
                 row.update(benchmark=plan['benchmark'], model=plan['model'], status=prov['status'], manifest_files=len(files))
+                if prov.get('CPU_only_recovery'):
+                    require(all(name in files for name in ['parent_profile_provenance.json','counter_derivation_recovery.json','recovery_tool_source.py','half_calibration_snapshot.json']), 'Recovery archive incomplete')
+                    parent_bytes=files['parent_profile_provenance.json'];parent=json.loads(parent_bytes)
+                    link=prov['counter_derivation_recovery_from'];recovery=json.loads(files['counter_derivation_recovery.json'])
+                    require(sha(parent_bytes)==link['sha256']==recovery['parent']['sha256'], 'Recovered parent SHA mismatch')
+                    require(sha(files['counter_derivation_recovery.json'])==link['receipt_sha256'], 'Recovery receipt SHA mismatch')
+                    require(sha(files['recovery_tool_source.py'])==recovery['tool']['sha256'], 'Recovery source SHA mismatch')
+                    require(parent['profile']['returncode']==0 and parent['profile']['stop_reason'] is None, 'Recovery parent process unsuccessful')
+                    require(parent['binding_recheck_after']=='unchanged', 'Recovery parent source not rechecked')
+                    require(parent['profile']==prov['profile'], 'Recovery changed original execution facts')
+                    require(prov.get('new_gpu_processes')==0 and prov.get('new_build_processes')==0, 'Recovery claims a new execution')
+                    require(sha(files['counters.csv'])==parent['counters_sha256']==recovery['raw_counter']['sha256'], 'Recovery counter changed')
+                    require(sha(files['plan.json'])==parent['plan_sha256'], 'Recovery selected plan changed')
+                    require(prov['additional_current_profile_input_bindings']==parent['additional_current_profile_input_bindings'], 'Recovery invented historical input bindings')
+                    require(sha(files['collector_source.py'])==parent['collector_sha256'], 'Recovery historical collector mismatch')
+                    row['attempt_kind']='CPU_derivation_recovery_no_new_GPU_run'
                 if 'counters.csv' in files:
                     if sha(files['counters.csv']) != prov['counters_sha256']:
                         require('counter_snapshot_recovery.json' in files and 'counter_snapshot_at_derivation.csv' in files, 'Counter provenance SHA mismatch')
@@ -167,12 +183,41 @@ def main():
                 issues.append({'ledger': str(path), 'error': 'Incorrect model set'})
             for model, state in ledger['models'].items():
                 model_count += 1
+                if state.get('profiling_status') == 'roofline_not_applicable_no_device_kernels':
+                    try:
+                        review_link = state['profile_applicability_review']
+                        review_path = root / review_link['path']
+                        require(review_path.resolve().is_relative_to(study), 'Applicability review escapes study')
+                        review_bytes = review_path.read_bytes()
+                        require(sha(review_bytes) == review_link['sha256'], 'Applicability review SHA mismatch')
+                        rows = [r for r in json.loads(review_bytes)['rows']
+                                if r['benchmark'] == ledger['benchmark'] and r['model'] == model]
+                        require(len(rows) == 1, 'Applicability review key is not unique')
+                        review = rows[0]
+                        parent_sha = review['parent_profile']['sha256']
+                        require(parent_sha == review_link['parent_provenance_sha256'] == state['profile_provenance_sha256'], 'Applicability parent join mismatch')
+                        parents = []
+                        for profile_id in state['profile_ids']:
+                            parent_path = root / profile_id / 'profile_provenance.json.gz'
+                            data = frozen(parent_path)
+                            if sha(data) == parent_sha: parents.append((json.loads(data), json.loads(frozen(parent_path.parent / 'plan.json.gz'))))
+                        require(len(parents) == 1, 'Applicability frozen parent unavailable or ambiguous')
+                        parent, parent_plan = parents[0]
+                        require(parent['profile']['returncode'] == 0 and parent['profile']['stop_reason'] is None, 'Applicability parent execution unsuccessful')
+                        require(parent['status'] == 'profile_completed_counter_derivation_failed', 'Unexpected applicability parent status')
+                        require(review['five_checked_rows'] is True and len(review['trials']) == 5 and all(t['correct'] for t in review['trials']), 'Applicability five checked trials absent')
+                        require(review['ncu_explicit_no_kernels_warning'] is True and review['metrics'] is None, 'Applicability no-kernel evidence absent')
+                        require(review['expected_config_sha256'] == parent_plan['raw_config_sha256'] and review['expected_result_sha256'] == parent_plan['reference_result_sha256'], 'Applicability accepted contract mismatch')
+                    except Exception as error:
+                        issues.append({'benchmark': ledger['benchmark'], 'model': model, 'error': str(error)})
                 observation = state.get('kernel_observations')
                 if not observation or observation.get('compression') != 'gzip':
                     continue
                 try:
                     path = root / observation['path']
                     require(str(path.parent.relative_to(root)) in state['profile_ids'], 'Selected observations belong to a different attempt')
+                    selected_provenance=frozen(path.parent/'profile_provenance.json.gz')
+                    require(state.get('profile_provenance_sha256')==sha(selected_provenance), 'Selected ledger provenance SHA mismatch')
                     require(sha(path.read_bytes()) == observation['sha256'], 'Selected observation compressed SHA mismatch')
                     require(sha(frozen(path)) == observation['uncompressed_sha256'], 'Selected observation raw SHA mismatch')
                 except Exception as error:

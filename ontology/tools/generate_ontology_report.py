@@ -106,6 +106,9 @@ COLUMNS = [
  ('Performance','trials','All recorded trial seconds','derived.trials'),
  ('Performance','hardware_stratum','Hardware stratum','derived.hardware_stratum'),
  ('Performance','profiling','Profiling status','record.implementation_ontology.profiling_status'),
+ ('V100 roofline observations','v100_scope','V100 positioning evidence scope','roofline.positioning_evidence_scope'),
+ ('V100 roofline observations','v100_stages','V100 proved semantic stage labels','roofline.proved_semantic_stages'),
+ ('V100 roofline observations','v100_phases','V100 sampled invocation qualifications','roofline.sample_phase_qualifications'),
  ('V100 roofline observations','v100_status','V100 profiling status','roofline.profiling_status'),
  ('V100 roofline observations','v100_config','V100 profiled configurations','roofline.configuration_ids'),
  ('V100 roofline observations','v100_device','V100 device UUID','roofline.device_uuid'),
@@ -119,6 +122,9 @@ COLUMNS = [
  ('V100 roofline observations','v100_precision','Sampled execution precision classes','roofline.precision_classes'),
  ('V100 roofline observations','v100_link','V100 profile evidence link status','roofline.evidence_link_status'),
  ('V100 roofline observations','v100_source','V100 profile evidence paths','roofline.evidence_paths'),
+ ('Native CUDA roofline baseline','v100_native_scope','V100 positioning evidence scope','roofline_native.positioning_evidence_scope'),
+ ('Native CUDA roofline baseline','v100_native_stages','V100 proved semantic stage labels','roofline_native.proved_semantic_stages'),
+ ('Native CUDA roofline baseline','v100_native_phases','V100 sampled invocation qualifications','roofline_native.sample_phase_qualifications'),
  ('Native CUDA roofline baseline','v100_native_status','Native CUDA profiling status','roofline_native.profiling_status'),
  ('Native CUDA roofline baseline','v100_native_kernels','Native CUDA recorded kernel observations','roofline_native.kernel_observation_count'),
  ('Native CUDA roofline baseline','v100_native_coverage','Native CUDA ROI coverage','roofline_native.roi_coverage'),
@@ -242,7 +248,27 @@ def load_roofline_registry(root, population):
             causal = entry.get('observed_bottleneck') or entry.get('causal_bottleneck') or 'unknown'
             recorded = entry.get('sampled_kernel_count')
             if recorded is None and observations: recorded = len(observations)
+            proved_stages = distinct([get(obs,'scope_context.ROI_stage') for obs in observations
+                                      if get(obs,'scope_context.semantic_family_in_primary_ROI') is True])
+            phases = distinct([get(obs,'scope_context.sample_phase') or
+                               ('first_invocation_may_be_warmup' if get(obs,'scope_context.first_invocation_may_be_warmup') else 'invocation_unassigned')
+                               for obs in observations])
+            if status == 'roofline_not_applicable_no_device_kernels':
+                evidence_scope = 'source_reviewed_runtime_without_profiled_device_kernels'
+            elif status != 'profile_process_completed':
+                evidence_scope = 'no_successful_selected_profile_position_claim'
+            elif not observations:
+                evidence_scope = 'no_hash_verified_selected_observations'
+            elif not regimes:
+                evidence_scope = 'no_defined_counted_FP_projection_not_a_scalar_FP_bottleneck_claim'
+            elif proved_stages:
+                evidence_scope = 'measured_source_family_geometry_invocation_qualified_not_whole_elapsed_ROI'
+            else:
+                evidence_scope = 'measured_kernel_geometry_semantic_stage_unresolved'
             summary = {'profiling_status':status, 'configuration_ids':ids,
+                       'positioning_evidence_scope':evidence_scope,
+                       'proved_semantic_stages':proved_stages,
+                       'sample_phase_qualifications':phases,
                        'device_uuid':get(entry,'device.uuid') or get(protocol,'gpu.uuid'),
                        'kernel_observation_count':recorded,
                        'loaded_kernel_observation_count':len(observations) if observations else (0 if refs else None),

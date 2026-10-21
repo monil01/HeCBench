@@ -4,6 +4,7 @@ Only triad/babelstream(dot)/jacobi named configurations are supported. No GPU,
 build, source mutation, timing substitution or partial-sample extrapolation.
 """
 import argparse,collections,csv,fcntl,gzip,hashlib,io,json,math,pathlib
+csv.field_size_limit(64*1024*1024)
 P=pathlib.Path
 CASES={'triad':('triad_kernel_only_n4194304_r100_shmem0_v2',100),
        'babelstream':('fp32_n262144_dot_repeat10_v1',10),
@@ -169,7 +170,11 @@ def main():
      for x in source['execution_bindings']+source.get('current_supplemental_sources',[]):bound(x['path'],x['sha256'])
      chosen=selection['selection'][m];ledgerproof=source['launch_ledger']
      if chosen.count('--launch-skip')!=1 or chosen.count('--launch-count')!=1 or chosen.count('--filter-mode')!=1:raise ValueError('Ambiguous source window selection')
-     if chosen[chosen.index('--filter-mode')+1]!='global' or int(chosen[chosen.index('--launch-count')+1])!=count or int(chosen[chosen.index('--launch-skip')+1])!=ledgerproof['trial2_start']-1:raise ValueError('Source ordinal selection mismatch')
+     if b=='jacobi':
+      start=ledgerproof['trial2_scientific_start']
+      if ledgerproof['scientific_per_trial']!=20 or ledgerproof['scientific_warmup']!=1 or start!=22:raise ValueError('Jacobi source ordinal schema mismatch')
+     else:start=ledgerproof['trial2_start']
+     if chosen[chosen.index('--filter-mode')+1]!='global' or int(chosen[chosen.index('--launch-count')+1])!=count or int(chosen[chosen.index('--launch-skip')+1])!=start-1:raise ValueError('Source ordinal selection mismatch')
      if '--kill'not in chosen or chosen[chosen.index('--kill')+1]not in ['0','no']:raise ValueError('Application completion not retained')
      command=prov['command']
      if not any(command[i:i+len(chosen)]==chosen for i in range(len(command)-len(chosen)+1)):raise ValueError('Executed selector differs from source window')

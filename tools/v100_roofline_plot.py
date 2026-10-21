@@ -23,6 +23,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+csv.field_size_limit(64*1024*1024)
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ('cuda', 'cuda_jl', 'ka', 'jacc')
 TITLES = {'cuda': 'Native CUDA', 'cuda_jl': 'CUDA.jl', 'ka': 'KA', 'jacc': 'JACC'}

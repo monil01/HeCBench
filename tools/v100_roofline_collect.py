@@ -173,9 +173,9 @@ def wait_idle_snapshot(provenance,slot):
             time.sleep(15)
 
 
-def limits():
+def limits(max_file_bytes=1024**3):
     # New profiler auxiliary files are bounded. No accepted capture is touched.
-    resource.setrlimit(resource.RLIMIT_FSIZE, (1024**3, 1024**3))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (max_file_bytes, max_file_bytes))
 
 
 def own_session_members(session):
@@ -190,7 +190,7 @@ def own_session_members(session):
     return members
 
 
-def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False):
+def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,artifact_policy=None):
     began = time.monotonic()
     started_at=utc()
     executed=list(command)
@@ -202,14 +202,30 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False):
     with log.open('wb') as out:
         process = subprocess.Popen(executed, cwd=cwd, env=env, stdout=out,
                                    stderr=subprocess.STDOUT, start_new_session=True,
-                                   preexec_fn=limits)
+                                   preexec_fn=lambda:limits(artifact_policy['max_file_bytes'] if artifact_policy else 1024**3))
         stop_reason = None
         external_activity=[];last_gpu_check=0
+        last_artifact_check=0
         while process.poll() is None:
             if time.monotonic() - began > timeout:
                 stop_reason = 'wall_timeout'
             elif shutil.disk_usage(cwd).free < reserve:
                 stop_reason = 'scratch_free_space_reserve'
+            if artifact_policy and not stop_reason and time.monotonic()-last_artifact_check>=2:
+                last_artifact_check=time.monotonic();payload=0;auxiliary=0
+                for item in cwd.parent.rglob('*'):
+                    if not item.is_file() or item.is_symlink():continue
+                    size=item.stat().st_size;name=item.name
+                    perlin=(artifact_policy['benchmark']=='perlin' and item.parent==cwd and name in ['perlin_trial'+str(i)+'.bin' for i in range(1,6)])
+                    ztrial=(artifact_policy['benchmark']=='zmddft' and item.parent==cwd/'profile_outputs' and name in ['trial'+str(i)+'.bin' for i in range(1,6)])
+                    zimpulse=(artifact_policy['benchmark']=='zmddft' and item.is_relative_to(cwd/'profile_outputs') and name==artifact_policy['model']+'_impulse_stages_f64.bin')
+                    if perlin or ztrial or zimpulse:
+                        payload+=size
+                        cap=1541441088 if perlin else 1073746496 if ztrial else 805306368
+                        if size>cap:stop_reason='reviewed_payload_file_size_exceeded'
+                    else:auxiliary+=size
+                if payload>artifact_policy['payload_bytes']:stop_reason='reviewed_total_payload_exceeded'
+                if auxiliary>artifact_policy['auxiliary_allowance_bytes']:stop_reason='reviewed_auxiliary_budget_exceeded'
             if monitor_gpu and not stop_reason and time.monotonic()-last_gpu_check>=2:
                 last_gpu_check=time.monotonic()
                 try:
@@ -272,7 +288,7 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False):
             'executed_command':executed}
 
 
-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False):
+def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False):
     plan = json.loads(plan_path.read_text())
     if plan['blocking_gates'] or not plan.get('staged'):
         return {'plan': str(plan_path), 'status': 'not_executed_plan_blocked_or_not_staged'}
@@ -292,6 +308,15 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         tensor_binding_inventory = tensor_loader.required_bindings(plan['benchmark'],plan['model'])
         tensor_binding_inventory[str(loader_path)] = hashlib.sha256(loader_source).hexdigest()
         (slot/'tensor_mode_loader_source.py').write_bytes(loader_source)
+    artifact_policy=None
+    if large_artifacts:
+        payloads={'perlin':7707205440,'zmddft':6174038848}
+        if plan['benchmark'] not in payloads:
+            raise RuntimeError('Large-artifact opt-in reviewed for Perlin/ZMDDFT only')
+        artifact_policy={'benchmark':plan['benchmark'],'model':plan['model'],
+            'max_file_bytes':2*1024**3,'payload_bytes':payloads[plan['benchmark']],
+            'auxiliary_allowance_bytes':256*1024**2,
+            'scope':'Fresh per-process file limit and enforced per-attempt size budget; no OS/global limit changes. Full five outputs and independent checks retained.'}
     scratch = Path(plan['scratch_cwd']).resolve()
     scratch.relative_to(slot.resolve())
     scratch.relative_to(Path('/tmp'))
@@ -367,6 +392,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         'ROI_coverage': 'unreviewed_partial; warmup/setup/validation may be present',
         'primary_contract_unchanged': True,
         'filesystem_write_guard':guard,
+        'large_artifact_policy':artifact_policy,
         'operational_deadline':{'requested_seconds':requested_timeout,'effective_seconds':timeout,
             'saved_reported_mean_seconds':primary_mean,
             'rule':'max(requested,min(3600,ceil(120+30*saved_reported_mean))); coarse replay/process deadline, not a timing forecast. Reported time normalization may differ. Idle queue waiting is excluded.'},
@@ -399,6 +425,8 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['device_before'] = wait_idle_snapshot(provenance,slot)
             if shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
                 raise RuntimeError('Free space below reserve')
+            if artifact_policy and shutil.disk_usage(scratch).free < artifact_policy['payload_bytes']+artifact_policy['auxiliary_allowance_bytes']+reserve_mib*1024**2:
+                raise RuntimeError('Free space cannot hold full reviewed five-trial payload, auxiliary allowance and reserve')
             if plan['build_command']:
                 provenance['build'] = run(plan['build_command'], env, scratch,
                     slot/'build.log', timeout, reserve_mib*1024**2,guard)
@@ -419,7 +447,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['profiler_executable_sha256'] = sha(provenance['profiler_executable'])
             provenance['executed_target_path_bindings']=target_path_bindings(command,scratch,env)
             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
-                                        timeout, reserve_mib*1024**2,guard,monitor_gpu=True)
+                                        timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
             bindings(plan)
             check_supplemental(current_bindings)
             check_supplemental(provenance['executed_target_path_bindings'])
@@ -510,6 +538,20 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['status'] = 'collection_failed'
         provenance['error'] = str(error)
     finally:
+        if artifact_policy:
+            expected_files={}
+            for trial in range(1,6):
+                if plan['benchmark']=='perlin':expected_files[scratch/('perlin_trial'+str(trial)+'.bin')]=1541441088
+                else:expected_files[scratch/'profile_outputs'/('trial'+str(trial)+'.bin')]=1073746496
+            if plan['benchmark']=='zmddft':
+                expected_files[scratch/'profile_outputs/private_capture/diagnostics'/(plan['model']+'_impulse_stages_f64.bin')]=805306368
+            validation=[{'path':str(path),'expected_bytes':expected,'actual_bytes':path.stat().st_size if path.is_file() else None}
+                for path,expected in expected_files.items()]
+            complete=all(row['actual_bytes']==row['expected_bytes'] for row in validation)
+            provenance['large_artifact_validation']={'all_declared_payload_files_complete':complete,'files':validation,
+                'scope':'Size completeness only, independent of numerical checks and rawcounter validity; auxiliary bytes are disposable only after hash manifest.'}
+            if not complete and provenance['status']=='profile_process_completed':
+                provenance['status']='profile_process_completed_artifact_incomplete'
         for name in ('overlay_build_outcome.json','extra_build_outcome.json'):
             receipt=scratch/name
             if receipt.is_file():
@@ -553,14 +595,27 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--source-root',type=Path,required=True)
     ap.add_argument('--plan-root',type=Path,required=True)
+    ap.add_argument('--exclude-benchmark',action='append',default=[])
+    ap.add_argument('--benchmark',action='append',default=[])
+    ap.add_argument('--skip-qualified-selected',action='store_true')
     ap.add_argument('--timeout',type=int,default=300)
     ap.add_argument('--reserve-mib',type=int,default=2048)
     ap.add_argument('--retain-auxiliary',action='store_true')
     ap.add_argument('--selection-overrides',type=Path)
     ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
+    ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT 2GiB per-file policy, full payload space and auxiliary budget required')
     a=ap.parse_args()
     for p in sorted(a.plan_root.glob('*/*/plan.json')):
-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes)
+        plan=json.loads(p.read_text())
+        if plan['benchmark'] in a.exclude_benchmark:continue
+        if a.benchmark and plan['benchmark'] not in a.benchmark:continue
+        if a.skip_qualified_selected:
+            ledger=json.loads((a.source_root/'ontology/studies/v100_roofline_537/benchmarks'/(plan['benchmark']+'.json')).read_text())
+            selected=ledger['models'][plan['model']]
+            if selected['profiling_status']=='profile_process_completed' and selected.get('sampled_kernel_count',0)>0:
+                print(json.dumps({'benchmark':plan['benchmark'],'model':plan['model'],'status':'already_qualified_selected_capture_preserved'}),flush=True)
+                continue
+        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts)
         print(json.dumps(result),flush=True)
 
 

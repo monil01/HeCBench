@@ -25,12 +25,14 @@ def main():
     ap.add_argument('--selection-overrides',type=Path)
     ap.add_argument('--timeout',type=int,default=180)
     ap.add_argument('--limit',type=int)
+    ap.add_argument('--freeze-every',type=int,default=1,help='Freeze metadata after this many names; raw per-model evidence is saved immediately')
     ap.add_argument('--skip-frozen',action='store_true',
                     help='Resume queue after benchmark freeze events already journaled; failures still need separate explicit follow-up attempts.')
     ap.add_argument('--stop-file',type=Path,
                     help='If this file exists after a benchmark freeze, stop the controller at that boundary without interrupting a GPU child.')
     ap.add_argument('--asset-cap-mib',type=int,default=512)
     a=ap.parse_args();root=a.source_root.resolve();raw=a.raw_root.resolve()
+    if a.freeze_every<1:ap.error('freeze-every must be positive')
     raw.relative_to(Path('/tmp'))
     if not a.campaign_id.replace('-','').replace('_','').isalnum():
         ap.error('Use an alphanumeric campaign ID with optional hyphens/underscores')
@@ -53,6 +55,7 @@ def main():
         print(json.dumps(event),flush=True)
     note({'event':'start_or_resume','pid':os.getpid(),'benchmarks':len(names),
           'campaign_id':a.campaign_id,'root':str(root)})
+    unflushed=[]
     for index,b in enumerate(names,1):
         if b in already_frozen:
             continue
@@ -74,6 +77,10 @@ def main():
         result=subprocess.run(collector,cwd=root,capture_output=True,text=True)
         note({'event':'collect','benchmark':b,'ordinal':index,'returncode':result.returncode,
               'stdout':result.stdout,'stderr':result.stderr})
+        unflushed.append(b)
+        if len(unflushed)<a.freeze_every and index<len(names) and not(a.stop_file and a.stop_file.exists()):
+            note({'event':'raw_saved_metadata_freeze_deferred','benchmark':b,'unflushed_names':list(unflushed)})
+            continue
         # Root alone updates ontology measurement records. A single campaign
         # controller must run; never start concurrent controllers on this tree.
         summarize=[sys.executable,str(root/'tools/v100_roofline_summarize.py'),
@@ -82,11 +89,21 @@ def main():
         if result.returncode:
             note({'event':'freeze_failed_stop','benchmark':b,'stderr':result.stderr})
             raise SystemExit(result.returncode)
-        note({'event':'frozen','benchmark':b,'ordinal':index,'summary':json.loads(result.stdout)})
+        for frozen_name in unflushed:
+            note({'event':'frozen','benchmark':frozen_name,'ordinal':index,'summary':json.loads(result.stdout) if frozen_name==b else {'scope':'Part of same complete metadata refresh','last_benchmark':b}})
+        unflushed=[]
         if a.stop_file and a.stop_file.exists():
             note({'event':'controller_stopped_at_benchmark_boundary','benchmark':b,
                   'meaning':'Explicit controller handoff; scientific task remains active.'})
             return
+    if unflushed:
+        result=subprocess.run([sys.executable,str(root/'tools/v100_roofline_summarize.py'),
+            '--source-root',str(root),'--raw-root',str(raw)],cwd=root,capture_output=True,text=True)
+        if result.returncode:
+            note({'event':'freeze_failed_stop','benchmarks':unflushed,'stderr':result.stderr})
+            raise SystemExit(result.returncode)
+        for frozen_name in unflushed:
+            note({'event':'frozen','benchmark':frozen_name,'summary':{'scope':'Final complete metadata refresh'}})
     note({'event':'selected_plan_traversal_finished','benchmarks':len(names),
           'meaning':'Traversal is not complete roofline/ROI/bottleneck analysis; inspect per-case statuses.'})
 
