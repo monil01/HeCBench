@@ -1,0 +1,1 @@
+Parent-only rebase of original batch6. Root must recheck current parent at merge. Exact targeted record/stage/index equality, all updates/proofs unchanged, and all original selected ledger/config/result/capture/source bindings unchanged. Original packet and receipt remain separate. See rebase_proof.json. No GPU/build/tests/shared modifications.

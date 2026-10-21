@@ -1,31 +1,39 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
-## Audited source-membership batch5 and convection follow-up
+## Current resume authority: audited source batch6 and RBC follow-up
 
-The fifth root-adopted source batch adds72 model records across18 names,
-with116 callsite inclusion and66 exclusion declarations. Five disjoint batches
-now cover301 selected model records across77 names with503 source callsite
-inclusions. See `completion_reviews/roi_membership_root_merge_batch5/root_adoption.json`
-under the V100 study. All182 changes passed fresh frozen-counter integrity and
-postannotation reconstruction;295 of331 saved rows match included families,
-36 remain unresolved. The strict12 family audit is byte-identical. No actual
-sample-phase, complete-ROI or causal flags were promoted.
+Six root-adopted source batches cover353 distinct selected model records across90
+names, with606 callsite inclusion declarations. The sixth adds52 records/13names,
+103 inclusions and63 exclusions; one inclusion alias shares a family. Evidence:
+`completion_reviews/roi_membership_root_merge_batch6/root_adoption.json` under
+the V100 study. All166 changes passed fresh frozen-counter integrity and separate
+postannotation reconstruction; the strict12 family audit is byte-identical.
+No actual sample-phase, complete-ROI or causal flags were promoted.
 
-The batch excludes flip4 pending separate exact frozen-config reconciliation
-of its historical missing result configuration identifier. Preserve canonical
-null and historical result bytes; no generic fallback. fdtd3d4 is withheld
-because no canonical parent-stage identity exists, not because a backend is
-unsupported. Failed metadata preflights (identity join and legacy copyright
-encoding) are not compiler or GPU attempts. The one exact eigenvalue source
-encoding exception is reversible and hash-bound; no source bytes are changed.
+The exact flip reconciliation now joins all four profiles to the unchanged frozen
+configuration and historical result. That old result lacks a configuration-ID
+field; canonical null and historical bytes remain unchanged. The exception is
+restricted to flip's exact config/result hashes and explicit root review. Never
+use a generic missing-ID fallback. fdtd3d4 is outside these indexed source
+batches: it already has four records in the separate legacy ROI_REVIEW authority.
+Never create a duplicate cohort or alter the legacy receipt to inflate coverage.
+Review legacy membership and phase evidence separately. GELS vendor symbols
+alone likewise cannot prove source membership; neither issue is unsupportedness.
+
+The fifth batch's earlier failed identity/encoding metadata preflights are retained,
+not compiler/GPU attempts. The one exact eigenvalue copyright decoding exception
+is reversible and hash-bound; no source bytes are changed. Source annotations do
+not alter primary results or counter math. FMA fills and FRNA initialization are
+inside their timers; Gaussian host back substitution is outside. Preserve these
+operator-specific scientific boundaries rather than inferring scope from names.
 
 The later RBC050 CUDA.jl observer completed all five checks of13,720,023 values
 and retained27 partial kernel samples, with3194.7798 seconds observer wall time.
-Its unchanged unprofiled primary mean is30.2298 seconds. Exact runtime markers
-identify trial2/step240 and28 authored dispatches; samples do not prove a whole
-timestep or the1000-step elapsedROI. Keep the earlier native1800-second/four-check
-failure separately. Evidence: `completion_reviews/rbc050_cuda_jl_success/root_review.json`.
-Do not compare observer wall time to a single primary mean as an overhead ratio.
+Its unchanged unprofiled primary mean is30.2298 seconds. Runtime markers identify
+trial2/step240 and28 authored dispatches; samples do not prove a whole timestep
+or the1000-step elapsedROI. Keep the earlier native1800-second/four-check failure
+separately. Evidence: `completion_reviews/rbc050_cuda_jl_success/root_review.json`.
+Observer wall time is not an overhead ratio against one primary mean.
 
 ## V100 method recovery and current execution frontier
 
