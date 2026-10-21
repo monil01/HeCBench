@@ -19,6 +19,27 @@ all checks, selectors, replay flags and deadlines remain unchanged. A queued
 retry or controller return code is not a successful capture. Preserve the
 queue-completeness snapshot and separate new root-adoption receipt.
 
+The fourth reviewed source-membership batch adds79 model records across20 names,
+with145 inclusion and88 exclusion declarations. Its separate root adoption is
+`completion_reviews/roi_membership_root_merge_batch4/root_adoption.json` under
+the V100 study. Four reviewed batches now cover229 distinct model records and59
+names with387 callsite inclusion declarations; aliases are not independent
+kernel families. All233 updates were reconstructed;658 of749 selected rows
+match included source families and91 remain unresolved. Counters and projection
+values are unchanged, no actual timed-invocation flags were promoted, and the
+strict12 family audit remains byte-identical. clink KA source membership is
+withheld because its saved signature is unexplained; its numerical verdict is
+unchanged. Three exact callable-list corrections are root-whitelisted by stage
+and value. Retain failed preflight merges as metadata events, not compiler or
+GPU attempts. Either a `.roi-v4-active-commit.json` or
+`.roi-v5-active-commit.json` requires exact transaction recovery before merging.
+
+Describe the observer as first matching launches under its recorded kernel-ID
+and launch-configuration filters. This is a partial saved launch set; it does
+not certify every intended source family or actual timed phase. Preserve the
+historical command/scope strings and separately qualify interpretation. Do not
+assign clink KA to fill, setup, LSTM, or compiler failure from signature alone.
+
 The third source-review batch used explicit journaled ordinary renames under the
 metadata lock because this NFS filesystem rejected directory exchange. Preserve
 its original tree and transaction journals. An existing `.roi-v4-active-commit.json`

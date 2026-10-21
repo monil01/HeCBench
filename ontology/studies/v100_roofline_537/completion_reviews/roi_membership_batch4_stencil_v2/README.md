@@ -1,0 +1,13 @@
+# Private batch4 v2: exact clink identity repair and one withheld model
+
+Original delivered packet remains byte-identical at ../roi_membership_batch4_stencil (SHA6a1e6fad...). Root retained failed admission dryruns001/002. v2 supersedes only proposal interpretation, never source/counters/timings:39 model patch records/77 stages, clinkKA held explicitly. Other original source evidence and clock captured-overlay proofs unchanged. Parent/global inferred-vs-curated distinctions, phase unknown/fullROI false/causal unknown unchanged.
+
+ClinkCUDAjl source defines kernel(x,w,y), calls lstm_lane!(x,w,y,g), and returns @cuda kernel(x,w,y) from the factory handed to clink_study. Shared source constructs x/w/y as Float32 CuArrays and executes that returned closure in ten-repeat timer. Saved name is kernel(threeCuDeviceArrayFloat32). v1 wrongly selected host wrapper clink_study; v2 uses anchored EXACT saved argument signature, explicitly resolved callable kernel.
+
+ClinkJACC source calls JACC.parallel_for(SPEC,512,kernel,x,w,y), with same callback body/three-buffer identity. Saved name is _parallel_for_cuda(Int64,kernel,threeCuDeviceArrayFloat32). v2 uses anchored EXACT saved signature, not a broad generic dispatcher. Current sources match the actual selected captured plan bindings. Actual sampled invocation may still be warmup; this proves semantic family/source timer membership only.
+
+ClinkKA source mathematical kernel has three array arguments, but the actual saved name has CompilerMetadata,ONECuDeviceArrayFloat32,TWOFloat32 scalars. There is no selected-instance SASS/binary or equivalent argument-lowering proof in the evidence to bridge that mismatch. Do NOT claim it is fill/setup or math based solely on name/signature; do NOT invent compiler failure or invalidate accepted numerical/primary timing evidence. clink_identity_review.json retains exact raw identity and source snippets, selectedplan/derivation hashes. EntireKA patch record is withheld; original unknown source membership stays unchanged. Future resolution needs exact compiled identity proof or separately reviewed new profiling, not broadening gpu_kernel regex.
+
+Normal batch4 proof qualification remains: sourcecallpath inclusion is not observed timed invocation, no complete launch census/elapsedROI, no multiplicity/performance causation, no changes to controls or primary means. ClockJulia needs the narrow root-reviewed retained-text validator branch already requested, full forward/inverse path-only proof remains in original field schema.
+
+No GPU/build/tests/import targets/shared edits; only authoring a private JSON proposal and read-only source/hash joins. Usage is separate shared source-identity review, not new translation attempts. Receipt packaging follows END.

@@ -1,0 +1,25 @@
+--- a/validate_postannotation.py
++++ b/validate_postannotation.py
+@@ -21,7 +21,8 @@
+    fcntl.flock(lock,fcntl.LOCK_SH)
+    approval_raw=read(a.approval_plan);plan=json.loads(approval_raw);applied=obj(a.apply_report)
+    need(applied['status']=='applied_journaled_two_renames_pending_annotation_audit','Root apply not successful');need(applied['merge_plan_sha256']==sha(approval_raw),'Apply/approved-plan mismatch');need(applied['transaction']==plan['transaction'],'Transaction mismatch')
+-   need(not(study/'.roi-v4-active-commit.json').exists(),'Unfinished active transaction')
++   for marker in ('.roi-v4-active-commit.json','.roi-v5-active-commit.json'):
++    need(not(study/marker).exists(),'Unfinished active transaction '+marker)
+    progress=obj(study/'PROGRESS.json');need(datetime.datetime.fromisoformat(progress['updated_at'])>datetime.datetime.fromisoformat(applied['started_at']),'PENDING: PROGRESS predates adopted source annotations')
+    need(progress['whole_ROI_classifications']==0 and progress['measured_causal_bottleneck_classifications']==0,'Global whole-ROI/causal promotion')
+    target=study/'roi_reviews';backup=Path(applied['rollback_tree']);need(backup.parent==study and backup.name=='.'+plan['transaction']+'-rollback','Unexpected rollback path')
+@@ -46,7 +47,11 @@
+    for filename,d in expected.items():need(d==json.loads(gzip.decompress(new[filename])),'Non-whitelisted content changed in '+filename)
+    for filename,raw in old.items():
+     if filename not in expected and filename!='INDEX.json':need(new.get(filename)==raw,'Unrelated review bytes changed '+filename)
+-   need((len(operations),len(names),counts['inclusion_declarations'],counts['exclusions'],counts['pure_alias_nulls'],counts['inclusion_alias_nulls'])==(56,14,124,13,25,2),'Population/aliases differ')
++   semantic_counts={'model_records':len(operations),'names':len(names),
++                    'inclusion_declarations':counts['inclusion_declarations'],'exclusions':counts['exclusions'],
++                    'pure_alias_nulls':counts['pure_alias_nulls'],'inclusion_alias_nulls':counts['inclusion_alias_nulls'],
++                    'non_null_inclusion_stages':counts['inclusion_declarations']-counts['inclusion_alias_nulls']}
++   need(semantic_counts==plan['counts'],'Reconstructed population/aliases differ from approved plan counts')
+    # Record-wide and untouched-stage equality follows from whole reconstructed docs above.
+    final_records={(r['benchmark'],r['model']):r for d in expected.values()for r in d['records']}
+    checks=[];matched_counts=collections.Counter()

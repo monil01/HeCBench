@@ -1,0 +1,21 @@
+# Batch4 source-callpath membership — private root-merge proposal
+
+Names: clink, clock, cobahh, collision, colorwheel, compute-score, contract, conversion, convolution1D, convolution3D. All four selected captures completed for every name. Existing current source-covered names excluded; no overlap with cold worker's d2q9-bgk-through-deredundancy selection. Forty model records,78 source stages,68 present source-file bindings. Exact parent review gzip/raw SHA, canonical record/stage SHA, selected ledger/config/result/manifest/plan/derivation and before/after source bindings are retained in proposed_stage_patches.json. No shared modifications/GPU/build/tests/import targets.
+
+Same GP/v3 merge schema: parent_reviews, selected_capture_bindings, sources, patches, stage_index/stage_id/originalcanonicalSHA, updates. Only membership/status/proof and alias disambiguation updates. Existing full_ROI_coverage, steady_state_evidence, ordered_complete_launch_census_obtained, benchmark_bottleneck and coverage_kind preserved. Root must recheck all bindings under LOCK_EX, preserve prior gzip bytes, and create a new nonoverlapping merged authority.
+
+## Clock: special narrow retained-source branch required
+
+Selected Julia clock command executes missing batch013 scratch copies, not the original canonical path. Frozen plan contains FULL text in `capture_overlay_provenance.patches[i].text`, with original/copy paths and hashes. Every text SHA equals copy_sha256 and plan execution binding for copy; present original bytes equal original_sha256 and original execution binding. Applying each exact before/after change ONCE gives byte-identical executed text; inverse changes recover original bytes exactly. The only three allowed transformations redirect raw clock output to STUDY_OUTPUT_DIR, bind the same canonical fixture read root, and include the exact copied common source. Algorithm, timer/callback, geometry/clock intrinsic and checks unchanged. No scratch file is recreated or current source substituted for missing executed bytes.
+
+Normal evidence/sources remain existing pinned original files. `ROI_membership_proof.captured_overlay_source_evidence` carries exact captured source text, JSON pointer and selected-plan container hash plus explicit forward/inverse proof. Root engine's AMG-specific validator needs a separately reviewed clock-specific branch before these three records are admitted. All other records use existing direct source bindings. unadopted_v1 preserves initial private draft that placed missing-copy paths in generic evidence; revised proposal removes those paths from generic evidence and uses the narrow captured-text field instead.
+
+## Alias handling and source semantics
+
+Native duplicate warmup calls (colorwheel, contract, conversion) are explicitly source-setup excluded and their regexes null; renamed/uninvoked legacy native/Julia main or cobahh neurongroup_stateupdater wrapper likewise excluded. Those exclusions do not assert they execute at runtime setup. Timed function family may still execute warmup elsewhere: invocation phase stays unknown.
+
+Convolution3D CUDAjl candidate originally resolved grid() helper from launch syntax; the source ternary explicitly selects conv3d_s1/2/3_kernel!, so regex/callable alias is corrected to those three exact source symbols. This is one scientific operator with layout mappings, not three scientific families. Source Val mode and dtype dispatch are shown for mixed convolution/conversion cases. Existing inferred catalogue resource_bias and curated scientificfamily ontology are not overwritten.
+
+Three companion-ready scientific observations are in scientific_observations.json/.tex, all linked to exact record keys: ordinary-FP count exclusions for integer/timer/conversion probes; resets/warmup outside timers; scientific convolution operator versus mapping/precision specializations. No count-based performance cause, wholeROI rate, primary-time replacement or causal interpretation.
+
+All sampled invocation phases remain unproved, unmatched fill kernels remain unassigned, no launch multiplicity extrapolation/full elapsedROI/causal promotion. No numerical recertification. Sources and selected ledgers were read/rechecked under shared metadata lock; root must reject stale parent/selection at merge instead of silently refreshing evidence.

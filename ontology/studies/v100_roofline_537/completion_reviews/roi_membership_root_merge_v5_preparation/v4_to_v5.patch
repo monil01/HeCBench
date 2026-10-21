@@ -1,0 +1,121 @@
+--- /tmp/roofline-completion-20261021/roi_membership_root_merge_v4_preparation/merge_reviews_v4.py
++++ private/merge_reviews_v5.py
+@@ -51,9 +51,13 @@
+  need('ro'not in fs['mount_options'].split(','),'Repository filesystem mounted readonly')
+  return dict(fs,device_id=parent.stat().st_dev,target_and_parent_same_filesystem=True,rename_capability='Not executed by preparer; ordinary rename remains a root runtime prerequisite.',readers_require_metadata_lock=True)
+ 
+-def validate(root,packets,transaction):
++def validate(root,packets,transaction,scientific_path):
+  study=root/'ontology/studies/v100_roofline_537';reviewdir=study/'roi_reviews';oldtree=tree_bytes(reviewdir)
+- scientific_path=Path('/tmp/roofline-completion-20261021/roi_v3_root_scientific_review.json');scientific_raw=file_bytes(scientific_path);scientific=json.loads(scientific_raw)
++ scientific_raw=file_bytes(scientific_path);scientific=json.loads(scientific_raw)
++ expected_count_keys={'model_records','names','inclusion_declarations','exclusions','pure_alias_nulls','inclusion_alias_nulls','non_null_inclusion_stages'}
++ expected_counts=scientific.get('expected_counts')
++ need(isinstance(expected_counts,dict)and set(expected_counts)==expected_count_keys,'Scientific review must specify exactly all seven expected-count fields')
++ need(all(type(x)is int and x>=0 for x in expected_counts.values()),'Expected counts must be nonnegative integers')
+  scientific_binding={'path':str(scientific_path),'sha256':sha(scientific_raw)}
+  index=json.loads(oldtree['INDEX.json']);parents={};contexts={};ops=[];packet_receipts=[]
+  for packet in packets:
+@@ -120,8 +124,53 @@
+   checked_sources=[]
+   # Actual AMG executed-source text survived in the immutable selected PLAN.
+   # It is never reconstructed at the absent historical scratch path.
++  def clock_overlay(e):
++   need(b=='clock'and m in ('cuda_jl','ka','jacc'),'Clock overlay restricted to selected Julia3')
++   patches=plan.get('capture_overlay_provenance',{}).get('patches',[])
++   matches=[(i,p)for i,p in enumerate(patches)if p['copy']==e['actual_executed_source_path']]
++   need(len(matches)==1,'Retained clock overlay text missing/duplicate');i,p=matches[0]
++   need(e.get('selected_plan')==cap['plan']and binding(e['selected_plan'])==plan,'Clock retained-text selected-plan binding mismatch')
++   need(e.get('text_JSON_pointer')=='/capture_overlay_provenance/patches/'+str(i)+'/text','Clock retained-text pointer mismatch')
++   raw=p['text'].encode();need(e['retained_text']==p['text']and sha(raw)==p['copy_sha256']==e['actual_executed_sha256'],'Retained clock complete copy byte/SHA mismatch')
++   copy_path=Path(p['copy']);original_path=Path(p['original']);parent=root/'src/clock-julia'
++   need(copy_path.parent==Path(plan['scratch_cwd'])/'profile_source','Clock historical copied source outside exact selected scratch')
++   need(p['copy_sha256']in captured[str(copy_path.resolve())]and p['original_sha256']in captured[str(original_path.resolve())],'Clock original/copy absent from actual captured bindings')
++   need(p['original']==e['original_bound_path']and p['original_sha256']==e['original_sha256'],'Clock original identity join')
++   original_raw=file_bytes(original_path);need(sha(original_raw)==p['original_sha256'],'Clock present original source drift');original=original_raw.decode();source_hashes[str(original_path.resolve())]=p['original_sha256']
++   # Independently construct EXACT known path-only rules. Neither the plan's
++   # changes array nor packet booleans can authorize arbitrary source changes.
++   if original_path==parent/'study_common.jl':
++    need(copy_path.name=='study_common.jl','Clock common copied filename')
++    before='rawdir=joinpath(@__DIR__,"..","..",".porting-state","porting_logs","clock-julia-"*model,"raw_timings")'
++    after='rawdir=joinpath(ENV["STUDY_OUTPUT_DIR"],"private_clock")'
++    fixture=' words=collect(reinterpret(UInt32,read(joinpath(@__DIR__,"fixture.bin"))));@assert length(words)==1042'
++    changes=[(before,after),(fixture,fixture.replace('@__DIR__',json.dumps(str(parent))))]
++   else:
++    relative={'cuda_jl':'clock-julia-cuda.jl/study.jl','ka':'clock-julia-KA/main.jl','jacc':'clock-julia-JACC/main.jl'}[m]
++    need(original_path==parent/relative and copy_path.name=='main.jl','Clock model-specific entry identity')
++    commons=[z for z in patches if z.get('original')==str(parent/'study_common.jl')and z.get('copy')==str(copy_path.parent/'study_common.jl')]
++    need(len(commons)==1,'Clock entry same historical copied-common relationship missing/ambiguous');common=commons[0]
++    need(sha(common['text'].encode())==common['copy_sha256']and common['copy_sha256']in captured[str(Path(common['copy']).resolve())],'Clock included common text/captured binding mismatch')
++    # Validate the common independently even when an entry-only packet arrives.
++    common_original=file_bytes(parent/'study_common.jl');need(sha(common_original)==common['original_sha256']and common['original_sha256']in captured[str((parent/'study_common.jl').resolve())],'Clock included canonical common binding drift')
++    common_before='rawdir=joinpath(@__DIR__,"..","..",".porting-state","porting_logs","clock-julia-"*model,"raw_timings")';common_after='rawdir=joinpath(ENV["STUDY_OUTPUT_DIR"],"private_clock")'
++    fixture=' words=collect(reinterpret(UInt32,read(joinpath(@__DIR__,"fixture.bin"))));@assert length(words)==1042'
++    common_rebuilt=common_original.decode()
++    for before,after in [(common_before,common_after),(fixture,fixture.replace('@__DIR__',json.dumps(str(parent))))]:
++     need(common_rebuilt.count(before)==1,'Clock included-common path-only rule ambiguous');common_rebuilt=common_rebuilt.replace(before,after,1)
++    need(common_rebuilt==common['text'],'Clock included-common changes exceed exact known paths')
++    source_hashes[str((parent/'study_common.jl').resolve())]=common['original_sha256']
++    changes=[('include(joinpath(@__DIR__,"..","study_common.jl"))','include('+json.dumps(common['copy'])+')')]
++   rebuilt=original
++   for before,after in changes:need(rebuilt.count(before)==1,'Clock exact path-only rule ambiguous');rebuilt=rebuilt.replace(before,after,1)
++   need(rebuilt==p['text'],'Clock overlay changes more than exact approved path roots')
++   inverse=rebuilt
++   for before,after in reversed(changes):need(inverse.count(after)==1,'Clock inverse path-only rule ambiguous');inverse=inverse.replace(after,before,1)
++   need(inverse.encode()==original_raw,'Clock exact inverse byte proof failed')
++   overlay_checks.append({'benchmark':b,'model':m,'copy':p['copy'],'copy_sha256':p['copy_sha256'],'retained_plan_sha256':sha(planraw),'exact_path_only_transform_proved':True,'exact_inverse_byte_proved':True,'historical_copy_recreated':False})
+   def overlay(items):
+    for e in items:
++    if b=='clock':clock_overlay(e);continue
+     need(b=='amgmk','Unexpected retained-source overlay claim')
+     matches=[p for p in plan.get('overlay_provenance',{}).get('profile_source_patches',[])if p['copy']==e['actual_executed_source_path']];need(len(matches)==1,'Retained AMG overlay text missing')
+     p=matches[0];raw=p['text'].encode();need(e['retained_text']==p['text']and sha(raw)==p['copy_sha256']==e['actual_executed_sha256'],'Retained AMG copy byte/SHA mismatch')
+@@ -190,13 +239,13 @@
+   if name in parents:row.update(raw_sha256=sha(parents[name]['newraw']),compressed_sha256=sha(parents[name]['newpacked']))
+  index['enrichment_receipt']='ontology/studies/v100_roofline_537/roi_reviews/enrichment_transaction.json';proposed['INDEX.json']=encoded(index)
+  counts={'model_records':len(contexts),'names':len({b for b,m in contexts}),'inclusion_declarations':sum(x['inclusion']is True for x in ops),'exclusions':sum(x['inclusion']is False for x in ops),'pure_alias_nulls':sum(x['alias_only']for x in ops),'inclusion_alias_nulls':sum(x['inclusion']is True and x['null_selector']for x in ops),'non_null_inclusion_stages':sum(x['inclusion']is True and not x['null_selector']for x in ops)}
+- need(counts['model_records']==56 and counts['names']==14 and counts['inclusion_declarations']==124,'Expected three-packet population not validated')
+- receipt={'schema_version':1,'transaction':transaction,'status':'source_family_reviews_adopted_pending_fresh_annotation_integrity_audit','input_packets':packet_receipts,'root_scientific_review':scientific_binding,'script_sha256':sha(SOURCE),'counts':counts,'changes':ops,'selected_capture_checks':receipts,'retained_AMG_overlay_checks':overlay_checks,'sample_phase':'Unknown; source inclusion is not actual timed-invocation proof.','whole_elapsed_ROI_claim':False,'causal_claim':False,'GPU_build_tests':0}
++ need(counts==expected_counts,'Complete seven-field root-reviewed population not validated')
++ receipt={'schema_version':1,'transaction':transaction,'status':'source_family_reviews_adopted_pending_fresh_annotation_integrity_audit','input_packets':packet_receipts,'root_scientific_review':scientific_binding,'script_sha256':sha(SOURCE),'counts':counts,'changes':ops,'selected_capture_checks':receipts,'retained_AMG_overlay_checks':[x for x in overlay_checks if x['benchmark']=='amgmk'],'retained_clock_overlay_checks':[x for x in overlay_checks if x['benchmark']=='clock'],'sample_phase':'Unknown; source inclusion is not actual timed-invocation proof.','whole_elapsed_ROI_claim':False,'causal_claim':False,'GPU_build_tests':0}
+  proposed['enrichment_transaction.json']=encoded(receipt)
+  for path,h in source_hashes.items():need(sha(file_bytes(path))==h,'Source changed during validation')
+  need(file_bytes(scientific_path)==scientific_raw,'Root scientific review changed during validation')
+  need(tree_bytes(reviewdir)==oldtree,'Canonical review directory changed during validation')
+- plan={'schema_version':1,'transaction':transaction,'filesystem_preflight':filesystem_preflight(reviewdir),'source_root':str(root),'script_sha256':sha(SOURCE),'input_packets':packet_receipts,'root_scientific_review':scientific_binding,'counts':counts,'old_tree':{n:sha(b)for n,b in oldtree.items()},'new_tree':{n:sha(b)for n,b in proposed.items()},'commit_method':'EXPLICIT v4 metadata-lock-serialized journaled two ordinary same-filesystem directory renames; NOT atomic directory exchange','source_bindings':source_hashes}
++ plan={'schema_version':1,'transaction':transaction,'filesystem_preflight':filesystem_preflight(reviewdir),'source_root':str(root),'script_sha256':sha(SOURCE),'input_packets':packet_receipts,'root_scientific_review':scientific_binding,'counts':counts,'old_tree':{n:sha(b)for n,b in oldtree.items()},'new_tree':{n:sha(b)for n,b in proposed.items()},'commit_method':'EXPLICIT v5 metadata-lock-serialized journaled two ordinary same-filesystem directory renames; NOT atomic directory exchange','source_bindings':source_hashes}
+  return plan,receipt,oldtree,proposed
+ 
+ def sync_directory(path):
+@@ -205,24 +254,25 @@
+  finally:os.close(fd)
+ 
+ def main():
+- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--apply',action='store_true');ap.add_argument('--approval-plan',type=Path);ap.add_argument('--approval-plan-sha256');ap.add_argument('packets',nargs='+',type=Path);a=ap.parse_args()
++ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--root-scientific-review',type=Path,required=True);ap.add_argument('--apply',action='store_true');ap.add_argument('--approval-plan',type=Path);ap.add_argument('--approval-plan-sha256');ap.add_argument('packets',nargs='+',type=Path);a=ap.parse_args()
+  root=a.source_root.resolve();out=a.output_root.resolve();need(out.is_relative_to('/tmp')and out!=Path('/tmp')and not out.exists(),'Fresh private /tmp report directory required');out.mkdir(parents=True,mode=0o700)
+  approval=None
+  if a.apply:
+   need(a.approval_plan is not None and a.approval_plan_sha256,'Root apply requires exact reviewed dry-run plan')
+   raw=file_bytes(a.approval_plan);need(sha(raw)==a.approval_plan_sha256,'Approval-plan SHA');approval=json.loads(raw)
+- token=approval['transaction']if approval else'roi-v4-'+uuid.uuid4().hex[:16];need(re.fullmatch(r'roi-v4-[0-9a-f]{16}',token)is not None,'Fresh v4 transaction token required')
++ token=approval['transaction']if approval else'roi-v5-'+uuid.uuid4().hex[:16];need(re.fullmatch(r'roi-v5-[0-9a-f]{16}',token)is not None,'Fresh v5 transaction token required')
+  result={'started_at':utc(),'apply_requested':a.apply,'shared_mutations':False,'transaction':token,'script_sha256':sha(SOURCE),'commit_engine':'explicit_non_atomic_lock_serialized_two_renames'}
+- study=root/'ontology/studies/v100_roofline_537';marker=study/'.roi-v4-active-commit.json'
++ study=root/'ontology/studies/v100_roofline_537';marker=study/'.roi-v5-active-commit.json'
+  try:
+   with LOCK.open('r')as lock:
+    fcntl.flock(lock,fcntl.LOCK_EX if a.apply else fcntl.LOCK_SH)
+-   need(not marker.exists()and not marker.is_symlink(),'UNFINISHED TRANSACTION: root recovery review required; do not start another merge')
+-   plan,receipt,old,new=validate(root,[x.resolve()for x in a.packets],token)
++   previous_marker=study/'.roi-v4-active-commit.json'
++   need(all(not p.exists()and not p.is_symlink()for p in (previous_marker,marker)),'UNFINISHED v4/v5 TRANSACTION: root recovery review required; do not start another merge')
++   plan,receipt,old,new=validate(root,[x.resolve()for x in a.packets],token,a.root_scientific_review.resolve())
+    atomic_file(out/'merge_plan.json',encoded(plan));atomic_file(out/'validated_receipt.json',encoded(receipt))
+    if not a.apply:
+     result.update(status='dry_run_validated_no_shared_writes',counts=plan['counts'],merge_plan_sha256=sha(encoded(plan)));atomic_file(out/'validation_report.json',encoded(result));print(json.dumps(result));return 0
+-   need(plan==approval,'Reviewed v4 plan no longer matches complete fresh validation')
++   need(plan==approval,'Reviewed v5 plan no longer matches complete fresh validation')
+    target=study/'roi_reviews';stage=study/('.'+token+'-staged');backup=study/('.'+token+'-rollback');history=study/'roi_review_history'
+    need(not stage.exists()and not stage.is_symlink()and not backup.exists()and not backup.is_symlink(),'Refuse existing transaction staging/backup path')
+    need(not history.is_symlink()and(not history.exists()or history.is_dir()),'History directory must not be a symlink/non-directory')
