@@ -1,0 +1,701 @@
+{
+  "schema_version": 2,
+  "status": "PRIVATE_NEW_COHORT_AND_NEW_STAGE_GENESIS_PROPOSAL_NOT_CANONICAL",
+  "activity": "shared CPU source/capture review, not translation or new numerical verification",
+  "reviewed_at": "2026-10-21T23:14:25.477039+00:00",
+  "selected_names": [
+    "fdtd3d"
+  ],
+  "records": [
+    {
+      "benchmark": "fdtd3d",
+      "model": "cuda",
+      "configuration_id": "lcg_float32_dim96_radius4_steps5_v1",
+      "outcome": "named_numerical",
+      "qualification": "ordinary_named",
+      "reference_result": {
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T225303839915Z_fdtd3d/result.json",
+        "sha256": "c98183747e74de1ade443d4d49a35581011c9d3527569113aa50742b925f9d58"
+      },
+      "raw_config_sha256": "155e597bb7cf7de8b7a944dfab8d711a6a4edf37b2727fe2fe4a2ce4f51c6c69",
+      "profile_target_command": [
+        "/tmp/hecbench-roofline-v100-20261020/batch003-fdtd3d/fdtd3d/cuda/scratch/study_native",
+        "96",
+        "96",
+        "96",
+        "5"
+      ],
+      "primary_ROI_label": "kernel_launch_loop_per_internal_repeat",
+      "sample_in_primary_timed_invocation": null,
+      "whole_elapsed_ROI_claim": false,
+      "causal_claim": false,
+      "stages": [
+        {
+          "stage_id": "fdtd3d/cuda/source_genesis_callsite_001",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+            "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+            "line": 16,
+            "text": " finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);cudaDeviceSynchronize();bool allok=true;"
+          },
+          "model_kernel_regex": null,
+          "regex_status": "disabled_explicit_warmup_callsite",
+          "semantic_family_in_primary_ROI": false,
+          "ROI_membership_status": "source_setup_exclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+              "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+              "line": 16,
+              "text": " finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);cudaDeviceSynchronize();bool allok=true;"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+                "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+                "start_line": 1,
+                "end_line": 28,
+                "exact_lines": "// Study uses original tiled CUDA kernel and original independent CPU reference.\n#include \"../fdtd3d-cuda/FDTD3dGPU.cu\"\n#include \"../fdtd3d-cuda/FDTD3dReference.cu\"\n#include <vector>\n#include <cstdint>\n#include <cmath>\nint main(int argc,char**argv){\n int nx=argc>1?atoi(argv[1]):96,ny=argc>2?atoi(argv[2]):96,nz=argc>3?atoi(argv[3]):96,steps=argc>4?atoi(argv[4]):5,r=4;\n if(nx<96||ny<96||nz<96||nx%32||ny%8||steps<=0)return 2;\n int n=(nx+8)*(ny+8)*(nz+8),padding=28;std::vector<float> input(n),expected(n),got(n),coeff(5,.1f);uint32_t s=1;\n for(int i=0;i<n;i++){s=s*1103515245u+12345u;input[i]=float((s>>8)&0xffffffu)/16777216.f;}\n fdtdReference(expected.data(),input.data(),coeff.data(),nx,ny,nz,r,steps);\n float *a,*b,*c;cudaMalloc(&a,(n+padding)*sizeof(float));cudaMalloc(&b,(n+padding)*sizeof(float));cudaMalloc(&c,coeff.size()*sizeof(float));cudaMemcpy(c,coeff.data(),coeff.size()*sizeof(float),cudaMemcpyHostToDevice);\n dim3 block(32,8),grid(nx/32,ny/8);\n cudaMemset(a,0,(n+padding)*sizeof(float));cudaMemset(b,0,(n+padding)*sizeof(float));cudaMemcpy(a+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaMemcpy(b+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);\n finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);cudaDeviceSynchronize();bool allok=true;\n for(int t=1;t<=5;t++){\n  cudaMemcpy(a+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaMemcpy(b+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaDeviceSynchronize();\n  auto start=std::chrono::steady_clock::now();\n  for(int j=0;j<steps;j++){finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);std::swap(a,b);}\n  auto status=cudaDeviceSynchronize();double secs=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/steps;\n  cudaMemcpy(got.data(),a+padding,n*sizeof(float),cudaMemcpyDeviceToHost);double ma=0,mr=0;bool ok=status==cudaSuccess;\n  for(int i=0;i<n;i++){double e=fabs(double(got[i])-expected[i]);ma=std::max(ma,e);mr=std::max(mr,e/std::max(fabs(double(expected[i])),double(1.1920929e-7f)));ok &= std::isfinite(got[i])&&e<=1.e-5+1.e-4*fabs(double(expected[i]));}\n  allok &=ok;char file[80];snprintf(file,sizeof(file),\"fdtd3d_trial%d.bin\",t);FILE*f=fopen(file,\"wb\");fwrite(got.data(),sizeof(float),n,f);fclose(f);\n  printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",t,secs,ok?\"true\":\"false\",n,ma,mr,steps,file,n);\n }\n cudaFree(a);cudaFree(b);cudaFree(c);puts(allok?\"PASS\":\"FAIL\");return allok?0:1;\n}"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-cuda/FDTD3dGPU.cu",
+                "source_sha256": "0cd091bbc48150158ecbeb285fabcdf9498858726a6987db5d39aa56d4840615",
+                "start_line": 19,
+                "end_line": 129,
+                "exact_lines": "__global__ void finite_difference(\n        float*__restrict__ output,\n  const float*__restrict__ input,\n  const float*__restrict__ coef, \n  const int dimx, const int dimy, const int dimz,\n  const int padding)\n{\n  __shared__ float tile[k_blockDimMaxY + 2 * k_radius_default][k_blockDimMaxX + 2 * k_radius_default];\n\n  bool valid = true;\n  const int ltidx = threadIdx.x;\n  const int ltidy = threadIdx.y;\n  const int workx = blockDim.x;\n  const int worky = blockDim.y;\n  const int gtidx = blockIdx.x * workx + ltidx;\n  const int gtidy = blockIdx.y * worky + ltidy;\n\n  const int stride_y = dimx + 2 * k_radius_default;\n  const int stride_z = stride_y * (dimy + 2 * k_radius_default);\n\n  int inputIndex  = 0;\n  int outputIndex = 0;\n\n  // Advance inputIndex to start of inner volume\n  inputIndex += k_radius_default * stride_y + k_radius_default + padding;\n\n  // Advance inputIndex to target element\n  inputIndex += gtidy * stride_y + gtidx;\n\n  float infront[k_radius_default];\n  float behind[k_radius_default];\n  float current;\n\n  const int tx = ltidx + k_radius_default;\n  const int ty = ltidy + k_radius_default;\n\n  if (gtidx >= dimx) valid = false;\n  if (gtidy >= dimy) valid = false;\n\n  // For simplicity we assume that the global size is equal to the actual\n  // problem size; since the global size must be a multiple of the local size\n  // this means the problem size must be a multiple of the local size (or\n  // padded to meet this constraint).\n  // Preload the \"infront\" and \"behind\" data\n  for (int i = k_radius_default - 2 ; i >= 0 ; i--)\n  {\n    behind[i] = input[inputIndex];\n    inputIndex += stride_z;\n  }\n\n  current = input[inputIndex];\n  outputIndex = inputIndex;\n  inputIndex += stride_z;\n\n  for (int i = 0 ; i < k_radius_default ; i++)\n  {\n    infront[i] = input[inputIndex];\n    inputIndex += stride_z;\n  }\n\n  // Step through the xy-planes\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    // Advance the slice (move the thread-front)\n    for (int i = k_radius_default - 1 ; i > 0 ; i--)\n      behind[i] = behind[i - 1];\n    behind[0] = current;\n    current = infront[0];\n    for (int i = 0 ; i < k_radius_default - 1 ; i++)\n      infront[i] = infront[i + 1];\n    infront[k_radius_default - 1] = input[inputIndex];\n\n    inputIndex  += stride_z;\n    outputIndex += stride_z;\n    __syncthreads();\n\n      // Note that for the work items on the boundary of the problem, the\n      // supplied index when reading the halo (below) may wrap to the\n      // previous/next row or even the previous/next xy-plane. This is\n      // acceptable since a) we disable the output write for these work\n      // items and b) there is at least one xy-plane before/after the\n      // current plane, so the access will be within bounds.\n\n      // Update the data slice in the local tile\n      // Halo above & below\n      if (ltidy < k_radius_default)\n      {\n        tile[ltidy][tx]                  = input[outputIndex - k_radius_default * stride_y];\n        tile[ltidy + worky + k_radius_default][tx] = input[outputIndex + worky * stride_y];\n      }\n    // Halo left & right\n    if (ltidx < k_radius_default)\n    {\n      tile[ty][ltidx]                  = input[outputIndex - k_radius_default];\n      tile[ty][ltidx + workx + k_radius_default] = input[outputIndex + workx];\n    }\n    tile[ty][tx] = current;\n    __syncthreads();\n\n      // Compute the output value\n      float value = coef[0] * current;\n    for (int i = 1 ; i <= k_radius_default ; i++)\n    {\n      value += coef[i] * (infront[i-1] + behind[i-1] + tile[ty - i][tx] + \n          tile[ty + i][tx] + tile[ty][tx - i] + tile[ty][tx + i]);\n    }\n\n    // Store the output value\n    if (valid) output[outputIndex] = value;\n  }\n}"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-cuda/FDTD3dReference.cu",
+                "source_sha256": "4e64f63f466b46ef2a2876a31ab7cd23ef8f03aa3697bceb7e7207955af7214d",
+                "start_line": 1,
+                "end_line": 178,
+                "exact_lines": "/*\n * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.\n *\n * Please refer to the NVIDIA end user license agreement (EULA) associated\n * with this source code for terms and conditions that govern your use of\n * this software. Any use, reproduction, disclosure, or distribution of\n * this software and related documentation outside the terms of the EULA\n * is strictly prohibited.\n *\n */\n\n\n#include \"shrUtils.h\"\n#include \"FDTD3dReference.h\"\n\nvoid generateRandomData(float *data, const int dimx, const int dimy, const int dimz, const float lowerBound, const float upperBound)\n{\n  srand(0);\n\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    for (int iy = 0 ; iy < dimy ; iy++)\n    {\n      for (int ix = 0 ; ix < dimx ; ix++)\n      {\n        *data = (float)(lowerBound + ((float)rand() / (float)RAND_MAX) * (upperBound - lowerBound));\n        ++data;\n      }\n    }\n  }\n}\n\nvoid generatePatternData(float *data, const int dimx, const int dimy, const int dimz, const float lowerBound, const float upperBound)\n{\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    for (int iy = 0 ; iy < dimy ; iy++)\n    {\n      for (int ix = 0 ; ix < dimx ; ix++)\n      {\n        *data = (float)(lowerBound + ((float)iz / (float)dimz) * (upperBound - lowerBound));\n        ++data;\n      }\n    }\n  }\n}\n\nbool fdtdReference(float *output, const float *input, const float *coeff, const int dimx, const int dimy, const int dimz, const int radius, const int timesteps)\n{\n  bool ok = true;\n  const int     outerDimx    = dimx + 2 * radius;\n  const int     outerDimy    = dimy + 2 * radius;\n  const int     outerDimz    = dimz + 2 * radius;\n  const size_t  volumeSize   = outerDimx * outerDimy * outerDimz;\n  const int     stride_y     = outerDimx;\n  const int     stride_z     = stride_y * outerDimy;\n  float        *intermediate = 0;\n  const float  *bufsrc       = 0;\n  float        *bufdst       = 0;\n  float        *bufdstnext   = 0;\n\n  // Allocate temporary buffer\n  if (ok)\n  {\n    shrLog(\" calloc intermediate\\n\");\n    if ((intermediate = (float *)calloc(volumeSize, sizeof(float))) == NULL)\n    {\n      shrLogEx(LOGBOTH | ERRORMSG, -3000, STDERROR);\n      shrLog(\"Insufficient memory for calloc intermediate, please try a smaller volume (use --help for syntax).\\n\");\n      ok = false;\n    }\n  }\n\n  // Decide which buffer to use first (result should end up in output)\n  if (ok)\n  {\n    if ((timesteps % 2) == 0)\n    {\n      bufsrc     = input;\n      bufdst     = intermediate;\n      bufdstnext = output;\n    }\n    else\n    {\n      bufsrc     = input;\n      bufdst     = output;\n      bufdstnext = intermediate;\n    }\n  }\n\n  // Run the FDTD (naive method)\n  if (ok)\n  {\n    shrLog(\" Host FDTD loop\\n\");\n    for (int it = 0 ; it < timesteps ; it++)\n    {\n      shrLog(\"\\tt = %d\\n\", it);\n      const float *src = bufsrc;\n      float *dst       = bufdst;\n      for (int iz = -radius ; iz < dimz + radius ; iz++)\n      {\n        for (int iy = -radius ; iy < dimy + radius ; iy++)\n        {\n          for (int ix = -radius ; ix < dimx + radius ; ix++)\n          {\n            if (ix >= 0 && ix < dimx && iy >= 0 && iy < dimy && iz >= 0 && iz < dimz)\n            {\n              float value = (*src) * coeff[0];\n              for(int ir = 1 ; ir <= radius ; ir++)\n              {\n                value += coeff[ir] * (*(src + ir) + *(src - ir));                       // horizontal\n                value += coeff[ir] * (*(src + ir * stride_y) + *(src - ir * stride_y)); // vertical\n                value += coeff[ir] * (*(src + ir * stride_z) + *(src - ir * stride_z)); // in front & behind\n              }\n              *dst = value;\n            }\n            else\n            {\n              *dst = *src;\n            }\n            ++dst;\n            ++src;\n          }\n        }\n      }\n      // Rotate buffers\n      float *tmp = bufdst;\n      bufdst     = bufdstnext;\n      bufdstnext = tmp;\n      bufsrc = (const float *)tmp;\n    }\n    shrLog(\"\\n\");\n  }\n\n  if (intermediate)\n    free(intermediate);\n\n  return ok;\n}\n\nbool compareData(const float *output, const float *reference, const int dimx, const int dimy, const int dimz, const int radius, const float tolerance)\n{\n  bool ok = true;\n\n  for (int iz = -radius ; iz < dimz + radius ; iz++)\n  {\n    for (int iy = -radius ; iy < dimy + radius ; iy++)\n    {\n      for (int ix = -radius ; ix < dimx + radius ; ix++)\n      {\n        if (ix >= 0 && ix < dimx && iy >= 0 && iy < dimy && iz >= 0 && iz < dimz)\n        {\n          // Determine the absolute difference\n          float difference = abs(*reference - *output);\n          float error;\n\n          // Determine the relative error\n          if (*reference != 0)\n            error = difference / *reference;\n          else\n            error = difference;\n\n          // Check the error is within the tolerance\n          if (error > tolerance)\n          {\n            ok = false;\n            shrLog(\"Data error at point (%d,%d,%d)\\t%f instead of %f\\n\", ix, iy, iz, *output, *reference);\n            return ok;\n          }\n        }\n        ++output;\n        ++reference;\n      }\n    }\n  }\n\n  return ok;\n}"
+              }
+            ],
+            "callsite_kind": "explicit_one_step_pretrial_warmup",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/plan.json.gz",
+              "sha256": "94397507f64832a660ae82e5a7d84f4cdfb50697f44381fbcf6dfafa1a4f1195"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/manifest.json",
+              "sha256": "58f14f58c9d4001cbd76354dbf5325db145f9f1781426f7f0081614722f1e249"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/derived.json.gz",
+              "sha256": "de9659404cfefce9bd1cb9b944cab0e79c53c5b888f0c1ff134f4c14f8275304"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        },
+        {
+          "stage_id": "fdtd3d/cuda/source_genesis_callsite_002",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+            "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+            "line": 20,
+            "text": "  for(int j=0;j<steps;j++){finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);std::swap(a,b);}"
+          },
+          "model_kernel_regex": "^finite_difference\\(float \\*, const float \\*, const float \\*, int, int, int, int\\)$",
+          "regex_status": "exact_source_family_not_actual_phase",
+          "semantic_family_in_primary_ROI": true,
+          "ROI_membership_status": "source_timed_closure_inclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+              "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+              "line": 20,
+              "text": "  for(int j=0;j<steps;j++){finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);std::swap(a,b);}"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_cuda.cu",
+                "source_sha256": "74875fa9a9abcc760ece3fd4a4b8eb50818ed8111d2168ade1fba1d306a64ad6",
+                "start_line": 1,
+                "end_line": 28,
+                "exact_lines": "// Study uses original tiled CUDA kernel and original independent CPU reference.\n#include \"../fdtd3d-cuda/FDTD3dGPU.cu\"\n#include \"../fdtd3d-cuda/FDTD3dReference.cu\"\n#include <vector>\n#include <cstdint>\n#include <cmath>\nint main(int argc,char**argv){\n int nx=argc>1?atoi(argv[1]):96,ny=argc>2?atoi(argv[2]):96,nz=argc>3?atoi(argv[3]):96,steps=argc>4?atoi(argv[4]):5,r=4;\n if(nx<96||ny<96||nz<96||nx%32||ny%8||steps<=0)return 2;\n int n=(nx+8)*(ny+8)*(nz+8),padding=28;std::vector<float> input(n),expected(n),got(n),coeff(5,.1f);uint32_t s=1;\n for(int i=0;i<n;i++){s=s*1103515245u+12345u;input[i]=float((s>>8)&0xffffffu)/16777216.f;}\n fdtdReference(expected.data(),input.data(),coeff.data(),nx,ny,nz,r,steps);\n float *a,*b,*c;cudaMalloc(&a,(n+padding)*sizeof(float));cudaMalloc(&b,(n+padding)*sizeof(float));cudaMalloc(&c,coeff.size()*sizeof(float));cudaMemcpy(c,coeff.data(),coeff.size()*sizeof(float),cudaMemcpyHostToDevice);\n dim3 block(32,8),grid(nx/32,ny/8);\n cudaMemset(a,0,(n+padding)*sizeof(float));cudaMemset(b,0,(n+padding)*sizeof(float));cudaMemcpy(a+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaMemcpy(b+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);\n finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);cudaDeviceSynchronize();bool allok=true;\n for(int t=1;t<=5;t++){\n  cudaMemcpy(a+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaMemcpy(b+padding,input.data(),n*sizeof(float),cudaMemcpyHostToDevice);cudaDeviceSynchronize();\n  auto start=std::chrono::steady_clock::now();\n  for(int j=0;j<steps;j++){finite_difference<<<grid,block>>>(b,a,c,nx,ny,nz,padding);std::swap(a,b);}\n  auto status=cudaDeviceSynchronize();double secs=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/steps;\n  cudaMemcpy(got.data(),a+padding,n*sizeof(float),cudaMemcpyDeviceToHost);double ma=0,mr=0;bool ok=status==cudaSuccess;\n  for(int i=0;i<n;i++){double e=fabs(double(got[i])-expected[i]);ma=std::max(ma,e);mr=std::max(mr,e/std::max(fabs(double(expected[i])),double(1.1920929e-7f)));ok &= std::isfinite(got[i])&&e<=1.e-5+1.e-4*fabs(double(expected[i]));}\n  allok &=ok;char file[80];snprintf(file,sizeof(file),\"fdtd3d_trial%d.bin\",t);FILE*f=fopen(file,\"wb\");fwrite(got.data(),sizeof(float),n,f);fclose(f);\n  printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",t,secs,ok?\"true\":\"false\",n,ma,mr,steps,file,n);\n }\n cudaFree(a);cudaFree(b);cudaFree(c);puts(allok?\"PASS\":\"FAIL\");return allok?0:1;\n}"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-cuda/FDTD3dGPU.cu",
+                "source_sha256": "0cd091bbc48150158ecbeb285fabcdf9498858726a6987db5d39aa56d4840615",
+                "start_line": 19,
+                "end_line": 129,
+                "exact_lines": "__global__ void finite_difference(\n        float*__restrict__ output,\n  const float*__restrict__ input,\n  const float*__restrict__ coef, \n  const int dimx, const int dimy, const int dimz,\n  const int padding)\n{\n  __shared__ float tile[k_blockDimMaxY + 2 * k_radius_default][k_blockDimMaxX + 2 * k_radius_default];\n\n  bool valid = true;\n  const int ltidx = threadIdx.x;\n  const int ltidy = threadIdx.y;\n  const int workx = blockDim.x;\n  const int worky = blockDim.y;\n  const int gtidx = blockIdx.x * workx + ltidx;\n  const int gtidy = blockIdx.y * worky + ltidy;\n\n  const int stride_y = dimx + 2 * k_radius_default;\n  const int stride_z = stride_y * (dimy + 2 * k_radius_default);\n\n  int inputIndex  = 0;\n  int outputIndex = 0;\n\n  // Advance inputIndex to start of inner volume\n  inputIndex += k_radius_default * stride_y + k_radius_default + padding;\n\n  // Advance inputIndex to target element\n  inputIndex += gtidy * stride_y + gtidx;\n\n  float infront[k_radius_default];\n  float behind[k_radius_default];\n  float current;\n\n  const int tx = ltidx + k_radius_default;\n  const int ty = ltidy + k_radius_default;\n\n  if (gtidx >= dimx) valid = false;\n  if (gtidy >= dimy) valid = false;\n\n  // For simplicity we assume that the global size is equal to the actual\n  // problem size; since the global size must be a multiple of the local size\n  // this means the problem size must be a multiple of the local size (or\n  // padded to meet this constraint).\n  // Preload the \"infront\" and \"behind\" data\n  for (int i = k_radius_default - 2 ; i >= 0 ; i--)\n  {\n    behind[i] = input[inputIndex];\n    inputIndex += stride_z;\n  }\n\n  current = input[inputIndex];\n  outputIndex = inputIndex;\n  inputIndex += stride_z;\n\n  for (int i = 0 ; i < k_radius_default ; i++)\n  {\n    infront[i] = input[inputIndex];\n    inputIndex += stride_z;\n  }\n\n  // Step through the xy-planes\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    // Advance the slice (move the thread-front)\n    for (int i = k_radius_default - 1 ; i > 0 ; i--)\n      behind[i] = behind[i - 1];\n    behind[0] = current;\n    current = infront[0];\n    for (int i = 0 ; i < k_radius_default - 1 ; i++)\n      infront[i] = infront[i + 1];\n    infront[k_radius_default - 1] = input[inputIndex];\n\n    inputIndex  += stride_z;\n    outputIndex += stride_z;\n    __syncthreads();\n\n      // Note that for the work items on the boundary of the problem, the\n      // supplied index when reading the halo (below) may wrap to the\n      // previous/next row or even the previous/next xy-plane. This is\n      // acceptable since a) we disable the output write for these work\n      // items and b) there is at least one xy-plane before/after the\n      // current plane, so the access will be within bounds.\n\n      // Update the data slice in the local tile\n      // Halo above & below\n      if (ltidy < k_radius_default)\n      {\n        tile[ltidy][tx]                  = input[outputIndex - k_radius_default * stride_y];\n        tile[ltidy + worky + k_radius_default][tx] = input[outputIndex + worky * stride_y];\n      }\n    // Halo left & right\n    if (ltidx < k_radius_default)\n    {\n      tile[ty][ltidx]                  = input[outputIndex - k_radius_default];\n      tile[ty][ltidx + workx + k_radius_default] = input[outputIndex + workx];\n    }\n    tile[ty][tx] = current;\n    __syncthreads();\n\n      // Compute the output value\n      float value = coef[0] * current;\n    for (int i = 1 ; i <= k_radius_default ; i++)\n    {\n      value += coef[i] * (infront[i-1] + behind[i-1] + tile[ty - i][tx] + \n          tile[ty + i][tx] + tile[ty][tx - i] + tile[ty][tx + i]);\n    }\n\n    // Store the output value\n    if (valid) output[outputIndex] = value;\n  }\n}"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-cuda/FDTD3dReference.cu",
+                "source_sha256": "4e64f63f466b46ef2a2876a31ab7cd23ef8f03aa3697bceb7e7207955af7214d",
+                "start_line": 1,
+                "end_line": 178,
+                "exact_lines": "/*\n * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.\n *\n * Please refer to the NVIDIA end user license agreement (EULA) associated\n * with this source code for terms and conditions that govern your use of\n * this software. Any use, reproduction, disclosure, or distribution of\n * this software and related documentation outside the terms of the EULA\n * is strictly prohibited.\n *\n */\n\n\n#include \"shrUtils.h\"\n#include \"FDTD3dReference.h\"\n\nvoid generateRandomData(float *data, const int dimx, const int dimy, const int dimz, const float lowerBound, const float upperBound)\n{\n  srand(0);\n\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    for (int iy = 0 ; iy < dimy ; iy++)\n    {\n      for (int ix = 0 ; ix < dimx ; ix++)\n      {\n        *data = (float)(lowerBound + ((float)rand() / (float)RAND_MAX) * (upperBound - lowerBound));\n        ++data;\n      }\n    }\n  }\n}\n\nvoid generatePatternData(float *data, const int dimx, const int dimy, const int dimz, const float lowerBound, const float upperBound)\n{\n  for (int iz = 0 ; iz < dimz ; iz++)\n  {\n    for (int iy = 0 ; iy < dimy ; iy++)\n    {\n      for (int ix = 0 ; ix < dimx ; ix++)\n      {\n        *data = (float)(lowerBound + ((float)iz / (float)dimz) * (upperBound - lowerBound));\n        ++data;\n      }\n    }\n  }\n}\n\nbool fdtdReference(float *output, const float *input, const float *coeff, const int dimx, const int dimy, const int dimz, const int radius, const int timesteps)\n{\n  bool ok = true;\n  const int     outerDimx    = dimx + 2 * radius;\n  const int     outerDimy    = dimy + 2 * radius;\n  const int     outerDimz    = dimz + 2 * radius;\n  const size_t  volumeSize   = outerDimx * outerDimy * outerDimz;\n  const int     stride_y     = outerDimx;\n  const int     stride_z     = stride_y * outerDimy;\n  float        *intermediate = 0;\n  const float  *bufsrc       = 0;\n  float        *bufdst       = 0;\n  float        *bufdstnext   = 0;\n\n  // Allocate temporary buffer\n  if (ok)\n  {\n    shrLog(\" calloc intermediate\\n\");\n    if ((intermediate = (float *)calloc(volumeSize, sizeof(float))) == NULL)\n    {\n      shrLogEx(LOGBOTH | ERRORMSG, -3000, STDERROR);\n      shrLog(\"Insufficient memory for calloc intermediate, please try a smaller volume (use --help for syntax).\\n\");\n      ok = false;\n    }\n  }\n\n  // Decide which buffer to use first (result should end up in output)\n  if (ok)\n  {\n    if ((timesteps % 2) == 0)\n    {\n      bufsrc     = input;\n      bufdst     = intermediate;\n      bufdstnext = output;\n    }\n    else\n    {\n      bufsrc     = input;\n      bufdst     = output;\n      bufdstnext = intermediate;\n    }\n  }\n\n  // Run the FDTD (naive method)\n  if (ok)\n  {\n    shrLog(\" Host FDTD loop\\n\");\n    for (int it = 0 ; it < timesteps ; it++)\n    {\n      shrLog(\"\\tt = %d\\n\", it);\n      const float *src = bufsrc;\n      float *dst       = bufdst;\n      for (int iz = -radius ; iz < dimz + radius ; iz++)\n      {\n        for (int iy = -radius ; iy < dimy + radius ; iy++)\n        {\n          for (int ix = -radius ; ix < dimx + radius ; ix++)\n          {\n            if (ix >= 0 && ix < dimx && iy >= 0 && iy < dimy && iz >= 0 && iz < dimz)\n            {\n              float value = (*src) * coeff[0];\n              for(int ir = 1 ; ir <= radius ; ir++)\n              {\n                value += coeff[ir] * (*(src + ir) + *(src - ir));                       // horizontal\n                value += coeff[ir] * (*(src + ir * stride_y) + *(src - ir * stride_y)); // vertical\n                value += coeff[ir] * (*(src + ir * stride_z) + *(src - ir * stride_z)); // in front & behind\n              }\n              *dst = value;\n            }\n            else\n            {\n              *dst = *src;\n            }\n            ++dst;\n            ++src;\n          }\n        }\n      }\n      // Rotate buffers\n      float *tmp = bufdst;\n      bufdst     = bufdstnext;\n      bufdstnext = tmp;\n      bufsrc = (const float *)tmp;\n    }\n    shrLog(\"\\n\");\n  }\n\n  if (intermediate)\n    free(intermediate);\n\n  return ok;\n}\n\nbool compareData(const float *output, const float *reference, const int dimx, const int dimy, const int dimz, const int radius, const float tolerance)\n{\n  bool ok = true;\n\n  for (int iz = -radius ; iz < dimz + radius ; iz++)\n  {\n    for (int iy = -radius ; iy < dimy + radius ; iy++)\n    {\n      for (int ix = -radius ; ix < dimx + radius ; ix++)\n      {\n        if (ix >= 0 && ix < dimx && iy >= 0 && iy < dimy && iz >= 0 && iz < dimz)\n        {\n          // Determine the absolute difference\n          float difference = abs(*reference - *output);\n          float error;\n\n          // Determine the relative error\n          if (*reference != 0)\n            error = difference / *reference;\n          else\n            error = difference;\n\n          // Check the error is within the tolerance\n          if (error > tolerance)\n          {\n            ok = false;\n            shrLog(\"Data error at point (%d,%d,%d)\\t%f instead of %f\\n\", ix, iy, iz, *output, *reference);\n            return ok;\n          }\n        }\n        ++output;\n        ++reference;\n      }\n    }\n  }\n\n  return ok;\n}"
+              }
+            ],
+            "callsite_kind": "five_step_timed_callback_pingpong",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/plan.json.gz",
+              "sha256": "94397507f64832a660ae82e5a7d84f4cdfb50697f44381fbcf6dfafa1a4f1195"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/manifest.json",
+              "sha256": "58f14f58c9d4001cbd76354dbf5325db145f9f1781426f7f0081614722f1e249"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda/batch003-fdtd3d/derived.json.gz",
+              "sha256": "de9659404cfefce9bd1cb9b944cab0e79c53c5b888f0c1ff134f4c14f8275304"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        }
+      ]
+    },
+    {
+      "benchmark": "fdtd3d",
+      "model": "cuda_jl",
+      "configuration_id": "lcg_float32_dim96_radius4_steps5_v1",
+      "outcome": "named_numerical",
+      "qualification": "ordinary_named",
+      "reference_result": {
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T225303839915Z_fdtd3d/result.json",
+        "sha256": "c98183747e74de1ade443d4d49a35581011c9d3527569113aa50742b925f9d58"
+      },
+      "raw_config_sha256": "155e597bb7cf7de8b7a944dfab8d711a6a4edf37b2727fe2fe4a2ce4f51c6c69",
+      "profile_target_command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-cuda.jl/study.jl",
+        "96",
+        "96",
+        "96",
+        "5"
+      ],
+      "primary_ROI_label": "kernel_launch_loop_per_internal_repeat",
+      "sample_in_primary_timed_invocation": null,
+      "whole_elapsed_ROI_claim": false,
+      "causal_claim": false,
+      "stages": [
+        {
+          "stage_id": "fdtd3d/cuda_jl/source_genesis_callsite_001",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 45,
+            "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+          },
+          "model_kernel_regex": null,
+          "regex_status": "disabled_explicit_warmup_callsite",
+          "semantic_family_in_primary_ROI": false,
+          "ROI_membership_status": "source_setup_exclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 45,
+              "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-cuda.jl/study.jl",
+                "source_sha256": "187a9037170942b31f07efdbe6e945ad5392b747b23f360dbe6b7ad467e192f3",
+                "start_line": 1,
+                "end_line": 12,
+                "exact_lines": "using CUDA\nsource=replace(read(joinpath(@__DIR__,\"main.jl\"),String),\"exit(main())\"=>\"\")\ninclude_string(Main,source,joinpath(@__DIR__,\"main.jl\"))\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\nfunction prepare(a,b,c,nx,ny,nz,r)\n    function launch!(out,inp)\n        @cuda threads=(8,8,4) blocks=(cld(nx,8),cld(ny,8),cld(nz,4)) fdtd_kernel!(out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r))\n        nothing\n    end\n    launch!\nend\nexit(study_main(prepare))"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-cuda.jl/main.jl",
+                "source_sha256": "c8f8a4bcea54e6b01f8da8f81a194cef731ba87c5f85a1408e96be78fc603ab1",
+                "start_line": 1,
+                "end_line": 129,
+                "exact_lines": "using CUDA\nusing Printf\n\nconst MEMORY_SIZE = 134_217_728\nconst RADIUS_DEFAULT = 4\nconst DIM_MIN = 96\nconst DIM_MAX = 376\nconst TIMESTEPS_DEFAULT = 5\nconst THREADS = (8, 8, 4)\n\nfunction parse_arg(name::String, default::Int)\n    prefix = \"--\" * name * \"=\"\n    for arg in ARGS\n        startswith(arg, prefix) && return parse(Int, arg[length(prefix) + 1:end])\n    end\n    return default\nend\n\nfunction default_dim()\n    memsize = MEMORY_SIZE \u00f7 2\n    dim = floor(Int, (memsize / (2.0 * sizeof(Float32)))^(1 / 3))\n    round_target = 128 \u00f7 sizeof(Float32)\n    dim = (dim \u00f7 round_target) * round_target\n    return min(dim - 2 * RADIUS_DEFAULT, DIM_MAX)\nend\n\nfunction lcg_data(n::Int)\n    out = Vector{Float32}(undef, n)\n    state = UInt32(1)\n    for i in 1:n\n        state = state * UInt32(1103515245) + UInt32(12345)\n        out[i] = Float32((state >> UInt32(8)) & UInt32(0x00ffffff)) / Float32(0x01000000)\n    end\n    return out\nend\n\nfunction fdtd_kernel!(out, inp, coeff, dimx::Int32, dimy::Int32, dimz::Int32, radius::Int32)\n    ox = dimx + Int32(2) * radius\n    oy = dimy + Int32(2) * radius\n    x = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x\n    y = (blockIdx().y - Int32(1)) * blockDim().y + threadIdx().y\n    z = (blockIdx().z - Int32(1)) * blockDim().z + threadIdx().z\n    if x <= dimx && y <= dimy && z <= dimz\n        ix = x + radius\n        iy = y + radius\n        iz = z + radius\n        idx = ix + (iy - Int32(1)) * ox + (iz - Int32(1)) * ox * oy\n        value = coeff[1] * inp[idx]\n        r = Int32(1)\n        while r <= radius\n            c = coeff[Int(r + Int32(1))]\n            value += c * (inp[idx + r] + inp[idx - r])\n            value += c * (inp[idx + r * ox] + inp[idx - r * ox])\n            value += c * (inp[idx + r * ox * oy] + inp[idx - r * ox * oy])\n            r += Int32(1)\n        end\n        out[idx] = value\n    end\n    return\nend\n\nfunction run_fdtd!(a, b, coeff, dimx::Int, dimy::Int, dimz::Int, radius::Int, timesteps::Int)\n    blocks = (cld(dimx, THREADS[1]), cld(dimy, THREADS[2]), cld(dimz, THREADS[3]))\n    CUDA.synchronize()\n    t0 = time_ns()\n    for _ in 1:timesteps\n        @cuda threads=THREADS blocks=blocks fdtd_kernel!(b, a, coeff, Int32(dimx), Int32(dimy), Int32(dimz), Int32(radius))\n        a, b = b, a\n    end\n    CUDA.synchronize()\n    return a, (time_ns() - t0) * 1e-9 / max(timesteps, 1)\nend\n\nfunction compare_inner(a, b, dimx::Int, dimy::Int, dimz::Int, radius::Int; tolerance=1.0f-4)\n    ox = dimx + 2 * radius\n    oy = dimy + 2 * radius\n    for z in 1:dimz, y in 1:dimy, x in 1:dimx\n        idx = (x + radius) + (y + radius - 1) * ox + (z + radius - 1) * ox * oy\n        ref = b[idx]\n        diff = abs(a[idx] - ref)\n        err = ref != 0.0f0 ? diff / abs(ref) : diff\n        err > tolerance && return false\n    end\n    return true\nend\n\nfunction main()\n    dd = default_dim()\n    dimx = parse_arg(\"dimx\", dd)\n    dimy = parse_arg(\"dimy\", dd)\n    dimz = parse_arg(\"dimz\", dd)\n    timesteps = parse_arg(\"timesteps\", TIMESTEPS_DEFAULT)\n    radius = parse_arg(\"radius\", RADIUS_DEFAULT)\n\n    if dimx < DIM_MIN || dimy < DIM_MIN || dimz < DIM_MIN || dimx > DIM_MAX || dimy > DIM_MAX || dimz > DIM_MAX\n        println(\"FAIL\")\n        return 1\n    end\n\n    ox = dimx + 2 * radius\n    oy = dimy + 2 * radius\n    oz = dimz + 2 * radius\n    volume = ox * oy * oz\n    input = lcg_data(volume)\n    coeff = fill(Float32(0.1), radius + 1)\n\n    @printf(\"FDTD on %d x %d x %d volume with symmetric filter radius %d for %d timesteps...\\n\\n\",\n            dimx, dimy, dimz, radius, timesteps)\n\n    d_a = CuArray(input)\n    d_b = CuArray(input)\n    d_coeff = CuArray(coeff)\n    result, avg = run_fdtd!(d_a, d_b, d_coeff, dimx, dimy, dimz, radius, timesteps)\n    @printf(\"Average kernel execution time %f (s)\\n\", avg)\n\n    # Independent repeat gives a deterministic device-side verifier without\n    # the cost of a full scalar Julia CPU reference for the large default case.\n    r_a = CuArray(input)\n    r_b = CuArray(input)\n    repeat_result, _ = run_fdtd!(r_a, r_b, d_coeff, dimx, dimy, dimz, radius, timesteps)\n\n    host_result = Array(result)\n    host_repeat = Array(repeat_result)\n    ok = compare_inner(host_result, host_repeat, dimx, dimy, dimz, radius)\n    println(ok ? \"PASS\" : \"FAIL\")\n    return ok ? 0 : 1\nend\n\nexit(main())"
+              }
+            ],
+            "callsite_kind": "explicit_one_step_pretrial_warmup",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/plan.json.gz",
+              "sha256": "6b4143916c79aff29f1f04797bb345627cc0b775a121b7b441fa64a00f59cd5f"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/manifest.json",
+              "sha256": "9894d4d569f4633b89418cb41a8b2aebaeda5303dbcf95a2106263f64f2547c8"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/derived.json.gz",
+              "sha256": "d416c5c54f85c2051fe1e81f947eb43e6f51bb4e568d83d450896c62811301c8"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        },
+        {
+          "stage_id": "fdtd3d/cuda_jl/source_genesis_callsite_002",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 49,
+            "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+          },
+          "model_kernel_regex": "^fdtd_kernel_\\(CuDeviceArray<Float32, \\(int\\)1, \\(int\\)1>, CuDeviceArray<Float32, \\(int\\)1, \\(int\\)1>, CuDeviceArray<Float32, \\(int\\)1, \\(int\\)1>, Int32, Int32, Int32, Int32\\)$",
+          "regex_status": "exact_source_family_not_actual_phase",
+          "semantic_family_in_primary_ROI": true,
+          "ROI_membership_status": "source_timed_closure_inclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 49,
+              "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-cuda.jl/study.jl",
+                "source_sha256": "187a9037170942b31f07efdbe6e945ad5392b747b23f360dbe6b7ad467e192f3",
+                "start_line": 1,
+                "end_line": 12,
+                "exact_lines": "using CUDA\nsource=replace(read(joinpath(@__DIR__,\"main.jl\"),String),\"exit(main())\"=>\"\")\ninclude_string(Main,source,joinpath(@__DIR__,\"main.jl\"))\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\nfunction prepare(a,b,c,nx,ny,nz,r)\n    function launch!(out,inp)\n        @cuda threads=(8,8,4) blocks=(cld(nx,8),cld(ny,8),cld(nz,4)) fdtd_kernel!(out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r))\n        nothing\n    end\n    launch!\nend\nexit(study_main(prepare))"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-cuda.jl/main.jl",
+                "source_sha256": "c8f8a4bcea54e6b01f8da8f81a194cef731ba87c5f85a1408e96be78fc603ab1",
+                "start_line": 1,
+                "end_line": 129,
+                "exact_lines": "using CUDA\nusing Printf\n\nconst MEMORY_SIZE = 134_217_728\nconst RADIUS_DEFAULT = 4\nconst DIM_MIN = 96\nconst DIM_MAX = 376\nconst TIMESTEPS_DEFAULT = 5\nconst THREADS = (8, 8, 4)\n\nfunction parse_arg(name::String, default::Int)\n    prefix = \"--\" * name * \"=\"\n    for arg in ARGS\n        startswith(arg, prefix) && return parse(Int, arg[length(prefix) + 1:end])\n    end\n    return default\nend\n\nfunction default_dim()\n    memsize = MEMORY_SIZE \u00f7 2\n    dim = floor(Int, (memsize / (2.0 * sizeof(Float32)))^(1 / 3))\n    round_target = 128 \u00f7 sizeof(Float32)\n    dim = (dim \u00f7 round_target) * round_target\n    return min(dim - 2 * RADIUS_DEFAULT, DIM_MAX)\nend\n\nfunction lcg_data(n::Int)\n    out = Vector{Float32}(undef, n)\n    state = UInt32(1)\n    for i in 1:n\n        state = state * UInt32(1103515245) + UInt32(12345)\n        out[i] = Float32((state >> UInt32(8)) & UInt32(0x00ffffff)) / Float32(0x01000000)\n    end\n    return out\nend\n\nfunction fdtd_kernel!(out, inp, coeff, dimx::Int32, dimy::Int32, dimz::Int32, radius::Int32)\n    ox = dimx + Int32(2) * radius\n    oy = dimy + Int32(2) * radius\n    x = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x\n    y = (blockIdx().y - Int32(1)) * blockDim().y + threadIdx().y\n    z = (blockIdx().z - Int32(1)) * blockDim().z + threadIdx().z\n    if x <= dimx && y <= dimy && z <= dimz\n        ix = x + radius\n        iy = y + radius\n        iz = z + radius\n        idx = ix + (iy - Int32(1)) * ox + (iz - Int32(1)) * ox * oy\n        value = coeff[1] * inp[idx]\n        r = Int32(1)\n        while r <= radius\n            c = coeff[Int(r + Int32(1))]\n            value += c * (inp[idx + r] + inp[idx - r])\n            value += c * (inp[idx + r * ox] + inp[idx - r * ox])\n            value += c * (inp[idx + r * ox * oy] + inp[idx - r * ox * oy])\n            r += Int32(1)\n        end\n        out[idx] = value\n    end\n    return\nend\n\nfunction run_fdtd!(a, b, coeff, dimx::Int, dimy::Int, dimz::Int, radius::Int, timesteps::Int)\n    blocks = (cld(dimx, THREADS[1]), cld(dimy, THREADS[2]), cld(dimz, THREADS[3]))\n    CUDA.synchronize()\n    t0 = time_ns()\n    for _ in 1:timesteps\n        @cuda threads=THREADS blocks=blocks fdtd_kernel!(b, a, coeff, Int32(dimx), Int32(dimy), Int32(dimz), Int32(radius))\n        a, b = b, a\n    end\n    CUDA.synchronize()\n    return a, (time_ns() - t0) * 1e-9 / max(timesteps, 1)\nend\n\nfunction compare_inner(a, b, dimx::Int, dimy::Int, dimz::Int, radius::Int; tolerance=1.0f-4)\n    ox = dimx + 2 * radius\n    oy = dimy + 2 * radius\n    for z in 1:dimz, y in 1:dimy, x in 1:dimx\n        idx = (x + radius) + (y + radius - 1) * ox + (z + radius - 1) * ox * oy\n        ref = b[idx]\n        diff = abs(a[idx] - ref)\n        err = ref != 0.0f0 ? diff / abs(ref) : diff\n        err > tolerance && return false\n    end\n    return true\nend\n\nfunction main()\n    dd = default_dim()\n    dimx = parse_arg(\"dimx\", dd)\n    dimy = parse_arg(\"dimy\", dd)\n    dimz = parse_arg(\"dimz\", dd)\n    timesteps = parse_arg(\"timesteps\", TIMESTEPS_DEFAULT)\n    radius = parse_arg(\"radius\", RADIUS_DEFAULT)\n\n    if dimx < DIM_MIN || dimy < DIM_MIN || dimz < DIM_MIN || dimx > DIM_MAX || dimy > DIM_MAX || dimz > DIM_MAX\n        println(\"FAIL\")\n        return 1\n    end\n\n    ox = dimx + 2 * radius\n    oy = dimy + 2 * radius\n    oz = dimz + 2 * radius\n    volume = ox * oy * oz\n    input = lcg_data(volume)\n    coeff = fill(Float32(0.1), radius + 1)\n\n    @printf(\"FDTD on %d x %d x %d volume with symmetric filter radius %d for %d timesteps...\\n\\n\",\n            dimx, dimy, dimz, radius, timesteps)\n\n    d_a = CuArray(input)\n    d_b = CuArray(input)\n    d_coeff = CuArray(coeff)\n    result, avg = run_fdtd!(d_a, d_b, d_coeff, dimx, dimy, dimz, radius, timesteps)\n    @printf(\"Average kernel execution time %f (s)\\n\", avg)\n\n    # Independent repeat gives a deterministic device-side verifier without\n    # the cost of a full scalar Julia CPU reference for the large default case.\n    r_a = CuArray(input)\n    r_b = CuArray(input)\n    repeat_result, _ = run_fdtd!(r_a, r_b, d_coeff, dimx, dimy, dimz, radius, timesteps)\n\n    host_result = Array(result)\n    host_repeat = Array(repeat_result)\n    ok = compare_inner(host_result, host_repeat, dimx, dimy, dimz, radius)\n    println(ok ? \"PASS\" : \"FAIL\")\n    return ok ? 0 : 1\nend\n\nexit(main())"
+              }
+            ],
+            "callsite_kind": "five_step_timed_callback_pingpong",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/plan.json.gz",
+              "sha256": "6b4143916c79aff29f1f04797bb345627cc0b775a121b7b441fa64a00f59cd5f"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/manifest.json",
+              "sha256": "9894d4d569f4633b89418cb41a8b2aebaeda5303dbcf95a2106263f64f2547c8"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/cuda_jl/batch003-fdtd3d/derived.json.gz",
+              "sha256": "d416c5c54f85c2051fe1e81f947eb43e6f51bb4e568d83d450896c62811301c8"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        }
+      ]
+    },
+    {
+      "benchmark": "fdtd3d",
+      "model": "ka",
+      "configuration_id": "lcg_float32_dim96_radius4_steps5_v1",
+      "outcome": "named_numerical",
+      "qualification": "ordinary_named",
+      "reference_result": {
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T225303839915Z_fdtd3d/result.json",
+        "sha256": "c98183747e74de1ade443d4d49a35581011c9d3527569113aa50742b925f9d58"
+      },
+      "raw_config_sha256": "155e597bb7cf7de8b7a944dfab8d711a6a4edf37b2727fe2fe4a2ce4f51c6c69",
+      "profile_target_command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_ka_env",
+        "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-KA/main.jl",
+        "96",
+        "96",
+        "96",
+        "5"
+      ],
+      "primary_ROI_label": "kernel_launch_loop_per_internal_repeat",
+      "sample_in_primary_timed_invocation": null,
+      "whole_elapsed_ROI_claim": false,
+      "causal_claim": false,
+      "stages": [
+        {
+          "stage_id": "fdtd3d/ka/source_genesis_callsite_001",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 45,
+            "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+          },
+          "model_kernel_regex": null,
+          "regex_status": "disabled_explicit_warmup_callsite",
+          "semantic_family_in_primary_ROI": false,
+          "ROI_membership_status": "source_setup_exclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 45,
+              "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-KA/main.jl",
+                "source_sha256": "7604fa27c55dddd85d68d4039e04710110b0d53a090b7c8279abeeef0b0c5bf6",
+                "start_line": 1,
+                "end_line": 25,
+                "exact_lines": "using CUDA\nusing KernelAbstractions\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\n@kernel function fdtd!(out,inp,coeff,nx,ny,nz,r)\n    x,y,z=@index(Global,NTuple)\n    if x<=nx && y<=ny && z<=nz\n        ox=nx+2r;oy=ny+2r;sz=ox*oy\n        i=x+r+(y+r-1)*ox+(z+r-1)*sz\n        @inbounds begin\n            value=coeff[1]*inp[i]\n            for k in 1:r\n                c=coeff[k+1]\n                value+=c*(inp[i+k]+inp[i-k])\n                value+=c*(inp[i+k*ox]+inp[i-k*ox])\n                value+=c*(inp[i+k*sz]+inp[i-k*sz])\n            end\n            out[i]=value\n        end\n    end\nend\nfunction prepare(a,b,c,nx,ny,nz,r)\n    kernel=fdtd!(KernelAbstractions.get_backend(a),(8,8,4))\n    (out,inp)->kernel(out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r);ndrange=(nx,ny,nz))\nend\nexit(study_main(prepare))"
+              }
+            ],
+            "callsite_kind": "explicit_one_step_pretrial_warmup",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/plan.json.gz",
+              "sha256": "44acc1540434f56ba648470bc13956fe319ed6c6aa5b974c8c0b5bfd7fb7d607"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/manifest.json",
+              "sha256": "49586c2f2fcd436732418c437858aee4bc4d48c50d6a526b60679047d46950ec"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/derived.json.gz",
+              "sha256": "2fceec612c0fa7c59f4e3a4e260f5abd5a18e447061e86e45c172fc185114995"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        },
+        {
+          "stage_id": "fdtd3d/ka/source_genesis_callsite_002",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 49,
+            "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+          },
+          "model_kernel_regex": "^gpu_fdtd_\\(CompilerMetadata<",
+          "regex_status": "exact_source_family_not_actual_phase",
+          "semantic_family_in_primary_ROI": true,
+          "ROI_membership_status": "source_timed_closure_inclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 49,
+              "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-KA/main.jl",
+                "source_sha256": "7604fa27c55dddd85d68d4039e04710110b0d53a090b7c8279abeeef0b0c5bf6",
+                "start_line": 1,
+                "end_line": 25,
+                "exact_lines": "using CUDA\nusing KernelAbstractions\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\n@kernel function fdtd!(out,inp,coeff,nx,ny,nz,r)\n    x,y,z=@index(Global,NTuple)\n    if x<=nx && y<=ny && z<=nz\n        ox=nx+2r;oy=ny+2r;sz=ox*oy\n        i=x+r+(y+r-1)*ox+(z+r-1)*sz\n        @inbounds begin\n            value=coeff[1]*inp[i]\n            for k in 1:r\n                c=coeff[k+1]\n                value+=c*(inp[i+k]+inp[i-k])\n                value+=c*(inp[i+k*ox]+inp[i-k*ox])\n                value+=c*(inp[i+k*sz]+inp[i-k*sz])\n            end\n            out[i]=value\n        end\n    end\nend\nfunction prepare(a,b,c,nx,ny,nz,r)\n    kernel=fdtd!(KernelAbstractions.get_backend(a),(8,8,4))\n    (out,inp)->kernel(out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r);ndrange=(nx,ny,nz))\nend\nexit(study_main(prepare))"
+              }
+            ],
+            "callsite_kind": "five_step_timed_callback_pingpong",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/plan.json.gz",
+              "sha256": "44acc1540434f56ba648470bc13956fe319ed6c6aa5b974c8c0b5bfd7fb7d607"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/manifest.json",
+              "sha256": "49586c2f2fcd436732418c437858aee4bc4d48c50d6a526b60679047d46950ec"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/ka/batch003-fdtd3d/derived.json.gz",
+              "sha256": "2fceec612c0fa7c59f4e3a4e260f5abd5a18e447061e86e45c172fc185114995"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        }
+      ]
+    },
+    {
+      "benchmark": "fdtd3d",
+      "model": "jacc",
+      "configuration_id": "lcg_float32_dim96_radius4_steps5_v1",
+      "outcome": "named_numerical",
+      "qualification": "ordinary_named",
+      "reference_result": {
+        "path": "/home/imo/HeCBench_julia/.porting-state/portable_julia/runs/20261016T225303839915Z_fdtd3d/result.json",
+        "sha256": "c98183747e74de1ade443d4d49a35581011c9d3527569113aa50742b925f9d58"
+      },
+      "raw_config_sha256": "155e597bb7cf7de8b7a944dfab8d711a6a4edf37b2727fe2fe4a2ce4f51c6c69",
+      "profile_target_command": [
+        "julia",
+        "--project=/home/imo/HeCBench_julia/src/_julia_jacc_env",
+        "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-JACC/main.jl",
+        "96",
+        "96",
+        "96",
+        "5"
+      ],
+      "primary_ROI_label": "kernel_launch_loop_per_internal_repeat",
+      "sample_in_primary_timed_invocation": null,
+      "whole_elapsed_ROI_claim": false,
+      "causal_claim": false,
+      "stages": [
+        {
+          "stage_id": "fdtd3d/jacc/source_genesis_callsite_001",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 45,
+            "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+          },
+          "model_kernel_regex": null,
+          "regex_status": "disabled_explicit_warmup_callsite",
+          "semantic_family_in_primary_ROI": false,
+          "ROI_membership_status": "source_setup_exclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 45,
+              "text": "    run_steps!(launch!,a,b,1);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-JACC/main.jl",
+                "source_sha256": "9813dac694c3b05d7bf1d5e466a16bca85b43e031ca2420f2785632a96b1a58c",
+                "start_line": 1,
+                "end_line": 26,
+                "exact_lines": "using CUDA\nusing JACC\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\nfunction fdtd!(x,y,z,out,inp,coeff,nx,ny,nz,r)\n    if x<=nx && y<=ny && z<=nz\n        ox=nx+2r;oy=ny+2r;sz=ox*oy\n        i=x+r+(y+r-1)*ox+(z+r-1)*sz\n        @inbounds begin\n            value=coeff[1]*inp[i]\n            for k in 1:r\n                c=coeff[k+1]\n                value+=c*(inp[i+k]+inp[i-k])\n                value+=c*(inp[i+k*ox]+inp[i-k*ox])\n                value+=c*(inp[i+k*sz]+inp[i-k*sz])\n            end\n            out[i]=value\n        end\n    end\n    return nothing\nend\nfunction prepare(a,b,c,nx,ny,nz,r)\n    backend=JACC.get_backend(:cuda)\n    spec=JACC.LaunchSpec{typeof(backend)}(;threads=(8,8,4),blocks=(cld(nx,8),cld(ny,8),cld(nz,4)),shmem_size=0,sync=false)\n    (out,inp)->JACC.parallel_for(fdtd!,spec,(nx,ny,nz),out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r))\nend\nexit(study_main(prepare))"
+              }
+            ],
+            "callsite_kind": "explicit_one_step_pretrial_warmup",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/plan.json.gz",
+              "sha256": "3b8448da0fdbe046d7cd2f70b42057c300509eb5aabf23adf4fbf5b276780d51"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/manifest.json",
+              "sha256": "9f59ef3203b02fbfe4bb2dd8a8cfbfc07973fbb40f0c6d760b36e8c4bf5cbb90"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/derived.json.gz",
+              "sha256": "9b11b826639c9567e1cca107342d5f9e36fd9e12dd6231223f4f16b028d48629"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        },
+        {
+          "stage_id": "fdtd3d/jacc/source_genesis_callsite_002",
+          "stage_kind": "new_source_callsite_proposal",
+          "callsite": {
+            "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+            "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+            "line": 49,
+            "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+          },
+          "model_kernel_regex": "^_parallel_for_cuda_LMN\\(Tuple<Int64, Int64, Int64>, fdtd_, CuDeviceArray<Float32,",
+          "regex_status": "exact_source_family_not_actual_phase",
+          "semantic_family_in_primary_ROI": true,
+          "ROI_membership_status": "source_timed_closure_inclusion_proved",
+          "ROI_membership_proof": {
+            "proof_kind": "new_source_grounded_callsite_genesis_not_runtime_phase",
+            "exact_stage_callsite": {
+              "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+              "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+              "line": 49,
+              "text": "        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()"
+            },
+            "timed_closure_boundaries": [
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/study_common.jl",
+                "source_sha256": "39d8a4210529b9a56b607930bf6404eb4c562d78e8ae9fbf5fe4c28c5c184766",
+                "start_line": 1,
+                "end_line": 57,
+                "exact_lines": "using CUDA\nusing Printf\nfunction study_input(n)\n    data=Vector{Float32}(undef,n);s=UInt32(1)\n    for i in 1:n\n        s=s*UInt32(1103515245)+UInt32(12345)\n        data[i]=Float32((s>>8)&UInt32(0xffffff))/16777216f0\n    end\n    data\nend\nfunction cpu_step!(out,inp,coeff,nx,ny,nz,r)\n    ox=nx+2r;oy=ny+2r;oz=ox*oy\n    @inbounds for z in 1:nz,y in 1:ny,x in 1:nx\n        i=x+r+(y+r-1)*ox+(z+r-1)*oz\n        value=coeff[1]*inp[i]\n        for k in 1:r\n            c=coeff[k+1]\n            value+=c*(inp[i+k]+inp[i-k])\n            value+=c*(inp[i+k*ox]+inp[i-k*ox])\n            value+=c*(inp[i+k*oz]+inp[i-k*oz])\n        end\n        out[i]=value\n    end\nend\nfunction run_steps!(launch!,a,b,steps)\n    for _ in 1:steps\n        launch!(b,a);a,b=b,a\n    end\n    a,b\nend\nfunction study_main(prepare,args=ARGS)\n    nx=length(args)>=1 ? parse(Int,args[1]) : 96\n    ny=length(args)>=2 ? parse(Int,args[2]) : 96\n    nz=length(args)>=3 ? parse(Int,args[3]) : 96\n    steps=length(args)>=4 ? parse(Int,args[4]) : 5\n    nx>=96 && ny>=96 && nz>=96 && nx%32==0 && ny%8==0 && steps>0 || error(\"dimensions>=96, xmultiple32 ymultiple8, positive steps\")\n    r=4;n=(nx+2r)*(ny+2r)*(nz+2r)\n    input=study_input(n);coeff=fill(.1f0,r+1)\n    expected=copy(input);temp=copy(input)\n    for _ in 1:steps\n        cpu_step!(temp,expected,coeff,nx,ny,nz,r);expected,temp=temp,expected\n    end\n    a=CuArray(input);b=CuArray(input);c=CuArray(coeff)\n    launch! = prepare(a,b,c,nx,ny,nz,r)\n    run_steps!(launch!,a,b,1);CUDA.synchronize()\n    allok=true\n    for trial in 1:5\n        copyto!(a,input);copyto!(b,input);CUDA.synchronize()\n        t0=time_ns();a,b=run_steps!(launch!,a,b,steps);CUDA.synchronize()\n        elapsed=(time_ns()-t0)*1e-9/steps\n        got=Array(a);err=abs.(got.-expected);ma=maximum(err);mr=maximum(err./max.(abs.(expected),eps(Float32)))\n        ok=all(isfinite,got)&&all(isapprox.(got,expected;atol=1f-5,rtol=1f-4));allok &=ok\n        file=joinpath(get(ENV,\"STUDY_OUTPUT_DIR\",pwd()),\"fdtd3d_trial$(trial).bin\");write(file,got)\n        @printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"checked_values\\\":%d,\\\"max_abs_error\\\":%.12g,\\\"max_rel_error\\\":%.12g,\\\"timing_region\\\":\\\"kernel_launch_loop_per_internal_repeat\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":%d,\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float32\\\",\\\"count\\\":%d,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,elapsed,string(ok),n,ma,mr,steps,file,n)\n    end\n    println(allok ? \"PASS\" : \"FAIL\");allok ? 0 : 1\nend"
+              },
+              {
+                "path": "/home/imo/HeCBench_julia/src/fdtd3d-julia/fdtd3d-julia-JACC/main.jl",
+                "source_sha256": "9813dac694c3b05d7bf1d5e466a16bca85b43e031ca2420f2785632a96b1a58c",
+                "start_line": 1,
+                "end_line": 26,
+                "exact_lines": "using CUDA\nusing JACC\ninclude(joinpath(@__DIR__,\"..\",\"study_common.jl\"))\nfunction fdtd!(x,y,z,out,inp,coeff,nx,ny,nz,r)\n    if x<=nx && y<=ny && z<=nz\n        ox=nx+2r;oy=ny+2r;sz=ox*oy\n        i=x+r+(y+r-1)*ox+(z+r-1)*sz\n        @inbounds begin\n            value=coeff[1]*inp[i]\n            for k in 1:r\n                c=coeff[k+1]\n                value+=c*(inp[i+k]+inp[i-k])\n                value+=c*(inp[i+k*ox]+inp[i-k*ox])\n                value+=c*(inp[i+k*sz]+inp[i-k*sz])\n            end\n            out[i]=value\n        end\n    end\n    return nothing\nend\nfunction prepare(a,b,c,nx,ny,nz,r)\n    backend=JACC.get_backend(:cuda)\n    spec=JACC.LaunchSpec{typeof(backend)}(;threads=(8,8,4),blocks=(cld(nx,8),cld(ny,8),cld(nz,4)),shmem_size=0,sync=false)\n    (out,inp)->JACC.parallel_for(fdtd!,spec,(nx,ny,nz),out,inp,c,Int32(nx),Int32(ny),Int32(nz),Int32(r))\nend\nexit(study_main(prepare))"
+              }
+            ],
+            "callsite_kind": "five_step_timed_callback_pingpong",
+            "sample_in_primary_timed_invocation": null,
+            "retained_trial": null,
+            "whole_elapsed_ROI_claim": false,
+            "complete_ROI": false,
+            "causal_bottleneck": "unknown",
+            "selected_plan": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/plan.json.gz",
+              "sha256": "3b8448da0fdbe046d7cd2f70b42057c300509eb5aabf23adf4fbf5b276780d51"
+            },
+            "selected_profile_manifest": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/manifest.json",
+              "sha256": "9f59ef3203b02fbfe4bb2dd8a8cfbfc07973fbb40f0c6d760b36e8c4bf5cbb90"
+            },
+            "selected_counter_derivation": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/profiles/fdtd3d/jacc/batch003-fdtd3d/derived.json.gz",
+              "sha256": "9b11b826639c9567e1cca107342d5f9e36fd9e12dd6231223f4f16b028d48629"
+            },
+            "selected_result": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/result.json.gz",
+              "sha256": "d8ea97b10eb159e24919a320613c1703d2abffb4a92f87aa4ce8ffdb92a48fad"
+            },
+            "selected_config": {
+              "path": "/home/imo/HeCBench_julia/ontology/studies/v100_roofline_537/selected_contracts/fdtd3d/config.json.gz",
+              "sha256": "280cefb00ac85f140564416b7a7b738a3308b7f2029e315df7d9cdf37ec37d3a"
+            },
+            "reason": "Finite source callback is explicitly invoked once before trial loop and five times inside each synchronized timer with pingpong swap. Reset/LCG/CPU oracle/readback are outside. Source membership does not assign saved sample phase or prove all five timed launches captured."
+          },
+          "kernel_family_alias_of": null,
+          "alias_of_stage_id": null
+        }
+      ]
+    }
+  ],
+  "genesis_provenance": {
+    "existing_initial9_review_path": "/tmp/roofline-roi-review/annotations.json",
+    "sha256": "c42a8960056e0e7702a6674087df96f5cb9657ba7f30b12e7dcda71a9597b4a0",
+    "why_no_canonical_parent": "All seven indexed cohorts exclude initialnine; fdtd3d is in retained initialnine records but that separate schema/document is not a cohort in INDEX. This is a historical inventory integration gap, not missing GPU evidence.",
+    "old_warmup_claim_not_promoted": "Initialnine source_ROI.first_sample and blanket warmup_statement remain historical assertions, not reused as actual sample proof."
+  },
+  "source_stage_count": 8,
+  "inclusion_declarations": 4,
+  "exclusions": 4,
+  "actual_sample_phase": "unknown",
+  "whole_elapsed_ROI_claim": false,
+  "causal_claim": false
+}

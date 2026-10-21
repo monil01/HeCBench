@@ -27,6 +27,27 @@ TOOLS=('v100_roofline_summarize.py','v100_roofline_audit.py','v100_roofline_retr
  'v100_roofline_refresh.py','export_v100_measurement_failures.py',
  'export_v100_benchmark_assessment.py','export_v100_retained_roi.py')
 
+# Source-only core and presentation inputs; data/review receipts remain external.
+# Existing generic verification and immutable resume comparison cover these too.
+SOURCE_INPUTS=(
+ 'tools/v100_roofline_collect.py',
+ 'tools/v100_profiler_method.py',
+ 'tools/v100_roofline_classify.py',
+ 'tools/v100_profile_write_guard.py',
+ 'tools/v100_roofline_plot.py',
+ 'tools/export_v100_roofline_paper.py',
+ 'ontology/tools/generate_ontology_report.py',
+ 'ontology/tools/generate_relationship_graph.py',
+ 'ontology/tools/study_report_metadata.py',
+ 'ontology/tools/current537_display_traits.py',
+ 'ontology/tools/report/template.html',
+ 'ontology/tools/report/explorer.js',
+ 'ontology/tools/report/explorer.css',
+ 'ontology/tools/julia_graph/template.html',
+ 'ontology/tools/julia_graph/graph.js',
+ 'ontology/tools/julia_graph/graph.css',
+)
+
 def utc():return datetime.datetime.now(datetime.timezone.utc).isoformat()
 def sha(path):
  h=hashlib.sha256()
@@ -104,6 +125,7 @@ class Supervisor:
   if len({(x['pid'],x['start_ticks'])for x in self.controllers})!=len(self.controllers):raise RuntimeError('Duplicate controller identity')
   if not 0<=a.max_retry_rounds<=2 or a.poll_seconds<5 or a.timeout<1 or a.freeze_every<1:raise RuntimeError('Invalid finite bounds')
   self.bindings={str(self.root/'tools'/n):sha(self.root/'tools'/n)for n in TOOLS}
+  self.bindings.update({str(self.root/n):sha(self.root/n)for n in SOURCE_INPUTS})
   if a.controller_reviews:self.bindings[str(a.controller_reviews.resolve())]=sha(a.controller_reviews)
   self.bindings[str(a.reviews.resolve())]=sha(a.reviews);self.bindings[str(Path(__file__).resolve())]=sha(__file__)
   self.config={'schema_version':1,'source_root':str(self.root),'raw_root':str(self.raw),'output_root':str(self.out),
@@ -111,6 +133,7 @@ class Supervisor:
    'retry_batch_ids':['039','041'][:a.max_retry_rounds],'reviews':str(a.reviews.resolve()),'max_retry_rounds':a.max_retry_rounds,
    'timeout':a.timeout,'freeze_every':a.freeze_every,'tool_bindings':self.bindings,'existing_round_states':a.existing_round_state,
    'current537_display_review_sha256':a.current537_display_review_sha256,
+   'publication_stratum':a.publication_stratum,
    'claims':{'complete_GPU_ROI':False,'causal_classification_complete':False,'scientific_complete':False,'automatic_git_or_push':False}}
   if self.out.exists():
    if not a.resume:raise RuntimeError('Fresh output required; explicit --resume required for existing journal')
@@ -235,6 +258,7 @@ class Supervisor:
   self.state['status']='final_CPU_exports';self.note('final_refresh_started')
   command=self.tool('v100_roofline_refresh.py','--source-root',self.root,'--raw-root',self.raw,'--once')
   if self.a.current537_display_review_sha256:command+=['--current537-display-review-sha256',self.a.current537_display_review_sha256]
+  if self.a.publication_stratum:command+=['--publication-stratum',self.a.publication_stratum]
   rec=self.step('final_refresh_once',command)
   # refresh currently logs per-tool errors but can itself return0; enforce each.
   events=[]
@@ -284,7 +308,7 @@ class Supervisor:
 
 def main():
  if len(sys.argv)==3 and sys.argv[1]=='--internal-worker':return worker(sys.argv[2])
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--raw-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--reviews',type=Path,required=True);ap.add_argument('--controller',action='append',required=True,help='Explicit owned GPU controller PID:Linux_START_TICKS; repeat all main/followup/custom controllers; never CPU refresh');ap.add_argument('--controller-reviews',type=Path,help='Optional JSON controllers keyed PID:START with command_sha256 of raw /proc/PID/cmdline, source_reviewed_GPU_controller:true and reason; never CPU refresh');ap.add_argument('--max-retry-rounds',type=int,default=2);ap.add_argument('--existing-round-state',action='append',default=[],help='039=finished|preserve or041=finished|preserve; requires archived proof for finished');ap.add_argument('--poll-seconds',type=int,default=15);ap.add_argument('--timeout',type=int,default=600);ap.add_argument('--freeze-every',type=int,default=10);ap.add_argument('--current537-display-review-sha256',help='Exact approved current537 display authority SHA; forwarded only to final CPU refresh.');ap.add_argument('--resume',action='store_true');ap.add_argument('--execute',action='store_true');a=ap.parse_args();s=None
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--raw-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--reviews',type=Path,required=True);ap.add_argument('--controller',action='append',required=True,help='Explicit owned GPU controller PID:Linux_START_TICKS; repeat all main/followup/custom controllers; never CPU refresh');ap.add_argument('--controller-reviews',type=Path,help='Optional JSON controllers keyed PID:START with command_sha256 of raw /proc/PID/cmdline, source_reviewed_GPU_controller:true and reason; never CPU refresh');ap.add_argument('--max-retry-rounds',type=int,default=2);ap.add_argument('--existing-round-state',action='append',default=[],help='039=finished|preserve or041=finished|preserve; requires archived proof for finished');ap.add_argument('--poll-seconds',type=int,default=15);ap.add_argument('--timeout',type=int,default=600);ap.add_argument('--freeze-every',type=int,default=10);ap.add_argument('--current537-display-review-sha256',help='Exact approved current537 display authority SHA; forwarded only to final CPU refresh.');ap.add_argument('--publication-stratum',help='Exact root-selected profiler method/version/review stratum SHA256; forwarded only to final CPU refresh and bound for resume.');ap.add_argument('--resume',action='store_true');ap.add_argument('--execute',action='store_true');a=ap.parse_args();s=None
  try:s=Supervisor(a);s.run();return 0
  except Exception as error:
   if s is not None:

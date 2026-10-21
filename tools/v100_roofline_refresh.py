@@ -26,6 +26,7 @@ def main():
     ap.add_argument('--wait-pid',type=int,action='append',default=[])
     ap.add_argument('--interval',type=int,default=600)
     ap.add_argument('--once',action='store_true')
+    ap.add_argument('--publication-stratum',help='Exact method/version/review SHA256; mandatory for multi-stratum canonical figures/publication predictions.')
     ap.add_argument('--current537-display-review-sha256',help='Pass exact root-approved current537 display authority SHA to report generation only.')
     args=ap.parse_args();root=args.source_root.resolve();raw=args.raw_root.resolve()
     if not raw.is_relative_to('/tmp') or raw==Path('/tmp') or args.interval<60:
@@ -60,7 +61,47 @@ def main():
     def refresh():
         if not run('summarize',[sys.executable,str(root/'tools/v100_roofline_summarize.py'),'--source-root',str(root),'--raw-root',str(raw)]):return
         if not run('integrity_audit',[sys.executable,str(root/'tools/v100_roofline_audit.py'),'--source-root',str(root),'--output',str(study/'integrity_audit.json')]):return
-        run('roofline_plot',['/home/imo/noback/conda/bin/python3.9',str(root/'tools/v100_roofline_plot.py')])
+        # Mark both consumers unavailable before a fresh attempt; a crash cannot bless old files.
+        with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX)
+            for target in (study/'figures/canonical_figure_manifest.json',study/'publication_selection_status.json'):
+                target.parent.mkdir(exist_ok=True)
+                tmp=target.with_suffix('.json.next')
+                tmp.write_text(json.dumps({'canonical_available':False,'current_export_available':False,'reason':'refresh_pending','requested_stratum':args.publication_stratum})+'\n');tmp.replace(target)
+        # Plot in a fresh directory. Never fall back to a previous canonical PDF.
+        # A manifest is the sole canonical authority; old files alone are not current evidence.
+        with tempfile.TemporaryDirectory(prefix='roofline-figures-',dir='/tmp')as workspace:
+            command=['/home/imo/noback/conda/bin/python3.9',str(root/'tools/v100_roofline_plot.py'),'--output-dir',workspace]
+            if args.publication_stratum:command+=['--publication-stratum',args.publication_stratum]
+            ok=run('roofline_plot',command)
+            with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX)
+                dest=study/'figures';dest.mkdir(exist_ok=True)
+                manifest={'canonical_available':False,'reason':'fresh_plot_failed_or_ambiguous','requested_stratum':args.publication_stratum}
+                if ok:
+                    meta=json.loads((Path(workspace)/'normalized_kernel_rooflines.metadata.json').read_text())
+                    source_hash=hashlib.sha256((study/'kernel_roofline_points.csv').read_bytes()).hexdigest()
+                    tensor=study/'kernel_tensor_roofline_points.csv'
+                    tensor_hash=hashlib.sha256(tensor.read_bytes()).hexdigest()if tensor.is_file()else None
+                    if (source_hash==meta['input']['sha256'] and tensor_hash==(meta['tensor_input']or{}).get('sha256') and meta['canonical_outputs']):
+                        # Rebase paths in the metadata; retain all full raw identity strings.
+                        for group in ('outputs','canonical_outputs'):
+                            for item in meta[group]:item['path']=str(dest/Path(item['path']).name)
+                        for item in meta['profiler_strata']:item['outputs']=[str(dest/Path(p).name)for p in item['outputs']]
+                        for key in ('input','tensor_input'):
+                            if meta.get(key):meta[key]['snapshot']=str(dest/Path(meta[key]['snapshot']).name)
+                        for source in Path(workspace).iterdir():
+                            if source.name.endswith('.metadata.json'):continue
+                            target=dest/(source.name+'.next');shutil.copy2(source,target);target.replace(dest/source.name)
+                        metadata=dest/'normalized_kernel_rooflines.metadata.json'
+                        tmp=metadata.with_suffix('.json.next');tmp.write_text(json.dumps(meta,indent=2)+'\n');tmp.replace(metadata)
+                        manifest={'canonical_available':True,'publication_selection':meta['publication_selection'],
+                                  'metadata':{'path':str(metadata),'sha256':hashlib.sha256(metadata.read_bytes()).hexdigest()},
+                                  'input_sha256':source_hash,'tensor_input_sha256':tensor_hash,'canonical_outputs':meta['canonical_outputs']}
+                    else:manifest['reason']='input_changed_since_plot_or_no_compatible_points'
+                manifest['created_at']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+                target=dest/'canonical_figure_manifest.json';tmp=target.with_suffix('.json.next');tmp.write_text(json.dumps(manifest,indent=2)+'\n');tmp.replace(target)
+
         output=root/'ontology/reports/ontology_report.html';temporary=output.with_suffix('.html.next')
         with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
             fcntl.flock(lock,fcntl.LOCK_EX)
@@ -75,13 +116,31 @@ def main():
         with tempfile.TemporaryDirectory(prefix='roofline-publication-',dir='/tmp')as workspace:
             export=Path(workspace)/'export'
             command=[sys.executable,str(root/'tools/export_v100_roofline_paper.py'),'--output-root',str(export)]
+            if args.publication_stratum:command+=['--publication-stratum',args.publication_stratum]
             receipt=study/'publication_export_usage.json'
             if receipt.is_file():command+=['--usage-receipt',str(receipt)]
-            if run('publication_snapshot',command):
-                dest=study/'publication';dest.mkdir(exist_ok=True)
-                for source in export.iterdir():
-                    if source.is_file():
-                        next_path=dest/(source.name+'.next');shutil.copy2(source,next_path);next_path.replace(dest/source.name)
+            publication_ok=run('publication_snapshot',command)
+            # Invalidate publication authority on any failed/ambiguous fresh export; old files are history only.
+            authority=study/'publication_selection_status.json'
+            with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX)
+                value={'current_export_available':False,'requested_stratum':args.publication_stratum,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+                if publication_ok:
+                    snapshot=json.loads((export/'campaign_snapshot.json').read_text())
+                    # Export read lock ended already: revalidate every bound input before publishing.
+                    current=True
+                    for name,binding in snapshot['input_bindings'].items():
+                        path=Path(name);path=path if path.is_absolute()else root/path
+                        if not path.is_file()or hashlib.sha256(path.read_bytes()).hexdigest()!=binding['sha256']:current=False;break
+                    if current:
+                        dest=study/'publication';dest.mkdir(exist_ok=True);files={}
+                        for source in export.iterdir():
+                            if source.is_file():
+                                next_path=dest/(source.name+'.next');shutil.copy2(source,next_path);next_path.replace(dest/source.name)
+                                files[source.name]={'path':str(dest/source.name),'sha256':hashlib.sha256((dest/source.name).read_bytes()).hexdigest()}
+                        value.update(current_export_available=True,publication_selection=snapshot['publication_selection'],files=files)
+                    else:value['reason']='input_changed_since_export'
+                temp=authority.with_suffix('.json.next');temp.write_text(json.dumps(value,indent=2)+'\n');temp.replace(authority)
         with tempfile.TemporaryDirectory(prefix='roofline-retained-family-',dir='/tmp') as workspace:
             export=Path(workspace)/'export'
             if run('retained_family_aggregation',[sys.executable,str(root/'tools/export_v100_retained_roi.py'),'--source-root',str(root),'--output-root',str(export)]):

@@ -1,20 +1,64 @@
 # PASC27 Julia translation paper — writing instructions
 
-## Current resume authority: audited source batch6 and RBC follow-up
+## Current profiler and controller authority: v17
 
-Six root-adopted source batches cover353 distinct selected model records across90
-names, with606 callsite inclusion declarations. The sixth adds52 records/13names,
-103 inclusions and63 exclusions; one inclusion alias shares a family. Evidence:
-`completion_reviews/roi_membership_root_merge_batch6/root_adoption.json` under
-the V100 study. All166 changes passed fresh frozen-counter integrity and separate
-postannotation reconstruction; the strict12 family audit is byte-identical.
-No actual sample-phase, complete-ROI or causal flags were promoted.
+Actual calibration003 completed all nine source/geometry cases and both full host
+checks on GPU6 with83 unchanged historical input bindings. The root packer
+independently recomputed the saved rows. The admitted separate method is
+`ncu2025_2_0_V100_sm70_raw_v1`; exact review SHA is
+`65145043726f06195ef78dc89e72ca996b8fbb9217e4f2b8a3226e24e93b5eca`
+under `ontology/studies/v100_roofline_537/profiler_methods/`.
+Corev5 and presentationv3 are now deployed. Actual2025 benchmark captures still
+require explicit reviewed invocation and complete original checks; calibration
+is not a benchmark pass, performance-equivalence claim, or fullROI diagnosis.
+
+Supervisorv17 monitors the40 historical controllers plus one root-reviewed
+059/060 method-recovery follower (41total), retaining finite039/041 retry bounds. It pins23 core/presentation source inputs, forwards and resume-binds
+both display authority and exact publication stratum. The root adoption is in
+`completion_reviews/completion_supervisor/method_v5_presentation_v3_v16`.
+Only exact owned idle CPU parents were retired with generation handles; no GPU
+collector was signaled. A new CPU refresh preserves the original allowed PID
+wait list. Read current canonical receipts and actual checkpoint; never restart
+v15/v16 or any historical controller. The new follower waits exact040/043/056--058
+predecessors, skips qualified models and makes at most two collector invocations.
+Further one-shot method recovery followers need
+separate source/runtime review and explicit frontier readoption.
+
+Plots and publication exports are separated by method/fullversion/review tuple.
+The explicitly selected historical diagnostic stratum is
+`bb70165f0fb0b0236774f801c42dd584f264d2f20b8b7b3ffe72193502cc77ef`:
+recorded2022 version, unknown method identity/review. Do not fill those unknowns.
+Validate canonical authority manifests and input/output hashes; old PDFs alone
+are not current authority. Preserve old2022 data, failed001/002 calibrations,
+raw units, original compiler unknowns, all primary five-run means and all guards.
+GPU5 remains unauthorized. No OS/package installation or privilege operation.
+
+## Current source authority: seven audited batches and RBC follow-up
+
+Seven root-adopted source batches cover392 distinct selected model records across100
+names, with682 callsite inclusion declarations. The seventh adds39 records/10names,
+76 inclusions and31 exclusions. Evidence:
+`completion_reviews/roi_membership_root_merge_batch7/root_adoption.json` under
+the V100 study. All107 changes passed frozen-counter integrity and separate
+postannotation reconstruction;172 of188 sampled rows match included source families,
+16 remain unresolved. Goulash KA's unexplained saved signature and GELS vendor
+associations remain withheld; accepted numerical results are unchanged.
+
+The method-aware summarizer adds profiler metadata to the twelve strict family
+audit records and their three source ledgers. Their audit bytes therefore differ
+from the earlier baseline. An exact root comparison removed only validated
+method/version/rawstatus additions and joined corresponding ledger hashes; every
+remaining scientific field, timing and projection is identical. Preserve both
+baselines, the initial failed byte gate and
+`completion_reviews/strict_family_method_schema_migration/root_review.json`.
+Never describe those two schema versions as byte-identical. No actual phase,
+complete-ROI or causal flags were promoted.
 
 The exact flip reconciliation now joins all four profiles to the unchanged frozen
 configuration and historical result. That old result lacks a configuration-ID
 field; canonical null and historical bytes remain unchanged. The exception is
 restricted to flip's exact config/result hashes and explicit root review. Never
-use a generic missing-ID fallback. fdtd3d4 is outside these indexed source
+use a generic missing-ID fallback. fdtd3d4 is outside these seven indexed source
 batches: it already has four records in the separate legacy ROI_REVIEW authority.
 Never create a duplicate cohort or alter the legacy receipt to inflate coverage.
 Review legacy membership and phase evidence separately. GELS vendor symbols
@@ -37,7 +81,7 @@ Observer wall time is not an overhead ratio against one primary mean.
 
 ## V100 method recovery and current execution frontier
 
-The current canonical supervisor is v15, retaining all 40 explicit controller
+The superseded v15 supervisor retained all 40 explicit controller
 identities, including one reviewed RBC055 follower
 that waits for the exact RBC050 generation and skips qualified models. Read the
 canonical receipt rather than restarting any historical PID. A stopped supervisor

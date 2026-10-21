@@ -56,7 +56,7 @@ def build(root,k,population=447,current537_display_review_sha256=None,metadata_l
     classfile=root/'2026-PASC-Hecbench-Julia-paper/research/revision_experiments/classes/normalized_records.json'
     classes={(r['benchmark'],r['model']):r for r in json.loads(classfile.read_text())} if classfile.exists() else {}
     roofline,roofline_meta,roofline_files=load_roofline_registry(root,population)
-    profile_keys=('profiling_status','configuration_ids','device_uuid','kernel_observation_count',
+    profile_keys=('profiler_method_id','profiler_version','method_review_sha256','profiling_status','configuration_ids','device_uuid','kernel_observation_count',
                   'loaded_kernel_observation_count','roi_coverage','dram_roofline_applicability',
                   'scalar_roofline_applicability','scalar_applicability_evidence_status',
                   'geometric_regimes','diagnostic_geometric_regimes','precision_classes','causal_bottleneck','evidence_link_status',

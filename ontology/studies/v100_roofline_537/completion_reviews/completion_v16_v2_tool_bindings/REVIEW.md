@@ -1,0 +1,7 @@
+# Private v16_v2 binding extension
+
+Preserves v16v1 three publication forwarding/resume edits. Keeps original TOOLS tuple and original binding comprehension byte-identical. Adds16 root-relative source paths in SOURCE_INPUTS and one self.bindings.update before reviews/self/config freezing. Existing verify(), worker spec pinning and immutable resume compare then cover added hashes without new behavior.
+
+Added: collector, profiler method validator, classifier, write guard; rooflineplot and publicationexport; ontologyreport/relationshipgraph producers, studyreportmetadata, unchangedcurrent537displaytraits, reporttemplate/explorerJS/CSS, graphtemplate/JS/CSS. Total23 explicit nonself source inputs plus existing review/selfbindings. No live or generated ontologyrecords/data/reportoutput/calibration bundles frozen as source. This is an explicit requested source set, not a full transitive dependency closure.
+
+Root separately installs adopted corev5+presentationv3 before starting freshv16 so new methodhelper existscanonically and actual reviewed bytes are pinned. Missing files/drift failclosed naturally. Root receipt must separately bind exact canonical admittedmethodreview+bundle; no newreviewCLI or genericmath/selection change. Prior v16 dryrecipe still applies with new source/patchSHA; retain all40IDs,displayauthority,finite2rounds, exactidle/nochild/oldrefreshchecks and releaseoldsingleton. No signals/execution/import/compilation/tests/sharededits done.

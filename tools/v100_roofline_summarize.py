@@ -14,6 +14,7 @@ import json
 import re
 import copy
 import fcntl
+from v100_profiler_method import LEGACY_VERSION
 from pathlib import Path
 from v100_roofline_allreduce_admission import METHOD as ALLREDUCE_METHOD, HOLD as ALLREDUCE_HOLD, read_raw_slot as allreduce_files, validate as validate_allreduce_method
 
@@ -48,6 +49,9 @@ def freeze(slot, target, root):
                  'egs_build_manifest.json','source_proof.json','application_replay_review.json',
                  'application_replay_pass_artifacts.json','profile_window_review.json','isolated_assertion_review.json',
                  'negative_prechecks.json','positive_profile_outcome.json','joined_execution_contract.json',
+                 'profiler_method_review.json','profiler_method_bundle.json','profiler_method_validator.py',
+                 'profiler_method_preflight.json','profiler_version.log','profiler_version_payload.bin',
+                 'counter_quiescence_snapshot.json','profiler_method_post_profile_check.json',
                  'isolated_assertion_negative_raw.json','phase_spec.json',
                  'pre_profile_checks.log','post_profile_checks.log',
                  'adapter_source.py','allreduce_two_device_review.json',
@@ -107,6 +111,19 @@ def main():
         prov=json.loads(provpath.read_text())
         if not prov.get('finished_at'):
             continue
+        method_error = None
+        if prov.get('status')=='not_started_profiler_method_preflight_hold':
+            method_error='Retained preflight rejection; no target/GPU/build execution'
+        elif prov.get('profiler_method') or (prov.get('profiler_version') and prov['profiler_version']!=LEGACY_VERSION):
+            try:
+                import v100_profiler_method as method_gate
+                names=('profiler_method_review.json','profiler_method_bundle.json','profiler_method_validator.py',
+                       'profiler_version.log','profiler_version_payload.bin','profiler_method_preflight.json','derived.json',
+                       'counters.csv','counter_quiescence_snapshot.json','profiler_method_post_profile_check.json')
+                available={n:(provpath.parent/n).read_bytes() for n in names if (provpath.parent/n).is_file()}
+                method_gate.audit_profile(prov,available)
+            except Exception as error:
+                method_error=repr(error)
         slot=provpath.parent;plan=json.loads((slot/'plan.json').read_text())
         benchmark=plan['benchmark'];model=plan['model'];batch=slot.parent.parent.name
         target=study/'profiles'/benchmark/model/batch
@@ -150,7 +167,12 @@ def main():
                  'finished_at':prov['finished_at'],'evidence_manifest':manifest,
                  'collector_sha256':prov['collector_sha256'],
                  'counters_sha256':prov.get('counters_sha256'),
-                 'selector_scope':prov['selector_scope']}
+                 'selector_scope':prov['selector_scope'],
+                 'raw_process_status':prov['status'],
+                 'profiler_method':prov.get('profiler_method'),
+                 'profiler_version':prov.get('profiler_version')}
+        if method_error:
+            attempt.update(status='profile_method_unapproved',method_validation_error=method_error)
         previous=next((x for x in attempts if x['profile_id']==attempt['profile_id']),None)
         if previous is None:
             attempts.append(attempt)
@@ -159,6 +181,14 @@ def main():
             previous.update(status=effective_status,recorded_status=prov['status'],method_admission=method_admission)
         if attempt['finished_at']>=state.get('latest_profile_attempt',{}).get('finished_at',''):
             state['latest_profile_attempt']=attempt
+        if method_error:
+            for saved_attempt in attempts:
+                if saved_attempt['profile_id']==attempt['profile_id']:saved_attempt.update(attempt)
+            if str(target.relative_to(root)) in state.get('profile_ids',[]):
+                state.update(profiling_status='profile_method_unapproved',profile_ids=[],sampled_kernel_count=0,sampled_kernel_precision_regimes={},sampled_kernel_predicted_resource_limits={},roi_coverage='method_unapproved_no_positioning',roofline_position=None,roofline_region=None,observed_bottleneck=None)
+                state.pop('kernel_observations',None)
+            dump(path,ledger)
+            continue
         observation=slot/'derived.json'
         records=json.loads(observation.read_text())['records'] if observation.exists() and not method_hold else []
         review=reviews.get((benchmark,model))
@@ -242,7 +272,8 @@ def main():
                     regimes[precision+':'+point['roofline_regime']]+=1
             if record.get('tensor_convention_enabled') and record.get('tensor_flops',0):
                 regimes['tensor_fp16_inputs_fp32_accumulation:'+record['tensor_precision_projections']['dram']['roofline_regime']]+=1
-        state.update(profiling_status=effective_status,
+        state.update(profiler_method=prov.get('profiler_method'),
+            profiler_version=prov.get('profiler_version'),profiling_status=effective_status,
             measurement_method=(ALLREDUCE_METHOD if prov.get('allreduce_two_device_method') else 'ordinary_collector_profile_see_scope'),
             profile_method_admission=method_admission,
             process_unit_accounting=(method_admission.get('process_unit_accounting') if method_admission else None),
@@ -304,6 +335,9 @@ def main():
                 'method_admission_status':(state.get('profile_method_admission')or{}).get('status'),
                 'process_unit_accounting':state.get('process_unit_accounting'),
                 'selected_capture_policy':state.get('selected_capture_policy'),
+                'profiler_method_id':(state.get('profiler_method')or{}).get('method_id','legacy2022_recorded_or_identity_incomplete'),
+                'profiler_version':state.get('profiler_version'),
+                'method_review_sha256':(state.get('profiler_method')or{}).get('review_sha256'),
                 'gpu_uuid':'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d',
                 'primary_unprofiled_mean_seconds':(ledger.get('accepted_named_contract')or{}).get('models',{}).get(model,{}).get('mean'),
                 'kernel_count':state.get('sampled_kernel_count',0),
@@ -315,7 +349,10 @@ def main():
             if not obs or obs.get('compression')!='gzip':continue
             derived=json.loads(gzip.decompress((root/obs['path']).read_bytes()))
             for k in derived['records']:
-                common={'benchmark':ledger['benchmark'],'model':model,
+                common={'profiler_method_id':slots[-1]['profiler_method_id'],
+                        'profiler_version':slots[-1]['profiler_version'],
+                        'method_review_sha256':slots[-1]['method_review_sha256'],
+                        'benchmark':ledger['benchmark'],'model':model,
                         'configuration_id':slots[-1]['configuration_id'],
                         'profiling_status':status,
                         'measurement_method':state.get('measurement_method','ordinary_collector_profile_see_scope'),
@@ -363,7 +400,10 @@ def main():
                                 'projection_only':p['projection_only'],'causal_bottleneck':'unknown'})
                 for precision,p in k['scalar_precision_projections'].items():
                     if p['executed_scalar_flops'] is None or p['executed_scalar_flops']==0:continue
-                    points.append({'benchmark':ledger['benchmark'],'model':model,
+                    points.append({'profiler_method_id':slots[-1]['profiler_method_id'],
+                        'profiler_version':slots[-1]['profiler_version'],
+                        'method_review_sha256':slots[-1]['method_review_sha256'],
+                        'benchmark':ledger['benchmark'],'model':model,
                         'configuration_id':slots[-1]['configuration_id'],
                         'profiling_status':status,
                         'measurement_method':state.get('measurement_method','ordinary_collector_profile_see_scope'),

@@ -14,6 +14,7 @@ import fcntl
 import gzip
 import hashlib
 import inspect
+from v100_profiler_method import LEGACY_VERSION
 import json
 from pathlib import Path
 import tempfile
@@ -196,9 +197,34 @@ def main():
                         require(not selected_completed,'Selected allreduce method is not admitted: '+str(error))
                         row['allreduce_method_admission']={'status':'validation_hold','error':str(error),'positions_publishable':False}
                         qualifications.append({'profile_id':identity,'qualification':'Allreduce method validation hold; no publishable positions or freshly verified primary artifacts: '+str(error)})
-                if 'derived.json' in files:
+                method_error = None
+                if prov.get('status')=='not_started_profiler_method_preflight_hold':
+                    require(sha(files['profiler_method_preflight.json'])==prov['method_preflight_sha256'],'Preflight hold SHA mismatch')
+                    hold=json.loads(files['profiler_method_preflight.json'])
+                    require(hold['status']=='rejected' and prov['new_gpu_processes']==prov['new_build_processes']==0 and prov['command']==[],'Invalid no-execution hold')
+                    require(not any(n in files for n in ('counters.csv','derived.json','execution.log','build.log')),'No-execution hold contains target artifacts')
+                    method_error='method preflight rejected; no target execution'
+                elif prov.get('profiler_method') or (prov.get('profiler_version') and prov['profiler_version']!=LEGACY_VERSION):
+                    try:
+                        method_source=files['profiler_method_validator.py']
+                        require(sha(method_source)==prov['profiler_method']['validator_sha256'],'Method validator SHA mismatch')
+                        method_module=types.ModuleType('frozen_profiler_method')
+                        exec(compile(method_source,'frozen_profiler_method','exec'),method_module.__dict__)
+                        method_module.audit_profile(prov,files)
+                        row['profiler_method']=prov['profiler_method']
+                    except Exception as error:
+                        method_error=repr(error)
+                if method_error:
+                    ledger=json.loads((study/'benchmarks'/(plan['benchmark']+'.json')).read_bytes())
+                    require(identity not in ledger['models'][plan['model']].get('profile_ids',[]),'Unapproved method is selected')
+                    qualifications.append({'profile_id':identity,'qualification':'Unapproved method retained, no positioning: '+method_error})
+                    row['method_validation_status']='unapproved_retained_not_selected'
+                if 'derived.json' in files and not method_error:
                     report = json.loads(files['derived.json'])
                     require(report['input_sha256'] == sha(files['counters.csv']), 'Derivation input SHA mismatch')
+                    if prov.get('profiler_method'):
+                        require(report.get('profiler_method')==prov['profiler_method'],'Derived method mismatch')
+                        require(all(x.get('scope_context',{}).get('profiler_method')==prov['profiler_method'] for x in report['records']),'Kernel method mismatch')
                     parser_sha = report['parser_sha256']
                     source = files.get('parser_source.py', snapshots.get(parser_sha))
                     require(source is not None and sha(source) == parser_sha, 'Exact parser source unavailable')
@@ -244,6 +270,10 @@ def main():
                             require(tuple(group['metrics'].get('device__attribute_pci_'+key+'_id') for key in ('domain','bus','device')) == (0,203,0), 'Raw counter PCI row mismatch')
                     parameters = inspect.signature(parser.derive).parameters
                     for group, saved in zip(groups, report['records']):
+                        if prov.get('profiler_method'):
+                            # Exact frozen method unit view, NOT a global parser alias.
+                            group,unit_aliases=method_module.normalize_calibrated_frequency_units(group)
+                            require(saved['scope_context'].get('profiler_frequency_unit_aliases')==unit_aliases,'Frozen frequency unitview evidence mismatch')
                         values = dict(half_lanes=saved.get('fp16_lane_factor'),
                                       half_provenance=saved.get('fp16_convention_evidence'),
                                       context=saved.get('scope_context', {}),
@@ -269,7 +299,7 @@ def main():
                     qualifications.append({'profile_id': identity, 'qualification': 'Historical capture lacks explicit raw-row PCI-to-UUID verification; retained device/environment bindings are not a retroactive PCI check.'})
                 if prov.get('counter_parse_error'):
                     qualifications.append({'profile_id': identity, 'qualification': 'Counter parse failed: '+prov['counter_parse_error']})
-                row['audit_status'] = ('pass_frozen_integrity_method_validation_hold' if row.get('allreduce_method_admission',{}).get('status')=='validation_hold' else 'pass')
+                row['audit_status'] = ('pass_frozen_integrity_method_validation_hold' if row.get('allreduce_method_admission',{}).get('status')=='validation_hold' or row.get('method_validation_status')=='unapproved_retained_not_selected' else 'pass')
             except Exception as error:
                 row['audit_status'] = 'failed'
                 issues.append({'profile_id': identity, 'error': str(error)})

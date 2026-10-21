@@ -290,7 +290,7 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,a
             'executed_command':executed}
 
 
-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False):
+def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False, profiler_executable=None, profiler_method_review=None, profiler_method_review_sha256=None):
     # Child execution changes cwd to private scratch; repository/plan paths must
     # already be absolute before constructing the guarded launcher or evidence links.
     root = Path(root).resolve()
@@ -420,7 +420,66 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
     # NCU's injected process needs Julia's bundled C++ runtime as well as libjulia.
     julia = Path('/home/imo/.julia/juliaup/julia-1.12.6+0.x64.linux.gnu')
     env['LD_LIBRARY_PATH'] = str(julia/'lib/julia') + ':' + str(julia/'lib') + ':' + env.get('LD_LIBRARY_PATH', '')
-    command = list(plan['profile_target_command'])
+    # Source-only method rejection is durable and uses zero target/GPU/build runs.
+    method = None
+    preflight={'status':'started','started_at':utc(),'new_gpu_processes':0,'new_build_processes':0,
+               'requested_profiler':str(profiler_executable) if profiler_executable else None,
+               'review':str(profiler_method_review) if profiler_method_review else None,
+               'review_sha256':profiler_method_review_sha256}
+    try:
+        import v100_profiler_method as method_gate
+        candidate=profiler_executable or shutil.which('ncu')
+        if not candidate:raise RuntimeError('Profiler executable unavailable')
+        ncu_path=str(Path(candidate).resolve())
+        if profiler_method_review:
+            method,method_review_raw,method_bundle_raw=method_gate.load(
+                profiler_method_review,profiler_method_review_sha256,ncu_path)
+            env=method_gate.pin_runtime(method,env)
+            (slot/'profiler_method_review.json').write_bytes(method_review_raw)
+            (slot/'profiler_method_bundle.json').write_bytes(method_bundle_raw)
+        elif profiler_executable or profiler_method_review_sha256:
+            raise RuntimeError('Explicit alternate profiler requires reviewed method receipt and SHA')
+        method_source=Path(method_gate.__file__).read_bytes()
+        (slot/'profiler_method_validator.py').write_bytes(method_source)
+        preflight['version_process']=run([ncu_path,'--version'],env,scratch,slot/'profiler_version.log',
+            60,reserve_mib*1024**2,guard,monitor_gpu=False)
+        if preflight['version_process']['returncode']!=0 or preflight['version_process']['stop_reason'] is not None:
+            raise RuntimeError('Profiler version process failed')
+        normalized=method_gate.normalize_version_log((slot/'profiler_version.log').read_bytes(),guard['write_directories'])
+        version_text=normalized['text']
+        (slot/'profiler_version_payload.bin').write_bytes(normalized['payload'])
+        preflight.update(version_stdout_sha256=normalized['payload_sha256'],version_log_sha256=normalized['merged_log_sha256'])
+        if method:
+            method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
+            method_label={k:method[k]for k in ('method_id','review_sha256','bundle_sha256','calibration_provenance_sha256')}
+            method_label.update(validator_sha256=hashlib.sha256(method_source).hexdigest(),
+                version_stdout_sha256=normalized['payload_sha256'],version_log_sha256=normalized['merged_log_sha256'])
+            # Absolute target Julia, no PATH/LD fallback when pinned tool runtime fails.
+            command=[str(julia/'bin/julia') if x=='julia' or x=='/home/imo/.juliaup/bin/julia' else x for x in plan['profile_target_command']]
+            for value in command:
+                for key,expected in method['manifest']['pinned_runtime_environment'].items():
+                    if value.startswith(key+'=') and value!=key+'='+expected:
+                        raise RuntimeError('Target command overrides pinned tool runtime '+key)
+        else:
+            legacy=json.loads((root/'ontology/studies/v100_roofline_537/calibration/v100_sm70_20261020/review.json').read_bytes())
+            if version_text!=legacy['tool_versions']['ncu']:
+                raise RuntimeError('Default method admits only exact saved legacy2022 version/build stdout')
+            command=list(plan['profile_target_command'])
+        preflight.update(status='passed',finished_at=utc())
+        dump(slot/'profiler_method_preflight.json',preflight)
+    except Exception as error:
+        preflight.update(status='rejected',error=repr(error),finished_at=utc())
+        dump(slot/'profiler_method_preflight.json',preflight)
+        hold={'schema_version':1,'started_at':preflight['started_at'],'finished_at':utc(),
+            'benchmark':plan['benchmark'],'model':plan['model'],'configuration_id':plan['configuration_id'],
+            'status':'not_started_profiler_method_preflight_hold','gpu_uuid':UUID,
+            'plan_sha256':sha(plan_path),'collector_sha256':COLLECTOR_SHA256,
+            'command':[],'selector_scope':'No target/profile launch; method preflight rejected',
+            'new_gpu_processes':0,'new_build_processes':0,
+            'method_preflight_sha256':sha(slot/'profiler_method_preflight.json')}
+        (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
+        dump(slot/'profile_provenance.json',hold)
+        return {'benchmark':plan['benchmark'],'model':plan['model'],'status':hold['status'],'error':repr(error)}
     if command[0] == 'julia':
         command[0] = '/home/imo/.juliaup/bin/julia'
     csv_path = slot / 'counters.csv'
@@ -456,7 +515,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         if selection_path:raise RuntimeError('Marker window uses only its reviewed selector')
         selection+=['--profile-from-start','off']
         scope='Partial first-per-specialization/geometry observations inside source-checked retainedtrial2 step240; not complete timestep or1000step ROI'
-    ncu = ['ncu', '--target-processes', 'all'] + selection + [
+    ncu = [ncu_path, '--target-processes', 'all'] + selection + [
            '--clock-control', 'none', '--cache-control', 'all', '--replay-mode',replay_mode,*(['--app-replay-match','grid','--app-replay-mode','strict'] if application_review else []),
            '--metrics', ','.join(METRICS), '--csv', '--page', 'raw',
            '--print-units', 'base', '--log-file', str(csv_path)] + command
@@ -483,6 +542,9 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         'profiling_auxiliary_retention': 'kept' if retain_auxiliary else
             'Fresh scratch only removed after manifest; not a correctness certificate. Raw counters, logs, provenance retained.',
         'status': 'started','replay_mode':replay_mode,'application_replay':application_review,'profile_window':window_review,'isolated_assertion_phases':isolated_review}
+    if method:
+        provenance.update(profiler_method=method_label,profiler_runtime_environment={k:env[k]for k in method['manifest']['pinned_runtime_environment']},profiler_version=version_text,profiler_executable=ncu_path,profiler_executable_sha256=sha(ncu_path))
+    provenance['method_preflight_sha256']=sha(slot/'profiler_method_preflight.json')
     (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
     dump(slot/'profile_provenance.json', provenance)
     try:
@@ -560,14 +622,46 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             domain,bus,device=pci_text.strip().split(':')
             expected_pci=(int(domain,16),int(bus,16),int(device.split('.')[0],16))
             provenance['expected_device_pci']=dict(domain=expected_pci[0],bus=expected_pci[1],device=expected_pci[2])
-            provenance['profiler_version'] = subprocess.run(['ncu', '--version'],
-                capture_output=True, text=True, check=True).stdout
-            provenance['profiler_executable'] = str(Path(shutil.which('ncu')).resolve())
+            provenance['profiler_version'] = version_text
+            provenance['profiler_executable'] = ncu_path
             provenance['profiler_executable_sha256'] = sha(provenance['profiler_executable'])
             provenance['executed_target_path_bindings']=target_path_bindings(command,scratch,env)
+            if method:
+                method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
+                if {k:env[k]for k in method['manifest']['pinned_runtime_environment']}!=method['manifest']['pinned_runtime_environment']:raise RuntimeError('Pinned runtime drift')
             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
-            bindings(plan)
+            if method:
+                # run() returns only after its own session is quiescent. Preserve
+                # actual raw-byte identity BEFORE any source/SDK post-gate can fail.
+                snapshot={'schema_version':1,'captured_at':utc(),
+                    'scope':'Actual retained raw counters after source-defined own-session quiescence; no derivation/admission implied.',
+                    'profile_process':provenance['profile'],'counter_present':csv_path.is_file()}
+                if csv_path.is_file():
+                    size_before=csv_path.stat().st_size
+                    digest=sha(csv_path)
+                    if csv_path.stat().st_size!=size_before:raise RuntimeError('Counter size changed after quiescence')
+                    provenance['counters_sha256']=digest
+                    snapshot['counter']={'path':str(csv_path),'sha256':digest,'bytes':size_before}
+                dump(slot/'counter_quiescence_snapshot.json',snapshot)
+                provenance['counter_quiescence_snapshot_sha256']=sha(slot/'counter_quiescence_snapshot.json')
+                postcheck={'schema_version':1,'status':'pending','checked_at':utc(),
+                    'scope':'Post-profile source and profiler method identity check, separate from process outcome and numerical correctness.',
+                    'counter_quiescence_snapshot_sha256':provenance['counter_quiescence_snapshot_sha256'],
+                    'positions_publishable':False}
+                try:
+                    bindings(plan)
+                    method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
+                    postcheck.update(status='passed',checked_at=utc(),positions_publishable=False)
+                except Exception as post_error:
+                    postcheck.update(status='rejected',checked_at=utc(),error=repr(post_error),positions_publishable=False)
+                    provenance['status']='profile_method_post_profile_validation_hold'
+                    raise
+                finally:
+                    dump(slot/'profiler_method_post_profile_check.json',postcheck)
+                    provenance['profiler_method_post_profile_check_sha256']=sha(slot/'profiler_method_post_profile_check.json')
+            else:
+                bindings(plan)
             if isolated_review:
                 check_supplemental(isolated_review['record']['execution_bindings'])
                 outcome={'plan_sha256':sha(plan_path),'command':command,
@@ -651,6 +745,10 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         'sha256':sha(calibration),'half_lane_factor':2,
                         'default_tensor_conversion_enabled':False,
                         'reason':'Each tensor conversion requires explicit per-row typed approval; default disabled. See tensor_mode_decisions when opt-in enabled.'}
+                    if method:
+                        prior_calibration=provenance['operation_calibration']
+                        provenance['operation_calibration']={**method_label,'path':str(Path(profiler_method_review).resolve()),'sha256':method['review_sha256'],'half_lane_factor':2,'default_tensor_conversion_enabled':False,'prior_source_mode_calibration':prior_calibration}
+                        context.update(profiler_method=method_label)
                     context.update(gpu_sm70=True,
                         fp16_work_semantics='Physical executed packed lanes, including unused scalarhalf high lanes; distinct from useful work.')
                     records = []
@@ -671,7 +769,11 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                                     tensor_mode_basis='Source/API lowering proof, exact prospective dependency binding; no selected target SASS observation.')
                                 tensor_args = {key:decision[key] for key in
                                     ('tensor_flops_per_instruction','tensor_convention_evidence')}
-                        records.append(parser.derive(group,half_lanes=2,
+                        derive_group=group
+                        if method:
+                            derive_group,unit_aliases=method_gate.normalize_calibrated_frequency_units(group)
+                            row_context['profiler_frequency_unit_aliases']=unit_aliases
+                        records.append(parser.derive(derive_group,half_lanes=2,
                             half_provenance=provenance['operation_calibration'],
                             context=row_context,**tensor_args))
                     if tensor_loader:
@@ -685,6 +787,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         'kernel_count': len(records), 'records': records,
                         'benchmark_bottleneck': 'not_aggregated',
                         'raw_metrics': groups}
+                    if method:derived['profiler_method']=method_label
                     dump(slot/'derived.json', derived)
                     provenance['kernel_count'] = len(records)
                     if selection_override:
@@ -694,7 +797,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                     if provenance['status'] == 'profile_process_completed':
                         provenance['status'] = 'profile_completed_counter_derivation_failed'
     except Exception as error:
-        if provenance['status'] != 'not_started_replay_method_blocked':
+        if provenance['status'] not in ('not_started_replay_method_blocked','profile_method_post_profile_validation_hold'):
             provenance['status'] = 'collection_failed'
         provenance['error'] = str(error)
     finally:
@@ -781,6 +884,9 @@ def main():
     ap.add_argument('--timeout',type=int,default=300)
     ap.add_argument('--reserve-mib',type=int,default=2048)
     ap.add_argument('--retain-auxiliary',action='store_true')
+    ap.add_argument('--profiler-executable',type=Path)
+    ap.add_argument('--profiler-method-review',type=Path)
+    ap.add_argument('--profiler-method-review-sha256')
     ap.add_argument('--selection-overrides',type=Path)
     ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
     ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT/SU3 2GiB per-file policy, full payload space and auxiliary budget required')
@@ -798,7 +904,7 @@ def main():
             if selected['profiling_status']=='profile_process_completed' and selected.get('sampled_kernel_count',0)>0:
                 print(json.dumps({'benchmark':plan['benchmark'],'model':plan['model'],'status':'already_qualified_selected_capture_preserved'}),flush=True)
                 continue
-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed,a.profile_window_reviewed,a.isolated_assertion_reviewed)
+        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed,a.profile_window_reviewed,a.isolated_assertion_reviewed,a.profiler_executable,a.profiler_method_review,a.profiler_method_review_sha256)
         print(json.dumps(result),flush=True)
 
 

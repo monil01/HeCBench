@@ -110,6 +110,9 @@ COLUMNS = [
  ('V100 roofline observations','v100_scope','V100 positioning evidence scope','roofline.positioning_evidence_scope'),
  ('V100 roofline observations','v100_stages','V100 proved semantic stage labels','roofline.proved_semantic_stages'),
  ('V100 roofline observations','v100_phases','V100 sampled invocation qualifications','roofline.sample_phase_qualifications'),
+ ('V100 roofline observations','v100_method','V100 profiler method','roofline.profiler_method_id'),
+ ('V100 roofline observations','v100_version','V100 profiler version','roofline.profiler_version'),
+ ('V100 roofline observations','v100_method_review','V100 method review SHA','roofline.method_review_sha256'),
  ('V100 roofline observations','v100_status','V100 profiling status','roofline.profiling_status'),
  ('V100 roofline observations','v100_config','V100 profiled configurations','roofline.configuration_ids'),
  ('V100 roofline observations','v100_device','V100 device UUID','roofline.device_uuid'),
@@ -128,6 +131,9 @@ COLUMNS = [
  ('Native CUDA roofline baseline','v100_native_scope','V100 positioning evidence scope','roofline_native.positioning_evidence_scope'),
  ('Native CUDA roofline baseline','v100_native_stages','V100 proved semantic stage labels','roofline_native.proved_semantic_stages'),
  ('Native CUDA roofline baseline','v100_native_phases','V100 sampled invocation qualifications','roofline_native.sample_phase_qualifications'),
+ ('Native CUDA roofline baseline','v100_native_method','Native CUDA profiler method','roofline_native.profiler_method_id'),
+ ('Native CUDA roofline baseline','v100_native_version','Native CUDA profiler version','roofline_native.profiler_version'),
+ ('Native CUDA roofline baseline','v100_native_method_review','Native CUDA method review SHA','roofline_native.method_review_sha256'),
  ('Native CUDA roofline baseline','v100_native_status','Native CUDA profiling status','roofline_native.profiling_status'),
  ('Native CUDA roofline baseline','v100_native_kernels','Native CUDA recorded kernel observations','roofline_native.kernel_observation_count'),
  ('Native CUDA roofline baseline','v100_native_coverage','Native CUDA ROI coverage','roofline_native.roi_coverage'),
@@ -174,6 +180,21 @@ def distinct(values):
             result.append(v)
     return result
 
+
+
+def profiler_identity(record):
+    """Descriptive identity only; never promote unknown identity to calibration approval."""
+    declared=record.get('profiler_method') or {}
+    if not isinstance(declared,dict): declared={}
+    method=record.get('profiler_method_id') or declared.get('method_id')
+    if not method or method=='legacy2022_recorded_or_identity_incomplete':
+        method='unknown_profiler_method'
+    return {'profiler_method_id':method,
+            'profiler_version':record.get('profiler_version') or 'unknown_profiler_version',
+            'method_review_sha256':record.get('method_review_sha256') or declared.get('review_sha256') or 'unknown_method_review'}
+def profiler_stratum(record):
+    identity=profiler_identity(record)
+    return tuple(identity[k] for k in ('profiler_method_id','profiler_version','method_review_sha256'))
 
 def load_roofline_registry(root, population):
     """Read configuration-scoped profile links; never mutate inferred catalogue traits.
@@ -298,7 +319,7 @@ def load_roofline_registry(root, population):
                 evidence_scope = 'measured_source_family_geometry_invocation_qualified_not_whole_elapsed_ROI'
             else:
                 evidence_scope = 'measured_kernel_geometry_semantic_stage_unresolved'
-            summary = {'profiling_status':status, 'configuration_ids':ids,
+            summary = {**profiler_identity(entry),'profiling_status':status, 'configuration_ids':ids,
                        'positioning_evidence_scope':evidence_scope,
                        'proved_semantic_stages':proved_stages,
                        'sample_phase_qualifications':phases,

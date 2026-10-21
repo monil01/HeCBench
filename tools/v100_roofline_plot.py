@@ -14,6 +14,8 @@ import gzip
 import fcntl
 import math
 import re
+import shutil
+import textwrap
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +80,46 @@ def exclusion(row):
     return None
 
 
+
+def profiler_identity(record):
+    """Descriptive identity only; never promote unknown identity to calibration approval."""
+    declared=record.get('profiler_method') or {}
+    if not isinstance(declared,dict): declared={}
+    method=record.get('profiler_method_id') or declared.get('method_id')
+    if not method or method=='legacy2022_recorded_or_identity_incomplete':
+        method='unknown_profiler_method'
+    return {'profiler_method_id':method,
+            'profiler_version':record.get('profiler_version') or 'unknown_profiler_version',
+            'method_review_sha256':record.get('method_review_sha256') or declared.get('review_sha256') or 'unknown_method_review'}
+def profiler_stratum(record):
+    identity=profiler_identity(record)
+    return tuple(identity[k] for k in ('profiler_method_id','profiler_version','method_review_sha256'))
+
+
+def stratum_id(record):
+    return hashlib.sha256(json.dumps(profiler_stratum(record),ensure_ascii=True,separators=(',',':')).encode()).hexdigest()
+
+def publication_choice(records, requested):
+    choices={stratum_id(record):profiler_identity(record) for record in records}
+    if requested is not None:
+        if requested not in choices:
+            raise ValueError('Requested publication stratum absent; choose exact SHA256 from '+json.dumps(choices,sort_keys=True))
+        chosen=requested
+    elif len(choices)==1:
+        chosen=next(iter(choices))
+    elif not choices:
+        chosen=None
+    else:
+        raise ValueError('Multiple profiler strata require --publication-stratum EXACT_SHA256; no canonical export: '+json.dumps(choices,sort_keys=True))
+    return {'stratum_id':chosen,'identity':choices.get(chosen),'selection':'explicit' if requested else 'unique' if chosen else 'no_compatible_points',
+            'available_strata':choices,'identity_is_calibration_approval':False}
+
+def compact_profiler_version(raw):
+    # Display only: exact unabridged bytes remain in profiler_strata metadata.
+    match=re.search(r"(?i)(?:version|release)\s*[:=]?\s*(\d+(?:\.\d+){1,4})",raw)
+    label="NCU "+match.group(1) if match else " ".join(raw.split())
+    return textwrap.shorten(label,width=60,placeholder="…")
+
 def select_points(rows):
     points, exclusions = [], []
     for index, row in enumerate(rows, start=2):
@@ -86,6 +128,7 @@ def select_points(rows):
                     ('benchmark', 'model', 'configuration_id', 'kernel_id', 'process_id','context_id','stream_id',
                      'kernel', 'grid', 'block', 'precision', 'stage',
                      'roi_coverage', 'sample_phase', 'semantic_family_in_primary_ROI', 'evidence_manifest')}
+        identity.update(profiler_identity(row))
         if reason:
             exclusions.append(dict(csv_line=index, reason=reason, identity=identity))
             continue
@@ -165,7 +208,10 @@ def draw(points, output_prefix):
                markersize=5, label='Hollow: mixed projection'),
         Line2D([], [], marker='o', ls='none', color='#555555', alpha=.28,
                markersize=5, label='Faint: warmup or phase/stage pending')])
-    fig.suptitle('V100 kernel observations — normalized precision rooflines', y=.98, fontsize=13)
+    identity=profiler_identity(points[0]) if points else profiler_identity({})
+    fig.suptitle('V100 kernel observations — normalized precision rooflines', y=.99, fontsize=12)
+    label=textwrap.shorten(identity['profiler_method_id'],width=64,placeholder='…')+' | '+compact_profiler_version(identity['profiler_version'])
+    fig.text(.5,.958,label+' | stratum '+stratum_id(identity)[:12],ha='center',fontsize=8)
     fig.text(.5, .938, 'Partial first-launch / warmup samples; source stages may be unassigned',
              ha='center', fontsize=9, color='#555555')
     fig.supxlabel('DRAM intensity / precision-compatible ridge  (I / R)', y=.19)
@@ -178,7 +224,7 @@ def draw(points, output_prefix):
     fig.subplots_adjust(left=.105, right=.98, top=.88, bottom=.26, hspace=.24, wspace=.13)
     outputs = []
     for suffix in ('.pdf', '.svg'):
-        path = output_prefix.with_suffix(suffix)
+        path = Path(str(output_prefix)+suffix)  # Append: with_suffix would erase .method_TAG.
         fig.savefig(path, metadata={'Creator': 'v100_roofline_plot.py'})
         outputs.append(path)
     plt.close(fig)
@@ -189,6 +235,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input', type=Path, default=ROOT / 'ontology/studies/v100_roofline_537/kernel_roofline_points.csv')
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'ontology/studies/v100_roofline_537/figures')
+    parser.add_argument('--publication-stratum',help='Exact SHA256 of method/version/review tuple; required if multiple compatible strata exist.')
     args = parser.parse_args()
     # One byte snapshot prevents a concurrent summarizer refresh mixing rows/hashes.
     tensor_path=args.input.with_name('kernel_tensor_roofline_points.csv')
@@ -205,6 +252,8 @@ def main():
                 'executed_scalar_flops':item['executed_flops'],
                 'dram_arithmetic_intensity_flop_per_byte':item['arithmetic_intensity_flop_per_byte']})
     points, exclusions = select_points(rows)
+    # Gate before writing figures; no fallback to sorted-first or a stale canonical file.
+    publication=publication_choice(points,args.publication_stratum)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     prefix = args.output_dir / 'normalized_kernel_rooflines'
     input_snapshot = prefix.with_suffix('.input.csv.gz')
@@ -219,7 +268,22 @@ def main():
             'precision':'FP16inputs_FP32accumulation_HMMA884_sm70',
             'selected_target_SASS_observed':False,
             'basis':'Source/API-mode proof with calibration and prospective exact input bindings; not target SASS observation.'}
-    outputs, plot_limits = draw(points, prefix)
+    # Never silently overlay profiler methods. Missing historical identity is its own stratum.
+    outputs=[]; plot_limits={}; strata=[]
+    for key in sorted({profiler_stratum(point) for point in points}):
+        subset=[point for point in points if profiler_stratum(point)==key]
+        tag=stratum_id(subset[0])
+        method_prefix=prefix.with_name(prefix.name+'.method_'+tag)
+        paths,bounds=draw(subset,method_prefix)
+        outputs.extend(paths); plot_limits[tag]=bounds
+        strata.append(dict(zip(('profiler_method_id','profiler_version','method_review_sha256'),key),
+                           stratum_id=tag,plotted_rows=len(subset),outputs=[str(path)for path in paths]))
+    canonical_outputs=[]
+    if publication['stratum_id']:
+        selected=next(item for item in strata if item['stratum_id']==publication['stratum_id'])
+        for value in selected['outputs']:
+            source=Path(value);target=Path(str(prefix)+source.suffix)
+            shutil.copyfile(source,target);canonical_outputs.append(target)
     manifests = []
     for value in sorted({p['evidence_manifest'] for p in points if p.get('evidence_manifest')}):
         path = Path(value)
@@ -233,6 +297,11 @@ def main():
                   'snapshot_compressed_sha256':sha256_bytes(input_snapshot.read_bytes())},
         'script': {'path': str(Path(__file__).resolve()), 'sha256': sha256_bytes(Path(__file__).read_bytes())},
         'tensor_input':tensor_input,
+        'profiler_strata':strata,
+        'publication_selection':publication,
+        'canonical_outputs':[{'path':str(p.resolve()),'sha256':sha256_bytes(p.read_bytes())}for p in canonical_outputs],
+        'canonical_consumer_contract':'Consume only via the current metadata publication_selection and canonical_outputs SHA bindings, with matching current CSV input hashes; never use an unbound existing PDF. Ambiguous selection raises before output; refresh uses fresh temporary output directory.',
+        'profiler_policy':'Separate figures per method/version/review; unknown identity remains unknown, not assumed legacy2022.',
         'matplotlib_version': matplotlib.__version__,
         'outputs': [{'path': str(p.resolve()), 'sha256': sha256_bytes(p.read_bytes())} for p in outputs],
         'evidence_manifests': manifests,
@@ -258,7 +327,7 @@ def main():
     }
     destination = prefix.with_suffix('.metadata.json')
     destination.write_text(json.dumps(metadata, indent=2) + '\n')
-    print(json.dumps({'metadata': str(destination), 'counts': metadata['counts']}))
+    print(json.dumps({'metadata': str(destination), 'counts': metadata['counts'],'publication_selection':publication}))
 
 
 if __name__ == '__main__':
