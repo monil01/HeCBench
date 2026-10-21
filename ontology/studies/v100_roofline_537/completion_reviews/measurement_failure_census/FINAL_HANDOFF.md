@@ -1,0 +1,9 @@
+# Measurement failure census handoff
+
+Use **final_snapshot/**. The parent directory's first prototype snapshot is retained as a compatibility-development diagnostic, not the final operational census. Its apparent issues included unrecognized historical archive filenames, descriptive configuration labels and live raw pointers awaiting freeze; no old evidence was changed.
+
+The final exporter is tools/export_v100_measurement_failures.py. It reads under coordinator LOCK_SH and verifies all frozen gzip compressed/raw SHA/lengths, provenance/plan/collector/log links and exact archived config/result/census joins. Every model retains537 slots in both selected and latest views. All repeated frozen attempts are separate records and are not denominator percentages. Source/runtime NA, hardware/replay holds and pending cases remain visible. Log signatures are observations, not inferred root causes or translation failures.
+
+Machine-readable compact publication counts: final_snapshot/manuscript_summary.json; small comparison tables: operational_summary.csv and model_denominators.csv. All exact inputSHA records are in summary.json; full per-attempt observations/hashes in all_frozen_attempts.json; selected/latest slot records in selected_latest_slots.json; raw profiler/build launcher returncodes in process_returncodes.csv. Actual underlying child/compiler/JIT counts remain unknown and are never inferred from model counts. CPU-only derivative recovery adds no new executions.
+
+The exact exporter source is saved beside the output and its SHA is in summary.json. This tool executes no GPU/API/build/compiler/target or numerical tests. Rerun to a fresh /tmp output after further frozen campaign updates; existing outputs are refused. The current dump is an incomplete live-campaign snapshot, not a final537 roofline completion claim.
