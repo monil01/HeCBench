@@ -1,5 +1,32 @@
 # Julia Correctness Check
 
+## Audited source-membership batch5 and convection follow-up
+
+The fifth root-adopted source batch adds72 model records across18 names,
+with116 callsite inclusion and66 exclusion declarations. Five disjoint batches
+now cover301 selected model records across77 names with503 source callsite
+inclusions. See `completion_reviews/roi_membership_root_merge_batch5/root_adoption.json`
+under the V100 study. All182 changes passed fresh frozen-counter integrity and
+postannotation reconstruction;295 of331 saved rows match included families,
+36 remain unresolved. The strict12 family audit is byte-identical. No actual
+sample-phase, complete-ROI or causal flags were promoted.
+
+The batch excludes flip4 pending separate exact frozen-config reconciliation
+of its historical missing result configuration identifier. Preserve canonical
+null and historical result bytes; no generic fallback. fdtd3d4 is withheld
+because no canonical parent-stage identity exists, not because a backend is
+unsupported. Failed metadata preflights (identity join and legacy copyright
+encoding) are not compiler or GPU attempts. The one exact eigenvalue source
+encoding exception is reversible and hash-bound; no source bytes are changed.
+
+The later RBC050 CUDA.jl observer completed all five checks of13,720,023 values
+and retained27 partial kernel samples, with3194.7798 seconds observer wall time.
+Its unchanged unprofiled primary mean is30.2298 seconds. Exact runtime markers
+identify trial2/step240 and28 authored dispatches; samples do not prove a whole
+timestep or the1000-step elapsedROI. Keep the earlier native1800-second/four-check
+failure separately. Evidence: `completion_reviews/rbc050_cuda_jl_success/root_review.json`.
+Do not compare observer wall time to a single primary mean as an overhead ratio.
+
 ## V100 method recovery and current execution frontier
 
 The current canonical supervisor is v15, retaining all 40 explicit controller

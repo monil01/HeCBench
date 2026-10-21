@@ -1,0 +1,43 @@
+--- /tmp/roofline-completion-20261021/roi_membership_root_merge_v5_preparation/root_merge_reviews_v5_callable_latin1.py
++++ private/merge_flip_exact.py
+@@ -78,7 +78,7 @@
+   doc=json.loads(raw);p.update(original=doc,new=copy.deepcopy(doc),oldpacked=packed,oldraw=raw)
+   indexrows=[x for x in index['cohorts']if root/x['path']==reviewdir/name];need(len(indexrows)==1,'INDEX parent missing/duplicate')
+   need(indexrows[0]['compressed_sha256']==sha(packed)and indexrows[0]['raw_sha256']==sha(raw),'INDEX parent SHA drift')
+- receipts=[];source_hashes={};source_cache={};overlay_checks=[];identities=set()
++ receipts=[];source_hashes={};source_cache={};overlay_checks=[];identities=set();configuration_id_join_exceptions=[]
+  def source(z,captured):
+   p=Path(z['path']).resolve();h=z.get('source_sha256')or z.get('sha256');need(h is not None,'Missing source SHA')
+   if str(p)not in source_cache:source_cache[str(p)]=file_bytes(p)
+@@ -118,7 +118,21 @@
+   need(state['profiling_status']=='profile_process_completed'and str(folder.relative_to(root))in state['profile_ids'],'Selected capture drift '+str(key))
+   need(Path(root/state['kernel_observations']['path']).parent==folder,'Selected observation folder drift')
+   need(state['profile_provenance_sha256']==sha(provraw),'Selected provenance SHA drift')
+-  for k,ck in [('configuration_id','configuration_id'),('reference_result_sha256','result_sha256'),('raw_config_sha256','raw_config_sha256')]:need(plan[k]==contract[ck],'Selected contract join '+k)
++  for k,ck in [('configuration_id','configuration_id'),('reference_result_sha256','result_sha256'),('raw_config_sha256','raw_config_sha256')]:
++   if k=='configuration_id'and plan[k]!=contract[ck]:
++    # Exact historic flip schema exception ONLY. Neither the canonical null
++    # nor the immutable result/config is filled in or otherwise modified.
++    expected={'approved':True,'configuration_id':'flip_deterministic_n4096_r100_v1','canonical_configuration_id':None,'result_configuration_id_field_absent':True,'raw_config_sha256':'371c61a3cac140641d17e038c9118551a86626adc61201caf9d00b2c7f283a9c','reference_result_sha256':'803e84790e80a9bc706967cb8633c542a83eeba0f00d29eff9ddf2d9a3477e7d'}
++    need(b=='flip'and m in ('cuda','cuda_jl','ka','jacc')and contract[ck]is None,'No generic configuration-ID fallback permitted')
++    need(scientific.get('approved_contract_join_exceptions',{}).get('flip')==expected,'Exact hash-bound root-note approval of flip exception missing')
++    configraw=gzip.decompress(file_bytes(study/'selected_contracts/flip/config.json.gz'));resultraw=gzip.decompress(file_bytes(study/'selected_contracts/flip/result.json.gz'))
++    configdoc=json.loads(configraw);resultdoc=json.loads(resultraw)
++    need(sha(configraw)==expected['raw_config_sha256']==plan['raw_config_sha256']==contract['raw_config_sha256'],'Exact flip frozen config identity mismatch')
++    need(sha(resultraw)==expected['reference_result_sha256']==plan['reference_result_sha256']==contract['result_sha256'],'Exact flip frozen result identity mismatch')
++    need(configdoc.get('benchmark')==resultdoc.get('benchmark')=='flip'and'configuration_id'not in resultdoc,'Flip original result must lack CID rather than conflict')
++    need(configdoc.get('configuration_id')==plan[k]==record['configuration_id']==patch['record_key']['configuration_id']==expected['configuration_id'],'Exact flip frozen-config/plan/review/proposal ID agreement required')
++    configuration_id_join_exceptions.append({'benchmark':b,'model':m,'root_scientific_review':scientific_binding,'root_approval':expected,'plan_sha256':sha(planraw),'profile_provenance_sha256':sha(provraw),'canonical_configuration_id_unchanged':None,'historical_result_configuration_id_field_remains_absent':True,'interpretation':'Hash-bound identity join only; no metadata fill, acceptance, execution or sample-phase change.'})
++   else:need(plan[k]==contract[ck],'Selected contract join '+k)
+   need(record['configuration_id']==plan['configuration_id']==patch['record_key']['configuration_id'],'Record CID mismatch')
+   need(record['reference_result']['sha256']==plan['reference_result_sha256']and record['raw_config_sha256']==plan['raw_config_sha256'],'Candidate contract mismatch')
+   for n,k in [('result.json','reference_result_sha256'),('config.json','raw_config_sha256')]:need(sha(gzip.decompress(file_bytes(study/'selected_contracts'/b/(n+'.gz'))))==plan[k],'Frozen selected contract mismatch')
+@@ -246,7 +260,7 @@
+  index['enrichment_receipt']='ontology/studies/v100_roofline_537/roi_reviews/enrichment_transaction.json';proposed['INDEX.json']=encoded(index)
+  counts={'model_records':len(contexts),'names':len({b for b,m in contexts}),'inclusion_declarations':sum(x['inclusion']is True for x in ops),'exclusions':sum(x['inclusion']is False for x in ops),'pure_alias_nulls':sum(x['alias_only']for x in ops),'inclusion_alias_nulls':sum(x['inclusion']is True and x['null_selector']for x in ops),'non_null_inclusion_stages':sum(x['inclusion']is True and not x['null_selector']for x in ops)}
+  need(counts==expected_counts,'Complete seven-field root-reviewed population not validated')
+- receipt={'schema_version':1,'transaction':transaction,'status':'source_family_reviews_adopted_pending_fresh_annotation_integrity_audit','input_packets':packet_receipts,'root_scientific_review':scientific_binding,'script_sha256':sha(SOURCE),'counts':counts,'changes':ops,'selected_capture_checks':receipts,'retained_AMG_overlay_checks':[x for x in overlay_checks if x['benchmark']=='amgmk'],'retained_clock_overlay_checks':[x for x in overlay_checks if x['benchmark']=='clock'],'sample_phase':'Unknown; source inclusion is not actual timed-invocation proof.','whole_elapsed_ROI_claim':False,'causal_claim':False,'GPU_build_tests':0}
++ receipt={'schema_version':1,'transaction':transaction,'status':'source_family_reviews_adopted_pending_fresh_annotation_integrity_audit','input_packets':packet_receipts,'root_scientific_review':scientific_binding,'script_sha256':sha(SOURCE),'counts':counts,'changes':ops,'selected_capture_checks':receipts,'configuration_id_join_exceptions':configuration_id_join_exceptions,'retained_AMG_overlay_checks':[x for x in overlay_checks if x['benchmark']=='amgmk'],'retained_clock_overlay_checks':[x for x in overlay_checks if x['benchmark']=='clock'],'sample_phase':'Unknown; source inclusion is not actual timed-invocation proof.','whole_elapsed_ROI_claim':False,'causal_claim':False,'GPU_build_tests':0}
+  proposed['enrichment_transaction.json']=encoded(receipt)
+  for path,h in source_hashes.items():need(sha(file_bytes(path))==h,'Source changed during validation')
+  need(file_bytes(scientific_path)==scientific_raw,'Root scientific review changed during validation')
