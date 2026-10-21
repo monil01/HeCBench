@@ -1,0 +1,29 @@
+--- 002/calibrate_controller.py
++++ 003/calibrate_controller.py
+@@ -85,12 +85,17 @@
+   if pci!=expected_pci:raise RuntimeError('Actual raw counter PCI mismatch '+repr(pci))
+   if (mm.get('device__attribute_compute_capability_major'),mm.get('device__attribute_compute_capability_minor'))!=(7,0):raise RuntimeError('Raw counters are notsm70')
+   if mm['gpu__time_duration.sum']<=0:raise RuntimeError('Missing positive duration')
++  unit_aliases=[]
++  frequency_metrics={'dram__cycles_elapsed.avg.per_second','sm__cycles_elapsed.avg.per_second','lts__cycles_elapsed.avg.per_second'}
+   for m in metrics:
+    u=units.get(m)
+    if not u:raise RuntimeError('Explicit metric units missing '+m)
+    expectedunit=('inst'if m.startswith(('smsp__sass_thread_inst_executed_op_','sm__inst_executed_pipe_tensor.sum'))and not m.endswith('peak_sustained')else 'byte'if m in ['dram__bytes_read.sum','dram__bytes_write.sum','dram__bytes.sum','lts__t_bytes.sum']else 'cycle/second'if m.endswith('avg.per_second')else '%'if m.endswith('pct_of_peak_sustained_elapsed')else 'byte/cycle'if m in ['dram__bytes.sum.peak_sustained','lts__t_bytes.sum.peak_sustained']else 'inst/cycle'if m.endswith('peak_sustained')else None)
+    if m=='gpu__time_duration.sum':
+     if u not in ['nsecond','ns','usecond','us','msecond','ms','second','s']:raise RuntimeError('Unrecognized duration unit '+u)
++   elif m in frequency_metrics:
++    if u not in ('cycle/second','hz'):raise RuntimeError('Exact frequency unit mismatch '+m+' '+str(u))
++    if u=='hz':unit_aliases.append({'metric':m,'raw_unit':'hz','validated_unit':'cycle/second','factor':1,'scope':'Only this exact elapsed-cycle frequency metric, --print-units base. Raw counters unchanged.'})
+    elif expectedunit and u!=expectedunit:raise RuntimeError('Metric unit mismatch '+m+' '+str(u)+' expected '+expectedunit)
+   metric,count,physical,useful=expected[k]
+   if mm[metric]!=count:raise RuntimeError('Source-known typed instruction count mismatch '+repr((k,metric,mm[metric],count)))
+@@ -102,7 +107,7 @@
+     if v is None or mm.get(m)!=v:raise RuntimeError('Old2022 typed/architectural count differs '+repr((k,m,v,mm.get(m))))
+     if oldrows[k]['units'].get(m)!=units.get(m):raise RuntimeError('Old/new invariant metric units differ '+m)
+     compared[m]={'old2022':v,'new2025':mm[m]}
+-  details.append({'identity':g['identity'],'source_family':k[0],'expected_count':count,'count_metric':metric,'actual_count':mm[metric],'physical_executed_FLOPs':physical,'useful_source_FLOPs':useful,'physical_useful_distinction':'Scalarhalf still executes HFMA2 packed2lane×2ops; source uses only one lane. Never change globalphysical conversion to1lane.','old2022_invariant_counter_comparisons':compared,'actual_PCI':pci,'all_requested_metrics_present':True})
++  details.append({'identity':g['identity'],'source_family':k[0],'expected_count':count,'count_metric':metric,'actual_count':mm[metric],'physical_executed_FLOPs':physical,'useful_source_FLOPs':useful,'physical_useful_distinction':'Scalarhalf still executes HFMA2 packed2lane×2ops; source uses only one lane. Never change globalphysical conversion to1lane.','old2022_invariant_counter_comparisons':compared,'actual_PCI':pci,'all_requested_metrics_present':True,'validated_frequency_unit_aliases':unit_aliases})
+  return details
+ 
+ def main():

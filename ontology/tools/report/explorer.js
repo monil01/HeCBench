@@ -125,8 +125,12 @@ function render(){
 function openRecord(id,model){
   const row=EXPLORER.find(r=>r.id===id&&r.model===model);if(!row)return;
   $('recordTitle').textContent=`${id} — ${MODEL_LABELS[model]}`;
-  $('recordLinks').innerHTML=`<a href="../../${encodeURI(row.record_path)}" target="_blank" rel="noopener">Implementation record</a> · <a href="../benchmarks/${encodeURIComponent(id)}.yaml" target="_blank" rel="noopener">Catalogue record</a>`+(model!=='catalogue'?` · <a href="../studies/julia_abstractions_447/domains/${encodeURIComponent(id)}.json" target="_blank" rel="noopener">Scientific record</a>`:'');
+  $('recordLinks').innerHTML=`<a href="../../${encodeURI(row.record_path)}" target="_blank" rel="noopener">Implementation record</a> · <a href="../benchmarks/${encodeURIComponent(id)}.yaml" target="_blank" rel="noopener">Catalogue record</a>`+(model!=='catalogue'?` · <a href="../../${encodeURI(STUDY.study_path)}/domains/${encodeURIComponent(id)}.json" target="_blank" rel="noopener">Scientific record</a>`:'');
   const props={...(STUDY.base_properties[id]||{}),...row.properties};
+  if(row.display_provenance?.provenance?.length){
+    const display=row.display_provenance;
+    $('recordLinks').innerHTML+=' · '+display.provenance.map(p=>`<a href="../../${encodeURI(p.kind==='curated_aliases'?p.domain_path:p.authority.overlay.path)}" target="_blank" rel="noopener">${esc(p.kind==='curated_aliases'?'Curated field source':'Current537 display overlay')}</a>`).join(' · ')+` · <a href="../../${encodeURI(display.provenance[0].authority.path)}" target="_blank" rel="noopener">Root display authority</a>`;
+  }
   $('recordDetails').innerHTML=GROUPS.map(g=>`<details open><summary>${esc(g)}</summary><dl class="detail-list">${COLS.filter(c=>c.group===g).map(c=>`<dt>${esc(c.label)}</dt><dd>${esc(showValue(columnValue(row,c)))}</dd>`).join('')}</dl></details>`).join('')+`<details><summary>Exact recorded configurations (${row.configurations.length})</summary><pre>${esc(JSON.stringify(row.configurations,null,2))}</pre></details><details><summary>All recorded property paths (${Object.keys(props).length})</summary><dl class="detail-list">${Object.entries(props).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(showValue(v))}</dd>`).join('')}</dl></details>`;
   $('recordDialog').showModal();
 }

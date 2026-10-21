@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from study_report_metadata import context
 from generate_ontology_report import load_roofline_registry
+from current537_display_traits import DisplayTraits
 
 ROOT=Path(__file__).resolve().parents[2]
 MODELS=['cuda_jl','ka','jacc']
@@ -49,7 +50,8 @@ def unique(values):
     return sorted({str(v) for v in values if v is not None})
 
 
-def build(root,k,population=447):
+def build(root,k,population=447,current537_display_review_sha256=None,metadata_lock_fd=None):
+    traits=DisplayTraits(root,population,current537_display_review_sha256,metadata_lock_fd)
     study=root/f'ontology/studies/julia_abstractions_{population}'
     classfile=root/'2026-PASC-Hecbench-Julia-paper/research/revision_experiments/classes/normalized_records.json'
     classes={(r['benchmark'],r['model']):r for r in json.loads(classfile.read_text())} if classfile.exists() else {}
@@ -95,6 +97,12 @@ def build(root,k,population=447):
                 'agreement':unique(c.get('numerical_agreement_kind') for c in cfg),
                 'timing_scope':norm.get('timing_scope') or get(record,'shared_benchmark_traits.timing_scope'),
                 'source_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'source_commit':record.get('source_commit')}
+        if population==537:
+            for model in MODELS:
+                # Scoring uses original mapping/algorithm/method fields exclusively.
+                decoration=traits.decorate(bid,model)
+                models[model]['display_traits']=decoration
+                models[model]['display_mapping']=decoration['overrides'].get('work_item_mapping',models[model]['mapping'])
         for model in MODELS:
             workflow=study/'workflow_studies'/bid/(model+'.json')
             if workflow.exists():models[model]['additional_workflow_studies']=json.loads(workflow.read_text());files.append(workflow)
@@ -166,14 +174,17 @@ def build(root,k,population=447):
     meta['roofline_registry_summary']={k:v for k,v in roofline_meta.items() if k!='linked_evidence_sha256'}
     meta['roofline_linked_evidence_digest']=hashlib.sha256(json.dumps(roofline_meta.get('linked_evidence_sha256',{}),sort_keys=True).encode()).hexdigest()
     meta['roofline_interpretation']='Configuration-specific partial per-kernel geometric projections, never whole-workflow or causal labels; profile filters do not change descriptive edge weights.'
+    if population==537:meta['current537_display_traits']=traits.summary()
     return {'meta':meta,'nodes':nodes,'edges':edges}
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--root',type=Path,default=ROOT);parser.add_argument('--output',type=Path);parser.add_argument('--neighbors',type=int,default=5);parser.add_argument('--population',type=int,choices=[447,537],default=447)
+    parser.add_argument('--current537-display-review-sha256',help='Explicit root-approved authority SHA; absent disables current537 display overlays.')
+    parser.add_argument('--metadata-lock-fd',type=int,help='Borrowed canonical metadata EX-lock FD inherited via pass_fds; never downgraded, unlocked or closed.')
     args=parser.parse_args()
     if not 1<=args.neighbors<=30:parser.error('--neighbors must be between 1 and 30')
-    root=args.root.resolve();data=build(root,args.neighbors,args.population);assets=Path(__file__).parent/'julia_graph'
+    root=args.root.resolve();data=build(root,args.neighbors,args.population,args.current537_display_review_sha256,args.metadata_lock_fd);assets=Path(__file__).parent/'julia_graph'
     template=(assets/'template.html').read_text().replace('__TOP_K__',str(args.neighbors)).replace('__GRAPH_CSS__',(assets/'graph.css').read_text()).replace('__GRAPH_JS__',(assets/'graph.js').read_text()).replace('__GRAPH_DATA__',json.dumps(data,separators=(',',':')).replace('<','\\u003c'))
     template=template.replace('__STUDY_SUMMARY__',context(root,args.population)['summary']).replace('__STUDY_POPULATION__',str(args.population))
     out=args.output or root/'ontology/reports/relationship_graph.html';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(template)

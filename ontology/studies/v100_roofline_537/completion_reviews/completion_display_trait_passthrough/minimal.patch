@@ -1,0 +1,22 @@
+--- a/tools/v100_roofline_completion.py
++++ b/tools/v100_roofline_completion.py
+@@ -232,7 +232,9 @@
+   self.freeze_audit('after_'+batch)
+  def finish(self):
+   self.state['status']='final_CPU_exports';self.note('final_refresh_started')
+-  rec=self.step('final_refresh_once',self.tool('v100_roofline_refresh.py','--source-root',self.root,'--raw-root',self.raw,'--once'))
++  command=self.tool('v100_roofline_refresh.py','--source-root',self.root,'--raw-root',self.raw,'--once')
++  if self.a.current537_display_review_sha256:command+=['--current537-display-review-sha256',self.a.current537_display_review_sha256]
++  rec=self.step('final_refresh_once',command)
+   # refresh currently logs per-tool errors but can itself return0; enforce each.
+   events=[]
+   for line in Path(rec['log']).read_text(errors='replace').splitlines():
+@@ -281,7 +283,7 @@
+ 
+ def main():
+  if len(sys.argv)==3 and sys.argv[1]=='--internal-worker':return worker(sys.argv[2])
+- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--raw-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--reviews',type=Path,required=True);ap.add_argument('--controller',action='append',required=True,help='Explicit owned GPU controller PID:Linux_START_TICKS; repeat all main/followup/custom controllers; never CPU refresh');ap.add_argument('--controller-reviews',type=Path,help='Optional JSON controllers keyed PID:START with command_sha256 of raw /proc/PID/cmdline, source_reviewed_GPU_controller:true and reason; never CPU refresh');ap.add_argument('--max-retry-rounds',type=int,default=2);ap.add_argument('--existing-round-state',action='append',default=[],help='039=finished|preserve or041=finished|preserve; requires archived proof for finished');ap.add_argument('--poll-seconds',type=int,default=15);ap.add_argument('--timeout',type=int,default=600);ap.add_argument('--freeze-every',type=int,default=10);ap.add_argument('--resume',action='store_true');ap.add_argument('--execute',action='store_true');a=ap.parse_args();s=None
++ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source-root',type=Path,required=True);ap.add_argument('--raw-root',type=Path,required=True);ap.add_argument('--output-root',type=Path,required=True);ap.add_argument('--reviews',type=Path,required=True);ap.add_argument('--controller',action='append',required=True,help='Explicit owned GPU controller PID:Linux_START_TICKS; repeat all main/followup/custom controllers; never CPU refresh');ap.add_argument('--controller-reviews',type=Path,help='Optional JSON controllers keyed PID:START with command_sha256 of raw /proc/PID/cmdline, source_reviewed_GPU_controller:true and reason; never CPU refresh');ap.add_argument('--max-retry-rounds',type=int,default=2);ap.add_argument('--existing-round-state',action='append',default=[],help='039=finished|preserve or041=finished|preserve; requires archived proof for finished');ap.add_argument('--poll-seconds',type=int,default=15);ap.add_argument('--timeout',type=int,default=600);ap.add_argument('--freeze-every',type=int,default=10);ap.add_argument('--current537-display-review-sha256',help='Exact approved current537 display authority SHA; forwarded only to final CPU refresh.');ap.add_argument('--resume',action='store_true');ap.add_argument('--execute',action='store_true');a=ap.parse_args();s=None
+  try:s=Supervisor(a);s.run();return 0
+  except Exception as error:
+   if s is not None:

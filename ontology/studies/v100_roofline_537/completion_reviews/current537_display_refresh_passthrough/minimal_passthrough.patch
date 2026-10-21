@@ -1,0 +1,21 @@
+--- a/tools/v100_roofline_refresh.py
++++ b/tools/v100_roofline_refresh.py
+@@ -26,6 +26,7 @@
+     ap.add_argument('--wait-pid',type=int,action='append',default=[])
+     ap.add_argument('--interval',type=int,default=600)
+     ap.add_argument('--once',action='store_true')
++    ap.add_argument('--current537-display-review-sha256',help='Pass exact root-approved current537 display authority SHA to report generation only.')
+     args=ap.parse_args();root=args.source_root.resolve();raw=args.raw_root.resolve()
+     if not raw.is_relative_to('/tmp') or raw==Path('/tmp') or args.interval<60:
+         ap.error('Owned raw root and interval >=60 seconds required')
+@@ -63,7 +64,9 @@
+         output=root/'ontology/reports/ontology_report.html';temporary=output.with_suffix('.html.next')
+         with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+             fcntl.flock(lock,fcntl.LOCK_EX)
+-            if run('ontology_report',[sys.executable,str(root/'ontology/tools/generate_ontology_report.py'),'--population','537','--output',str(temporary)]):
++            report_command=[sys.executable,str(root/'ontology/tools/generate_ontology_report.py'),'--population','537','--output',str(temporary)]
++            if args.current537_display_review_sha256:report_command+=['--current537-display-review-sha256',args.current537_display_review_sha256]
++            if run('ontology_report',report_command):
+                 temporary.replace(output)
+         with tempfile.TemporaryDirectory(prefix='roofline-publication-',dir='/tmp')as workspace:
+             export=Path(workspace)/'export'

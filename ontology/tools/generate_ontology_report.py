@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 from study_report_metadata import context
+from current537_display_traits import DisplayTraits
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = {'cuda_jl': 'CUDA.jl', 'ka': 'KernelAbstractions', 'jacc': 'JACC'}
@@ -331,7 +332,16 @@ def load_roofline_registry(root, population):
                        'linked_evidence_sha256':linked_inputs}, inputs
 
 
-def build(root, population=447):
+def build(root, population=447, current537_display_review_sha256=None,metadata_lock_fd=None):
+    traits=DisplayTraits(root,population,current537_display_review_sha256,metadata_lock_fd)
+    columns=COLUMNS
+    if population==537:
+        labels={'application':'Domain / application context (curated)','method':'Method / operator (curated)',
+                'type':'Benchmark type (inferred catalogue)','motif':'Computational motifs (inferred catalogue)'}
+        display_paths={'application':'display.domain_or_application_context','method':'display.method_or_operator',
+                       'accuracy':'display.accuracy','size':'display.named_scale',
+                       'mapping':'display.work_item_mapping','geometry':'display.launch_geometry'}
+        columns=[(g,k,labels.get(k,l),display_paths.get(k,path))for g,k,l,path in COLUMNS]
     ont = root/'ontology'
     study = ont/f'studies/julia_abstractions_{population}'
     roofline, roofline_summary, roofline_inputs = load_roofline_registry(root, population)
@@ -385,18 +395,31 @@ def build(root, population=447):
         derived['failure_codes'] = distinct([e.get('taxonomy_code') for e in get(rec,'failure_taxonomy.events',[])])
         derived['token_windows'] = get(rec,'effort.translation_tokens.observed_activity_windows',[])
         sources = {'id':bid,'model':model,'record':rec,'base':bases.get(bid,{}),'domain':dom,'classes':classes.get((bid,model),{}),'derived':derived,'roofline':roofline.get((bid,model),{}),'roofline_native':roofline.get((bid,'cuda'),{})}
+        decoration=traits.decorate(bid,model) if population==537 else None
+        if population==537:
+            display={'work_item_mapping':get(rec,'implementation_ontology_normalized.work_item_mapping'),
+                     'launch_geometry':get(rec,'implementation_ontology_normalized.launch_geometry'),
+                     'method_or_operator':get(dom,'scientific_intent.mathematical_method'),
+                     'domain_or_application_context':get(dom,'scientific_intent.application_domain'),
+                     'accuracy':get(dom,'scientific_intent.accuracy_requirements'),
+                     'named_scale':get(dom,'scientific_intent.input_size_regime')}
+            display.update(decoration['overrides'])
+            for key,entry in decoration['aliases'].items():display[key]=entry['value']
+            sources['display']=display
+            sources['display_provenance']=decoration
         props = flatten({k:v for k,v in sources.items() if k not in ['base','domain']})
-        values = {key:get(sources,path) for _,key,_,path in COLUMNS}
-        rows.append({'id':bid,'model':model,'values':values,'properties':props,'configurations':cfg,'record_path':str(file.relative_to(root))})
+        values = {key:get(sources,path) for _,key,_,path in columns}
+        rows.append({'id':bid,'model':model,'values':values,'properties':props,'configurations':cfg,'record_path':str(file.relative_to(root)),**({'display_provenance':decoration}if population==537 else {})})
     covered = {r['id'] for r in rows}
     for bid in bases.keys()-covered:
         sources={'id':bid,'model':'catalogue','base':bases[bid]}
-        rows.append({'id':bid,'model':'catalogue','values':{key:get(sources,path) for _,key,_,path in COLUMNS},'properties':{},'configurations':[],'record_path':f'ontology/benchmarks/{bid}.yaml'})
+        rows.append({'id':bid,'model':'catalogue','values':{key:get(sources,path) for _,key,_,path in columns},'properties':{},'configurations':[],'record_path':f'ontology/benchmarks/{bid}.yaml'})
     base_props = {bid:flatten({'base':b,'domain':domains.get(bid,{})}) for bid,b in bases.items()}
     payload={'rows':sorted(rows,key=lambda r:(r['id'],list(MODELS).index(r['model']) if r['model'] in MODELS else 3)),
-             'base_properties':base_props,'columns':[{'group':g,'key':k,'label':l,'path':p} for g,k,l,p in COLUMNS],
+             'base_properties':base_props,'columns':[{'group':g,'key':k,'label':l,'path':p} for g,k,l,p in columns],
              'study_path':str(study.relative_to(root)),'status_counts':counts,'assessed_names':len(domains),'class_source':str(normalized.relative_to(root)) if normalized.exists() else None,
              'roofline_summary':roofline_summary, 'population_context':context(root,population),'source_files':len(inputs),'additional_workflow_source_files':len(workflow_inputs),'source_digest':hashlib.sha256(b''.join(p.read_bytes() for p in inputs+workflow_inputs+roofline_inputs)).hexdigest()}
+    if population==537:payload['current537_display_traits']=traits.summary()
     payload['roofline_source_digest'] = hashlib.sha256(json.dumps(roofline_summary.get('linked_evidence_sha256',{}),sort_keys=True).encode()).hexdigest()
     meta={'total':len(data),'status':{'recorded':len(data)},'generated':datetime.datetime.now(datetime.timezone.utc).isoformat()}
     return data,meta,payload
@@ -404,7 +427,9 @@ def build(root, population=447):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--root',type=Path,default=ROOT);parser.add_argument('--output',type=Path);parser.add_argument('--population',type=int,choices=[447,537],default=447)
-    args=parser.parse_args();root=args.root.resolve();data,meta,payload=build(root,args.population)
+    parser.add_argument('--current537-display-review-sha256',help='Explicit SHA256 of root-approved current537 display authority; absent disables overlays.')
+    parser.add_argument('--metadata-lock-fd',type=int,help='Borrowed canonical metadata EX-lock FD inherited via pass_fds; never downgraded, unlocked or closed.')
+    args=parser.parse_args();root=args.root.resolve();data,meta,payload=build(root,args.population,args.current537_display_review_sha256,args.metadata_lock_fd)
     assets=Path(__file__).parent/'report';template=(assets/'template.html').read_text();labels=context(root,args.population)
     template=template.replace('__STUDY_SUMMARY__',labels['summary']).replace('__STUDY_POPULATION__',str(args.population))
     for marker,value in [('__BENCHMARK_DATA__',data),('__REPORT_META__',meta)]:

@@ -2,7 +2,8 @@
 
 ## V100 method recovery and current execution frontier
 
-The current canonical supervisor is v13, including one reviewed RBC055 follower
+The current canonical supervisor is v15, retaining all 40 explicit controller
+identities, including one reviewed RBC055 follower
 that waits for the exact RBC050 generation and skips qualified models. Read the
 canonical receipt rather than restarting any historical PID. A stopped supervisor
 still holds its singleton lock: v11 was rejected before work for that reason;
@@ -24,6 +25,27 @@ its original tree and transaction journals. An existing `.roi-v4-active-commit.j
 requires exact tree/journal recovery before another merge; never guess a missing
 canonical tree. The successful transaction left no active marker. These metadata
 operations and startup failures are not translation/compiler/GPU attempts.
+
+Calibration002 later reached its first precision capture and passed that full
+host check, then stopped because NCU2025 reports frequency as `hz` rather than
+the validator's `cycle/second`. All nine cases did not complete; no new method
+was adopted. Preserve its actual raw failure and guard-normalization receipts.
+Fresh003 is source-reviewed and queued on GPU6 with all nine original canary
+cases, checks, metrics and guards. Its only unit change accepts `hz` as a
+factor-one alias of `cycle/second` for three exact clock-frequency metrics.
+A queued run is not a calibration pass. The pending v5 method proposal pins003;
+it requires actual all-nine success and separate root admission before use.
+The older v4 proposal pins failed002 and is historical, not adoptable.
+
+The current537 display authority and its actual export audit are retained in
+`completion_reviews/current537_display_traits` under the V100 study. The export
+confirmed seven corrected fields, 42 model alias records and unchanged 8,185
+relationship edges, with zero issues. These are source-backed display traits,
+not new GPU results or whole-ROI classifications. Supervisor v15 forwards and
+resume-binds the exact authority SHA to its final CPU refresh. A refresh parent
+holding the metadata exclusive lock must pass its existing lock FD to report
+and graph subprocesses; never acquire a nested shared lock. Without that parent
+lock, the loader acquires its own shared lock. Preserve failures and holds.
 
 The canonical active supervisor receipt is
 `ontology/studies/v100_roofline_537/completion_reviews/completion_supervisor/root_adoption_command.json`.

@@ -1,0 +1,36 @@
+--- a/tools/v100_roofline_refresh.py
++++ b/tools/v100_roofline_refresh.py
+@@ -26,6 +26,7 @@
+     ap.add_argument('--wait-pid',type=int,action='append',default=[])
+     ap.add_argument('--interval',type=int,default=600)
+     ap.add_argument('--once',action='store_true')
++    ap.add_argument('--current537-display-review-sha256',help='Pass exact root-approved current537 display authority SHA to report generation only.')
+     args=ap.parse_args();root=args.source_root.resolve();raw=args.raw_root.resolve()
+     if not raw.is_relative_to('/tmp') or raw==Path('/tmp') or args.interval<60:
+         ap.error('Owned raw root and interval >=60 seconds required')
+@@ -44,8 +45,8 @@
+         event['time']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+         with journal.open('a')as f:f.write(json.dumps(event)+'\n')
+         print(json.dumps(event),flush=True)
+-    def run(label,argv):
+-        value=subprocess.run(argv,cwd=root,env=env,capture_output=True,text=True)
++    def run(label,argv,*,pass_fds=()):
++        value=subprocess.run(argv,cwd=root,env=env,capture_output=True,text=True,pass_fds=pass_fds)
+         note(dict(event=label,returncode=value.returncode,stdout=value.stdout[-4000:],stderr=value.stderr[-4000:]))
+         return value.returncode==0
+     def live():
+@@ -63,7 +64,13 @@
+         output=root/'ontology/reports/ontology_report.html';temporary=output.with_suffix('.html.next')
+         with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:
+             fcntl.flock(lock,fcntl.LOCK_EX)
+-            if run('ontology_report',[sys.executable,str(root/'ontology/tools/generate_ontology_report.py'),'--population','537','--output',str(temporary)]):
++            report_command=[sys.executable,str(root/'ontology/tools/generate_ontology_report.py'),'--population','537','--output',str(temporary)]
++            report_pass_fds=()
++            if args.current537_display_review_sha256:
++                report_command+=['--current537-display-review-sha256',args.current537_display_review_sha256,
++                                 '--metadata-lock-fd',str(lock.fileno())]
++                report_pass_fds=(lock.fileno(),)
++            if run('ontology_report',report_command,pass_fds=report_pass_fds):
+                 temporary.replace(output)
+         with tempfile.TemporaryDirectory(prefix='roofline-publication-',dir='/tmp')as workspace:
+             export=Path(workspace)/'export'
