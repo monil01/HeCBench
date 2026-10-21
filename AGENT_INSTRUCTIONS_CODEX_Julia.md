@@ -1,6 +1,6 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
-## Current profiler and controller authority: v17
+## Current profiler and controller authority: v18
 
 Actual calibration003 completed all nine source/geometry cases and both full host
 checks on GPU6 with83 unchanged historical input bindings. The root packer
@@ -12,15 +12,18 @@ Corev5 and presentationv3 are now deployed. Actual2025 benchmark captures still
 require explicit reviewed invocation and complete original checks; calibration
 is not a benchmark pass, performance-equivalence claim, or fullROI diagnosis.
 
-Supervisorv17 monitors the40 historical controllers plus one root-reviewed
-059/060 method-recovery follower (41total), retaining finite039/041 retry bounds. It pins23 core/presentation source inputs, forwards and resume-binds
+Supervisorv18 monitors the40 historical controllers plus root-reviewed
+059/060 and062 method-recovery followers (42total), retaining finite039/041 retry bounds. It pins23 core/presentation source inputs, forwards and resume-binds
 both display authority and exact publication stratum. The root adoption is in
 `completion_reviews/completion_supervisor/method_v5_presentation_v3_v16`.
 Only exact owned idle CPU parents were retired with generation handles; no GPU
 collector was signaled. A new CPU refresh preserves the original allowed PID
 wait list. Read current canonical receipts and actual checkpoint; never restart
-v15/v16 or any historical controller. The new follower waits exact040/043/056--058
+v15/v16/v17 or any historical controller. The new follower waits exact040/043/056--058
 predecessors, skips qualified models and makes at most two collector invocations.
+The062 follower waits the whole exact021 generation and makes at most one
+collector invocation for columnarSolver KA/JACC with a3600-second timeout.
+Its original timeout cause and new SDK compatibility remain unknown until actual runs.
 Further one-shot method recovery followers need
 separate source/runtime review and explicit frontier readoption.
 
@@ -33,16 +36,19 @@ are not current authority. Preserve old2022 data, failed001/002 calibrations,
 raw units, original compiler unknowns, all primary five-run means and all guards.
 GPU5 remains unauthorized. No OS/package installation or privilege operation.
 
-## Current source authority: seven audited batches and RBC follow-up
+## Current source authority: eight audited batches and RBC follow-up
 
-Seven root-adopted source batches cover392 distinct selected model records across100
-names, with682 callsite inclusion declarations. The seventh adds39 records/10names,
-76 inclusions and31 exclusions. Evidence:
-`completion_reviews/roi_membership_root_merge_batch7/root_adoption.json` under
-the V100 study. All107 changes passed frozen-counter integrity and separate
-postannotation reconstruction;172 of188 sampled rows match included source families,
-16 remain unresolved. Goulash KA's unexplained saved signature and GELS vendor
-associations remain withheld; accepted numerical results are unchanged.
+Eight root-adopted source batches cover417 distinct selected model records across107
+names, with727 callsite inclusion declarations. The eighth adds25 records/7names,
+45 inclusions and13 exclusions. Evidence:
+`completion_reviews/roi_membership_root_merge_batch8/root_adoption.json` under
+ the V100 study. Frozen-counter integrity and separate postannotation reconstruction
+passed. Halo-finder's pinned-memory force window is not an HBM roofline claim;
+heartwall's frame-dependent initialization/template update must remain distinct.
+Goulash KA's unexplained saved signature, native kurtosis vendor association and
+GELS vendor associations remain withheld; numerical results are unchanged.
+Two exact heartwall avilib source files have hash-bound reversible Latin-1 decode
+exceptions. Their bytes are unchanged; no generic decoding fallback is permitted.
 
 The method-aware summarizer adds profiler metadata to the twelve strict family
 audit records and their three source ledgers. Their audit bytes therefore differ
@@ -58,7 +64,7 @@ The exact flip reconciliation now joins all four profiles to the unchanged froze
 configuration and historical result. That old result lacks a configuration-ID
 field; canonical null and historical bytes remain unchanged. The exception is
 restricted to flip's exact config/result hashes and explicit root review. Never
-use a generic missing-ID fallback. fdtd3d4 is outside these seven indexed source
+use a generic missing-ID fallback. fdtd3d4 is outside these eight indexed source
 batches: it already has four records in the separate legacy ROI_REVIEW authority.
 Never create a duplicate cohort or alter the legacy receipt to inflate coverage.
 Review legacy membership and phase evidence separately. GELS vendor symbols

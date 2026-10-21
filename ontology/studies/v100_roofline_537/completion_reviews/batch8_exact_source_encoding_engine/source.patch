@@ -1,0 +1,45 @@
+--- /tmp/roofline-completion-20261021/flip_exact_merge_exception_proposal/merge_flip_exact.py
++++ /tmp/roofline-completion-20261021/batch8_exact_source_encoding_engine/merge_batch8_exact_encoding.py
+@@ -58,6 +58,14 @@
+  expected_counts=scientific.get('expected_counts')
+  need(isinstance(expected_counts,dict)and set(expected_counts)==expected_count_keys,'Scientific review must specify exactly all seven expected-count fields')
+  need(all(type(x)is int and x>=0 for x in expected_counts.values()),'Expected counts must be nonnegative integers')
++ # Root-note approval is restricted to these two immutable upstream sources.
++ allowed_source_encodings={
++  '/home/imo/HeCBench_julia/src/heartwall-cuda/util/avi/avilib.c':{'sha256':'2ad236bd5607dfe4d1bc5db488eff30aaf2245d8319a561cee276cd4118a6583','encoding':'latin-1'},
++  '/home/imo/HeCBench_julia/src/heartwall-cuda/util/avi/avilib.h':{'sha256':'96695e436e52ac0512bd691038feb63d47ffa9800c77380ad3386a668733d272','encoding':'latin-1'},
++ }
++ approved_source_encodings=scientific.get('approved_reversible_source_encodings',{})
++ need(isinstance(approved_source_encodings,dict),'Source encoding approvals must be a mapping')
++ need(all(path in allowed_source_encodings and entry==allowed_source_encodings[path]for path,entry in approved_source_encodings.items()),'Unapproved source encoding path/hash/encoding')
+  scientific_binding={'path':str(scientific_path),'sha256':sha(scientific_raw)}
+  index=json.loads(oldtree['INDEX.json']);parents={};contexts={};ops=[];packet_receipts=[]
+  for packet in packets:
+@@ -85,9 +93,16 @@
+   raw=source_cache[str(p)];need(sha(raw)==h and h in captured.get(str(p),set()),'Source absent/changed in selected capture '+str(p));source_hashes[str(p)]=h
+   # One frozen upstream copyright byte is Latin-1; preserve the full bytes.
+   # This exception is restricted to the independently reviewed exact file/hash.
++  encoding='utf-8'
+   if str(p)==str(root/'src/eigenvalue-cuda/main.cu') and sha(raw)=='ce2ed0bf5e19846f370270a8ad04cd07bde1141090667d4c3af18df7424241c7':
+-   text=raw.decode('latin-1');need(text.encode('latin-1')==raw,'Nonlossless frozen eigenvalue decode')
+-  else:text=raw.decode()
++   encoding='latin-1'
++  elif str(p)in allowed_source_encodings:
++   expected_encoding=allowed_source_encodings[str(p)]
++   need(approved_source_encodings.get(str(p))==expected_encoding,'Exact root-note source encoding approval missing '+str(p))
++   need(h==expected_encoding['sha256'],'Approved source encoding SHA mismatch '+str(p))
++   encoding=expected_encoding['encoding']
++  if 'snippet_encoding'in z:need(z['snippet_encoding']==encoding,'Snippet declared encoding mismatch '+str(p))
++  text=raw.decode(encoding);need(text.encode(encoding)==raw,'Nonlossless frozen source decode '+str(p))
+   lines=text.splitlines()
+   if 'line'in z and 'text'in z:need(1<=z['line']<=len(lines)and lines[z['line']-1]==z['text'],'Exact callsite line mismatch '+str(p))
+   if 'context'in z:
+@@ -98,7 +113,7 @@
+     need(isinstance(row,dict)and 1<=row['line']<=len(lines)and lines[row['line']-1]==row['text'],'Quoted source line mismatch '+str(p))
+   if 'snippet'in z:
+    start,end=z['start_byte'],z['end_byte'];need(isinstance(start,int)and isinstance(end,int)and 0<=start<=end<=len(raw),'Snippet byte interval')
+-   need(raw[start:end].decode()==z['snippet'],'Complete byte snippet mismatch '+str(p))
++   need(raw[start:end].decode(encoding)==z['snippet']and z['snippet'].encode(encoding)==raw[start:end],'Complete reversible byte snippet mismatch '+str(p))
+    if 'start_line'in z:need(raw[:start].count(b'\n')+1==z['start_line'],'Snippet start line mismatch')
+    if 'end_line'in z:need(z['end_line']in {raw[:end].count(b'\n')+1,raw[:max(start,end-1)].count(b'\n')+1},'Snippet end line convention mismatch')
+   return {'path':str(p),'sha256':h}
