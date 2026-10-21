@@ -1,0 +1,278 @@
+--- a/tools/v100_roofline_plot.py
++++ b/tools/v100_roofline_plot.py
+@@ -78,6 +78,21 @@
+     return None
+ 
+ 
++
++def profiler_identity(record):
++    """Descriptive identity only; never promote unknown identity to calibration approval."""
++    declared=record.get('profiler_method') or {}
++    if not isinstance(declared,dict): declared={}
++    method=record.get('profiler_method_id') or declared.get('method_id')
++    if not method or method=='legacy2022_recorded_or_identity_incomplete':
++        method='unknown_profiler_method'
++    return {'profiler_method_id':method,
++            'profiler_version':record.get('profiler_version') or 'unknown_profiler_version',
++            'method_review_sha256':record.get('method_review_sha256') or declared.get('review_sha256') or 'unknown_method_review'}
++def profiler_stratum(record):
++    identity=profiler_identity(record)
++    return tuple(identity[k] for k in ('profiler_method_id','profiler_version','method_review_sha256'))
++
+ def select_points(rows):
+     points, exclusions = [], []
+     for index, row in enumerate(rows, start=2):
+@@ -86,6 +101,7 @@
+                     ('benchmark', 'model', 'configuration_id', 'kernel_id', 'process_id','context_id','stream_id',
+                      'kernel', 'grid', 'block', 'precision', 'stage',
+                      'roi_coverage', 'sample_phase', 'semantic_family_in_primary_ROI', 'evidence_manifest')}
++        identity.update(profiler_identity(row))
+         if reason:
+             exclusions.append(dict(csv_line=index, reason=reason, identity=identity))
+             continue
+@@ -165,7 +181,8 @@
+                markersize=5, label='Hollow: mixed projection'),
+         Line2D([], [], marker='o', ls='none', color='#555555', alpha=.28,
+                markersize=5, label='Faint: warmup or phase/stage pending')])
+-    fig.suptitle('V100 kernel observations — normalized precision rooflines', y=.98, fontsize=13)
++    identity=profiler_identity(points[0]) if points else profiler_identity({})
++    fig.suptitle('V100 kernel observations — normalized precision rooflines\n'+identity['profiler_method_id']+' | '+identity['profiler_version'], y=.995, fontsize=10)
+     fig.text(.5, .938, 'Partial first-launch / warmup samples; source stages may be unassigned',
+              ha='center', fontsize=9, color='#555555')
+     fig.supxlabel('DRAM intensity / precision-compatible ridge  (I / R)', y=.19)
+@@ -219,7 +236,16 @@
+             'precision':'FP16inputs_FP32accumulation_HMMA884_sm70',
+             'selected_target_SASS_observed':False,
+             'basis':'Source/API-mode proof with calibration and prospective exact input bindings; not target SASS observation.'}
+-    outputs, plot_limits = draw(points, prefix)
++    # Never silently overlay profiler methods. Missing historical identity is its own stratum.
++    outputs=[]; plot_limits={}; strata=[]
++    for key in sorted({profiler_stratum(point) for point in points}):
++        subset=[point for point in points if profiler_stratum(point)==key]
++        tag=sha256_bytes(json.dumps(key).encode())[:12]
++        method_prefix=prefix.with_name(prefix.name+'.method_'+tag)
++        paths,bounds=draw(subset,method_prefix)
++        outputs.extend(paths); plot_limits[tag]=bounds
++        strata.append(dict(zip(('profiler_method_id','profiler_version','method_review_sha256'),key),
++                           tag=tag,plotted_rows=len(subset),outputs=[str(path)for path in paths]))
+     manifests = []
+     for value in sorted({p['evidence_manifest'] for p in points if p.get('evidence_manifest')}):
+         path = Path(value)
+@@ -233,6 +259,8 @@
+                   'snapshot_compressed_sha256':sha256_bytes(input_snapshot.read_bytes())},
+         'script': {'path': str(Path(__file__).resolve()), 'sha256': sha256_bytes(Path(__file__).read_bytes())},
+         'tensor_input':tensor_input,
++        'profiler_strata':strata,
++        'profiler_policy':'Separate figures per method/version/review; unknown identity remains unknown, not assumed legacy2022.',
+         'matplotlib_version': matplotlib.__version__,
+         'outputs': [{'path': str(p.resolve()), 'sha256': sha256_bytes(p.read_bytes())} for p in outputs],
+         'evidence_manifests': manifests,
+--- a/tools/export_v100_roofline_paper.py
++++ b/tools/export_v100_roofline_paper.py
+@@ -22,6 +22,21 @@
+  if 'warmup'in sample or'first_'in sample:return 'first_invocation_or_warmup_qualified'
+  if 'retained'in sample:return 'retained_primary_sample_not_complete_phase'
+  return 'source_family_membership_only_phase_unproved'
++
++def profiler_identity(record):
++    """Descriptive identity only; never promote unknown identity to calibration approval."""
++    declared=record.get('profiler_method') or {}
++    if not isinstance(declared,dict): declared={}
++    method=record.get('profiler_method_id') or declared.get('method_id')
++    if not method or method=='legacy2022_recorded_or_identity_incomplete':
++        method='unknown_profiler_method'
++    return {'profiler_method_id':method,
++            'profiler_version':record.get('profiler_version') or 'unknown_profiler_version',
++            'method_review_sha256':record.get('method_review_sha256') or declared.get('review_sha256') or 'unknown_method_review'}
++def profiler_stratum(record):
++    identity=profiler_identity(record)
++    return tuple(identity[k] for k in ('profiler_method_id','profiler_version','method_review_sha256'))
++
+ def counter_dict(c):return dict(sorted(c.items()))
+ def tex(s):
+  return str(s).replace('\\','\\textbackslash{}').replace('&',r'\&').replace('_',r'\_').replace('%',r'\%').replace('#',r'\#')
+@@ -58,7 +73,7 @@
+     p=P(name);p=p if p.is_absolute()else root/p
+     if sha(p.read_bytes())!=binding['sha256']:raise ValueError('Offline snapshot changed during export: '+name)
+   if f is not None:fcntl.flock(f,fcntl.LOCK_UN)
+- stats={m:{'denominator_names':537,'status_counts':collections.Counter(),'ROI_coverage_counts':collections.Counter(),'contract_outcomes':collections.Counter(),'precision_classes_in_completed_samples':collections.Counter(),'completed_kernel_observations':0,'failed_process_kernel_rows_excluded':0,'whole_ROI_classifications':0,'causal_bottleneck_classifications':0,'unassigned_or_candidate_kernel_observations':0,'first_or_warmup_qualified_kernel_observations':0,'sampled_phase_counts':collections.Counter(),'recorded_sample_phase_labels':collections.Counter(),'causal_labels_without_explicit_evidence':0,'DRAM_tier_applicability_counts':collections.Counter()}for m in MODELS}
++ stats={m:{'denominator_names':537,'status_counts':collections.Counter(),'ROI_coverage_counts':collections.Counter(),'contract_outcomes':collections.Counter(),'precision_classes_in_completed_samples':collections.Counter(),'completed_kernel_observations':0,'failed_process_kernel_rows_excluded':0,'whole_ROI_classifications':0,'causal_bottleneck_classifications':0,'unassigned_or_candidate_kernel_observations':0,'first_or_warmup_qualified_kernel_observations':0,'sampled_phase_counts':collections.Counter(),'recorded_sample_phase_labels':collections.Counter(),'causal_labels_without_explicit_evidence':0,'profiler_stratum_completed_sample_counts':collections.Counter(),'DRAM_tier_applicability_counts':collections.Counter()}for m in MODELS}
+  slotrows=[];familycounts=collections.Counter();familyrecords={};slots={}
+  for name in names:
+   ledger=ledgers[name];contract=ledger.get('accepted_named_contract')or{};intent=domains[name].get('scientific_intent',{})
+@@ -69,13 +84,13 @@
+    causal=state.get('observed_bottleneck')or state.get('causal_bottleneck');causal_known=causal not in [None,'','unknown','unknown_not_aggregated'];whole=state.get('roofline_region');whole_proved=bool(whole) and state.get('full_timed_ROI_coverage_confirmed')is True and status==COMPLETE;causal_proved=causal_known and bool(state.get('causal_evidence')or state.get('observed_bottleneck_evidence'))and status==COMPLETE;st['whole_ROI_classifications']+=whole_proved;st['causal_bottleneck_classifications']+=causal_proved;st['causal_labels_without_explicit_evidence']+=causal_known and not causal_proved
+    key=(name,m);slots[key]=state;familycounts[(family,m,status)]+=1
+    mean=((contract.get('models')or{}).get(m)or{}).get('mean')
+-   slotrows.append({'benchmark':name,'model':m,'scientific_family':family,'configuration_id':contract.get('configuration_id'),'profiling_status':status,'ROI_coverage':coverage,'recorded_kernel_observation_count':state.get('sampled_kernel_count'),'whole_ROI_geometric_classification':whole if whole_proved else None,'recorded_causal_label':causal,'actual_causal_bottleneck':causal if causal_proved else None,'contract_outcome':contract.get('outcome'),'reference_qualification':contract.get('qualification'),'primary_unprofiled_mean_seconds':mean,'kernel_evidence_manifest':state.get('profile_evidence_manifest'),'ontology_record':'ontology/studies/v100_roofline_537/benchmarks/'+name+'.json'})
++   slotrows.append({**profiler_identity(state),'benchmark':name,'model':m,'scientific_family':family,'configuration_id':contract.get('configuration_id'),'profiling_status':status,'ROI_coverage':coverage,'recorded_kernel_observation_count':state.get('sampled_kernel_count'),'whole_ROI_geometric_classification':whole if whole_proved else None,'recorded_causal_label':causal,'actual_causal_bottleneck':causal if causal_proved else None,'contract_outcome':contract.get('outcome'),'reference_qualification':contract.get('qualification'),'primary_unprofiled_mean_seconds':mean,'kernel_evidence_manifest':state.get('profile_evidence_manifest'),'ontology_record':'ontology/studies/v100_roofline_537/benchmarks/'+name+'.json'})
+  for r in kernel_rows:
+   m=r['model'];key=(r['benchmark'],m)
+   if m not in stats or key not in slots:raise ValueError('Kernel outside canonical slot universe')
+   if r.get('profiling_status')!=COMPLETE or slots[key].get('profiling_status')!=COMPLETE:
+    stats[m]['failed_process_kernel_rows_excluded']+=1;continue
+-  st=stats[m];st['completed_kernel_observations']+=1;st['precision_classes_in_completed_samples'][r.get('precision_class')or'unknown']+=1;st['DRAM_tier_applicability_counts'][r.get('dram_roofline_applicability')or slots[key].get('dram_roofline_applicability')or 'source_tier_unreviewed_HBM_projection_only']+=1;ph=phase(r);st['sampled_phase_counts'][ph]+=1;st['unassigned_or_candidate_kernel_observations']+=ph=='ROI_unassigned_or_candidate';st['first_or_warmup_qualified_kernel_observations']+=('warmup'in(r.get('sample_phase')or'')or'first_'in(r.get('sample_phase')or''));st['recorded_sample_phase_labels'][r.get('sample_phase')or'unknown']+=1
++  st=stats[m];st['profiler_stratum_completed_sample_counts'][json.dumps(profiler_stratum(r))]+=1;st['completed_kernel_observations']+=1;st['precision_classes_in_completed_samples'][r.get('precision_class')or'unknown']+=1;st['DRAM_tier_applicability_counts'][r.get('dram_roofline_applicability')or slots[key].get('dram_roofline_applicability')or 'source_tier_unreviewed_HBM_projection_only']+=1;ph=phase(r);st['sampled_phase_counts'][ph]+=1;st['unassigned_or_candidate_kernel_observations']+=ph=='ROI_unassigned_or_candidate';st['first_or_warmup_qualified_kernel_observations']+=('warmup'in(r.get('sample_phase')or'')or'first_'in(r.get('sample_phase')or''));st['recorded_sample_phase_labels'][r.get('sample_phase')or'unknown']+=1
+  predictions=collections.Counter();excluded=collections.Counter()
+  # Hierarchical export includes DRAM andL2 exactly once; never add scalar andhierarchical CSVs.
+  for r in hier_rows:
+@@ -89,7 +104,7 @@
+   if work is None or work<=0:excluded['missing_or_nonpositive_counted_work']+=1;continue
+   if r.get('roofline_regime')not in REGIMES:excluded['undefined_or_missing_envelope']+=1;continue
+   if num(r.get('intensity_over_ridge'))is None:excluded['missing_normalized_intensity']+=1;continue
+-  family=familyrecords[r['benchmark']]['family'];predictions[(m,r.get('precision')or'unknown',r.get('memory_tier')or'unknown',r['roofline_regime'],phase(r),family,applicability)]+=1
++  family=familyrecords[r['benchmark']]['family'];predictions[(*profiler_stratum(r),m,r.get('precision')or'unknown',r.get('memory_tier')or'unknown',r['roofline_regime'],phase(r),family,applicability)]+=1
+  # Correlations are deliberately gated on explicit complete comparable phase proofs,
+  # not kernel-name matches, sourcefamily inclusion or first/retained samples.
+  rejection=collections.Counter();pairs=[]
+@@ -97,22 +112,25 @@
+   for m in MODELS[1:]:
+    native=slots[(name,'cuda')];other=slots[(name,m)]
+    if native.get('profiling_status')!=COMPLETE or other.get('profiling_status')!=COMPLETE:rejection['both_processes_not_completed']+=1;continue
++   ns,ts=profiler_stratum(native),profiler_stratum(other)
++   if any(value.startswith('unknown_')for value in ns+ts):rejection['profiler_method_identity_incomplete']+=1;continue
++   if ns!=ts:rejection['profiler_method_version_or_review_mismatch']+=1;continue
+    if not(native.get('full_timed_ROI_coverage_confirmed')is True and other.get('full_timed_ROI_coverage_confirmed')is True):rejection['complete_timed_phase_coverage_unproved']+=1;continue
+    proof=other.get('native_comparison_proof')or{}
+    need=['matched_source_ROI','matched_cases_and_actual_inputs','matched_arithmetic_precision','same_device','complete_phase_coverage','aggregation_work_bytes_time_compatible']
+    if proof.get('review_status')!='approved'or not all(proof.get(k)is True for k in need)or not proof.get('evidence_sha256'):rejection['explicit_matched_comparison_proof_missing']+=1;continue
+    # Publication of future eligible statistics requires a separately reviewed
+    # full-ROI aggregate with no equal-kernel averaging; retain candidates only.
+-   pairs.append({'benchmark':name,'model':m,'proof':proof,'analysis_status':'eligible_proof_requires_reviewed_aggregate_export'})
++   pairs.append({**profiler_identity(other),'benchmark':name,'model':m,'proof':proof,'analysis_status':'eligible_proof_requires_reviewed_aggregate_export'})
+  normalized=[]
+  for m in MODELS:
+   for k,v in list(stats[m].items()):
+    if isinstance(v,collections.Counter):stats[m][k]=counter_dict(v)
+  familyrows=[{'scientific_family':f,'model':m,'profiling_status':s,'names':n}for(f,m,s),n in sorted(familycounts.items())]
+- predrows=[{'model':m,'precision':p,'memory_tier':tier,'geometric_regime':regime,'sample_phase_qualification':ph,'scientific_family':family,'memory_tier_applicability':applicability,'kernel_projection_count':n}for(m,p,tier,regime,ph,family,applicability),n in sorted(predictions.items())]
++ predrows=[{'profiler_method_id':method,'profiler_version':version,'method_review_sha256':review,'model':m,'precision':p,'memory_tier':tier,'geometric_regime':regime,'sample_phase_qualification':ph,'scientific_family':family,'memory_tier_applicability':applicability,'kernel_projection_count':n}for(method,version,review,m,p,tier,regime,ph,family,applicability),n in sorted(predictions.items())]
+  payload={'schema_version':1,'study':'v100_roofline_537','campaign_status':'incomplete_profiling_campaign','snapshot_consistency':'explicit_quiescent_snapshot_with_postread_hash_check' if a.offline_snapshot else 'coordinator_shared_metadata_lock','source_progress_updated_at':progress.get('updated_at'),'denominators':{'benchmark_names':537,'models':list(MODELS),'model_slots':2148,'native_baseline':'cuda','Julia_implementation_slots':1611,'kernel_projection_counts_are_not_benchmark_counts':True},'per_model':stats,'geometric_prediction_counts':predrows,'excluded_projection_rows':counter_dict(excluded),'ontology_families':familyrecords,'native_comparison_analysis':{'status':'insufficient_complete_matched_phase_and_aggregate_evidence','candidate_benchmark_model_pairs':537*3,'proof_candidate_count':len(pairs),'proof_candidates':pairs,'rejection_counts':counter_dict(rejection),'numerical_speedup_correlation':None,'normalized_intensity_ridge_correlation':None,'occupancy_correlation':None,'why_null':'No kernel-weighted benchmark average or correlation inferred from incomplete/partial samples; explicit full compatible aggregate export is required even if a future proof candidate exists.'},'method':{'work':'Executed precision-specific scalar/tensor projections; useful-source triad historical plot remains separate.','prediction_scope':'Successful process kernel samples only; memory_side/compute_side are geometric predictions, never actual bottleneck labels. Unassigned/setup/warmup phases remain separate.','model_status_scope':'Every canonical name/model retained, including hardwarebarriers/failed/pending/blocked/missing.','memory_applicability':'Explicitnot_applicable hostmapped/PCIe-primary tiers excluded from all compute/memory prediction summaries, raw projections retained in source diagnostics. Unreviewed tiers remain qualifiedHBMprojections.','retained_selectors':'Current trial2/sourceordinal proof is a fresh profiling selection, not historicalprimaryexecution or completeelapsedhostROI.','precision_scope':'Scalar classes andtensor remain separate; mixed classes are projections not summed arithmetic/peaks.','timing':'Primaryunprofiled mean2–5 remains original configuration value; replay duration never replaces it.','ontology':'Source-reviewed scientificfamily/operator fields only; catalogue inferredresource_bias untouched.','aggregation':'Counts of projection observations only, not equal-kernel benchmark means or causalclaims.','raw_audit':'InputSHA bindings reproduce this compact snapshot, not an independent recertification of all raw counter values.'},'input_bindings':dict(sorted(inputs.items())),'input_digest':sha(json.dumps(inputs,sort_keys=True,separators=(',',':')).encode()),'exporter_sha256':sha(P(__file__).read_bytes()),'shared_analysis_usage_receipt':receipt}
+  out.mkdir(parents=True);(out/'campaign_snapshot.json').write_text(json.dumps(payload,sort_keys=True,indent=2,allow_nan=False)+'\n')
+- write_csv(out/'model_status.csv',slotrows,list(slotrows[0]));write_csv(out/'family_coverage.csv',familyrows,['scientific_family','model','profiling_status','names']);write_csv(out/'kernel_projection_counts.csv',predrows,['model','precision','memory_tier','geometric_regime','sample_phase_qualification','scientific_family','memory_tier_applicability','kernel_projection_count'])
++ write_csv(out/'model_status.csv',slotrows,list(slotrows[0]));write_csv(out/'family_coverage.csv',familyrows,['scientific_family','model','profiling_status','names']);write_csv(out/'kernel_projection_counts.csv',predrows,['profiler_method_id','profiler_version','method_review_sha256','model','precision','memory_tier','geometric_regime','sample_phase_qualification','scientific_family','memory_tier_applicability','kernel_projection_count'])
+  rows=[]
+  for label,values in [('Completed profiling processes',[stats[m]['status_counts'].get(COMPLETE,0)for m in MODELS]),('Failed profiling processes',[stats[m]['status_counts'].get('profile_process_failed',0)for m in MODELS]),('Native hardware barriers',[stats[m]['status_counts'].get('native_hardware_blocked',0)for m in MODELS]),('Pending or plan/method blocked',[537-sum(stats[m]['status_counts'].get(k,0)for k in [COMPLETE,'profile_process_failed','native_hardware_blocked'])for m in MODELS]),('Kernel samples (completed processes)',[stats[m]['completed_kernel_observations']for m in MODELS]),('Whole-ROI geometric classifications',[stats[m]['whole_ROI_classifications']for m in MODELS]),('Causal bottleneck classifications',[stats[m]['causal_bottleneck_classifications']for m in MODELS])]:rows.append(tex(label)+' & '+' & '.join(str(x)for x in values)+r'\\')
+  latex='\\begin{table}[t]\\centering\\small\n\\caption{Incomplete V100 profiling snapshot. Each model retains all 537 names; samples and geometric predictions are not whole-benchmark or causal classifications.}\\label{tab:v100-campaign-progress}\n\\begin{tabular}{lrrrr}\\toprule\nAssessment & CUDA & CUDA.jl & KA & JACC\\\\\\midrule\n'+'\n'.join(rows)+'\n\\bottomrule\\end{tabular}\n\\end{table}\n'
+--- a/ontology/tools/generate_ontology_report.py
++++ b/ontology/tools/generate_ontology_report.py
+@@ -109,6 +109,9 @@
+  ('V100 roofline observations','v100_scope','V100 positioning evidence scope','roofline.positioning_evidence_scope'),
+  ('V100 roofline observations','v100_stages','V100 proved semantic stage labels','roofline.proved_semantic_stages'),
+  ('V100 roofline observations','v100_phases','V100 sampled invocation qualifications','roofline.sample_phase_qualifications'),
++ ('V100 roofline observations','v100_method','V100 profiler method','roofline.profiler_method_id'),
++ ('V100 roofline observations','v100_version','V100 profiler version','roofline.profiler_version'),
++ ('V100 roofline observations','v100_method_review','V100 method review SHA','roofline.method_review_sha256'),
+  ('V100 roofline observations','v100_status','V100 profiling status','roofline.profiling_status'),
+  ('V100 roofline observations','v100_config','V100 profiled configurations','roofline.configuration_ids'),
+  ('V100 roofline observations','v100_device','V100 device UUID','roofline.device_uuid'),
+@@ -127,6 +130,9 @@
+  ('Native CUDA roofline baseline','v100_native_scope','V100 positioning evidence scope','roofline_native.positioning_evidence_scope'),
+  ('Native CUDA roofline baseline','v100_native_stages','V100 proved semantic stage labels','roofline_native.proved_semantic_stages'),
+  ('Native CUDA roofline baseline','v100_native_phases','V100 sampled invocation qualifications','roofline_native.sample_phase_qualifications'),
++ ('Native CUDA roofline baseline','v100_native_method','Native CUDA profiler method','roofline_native.profiler_method_id'),
++ ('Native CUDA roofline baseline','v100_native_version','Native CUDA profiler version','roofline_native.profiler_version'),
++ ('Native CUDA roofline baseline','v100_native_method_review','Native CUDA method review SHA','roofline_native.method_review_sha256'),
+  ('Native CUDA roofline baseline','v100_native_status','Native CUDA profiling status','roofline_native.profiling_status'),
+  ('Native CUDA roofline baseline','v100_native_kernels','Native CUDA recorded kernel observations','roofline_native.kernel_observation_count'),
+  ('Native CUDA roofline baseline','v100_native_coverage','Native CUDA ROI coverage','roofline_native.roi_coverage'),
+@@ -173,6 +179,21 @@
+             result.append(v)
+     return result
+ 
++
++
++def profiler_identity(record):
++    """Descriptive identity only; never promote unknown identity to calibration approval."""
++    declared=record.get('profiler_method') or {}
++    if not isinstance(declared,dict): declared={}
++    method=record.get('profiler_method_id') or declared.get('method_id')
++    if not method or method=='legacy2022_recorded_or_identity_incomplete':
++        method='unknown_profiler_method'
++    return {'profiler_method_id':method,
++            'profiler_version':record.get('profiler_version') or 'unknown_profiler_version',
++            'method_review_sha256':record.get('method_review_sha256') or declared.get('review_sha256') or 'unknown_method_review'}
++def profiler_stratum(record):
++    identity=profiler_identity(record)
++    return tuple(identity[k] for k in ('profiler_method_id','profiler_version','method_review_sha256'))
+ 
+ def load_roofline_registry(root, population):
+     """Read configuration-scoped profile links; never mutate inferred catalogue traits.
+@@ -297,7 +318,7 @@
+                 evidence_scope = 'measured_source_family_geometry_invocation_qualified_not_whole_elapsed_ROI'
+             else:
+                 evidence_scope = 'measured_kernel_geometry_semantic_stage_unresolved'
+-            summary = {'profiling_status':status, 'configuration_ids':ids,
++            summary = {**profiler_identity(entry),'profiling_status':status, 'configuration_ids':ids,
+                        'positioning_evidence_scope':evidence_scope,
+                        'proved_semantic_stages':proved_stages,
+                        'sample_phase_qualifications':phases,
+--- a/ontology/tools/generate_relationship_graph.py
++++ b/ontology/tools/generate_relationship_graph.py
+@@ -54,7 +54,7 @@
+     classfile=root/'2026-PASC-Hecbench-Julia-paper/research/revision_experiments/classes/normalized_records.json'
+     classes={(r['benchmark'],r['model']):r for r in json.loads(classfile.read_text())} if classfile.exists() else {}
+     roofline,roofline_meta,roofline_files=load_roofline_registry(root,population)
+-    profile_keys=('profiling_status','configuration_ids','device_uuid','kernel_observation_count',
++    profile_keys=('profiler_method_id','profiler_version','method_review_sha256','profiling_status','configuration_ids','device_uuid','kernel_observation_count',
+                   'loaded_kernel_observation_count','roi_coverage','dram_roofline_applicability',
+                   'scalar_roofline_applicability','scalar_applicability_evidence_status',
+                   'geometric_regimes','diagnostic_geometric_regimes','precision_classes','causal_bottleneck','evidence_link_status',
+--- a/ontology/tools/julia_graph/graph.js
++++ b/ontology/tools/julia_graph/graph.js
+@@ -23,6 +23,8 @@
+  options('implClass',[...new Set(DATA.nodes.map(n=>n.models[model()].class).filter(Boolean))].sort(),'implementation classes');
+  options('failure',[...new Set(DATA.nodes.flatMap(n=>n.models[model()].failure_codes))].sort(),'actual failure codes');
+  options('profileStatus',[...new Set(DATA.nodes.map(n=>n.models[model()].roofline?.profiling_status).filter(Boolean))].sort(),'V100 profile statuses');
++ options('profileMethod',[...new Set(DATA.nodes.map(n=>n.models[model()].roofline?.profiler_method_id||'unknown_profiler_method'))].sort(),'profiler methods');
++ options('profileVersion',[...new Set(DATA.nodes.map(n=>n.models[model()].roofline?.profiler_version||'unknown_profiler_version'))].sort(),'profiler versions');
+  options('profileRegime',[...new Set(DATA.nodes.flatMap(n=>n.models[model()].roofline?.geometric_regimes||[]))].sort(),'sampled geometric regimes');
+ }
+ function benchmarkChoices(){
+@@ -33,11 +35,11 @@
+  else if(matches.length)selected=matches[0].id;
+ }
+ function eligible(n){
+- const m=n.models[model()];return(!$('family').value||n.family===$('family').value)&&(!$('status').value||m.status===$('status').value)&&(!$('implClass').value||m.class===$('implClass').value)&&(!$('failure').value||m.failure_codes.includes($('failure').value))&&(!$('profileStatus').value||m.roofline?.profiling_status===$('profileStatus').value)&&(!$('profileRegime').value||(m.roofline?.geometric_regimes||[]).includes($('profileRegime').value))&&(!$('precision').value||JSON.stringify(m.storage??'').toLowerCase().includes($('precision').value.toLowerCase().trim()));
++ const m=n.models[model()];return(!$('family').value||n.family===$('family').value)&&(!$('status').value||m.status===$('status').value)&&(!$('implClass').value||m.class===$('implClass').value)&&(!$('failure').value||m.failure_codes.includes($('failure').value))&&(!$('profileStatus').value||m.roofline?.profiling_status===$('profileStatus').value)&&(!$('profileMethod').value||(m.roofline?.profiler_method_id||'unknown_profiler_method')===$('profileMethod').value)&&(!$('profileVersion').value||(m.roofline?.profiler_version||'unknown_profiler_version')===$('profileVersion').value)&&(!$('profileRegime').value||(m.roofline?.geometric_regimes||[]).includes($('profileRegime').value))&&(!$('precision').value||JSON.stringify(m.storage??'').toLowerCase().includes($('precision').value.toLowerCase().trim()));
+ }
+ function showGraph(){
+  const translation=view()==='translation';
+- for(const id of ['scope','family','status','implClass','precision','failure','profileStatus','profileRegime','score','neighbors'])$(id).disabled=translation;
++ for(const id of ['scope','family','status','implClass','precision','failure','profileStatus','profileMethod','profileVersion','profileRegime','score','neighbors'])$(id).disabled=translation;
+  $('scoreLabel').textContent=Number($('score').value).toFixed(2);$('neighborLabel').textContent=$('neighbors').value;
+  selectedEdge=null;clearEvidence();
+  if(translation){
+@@ -103,7 +105,7 @@
+ function detail(fields){return '<dl class="detail">'+fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(text(v))}</dd>`).join('')+'</dl>';}
+ function renderSelection(){
+  const n=nodesById.get(selected),m=n.models[model()];
+- $('selection').innerHTML=`<h3 class="selected-name">${esc(n.id)}</h3><span class="pill">${esc(n.family.replaceAll('_',' '))}</span><p>${esc(n.task||'Scientific task unknown')}</p>`+detail([['Method',n.method],['Accuracy',n.accuracy],['Named scale',n.size]])+`<p class="cap">${link(n.domain_path,'Scientific intent record')} · <a href="ontology_report.html">All property categories</a></p><div class="table-scroll"><table><thead><tr><th>Julia version</th><th>Scoped outcome</th><th>Implementation class</th></tr></thead><tbody>${['cuda_jl','ka','jacc'].map(k=>`<tr><td><button type="button" class="node-button model-name ${k}" data-inspect-model="${k}">${LABELS[k]}</button></td><td>${esc(STATUSES[n.models[k].status]||n.models[k].status)}</td><td>${esc(text(n.models[k].class))}</td></tr>`).join('')}</tbody></table></div><details class="summary-model"><summary>${LABELS[model()]} properties and evidence</summary>`+detail([['V100 profile status',m.roofline?.profiling_status],['V100 evidence scope',m.roofline?.positioning_evidence_scope],['Sampled kernel regimes',m.roofline?.geometric_regimes],['V100 causal bottleneck',m.roofline?.causal_bottleneck],['Algorithm',m.algorithm],['Storage',m.storage],['Compute',m.compute],['Mapping',m.mapping],['Layout',m.layout],['Resources',m.resources],['Device APIs',m.api],['Library',m.library],['Host scope',m.host],['Timing scope',m.timing_scope],['Profiling',m.profiling],['Actual failures',m.failure_codes],['History',m.failure_history],['Attempts',m.effort.candidate_attempts],['Compiler checks',m.effort.compiler_checks],['Token accounting',m.token_status],['Recorded total tokens',m.token_total],['Source-token proxy',m.saved_source_token_proxy],['Versions (defaults)',m.environment],['Review',m.review],['Class basis',m.class_basis]])+`<p>${link(m.record_path,'Implementation record')}</p></details><details class="summary-model"><summary>Exact configurations (${m.configurations.length})</summary><p class="cap">Includes trial verdicts, mean seconds from trials 2–5, reference qualifications and declared environment overrides. These are recorded values.</p><pre>${esc(JSON.stringify(m.configurations,null,2))}</pre></details><details class="summary-model"><summary>Origin-matched failure evidence</summary><pre>${esc(JSON.stringify(m.failure_events,null,2))}</pre></details><details class="summary-model"><summary>Observed token windows</summary><p class="cap">Windows can overlap and include repeated/cached context. Do not add overlapping windows or interpret source proxies as inference consumption.</p><pre>${esc(JSON.stringify(m.token_windows,null,2))}</pre></details><details class="summary-model"><summary>V100 evidence: native CUDA and selected Julia version</summary><p class="cap">Per-kernel geometric positions can be partial or warmup samples. They do not establish a whole-workflow bottleneck. Measurement failures are separate from translation failures.</p><pre>${esc(JSON.stringify({native_cuda:n.native_roofline,selected_Julia:m.roofline},null,2))}</pre></details>`;
++ $('selection').innerHTML=`<h3 class="selected-name">${esc(n.id)}</h3><span class="pill">${esc(n.family.replaceAll('_',' '))}</span><p>${esc(n.task||'Scientific task unknown')}</p>`+detail([['Method',n.method],['Accuracy',n.accuracy],['Named scale',n.size]])+`<p class="cap">${link(n.domain_path,'Scientific intent record')} · <a href="ontology_report.html">All property categories</a></p><div class="table-scroll"><table><thead><tr><th>Julia version</th><th>Scoped outcome</th><th>Implementation class</th></tr></thead><tbody>${['cuda_jl','ka','jacc'].map(k=>`<tr><td><button type="button" class="node-button model-name ${k}" data-inspect-model="${k}">${LABELS[k]}</button></td><td>${esc(STATUSES[n.models[k].status]||n.models[k].status)}</td><td>${esc(text(n.models[k].class))}</td></tr>`).join('')}</tbody></table></div><details class="summary-model"><summary>${LABELS[model()]} properties and evidence</summary>`+detail([['V100 profiler method',m.roofline?.profiler_method_id],['V100 profiler version',m.roofline?.profiler_version],['V100 method review SHA',m.roofline?.method_review_sha256],['V100 profile status',m.roofline?.profiling_status],['V100 evidence scope',m.roofline?.positioning_evidence_scope],['Sampled kernel regimes',m.roofline?.geometric_regimes],['V100 causal bottleneck',m.roofline?.causal_bottleneck],['Algorithm',m.algorithm],['Storage',m.storage],['Compute',m.compute],['Mapping',m.mapping],['Layout',m.layout],['Resources',m.resources],['Device APIs',m.api],['Library',m.library],['Host scope',m.host],['Timing scope',m.timing_scope],['Profiling',m.profiling],['Actual failures',m.failure_codes],['History',m.failure_history],['Attempts',m.effort.candidate_attempts],['Compiler checks',m.effort.compiler_checks],['Token accounting',m.token_status],['Recorded total tokens',m.token_total],['Source-token proxy',m.saved_source_token_proxy],['Versions (defaults)',m.environment],['Review',m.review],['Class basis',m.class_basis]])+`<p>${link(m.record_path,'Implementation record')}</p></details><details class="summary-model"><summary>Exact configurations (${m.configurations.length})</summary><p class="cap">Includes trial verdicts, mean seconds from trials 2–5, reference qualifications and declared environment overrides. These are recorded values.</p><pre>${esc(JSON.stringify(m.configurations,null,2))}</pre></details><details class="summary-model"><summary>Origin-matched failure evidence</summary><pre>${esc(JSON.stringify(m.failure_events,null,2))}</pre></details><details class="summary-model"><summary>Observed token windows</summary><p class="cap">Windows can overlap and include repeated/cached context. Do not add overlapping windows or interpret source proxies as inference consumption.</p><pre>${esc(JSON.stringify(m.token_windows,null,2))}</pre></details><details class="summary-model"><summary>V100 evidence: native CUDA and selected Julia version</summary><p class="cap">Per-kernel geometric positions can be partial or warmup samples. They do not establish a whole-workflow bottleneck. Measurement failures are separate from translation failures.</p><pre>${esc(JSON.stringify({native_cuda:n.native_roofline,selected_Julia:m.roofline},null,2))}</pre></details>`;
+ }
+ function clearEvidence(){$('evidence').innerHTML='<p class="muted">Select a connection to inspect its shared properties, contributions and sources.</p>';}
+ function inspectEdge(e){
+@@ -139,10 +141,10 @@
+ $('selection').onclick=ev=>{const b=ev.target.closest('[data-inspect-model]');if(!b)return;$('model').value=b.dataset.inspectModel;populateFilters();showGraph();};
+ $('view').onchange=showGraph;$('model').onchange=()=>{populateFilters();benchmarkChoices();showGraph();};
+ $('search').oninput=()=>{benchmarkChoices();showGraph();};$('benchmark').onchange=()=>{if($('benchmark').value)selected=$('benchmark').value;showGraph();};
+-for(const id of ['scope','family','status','implClass','failure','profileStatus','profileRegime'])$(id).onchange=showGraph;
++for(const id of ['scope','family','status','implClass','failure','profileStatus','profileMethod','profileVersion','profileRegime'])$(id).onchange=showGraph;
+ for(const id of ['score','neighbors','precision'])$(id).oninput=showGraph;
+ $('labels').onchange=draw;$('fit').onclick=fitGraph;
+-$('clear').onclick=()=>{$('search').value='';for(const id of ['family','status','implClass','precision','failure','profileStatus','profileRegime'])$(id).value='';$('score').value='0';$('neighbors').value='12';benchmarkChoices();showGraph();};
++$('clear').onclick=()=>{$('search').value='';for(const id of ['family','status','implClass','precision','failure','profileStatus','profileMethod','profileVersion','profileRegime'])$(id).value='';$('score').value='0';$('neighbors').value='12';benchmarkChoices();showGraph();};
+ $('export').onclick=()=>{
+  const documentData={generated_at:new Date().toISOString(),study:DATA.meta,selection:{benchmark:selected,model:model(),view:view(),scope:view()==='translation'?'selected_benchmark':$('scope').value,min_score:Number($('score').value)},nodes:visibleNodes.map(n=>n.model?{...n,record:n.model==='cuda'?nodesById.get(n.baseId).native_roofline:nodesById.get(n.baseId).models[n.model]}:n),edges:visibleEdges};
+  const url=URL.createObjectURL(new Blob([JSON.stringify(documentData,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='hecbench-julia-relationships.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+--- a/ontology/tools/julia_graph/template.html
++++ b/ontology/tools/julia_graph/template.html
+@@ -13,6 +13,8 @@
+ <label>Storage precision contains<input id="precision" placeholder="e.g. float64"></label>
+ <label>Actual failure code<select id="failure"></select></label>
+ <label>V100 profile status<select id="profileStatus"></select></label>
++<label>V100 profiler method<select id="profileMethod"></select></label>
++<label>V100 profiler version<select id="profileVersion"></select></label>
+ <label>Sampled kernel geometry<select id="profileRegime"></select></label>
+ <label>Min. descriptive score <span id="scoreLabel">0.00</span><input id="score" type="range" min="0" max="1" step="0.01" value="0"></label>
+ <label>Max. neighbors <span id="neighborLabel">12</span><input id="neighbors" type="range" min="1" max="30" step="1" value="12"></label>
