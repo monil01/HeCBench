@@ -28,3 +28,15 @@ The inspector displays separate model records, exact configuration trial verdict
 ## Live full-suite view
 
 Generate the current CUDA catalogue view with `--population 537`. The generators retain `--population 447` for the frozen assessment. The live summary reads the source/hash-bound selected-contract census and keeps numerical, property, execution and hardware outcomes separate. The explorer exposes the additional word2vec asynchronous property workflow without adding a second benchmark name.
+
+## V100 configuration-scoped evidence
+
+The 537 view also loads hash-checked V100 profile links for all four models.
+Filter by profile status or sampled geometric regime and inspect native CUDA
+beside the selected Julia version. Compact records retain the exact configuration,
+precision, source-stage/phase qualification, memory-domain applicability and evidence
+paths/hashes. Native baseline data remains separate from the three Julia records.
+The graph weights use the original scientific/implementation/verification fields;
+shared geometric regions do not create causal performance edges. Unknown, failed
+and pending measurements remain explicit. Regenerate after a profiling checkpoint;
+the generated page records its snapshot time and evidence fingerprint.

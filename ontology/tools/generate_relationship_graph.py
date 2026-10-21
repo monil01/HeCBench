@@ -10,6 +10,7 @@ from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 from study_report_metadata import context
+from generate_ontology_report import load_roofline_registry
 
 ROOT=Path(__file__).resolve().parents[2]
 MODELS=['cuda_jl','ka','jacc']
@@ -52,7 +53,16 @@ def build(root,k,population=447):
     study=root/f'ontology/studies/julia_abstractions_{population}'
     classfile=root/'2026-PASC-Hecbench-Julia-paper/research/revision_experiments/classes/normalized_records.json'
     classes={(r['benchmark'],r['model']):r for r in json.loads(classfile.read_text())} if classfile.exists() else {}
-    nodes=[];files=[]
+    roofline,roofline_meta,roofline_files=load_roofline_registry(root,population)
+    profile_keys=('profiling_status','configuration_ids','device_uuid','kernel_observation_count',
+                  'loaded_kernel_observation_count','roi_coverage','dram_roofline_applicability',
+                  'geometric_regimes','diagnostic_geometric_regimes','precision_classes','causal_bottleneck','evidence_link_status',
+                  'evidence_paths','registry_path','registry_sha256','positioning_evidence_scope',
+                  'proved_semantic_stages','sample_phase_qualifications','geometric_regime_scope')
+    def profile(bid,model):
+        item=roofline.get((bid,model),{})
+        return {key:item.get(key) for key in profile_keys}
+    nodes=[];files=list(roofline_files)
     for file in sorted((study/'domains').glob('*.json')):
         files.append(file);domain=json.loads(file.read_text());bid=domain['benchmark_id'];intent=domain.get('scientific_intent',{});models={}
         for model in MODELS:
@@ -60,6 +70,7 @@ def build(root,k,population=447):
             events=get(record,'failure_taxonomy.events',[])
             failures=[e for e in events if e.get('is_failure') is True and e.get('origin_model')==model]
             models[model]={
+                'roofline':profile(bid,model),
                 'status':record['status'],'class':cl.get('controlled_class') or norm.get('implementation_class'),
                 'class_basis':'reviewed class reconciliation' if cl else 'recorded declaration; unreconciled vocabulary',
                 'api':cl.get('device_api_dependence'),'host_role':cl.get('host_role'),
@@ -86,7 +97,7 @@ def build(root,k,population=447):
         for model in MODELS:
             workflow=study/'workflow_studies'/bid/(model+'.json')
             if workflow.exists():models[model]['additional_workflow_studies']=json.loads(workflow.read_text());files.append(workflow)
-        nodes.append({'id':bid,'family':intent.get('primary_family','unknown'),'task':intent.get('scientific_task'),
+        nodes.append({'id':bid,'native_roofline':profile(bid,'cuda'),'family':intent.get('primary_family','unknown'),'task':intent.get('scientific_task'),
                       'method':intent.get('mathematical_method'),'application':intent.get('application_domain'),
                       'accuracy':intent.get('accuracy_requirements'),'size':intent.get('input_size_regime'),
                       'intent_review':intent.get('review_status'),'domain_path':str(file.relative_to(root)),
@@ -151,6 +162,9 @@ def build(root,k,population=447):
           'class_sha256':hashlib.sha256(classfile.read_bytes()).hexdigest() if classfile.exists() else None,
           'edge_counts':dict(Counter(e['view']+':'+e['model'] for e in edges)),
           'method':'All positive pairwise candidates, then undirected union of endpoint top-k; ties by neighbor ID. Scores are fixed-weight descriptive feature matches, not learned embeddings, probabilities, performance predictions or causal effects. No missing value is imputed. Original catalogue similarity_edges.jsonl is preserved.'}
+    meta['roofline_registry_summary']={k:v for k,v in roofline_meta.items() if k!='linked_evidence_sha256'}
+    meta['roofline_linked_evidence_digest']=hashlib.sha256(json.dumps(roofline_meta.get('linked_evidence_sha256',{}),sort_keys=True).encode()).hexdigest()
+    meta['roofline_interpretation']='Configuration-specific partial per-kernel geometric projections, never whole-workflow or causal labels; profile filters do not change descriptive edge weights.'
     return {'meta':meta,'nodes':nodes,'edges':edges}
 
 

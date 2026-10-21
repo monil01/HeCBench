@@ -234,16 +234,21 @@ def load_roofline_registry(root, population):
                 link_status.append('hash_verified')
             if entry.get('kernel_records'): link_status.append('registry_inline')
             if not link_status: link_status = ['not_linked']
-            regimes, precisions, observed_configs = [], [], []
+            regimes, diagnostic_regimes, precisions, observed_configs = [], [], [], []
             for obs in observations:
                 if not isinstance(obs, dict): continue
                 precisions.append(obs.get('precision_class'))
                 observed_configs.append(get(obs, 'scope_context.configuration_id'))
+                local_regimes=[]
                 for point in obs.get('scalar_precision_projections', {}).values():
                     if isinstance(point, dict) and (point.get('executed_scalar_flops') or 0) > 0:
-                        regimes.append(point.get('roofline_regime'))
+                        local_regimes.append(point.get('roofline_regime'))
                 if obs.get('tensor_convention_enabled') and (obs.get('tensor_flops')or 0)>0:
-                    regimes.append(get(obs,'tensor_precision_projections.dram.roofline_regime'))
+                    local_regimes.append(get(obs,'tensor_precision_projections.dram.roofline_regime'))
+                diagnostic_regimes.extend(local_regimes)
+                if get(obs,'scope_context.semantic_family_in_primary_ROI') is not False:regimes.extend(local_regimes)
+            if status!='profile_process_completed' or bid in ('zerocopy','halo-finder') or str(entry.get('dram_roofline_applicability','')).startswith('not_applicable'):
+                regimes=[]
             ids = distinct(observed_configs + [entry.get('profile_plan_configuration_id') or config])
             causal = entry.get('observed_bottleneck') or entry.get('causal_bottleneck') or 'unknown'
             recorded = entry.get('sampled_kernel_count')
@@ -274,7 +279,7 @@ def load_roofline_registry(root, population):
                        'loaded_kernel_observation_count':len(observations) if observations else (0 if refs else None),
                        'roi_coverage':entry.get('roi_coverage','unknown'),
                        'dram_roofline_applicability':entry.get('dram_roofline_applicability','unreviewed'),
-                       'geometric_regimes':distinct(regimes), 'precision_classes':distinct(precisions),
+                       'geometric_regimes':distinct(regimes), 'diagnostic_geometric_regimes':distinct(diagnostic_regimes), 'precision_classes':distinct(precisions),
                        'predicted_resource_limits':distinct([{'memory_side':'memory_bound_roofline_prediction',
                            'compute_side':'compute_bound_roofline_prediction','near_ridge':'ridge_transition'}.get(x,'unclassified') for x in regimes]) if status=='profile_process_completed' and bid not in ('zerocopy','halo-finder') else [],
                        'causal_bottleneck':causal, 'evidence_link_status':distinct(link_status),
