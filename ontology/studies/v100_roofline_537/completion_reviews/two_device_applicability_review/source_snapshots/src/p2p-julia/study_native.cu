@@ -1,0 +1,21 @@
+// Original NVIDIA EULA notice retained in LICENSE and included source.
+#define main historical_cli_main
+#include "../p2p-cuda/main.cu"
+#undef main
+#include <vector>
+#include <fstream>
+#include <cstring>
+#include <unistd.h>
+constexpr float SENT=-12345.f;
+constexpr int COPIES=10;
+void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"CUDA %s\n",cudaGetErrorString(e));exit(2);}}
+void guard(bool initial=false){const char*v=getenv("CUDA_VISIBLE_DEVICES");if(!v||strcmp(v,"5,6"))exit(3);FILE*f=popen("nvidia-smi -i 5 --query-compute-apps=pid --format=csv,noheader,nounits","r");if(!f)exit(3);char line[128];while(fgets(line,sizeof(line),f)){long p=strtol(line,nullptr,10);if(p>0&&p!=getpid()){fprintf(stderr,"ExternalGPU5PID %ld\n",p);exit(3);}}if(pclose(f)!=0)exit(3);if(initial){f=popen("nvidia-smi -i 5 --query-gpu=memory.used --format=csv,noheader,nounits","r");if(!f||!fgets(line,sizeof(line),f)||strtol(line,nullptr,10)!=0)exit(3);if(pclose(f)!=0)exit(3);}}
+void syncboth(){for(int d=0;d<2;d++){ck(cudaSetDevice(d));ck(cudaDeviceSynchronize());}}
+struct Case{int n;std::vector<float>input;float*raw[2];float*p[2];};
+void reset(Case&c){for(int d=0;d<2;d++){ck(cudaSetDevice(d));std::vector<float>v(c.n+2,SENT);for(int i=0;i<c.n;i++)v[i+1]=d?-3.f:c.input[i];ck(cudaMemcpy(c.raw[d],v.data(),v.size()*4,cudaMemcpyDefault));}syncboth();}
+void exchange(Case&c){for(int i=0;i<COPIES;i++)ck(cudaMemcpy(c.p[(i+1)%2],c.p[i%2],c.n*4,cudaMemcpyDefault));syncboth();}
+void remote(Case&c){ck(cudaSetDevice(0));ck(cudaMemcpy(c.p[0],c.input.data(),c.n*4,cudaMemcpyDefault));ck(cudaDeviceSynchronize());ck(cudaSetDevice(1));SimpleKernel<<<c.n/256,256>>>(c.p[0],c.p[1]);ck(cudaGetLastError());ck(cudaDeviceSynchronize());ck(cudaSetDevice(0));SimpleKernel<<<c.n/256,256>>>(c.p[1],c.p[0]);ck(cudaGetLastError());ck(cudaDeviceSynchronize());}
+bool capture(Case&c,std::ofstream&out,bool doubled){bool ok=true;for(int d=0;d<2;d++){ck(cudaSetDevice(d));std::vector<float>v(c.n+2);ck(cudaMemcpy(v.data(),c.raw[d],v.size()*4,cudaMemcpyDefault));ok&=v.front()==SENT&&v.back()==SENT;int scale=doubled?(d?2:4):1;for(int i=0;i<c.n;i++)ok&=v[i+1]==float((i%4096)*scale);out.write((char*)v.data(),v.size()*4);}return ok;}
+int main(){guard(true);int nd;ck(cudaGetDeviceCount(&nd));if(nd!=2)return 3;for(int d=0;d<2;d++){int cap;ck(cudaDeviceCanAccessPeer(&cap,d,1-d));if(!cap){fprintf(stderr,"Peer access unavailable %d→%d\n",d,1-d);return 3;}ck(cudaSetDevice(d));ck(cudaDeviceEnablePeerAccess(1-d,0));char pci[64];ck(cudaDeviceGetPCIBusId(pci,64,d));printf("STUDY_PEER visible=%d peer=%d enabled=true pci=%s\n",d,1-d,pci);}
+std::vector<Case>cases;size_t prefix=1,count=1;for(int n:{256,65536,16777216}){Case c;c.n=n;c.input.resize(n);for(int i=0;i<n;i++)c.input[i]=float(i%4096);for(int d=0;d<2;d++){ck(cudaSetDevice(d));ck(cudaMalloc(&c.raw[d],(n+2)*4));c.p[d]=c.raw[d]+1;}prefix+=n+2;count+=n+2+4*(n+2);cases.push_back(c);}for(auto&c:cases){reset(c);exchange(c);remote(c);}for(int trial=1;trial<=5;trial++){guard();std::string path="trial_"+std::to_string(trial)+".bin";std::ofstream out(path,std::ios::binary);float k=3;out.write((char*)&k,4);for(auto&c:cases){float h[2]={float(c.n),float(COPIES)};out.write((char*)h,8);out.write((char*)c.input.data(),c.n*4);}bool ok=true;double total=0,ts[3];int ci=0;for(auto&c:cases){reset(c);auto start=std::chrono::steady_clock::now();exchange(c);double t=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/COPIES;total+=t;ts[ci++]=t;ok&=capture(c,out,false);remote(c);ok&=capture(c,out,true);}out.close();guard();printf("STUDY_TRIAL {\"trial\":%d,\"time_seconds\":%.17g,\"correct\":%s,\"checked_values\":%zu,\"max_abs_error\":%d,\"max_rel_error\":null,\"timing_region\":\"sum3_case_mean10_alternating_UVA_copies_both_device_completion\",\"jit_excluded\":true,\"internal_repeats\":10,\"timed_kernel_calls\":0,\"untimed_remote_kernel_calls\":6,\"case_percopy_seconds\":[%.17g,%.17g,%.17g],\"output_artifact\":{\"path\":\"%s\",\"dtype\":\"float32\",\"count\":%zu,\"byte_order\":\"little\"}}\n",trial,total,ok?"true":"false",count,ok?0:1,ts[0],ts[1],ts[2],path.c_str(),count);if(!ok)return 4;}
+for(auto&c:cases)for(int d=0;d<2;d++){ck(cudaSetDevice(d));ck(cudaFree(c.raw[d]));}for(int d=0;d<2;d++){ck(cudaSetDevice(d));ck(cudaDeviceDisablePeerAccess(1-d));}return 0;}

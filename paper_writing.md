@@ -37,6 +37,15 @@ identity/markers/counters. Missing raw evidence creates a validation hold with n
 published positions. CPU adaptation creates zero new GPU/build processes;
 original parent process facts remain separate and cannot be double-counted.
 
+Source-scoped scalar applicability is separate from profile-process status.
+The reviewed P2P, ping-pong and ring timers perform transport; their twelve model
+records have no scalar compute-roofline claim. CCL's four timed vendor FP32
+reductions still need real counters. Payload datatype, untimed checking kernels
+and zero authored kernels do not establish timed FLOPs or device-kernel absence.
+Preserve the hash-bound `completion_reviews/two_device_applicability_review`
+evidence, both applicability fields in the explorer/graph, and unchanged original
+numerical and profiling statuses.
+
 Record actual shared recovery/review/paper usage windows and preserve their raw
 receipts. Overlapping context-inclusive windows are not additive exclusive costs
 and must not be allocated retrospectively to individual benchmark translations.

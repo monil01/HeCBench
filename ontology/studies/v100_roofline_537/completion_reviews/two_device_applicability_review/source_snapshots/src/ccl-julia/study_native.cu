@@ -1,0 +1,7 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <cstdlib>
+#include <cstdio>
+extern "C" {int ccl_mpi_start();void ccl_comm_start();void ccl_fill(float*,float*,int,int);void ccl_step(const void*,void*,int);void ccl_validate(const void*,void*);double ccl_report(int,int,double);void ccl_wait();void ccl_setup_wait();double ccl_now();void ccl_barrier();double ccl_max(double);void ccl_begin_trial();void ccl_capture(const void*,const void*,int,int,int);void ccl_write_trial(int,double);void ccl_finish();}
+static void ck(cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"%s\n",cudaGetErrorString(e));std::abort();}}
+int main(){int dev=ccl_mpi_start();ck(cudaSetDevice(dev));ccl_comm_start();int ns[]={17,1048576,10485760};for(int trial=0;trial<=5;trial++){ccl_begin_trial();double elapsed=0;for(int c=0;c<3;c++){int n=ns[c];std::vector<float>s(n+2),r(n+2);ccl_fill(s.data(),r.data(),n,c);float*ds,*dr;ck(cudaMalloc(&ds,(n+2)*4));ck(cudaMalloc(&dr,(n+2)*4));ck(cudaMemcpy(ds,s.data(),(n+2)*4,cudaMemcpyHostToDevice));ck(cudaMemcpy(dr,r.data(),(n+2)*4,cudaMemcpyHostToDevice));ccl_setup_wait();ccl_validate(ds+1,dr+1);if(trial)ccl_capture(ds,dr,n,c,0);ccl_barrier();double t=ccl_now();for(int k=0;k<50;k++)ccl_step(ds+1,dr+1,n);ccl_wait();double dt=ccl_now()-t;elapsed+=ccl_report(trial,c,dt/50);if(trial)ccl_capture(ds,dr,n,c,1);ck(cudaFree(ds));ck(cudaFree(dr));}if(trial)ccl_write_trial(trial,elapsed);}ccl_finish();}

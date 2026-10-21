@@ -26,3 +26,7 @@ Configuration means remain the recorded arithmetic means of trials 2–5. They a
 ## Live full-suite view
 
 Generate the current CUDA catalogue view with `--population 537`. The generators retain `--population 447` for the frozen assessment. The live summary reads the source/hash-bound selected-contract census and keeps numerical, property, execution and hardware outcomes separate. The explorer exposes the additional word2vec asynchronous property workflow without adding a second benchmark name.
+
+## Source-scoped scalar applicability
+
+The Julia and native baseline column groups expose `scalar_roofline_applicability` and its evidence status. A linked source review must match its saved SHA, model entry and selected configuration before these labels are shown. Transport applicability does not change execution/verification status or prove absence of GPU kernels. P2P and ping-pong checking arithmetic outside the primary timers is not timed compute work. Relationship graphs carry the same qualified fields; descriptive edge weights are unchanged.

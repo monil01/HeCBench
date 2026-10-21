@@ -116,6 +116,8 @@ COLUMNS = [
  ('V100 roofline observations','v100_loaded','V100 hash-verified kernel observations','roofline.loaded_kernel_observation_count'),
  ('V100 roofline observations','v100_coverage','V100 ROI coverage','roofline.roi_coverage'),
  ('V100 roofline observations','v100_memory_tier','DRAM roofline applicability','roofline.dram_roofline_applicability'),
+ ('V100 roofline observations','v100_scalar_scope','Scalar roofline applicability of timed work','roofline.scalar_roofline_applicability'),
+ ('V100 roofline observations','v100_scalar_proof','Scalar applicability evidence','roofline.scalar_applicability_evidence_status'),
  ('V100 roofline observations','v100_regimes','Sampled kernel geometric regimes','roofline.geometric_regimes'),
  ('V100 roofline observations','v100_predicted_limit','Sampled compute/memory limit prediction','roofline.predicted_resource_limits'),
  ('V100 roofline observations','v100_causal','V100 causal bottleneck','roofline.causal_bottleneck'),
@@ -129,6 +131,8 @@ COLUMNS = [
  ('Native CUDA roofline baseline','v100_native_kernels','Native CUDA recorded kernel observations','roofline_native.kernel_observation_count'),
  ('Native CUDA roofline baseline','v100_native_coverage','Native CUDA ROI coverage','roofline_native.roi_coverage'),
  ('Native CUDA roofline baseline','v100_native_memory_tier','Native CUDA DRAM roofline applicability','roofline_native.dram_roofline_applicability'),
+ ('Native CUDA roofline baseline','v100_native_scalar_scope','Native CUDA timed scalar applicability','roofline_native.scalar_roofline_applicability'),
+ ('Native CUDA roofline baseline','v100_native_scalar_proof','Native CUDA scalar applicability evidence','roofline_native.scalar_applicability_evidence_status'),
  ('Native CUDA roofline baseline','v100_native_regimes','Native CUDA sampled geometric regimes','roofline_native.geometric_regimes'),
  ('Native CUDA roofline baseline','v100_native_predicted_limit','Native CUDA compute/memory limit prediction','roofline_native.predicted_resource_limits'),
  ('Native CUDA roofline baseline','v100_native_causal','Native CUDA causal bottleneck','roofline_native.causal_bottleneck'),
@@ -192,6 +196,29 @@ def load_roofline_registry(root, population):
         for model in stats:
             entry = registry.get('models', {}).get(model, {})
             status = entry.get('profiling_status', 'not_recorded')
+            scalar_scope, scalar_proof = 'not_source_reviewed', 'not_linked'
+            scalar_ref = entry.get('scalar_roofline_applicability_review')
+            if scalar_ref:
+                try:
+                    proof_path = root/scalar_ref['path']
+                    proof_raw = proof_path.read_bytes()
+                    if hashlib.sha256(proof_raw).hexdigest() != scalar_ref['sha256']:
+                        raise ValueError('Applicability review SHA mismatch')
+                    proof = json.loads(proof_raw)
+                    matched = [row for row in proof['records'] if row['benchmark']==bid and row['model']==model]
+                    if len(matched)!=1: raise ValueError('Applicability review entry mismatch')
+                    row = matched[0]
+                    row_sha = hashlib.sha256(json.dumps(row,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+                    if (row_sha!=scalar_ref['record_sha256'] or row['selected_configuration_id']!=config
+                            or scalar_ref['configuration_id']!=config
+                            or row['scalar_roofline_applicability']!=entry['scalar_roofline_applicability']):
+                        raise ValueError('Applicability selected configuration/record mismatch')
+                    scalar_scope = row['scalar_roofline_applicability']
+                    scalar_proof = 'hash_verified_source_timed_scope_not_GPU_measurement'
+                    inputs.append(proof_path)
+                except (OSError, ValueError, KeyError, TypeError) as error:
+                    scalar_proof = 'unverified_source_review: '+str(error)
+
             ref = entry.get('kernel_observations', {})
             refs = ref if isinstance(ref, list) else [ref] if isinstance(ref, dict) and ref else []
             # Future compact records may also be inline in the registry.
@@ -247,7 +274,7 @@ def load_roofline_registry(root, population):
                     local_regimes.append(get(obs,'tensor_precision_projections.dram.roofline_regime'))
                 diagnostic_regimes.extend(local_regimes)
                 if get(obs,'scope_context.semantic_family_in_primary_ROI') is not False:regimes.extend(local_regimes)
-            if status!='profile_process_completed' or bid in ('zerocopy','halo-finder') or str(entry.get('dram_roofline_applicability','')).startswith('not_applicable'):
+            if status!='profile_process_completed' or bid in ('zerocopy','halo-finder') or str(entry.get('dram_roofline_applicability','')).startswith('not_applicable') or scalar_scope.startswith('not_applicable'):
                 regimes=[]
             ids = distinct(observed_configs + [entry.get('profile_plan_configuration_id') or config])
             causal = entry.get('observed_bottleneck') or entry.get('causal_bottleneck') or 'unknown'
@@ -279,6 +306,8 @@ def load_roofline_registry(root, population):
                        'loaded_kernel_observation_count':len(observations) if observations else (0 if refs else None),
                        'roi_coverage':entry.get('roi_coverage','unknown'),
                        'dram_roofline_applicability':entry.get('dram_roofline_applicability','unreviewed'),
+                       'scalar_roofline_applicability':scalar_scope,
+                       'scalar_applicability_evidence_status':scalar_proof,
                        'geometric_regimes':distinct(regimes), 'diagnostic_geometric_regimes':distinct(diagnostic_regimes), 'precision_classes':distinct(precisions),
                        'predicted_resource_limits':distinct([{'memory_side':'memory_bound_roofline_prediction',
                            'compute_side':'compute_bound_roofline_prediction','near_ridge':'ridge_transition'}.get(x,'unclassified') for x in regimes]) if status=='profile_process_completed' and bid not in ('zerocopy','halo-finder') else [],

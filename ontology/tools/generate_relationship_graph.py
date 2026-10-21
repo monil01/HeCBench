@@ -56,6 +56,7 @@ def build(root,k,population=447):
     roofline,roofline_meta,roofline_files=load_roofline_registry(root,population)
     profile_keys=('profiling_status','configuration_ids','device_uuid','kernel_observation_count',
                   'loaded_kernel_observation_count','roi_coverage','dram_roofline_applicability',
+                  'scalar_roofline_applicability','scalar_applicability_evidence_status',
                   'geometric_regimes','diagnostic_geometric_regimes','precision_classes','causal_bottleneck','evidence_link_status',
                   'evidence_paths','registry_path','registry_sha256','positioning_evidence_scope',
                   'proved_semantic_stages','sample_phase_qualifications','geometric_regime_scope')

@@ -295,7 +295,7 @@ def main():
                     qualifications.append({'profile_id': identity, 'qualification': 'Historical capture lacks explicit raw-row PCI-to-UUID verification; retained device/environment bindings are not a retroactive PCI check.'})
                 if prov.get('counter_parse_error'):
                     qualifications.append({'profile_id': identity, 'qualification': 'Counter parse failed: '+prov['counter_parse_error']})
-                row['audit_status'] = ('pass_frozen_integrity_method_validation_hold' if row.get('allreduce_method_admission',{}).get('status')=='validation_hold' else 'pass')
+                row['audit_status'] = ('pass_frozen_integrity_method_validation_hold' if row.get('allreduce_method_admission',{}).get('status')=='validation_hold' or row.get('method_validation_status')=='unapproved_retained_not_selected' else 'pass')
             except Exception as error:
                 row['audit_status'] = 'failed'
                 issues.append({'profile_id': identity, 'error': str(error)})
