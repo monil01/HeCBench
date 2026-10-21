@@ -291,6 +291,12 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,a
 
 
 def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False):
+    # Child execution changes cwd to private scratch; repository/plan paths must
+    # already be absolute before constructing the guarded launcher or evidence links.
+    root = Path(root).resolve()
+    plan_path = Path(plan_path).resolve()
+    if selection_path is not None:
+        selection_path = Path(selection_path).resolve()
     plan = json.loads(plan_path.read_text())
     active_gates=[g for g in plan['blocking_gates'] if not(isolated_assertion_reviewed and plan['benchmark']=='assert' and g=='requires_isolated_assertion_collector_phase_hooks')]
     reviewed_assert_ready=(isolated_assertion_reviewed and plan['benchmark']=='assert'
@@ -503,10 +509,35 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 provenance['tensor_mode_bindings_before_profile'] = tensor_binding_inventory
             provenance['additional_binding_scope'] = 'New profile only; never retroactive certification of historical correctness captures.'
             provenance['device_before'] = wait_idle_snapshot(provenance,slot)
-            if shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
+            if artifact_policy:
+                required_space = (artifact_policy['payload_bytes'] + artifact_policy['auxiliary_allowance_bytes']
+                    - artifact_policy.get('already_staged_runtime_asset_bytes', 0) + reserve_mib * 1024**2)
+                space_began = time.monotonic()
+                space_waited = False
+                while True:
+                    free_space = shutil.disk_usage(scratch).free
+                    if free_space >= required_space:
+                        break
+                    space_waited = True
+                    elapsed = time.monotonic() - space_began
+                    provenance['artifact_space_wait'] = {
+                        'required_free_bytes': required_space, 'observed_free_bytes': free_space,
+                        'last_checked_at': utc(), 'elapsed_seconds': elapsed, 'maximum_seconds': 300,
+                        'scope': 'Prelaunch resource wait, outside profiling and original primary timing; no files removed.'}
+                    provenance['status'] = 'waiting_for_reviewed_artifact_space'
+                    dump(slot/'profile_provenance.json', provenance)
+                    if elapsed >= 300:
+                        raise RuntimeError('Free space cannot hold full reviewed five-trial payload, auxiliary allowance and reserve after bounded 300-second prelaunch wait')
+                    time.sleep(2)
+                if space_waited:
+                    provenance['artifact_space_wait'].update(
+                        satisfied_at=utc(), satisfied_free_bytes=free_space,
+                        elapsed_seconds=time.monotonic()-space_began)
+                    bindings(plan)
+                    check_supplemental(current_bindings)
+                    provenance['device_after_artifact_space_wait'] = wait_idle_snapshot(provenance, slot)
+            elif shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
                 raise RuntimeError('Free space below reserve')
-            if artifact_policy and shutil.disk_usage(scratch).free < artifact_policy['payload_bytes']+artifact_policy['auxiliary_allowance_bytes']-artifact_policy.get('already_staged_runtime_asset_bytes',0)+reserve_mib*1024**2:
-                raise RuntimeError('Free space cannot hold full reviewed five-trial payload, auxiliary allowance and reserve')
             if plan['build_command']:
                 provenance['build'] = run(plan['build_command'], env, scratch,
                     slot/'build.log', timeout, reserve_mib*1024**2,guard)

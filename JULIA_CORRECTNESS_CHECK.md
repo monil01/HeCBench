@@ -1,5 +1,43 @@
 # Julia Correctness Check
 
+## Ongoing V100 completion: storage, source proof and profiler identity
+
+Resume the current controller identities and finite supervisor from
+`.porting-state/portable_julia/active_work_537.json` and the joint checkpoint;
+versioned supervisor replacement receipts preserve the earlier waiting states.
+Never restart historical controllers merely because their adoption files remain.
+
+The reviewed large-artifact collector can wait up to 300 seconds **before launch**
+for its exact payload, auxiliary allowance and reserve to fit. It rechecks captured
+bindings and GPU idleness after waiting. This wait is outside profiler and primary
+benchmark timings. Full five-trial checks, exact payload-size validation, file caps
+and reserve monitoring remain required. Resource failures do not establish
+numerical failures; preserve the unsuccessful attempt and use a fresh equivalent
+plan. Resolve source/plan/guard paths before changing a child's working directory.
+
+Source-family inclusion proofs are separate from sampled-invocation phase proofs.
+The two root-adopted `completion_reviews/roi_membership_root_merge*` receipts bind
+94 selected model records across 25 names and 118 timed-family source inclusions.
+They do not add 94 complete ROI profiles. Duplicate legacy aliases may be disabled
+for matching while their historical bytes and unresolved membership remain
+preserved. A selector-only refinement must not become an exclusion or inclusion.
+Preserve timer/reset placement, branch predicates, callback identity, scientific
+state and any non-scalar work (integer, special-function, atomic or vendor work).
+
+The locally installed Nsight Compute 2025.2.0 is being evaluated as a **separate
+profiler method**. No OS change or package installation is involved. Calibration
+is queued under the same GPU6 UUID/lock and write guards, using the unchanged two
+canary binaries, all requested metrics, nine exact function/geometry cases and
+complete host checks. Old compiler executable identity remains unknown. A queued
+or failed calibration gives no approval to switch profilers. Before any adoption,
+require a passing, root-reviewed, SHA-bound runtime receipt and explicit profiler
+identity/calibration joins in capture, derivation and audit. Preserve 2022 evidence,
+physical counter conventions, version strata and original five-trial timings.
+Method preparation/calibration/source review tokens are shared activity windows;
+index their actual receipts without allocating them to individual translations or
+adding overlapping windows or cached/reasoning subsets.
+
+
 ## Current full-suite assessment — 20 October 2026
 
 All **537 native CUDA names have completed scoped assessments**. **532 names have accepted all-four contracts**: 522 named numerical, five property-equivalent and five execution-only. The other five names (`blas-fp4gemm`, `blas-fp8gemm`, `blas-mxfp6gemm`, `blas-mxfp8gemm`, `twell`) have fifteen explicit hardware/native-backend-limited model assessments; they are unverified, have no accepted performance samples, and do not demonstrate KA/JACC language limitations. Resume hardware cases only when the unchanged native contract can execute on authorized supporting hardware/library versions. The final hardware review separately identifies source architecture guards, unsuccessful exact-descriptor library queries and actual incompatible device images.
@@ -76,6 +114,12 @@ foreign GPU activity during profiling. On contention, terminate only the owned
 fresh profiling session and retain the failure; never signal another workload.
 Wait for owned descendants to exit before hashing outputs. A timeout enlarged
 from the saved runtime is an operational limit, not a runtime prediction.
+
+Resolve repository, plan and selector paths before any child changes directory;
+use an absolute `--source-root` in saved invocations. Earlier relative-root guard
+launcher failures are retained as infrastructure failures before target execution,
+not compiler, numerical or unsupported-feature outcomes. Fresh reviewed attempts
+preserve their exact methods and original checks; never overwrite failed folders.
 
 Select the best qualified capture per model, while exposing the latest attempt
 and preserving all failures separately. Source-counted retained-trial selectors
