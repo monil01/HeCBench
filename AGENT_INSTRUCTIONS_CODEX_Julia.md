@@ -134,6 +134,15 @@ and live auxiliary/reserve checks. A successful process with short payloads is
 not a complete artifact capture. Preserve prior truncated attempts, raw counters
 and failures. No global OS or device changes, privilege escalation or sudo.
 
+Before dispatch, budget complete five-trial observer output, warmup/trace files,
+lossless/raw duplicates and staged read-only runtime assets, not just the declared
+primary artifact. The source-bound footprint review is
+`ontology/studies/v100_roofline_537/completion_reviews/footprint_preflight/review.json`;
+its large inventories remain outside Git. Size/stat preflight is resource evidence,
+not a new numerical verification or proof of complete output bytes. Recheck free
+space while holding the GPU lock; the earlier free-space snapshot is not a permit.
+Do not delete accepted captures or weaken full checks to fit storage.
+
 Only `atomicSystemWide` may opt into `--application-replay-reviewed` after an
 exact source/config/result/installed-guide method review. Use application/grid/
 strict matching, rerun the complete original CPU/GPU coexecution, retain five
@@ -194,6 +203,16 @@ never repeat a possibly running step or silently adopt changed tool bytes. The
 supervisor hashes its summarizer, audit, retry, refresh and export tools: preserve
 those bytes during its run or perform an explicit new root adoption. Do not add
 the CPU refresh process to its monitoring frontier, which would create a wait cycle.
+
+
+Late generic retry eligibility inspects every frozen attempt for a slot, not only
+its selected failure. Preserve per-slot historical requested/effective deadline
+floors (up to the explicitly reviewed 3,600-second cap). Custom overlays, large
+payloads, replay/window/assertion/tensor methods and differing execution signatures
+require exact fresh source-bound reapplication; never replace them with a generic
+plan. Holds remain unresolved measurement dispositions, not framework limitations.
+The already running round021 retains its loaded historical implementation; its
+source snapshot is archived. The newly adopted tool is restricted to rounds039/041.
 
 `ready_for_root_review.json` is a review gate, not a completion certificate. Root
 must inspect remaining failed, blocked, pending and hardware cases, address every
