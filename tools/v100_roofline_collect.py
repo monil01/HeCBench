@@ -6,6 +6,7 @@ profiling evidence, never a replacement for the accepted correctness/timing run.
 No shell commands, privileged operations, or historical output directories.
 """
 import argparse
+import base64
 import collections
 import datetime
 import fcntl
@@ -289,13 +290,61 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,a
             'executed_command':executed}
 
 
-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False):
+def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False):
     plan = json.loads(plan_path.read_text())
-    if plan['blocking_gates'] or not plan.get('staged'):
+    active_gates=[g for g in plan['blocking_gates'] if not(isolated_assertion_reviewed and plan['benchmark']=='assert' and g=='requires_isolated_assertion_collector_phase_hooks')]
+    reviewed_assert_ready=(isolated_assertion_reviewed and plan['benchmark']=='assert'
+        and plan.get('staging_status')=='source_reviewed_waiting_explicit_isolated_assertion_collector_optin'
+        and plan['blocking_gates']==['requires_isolated_assertion_collector_phase_hooks'])
+    if active_gates or not(plan.get('staged') or reviewed_assert_ready):
         return {'plan': str(plan_path), 'status': 'not_executed_plan_blocked_or_not_staged'}
     slot = plan_path.parent
     if (slot / 'profile_provenance.json').exists():
         return {'plan': str(plan_path), 'status': 'existing_profile_preserved'}
+    isolated_review = None
+    if isolated_assertion_reviewed:
+        if plan['benchmark']!='assert' or plan['model'] not in ('cuda_jl','ka','jacc'):
+            raise RuntimeError('Isolated assertion phases restricted to reviewed Julia assert cases')
+        link=plan['isolated_assertion_review'];review_path=Path(link['path'])
+        if sha(review_path)!=link['sha256']:raise RuntimeError('Isolated assertion review changed')
+        review_bytes=review_path.read_bytes();record=json.loads(review_bytes)['models'][link['entry']]
+        if link['entry']!='assert/'+plan['model'] or record['configuration_id']!=plan['configuration_id'] or record['source_reviewed'] is not True:
+            raise RuntimeError('Isolated assertion reviewed configuration mismatch')
+        if record['reference_result_sha256']!=plan['reference_result_sha256'] or record['raw_config_sha256']!=plan['raw_config_sha256']:
+            raise RuntimeError('Isolated assertion selected contract mismatch')
+        if record['positive_command']!=plan['profile_target_command'] or any(record[k]!=plan[k] for k in ('pre_profile_check_command','post_profile_check_command')):
+            raise RuntimeError('Isolated assertion phase commands mismatch')
+        if (record['expected_negative_context_count'],record['expected_negative_status'],record['expected_positive_PERF_TRIAL_count'])!=(5,710,5):
+            raise RuntimeError('Isolated assertion full check count changed')
+        check_supplemental(record['execution_bindings'])
+        if any(plan['execution_bindings'].get(name)!=digest for name,digest in record['execution_bindings'].items()):
+            raise RuntimeError('Isolated assertion review not prospectively bound')
+        (slot/'isolated_assertion_review.json').write_bytes(review_bytes)
+        isolated_review={'review':link,'record':record,'runtime_validated_before_attempt':False}
+    window_review = None
+    if profile_window_reviewed:
+        if plan['benchmark'] != 'rayleighBenardConvection':
+            raise RuntimeError('Retained marker-window opt-in reviewed for RBC only')
+        link=plan['profile_window_review'];review_path=Path(link['path'])
+        if sha(review_path)!=link['sha256']:raise RuntimeError('Marker window review changed')
+        review_bytes=review_path.read_bytes();record=json.loads(review_bytes)['models'][link['entry']]
+        if link['entry']!=plan['benchmark']+'/'+plan['model'] or record['configuration_id']!=plan['configuration_id']:
+            raise RuntimeError('Marker window reviewed configuration mismatch')
+        if record['reference_result_sha256']!=plan['reference_result_sha256'] or record['raw_config_sha256']!=plan['raw_config_sha256']:
+            raise RuntimeError('Marker window selected contract mismatch')
+        if record['source_reviewed'] is not True or record['profile_from_start'] is not False or record['capture_all_launches_in_window'] is not False or record['replay_mode']!='kernel':
+            raise RuntimeError('Unreviewed marker replay/coverage method')
+        if (record['kernel_id'],record['filter_mode'],record['kernel_name_base'])!=('::regex:.*:1','per-launch-config','mangled'):
+            raise RuntimeError('Unreviewed retained-window selector')
+        if record['selected_window']['retained_trial']!=2 or record['selected_window']['zero_based_step']!=240 or record['source_expected_authored_dispatches']!=28:
+            raise RuntimeError('Unreviewed scientific window')
+        if record['original_GPU_function_bytes_sha256']!=record['copied_GPU_function_bytes_sha256'] or record['inverse_host_patch_recovers_original_header_exactly'] is not True:
+            raise RuntimeError('Marker adapter changed GPU arithmetic')
+        check_supplemental(record['execution_bindings'])
+        if any(plan['execution_bindings'].get(name)!=digest for name,digest in record['execution_bindings'].items()):
+            raise RuntimeError('Window source not prospectively bound by plan')
+        (slot/'profile_window_review.json').write_bytes(review_bytes)
+        window_review={'review':link,'record':record,'runtime_validated_before_attempt':False}
     application_review = None
     replay_mode = 'kernel'
     if application_replay_reviewed:
@@ -397,6 +446,10 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                         raise RuntimeError('Retained-trial source binding changed')
                 selection_override.update(retained_trial=selected['retained_trial'],source_recipe=proof,
                                           phase_proof='source_launch_ordinal_not_dynamic_range_trace')
+    if window_review:
+        if selection_path:raise RuntimeError('Marker window uses only its reviewed selector')
+        selection+=['--profile-from-start','off']
+        scope='Partial first-per-specialization/geometry observations inside source-checked retainedtrial2 step240; not complete timestep or1000step ROI'
     ncu = ['ncu', '--target-processes', 'all'] + selection + [
            '--clock-control', 'none', '--cache-control', 'all', '--replay-mode',replay_mode,*(['--app-replay-match','grid','--app-replay-mode','strict'] if application_review else []),
            '--metrics', ','.join(METRICS), '--csv', '--page', 'raw',
@@ -423,7 +476,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             'rule':'max(requested,min(3600,ceil(120+30*saved_reported_mean))); coarse replay/process deadline, not a timing forecast. Reported time normalization may differ. Idle queue waiting is excluded.'},
         'profiling_auxiliary_retention': 'kept' if retain_auxiliary else
             'Fresh scratch only removed after manifest; not a correctness certificate. Raw counters, logs, provenance retained.',
-        'status': 'started','replay_mode':replay_mode,'application_replay':application_review}
+        'status': 'started','replay_mode':replay_mode,'application_replay':application_review,'profile_window':window_review,'isolated_assertion_phases':isolated_review}
     (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
     dump(slot/'profile_provenance.json', provenance)
     try:
@@ -439,6 +492,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             fcntl.flock(lock, fcntl.LOCK_EX)
             bindings(plan)
             if application_review:check_supplemental(application_review['record']['execution_bindings'])
+            if window_review:check_supplemental(window_review['record']['execution_bindings'])
             current_bindings = supplemental_bindings(plan,root)
             for name, expected in tensor_binding_inventory.items():
                 if sha(name) != expected:
@@ -458,7 +512,15 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                     slot/'build.log', timeout, reserve_mib*1024**2,guard)
                 if provenance['build']['returncode'] != 0:
                     raise RuntimeError('Isolated build failed; see retained build log')
-            # Build may create a GPU context; require a second idle check.
+            if isolated_review:
+                check_supplemental(isolated_review['record']['execution_bindings'])
+                phase_env=env.copy();phase_env['HECBENCH_ASSERT_PHASE_AUTHORIZATION']=isolated_review['record']['authorization_marker']
+                provenance['pre_profile_checks']=run(plan['pre_profile_check_command'],phase_env,scratch,
+                    slot/'pre_profile_checks.log',timeout,reserve_mib*1024**2,guard,monitor_gpu=True)
+                if provenance['pre_profile_checks']['returncode']!=0 or provenance['pre_profile_checks']['stop_reason'] is not None:
+                    raise RuntimeError('Mandatory five isolated negative contexts failed; no positive NCU launch')
+                bindings(plan);check_supplemental(isolated_review['record']['execution_bindings'])
+            # Build/prechecks may create a GPU context; require a second idle check.
             provenance['device_immediately_before_profile'] = wait_idle_snapshot(provenance,slot)
             identity=subprocess.run(['nvidia-smi','-i','6','--query-gpu=uuid,pci.bus_id',
                 '--format=csv,noheader'],capture_output=True,text=True,check=True).stdout
@@ -475,6 +537,18 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
             bindings(plan)
+            if isolated_review:
+                check_supplemental(isolated_review['record']['execution_bindings'])
+                outcome={'plan_sha256':sha(plan_path),'command':command,
+                    'returncode':provenance['profile']['returncode'],'stop_reason':provenance['profile']['stop_reason'],
+                    'own_session_quiescent':True,'guarded_under_GPU_lock':True,
+                    'execution_log':{'path':str(slot/'execution.log'),'sha256':sha(slot/'execution.log'),'bytes':(slot/'execution.log').stat().st_size}}
+                dump(slot/'positive_profile_outcome.json',outcome)
+                provenance['post_profile_checks']=run(plan['post_profile_check_command'],phase_env,scratch,
+                    slot/'post_profile_checks.log',timeout,reserve_mib*1024**2,guard)
+                bindings(plan);check_supplemental(isolated_review['record']['execution_bindings'])
+                if provenance['post_profile_checks']['returncode']!=0 or provenance['post_profile_checks']['stop_reason'] is not None:
+                    raise RuntimeError('Mandatory joined assertion execution-only validation failed')
             if application_review:
                 check_supplemental(application_review['record']['execution_bindings'])
                 visible=[]
@@ -485,6 +559,16 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 provenance['application_replay_visible_checks']={'five_trial_groups':len(groups),'all_visible_groups_pass':passed,'scope':'Visible full-program checks only; repeated application passes retain source fail-fast checks. No bitwise equality claim for nondeterministic exchange/CAS states.'}
                 if provenance['profile']['returncode']==0 and provenance['profile']['stop_reason'] is None and not passed:
                     raise RuntimeError('Application replay visible full five-trial property checks absent or failed')
+            if window_review:
+                check_supplemental(window_review['record']['execution_bindings'])
+                logs=(slot/'execution.log').read_text(errors='replace').splitlines()
+                starts=[json.loads(l[len('RBC_PROFILE_WINDOW_BEGIN '):])for l in logs if l.startswith('RBC_PROFILE_WINDOW_BEGIN ')]
+                ends=[json.loads(l[len('RBC_PROFILE_WINDOW_END '):])for l in logs if l.startswith('RBC_PROFILE_WINDOW_END ')]
+                trials=[json.loads(l[len('STUDY_TRIAL '):])for l in logs if l.startswith('STUDY_TRIAL ')]
+                passed=(len(starts)==len(ends)==1 and starts[0]['trial']==ends[0]['trial']==2 and starts[0]['zero_based_step']==ends[0]['zero_based_step']==240 and starts[0]['nu_samples_before']==1 and ends[0]['nu_samples_after']==2 and ends[0]['authored_dispatch_counts']==[3,6,2,11,5,0,1] and [t['trial']for t in trials]==list(range(1,6)) and all(t.get('correct') is True for t in trials))
+                provenance['profile_window_runtime_checks']={'all_pass':passed,'begin':starts,'end':ends,'checked_trial_count':len(trials),'scope':'Exact marker/host-dispatch evidence; observed GPU kernel sample count separate, no complete-step claim.'}
+                if provenance['profile']['returncode']==0 and provenance['profile']['stop_reason'] is None and not passed:
+                    raise RuntimeError('Retained marker window or full five-trial checks failed')
             check_supplemental(current_bindings)
             check_supplemental(provenance['executed_target_path_bindings'])
             provenance['binding_recheck_after'] = 'unchanged'
@@ -499,6 +583,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 exec(compile(parser_source,str(parser_path),'exec'),parser.__dict__)
                 try:
                     groups, csv_sha = parser.read_csv(csv_path)
+                    if window_review and not groups:raise ValueError('Reviewed marker window produced no GPU samples; selector semantics unvalidated')
                     for group in groups:
                         actual_pci=tuple(group['metrics'].get('device__attribute_pci_'+key+'_id')
                                          for key in ('domain','bus','device'))
@@ -510,6 +595,14 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                                    first_invocation_may_be_warmup=True,
                                    cache_policy='all_cold_application_replay' if application_review else 'all_cold_replay',clock_control='none',replay_mode=replay_mode,
                                    selector_scope=scope,source_context_bound_before_after=True)
+                    if window_review and provenance.get('profile_window_runtime_checks',{}).get('all_pass') and provenance['status']=='profile_process_completed':
+                        context.update(retained_trial=2,zero_based_step=240,
+                            profile_window_review=window_review['review'],
+                            phase_proof='exact_source_markers_plus_runtime_begin_end_dispatch_and_five_check_receipts',
+                            sample_phase='source_checked_trial2_step240_partial_specializations',
+                            sample_in_primary_timed_invocation=True,first_invocation_may_be_warmup=False,
+                            semantic_family_in_primary_ROI=True,ROI_stage='partial_samples_in_RK3_plus_Nu_timestep',
+                            ROI_coverage='partial_first_specialization_geometry_in_retained_scientific_timestep')
                     if selection_override and selection_override.get('retained_trial'):
                         confirmed=len(groups)==selection_override['expected_matching_launches']
                         provenance['retained_window_expected_count_confirmed']=confirmed
@@ -591,6 +684,23 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 'scope':'Size completeness only, independent of numerical checks and rawcounter validity; auxiliary bytes are disposable only after hash manifest.'}
             if not complete and provenance['status']=='profile_process_completed':
                 provenance['status']='profile_process_completed_artifact_incomplete'
+        if isolated_review:
+            retained=[]
+            directory=slot/'negative_raw'
+            for path in sorted(directory.iterdir()) if directory.is_dir() else []:
+                if not path.is_file() or path.is_symlink():continue
+                data=path.read_bytes();retained.append({'path':str(path.relative_to(slot)),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'base64_bytes':base64.b64encode(data).decode('ascii')})
+            dump(slot/'isolated_assertion_negative_raw.json',{'scope':'Exact fresh five-negative stdout/stderr/status logs, retained before any rejection; not numerical outputs or historical recovery.','files':retained})
+        if application_review:
+            passes=scratch/'profile_outputs/application_passes'
+            retained=[]
+            for path in sorted(passes.rglob('*')) if passes.is_dir() else []:
+                if not path.is_file() or path.is_symlink():continue
+                data=path.read_bytes()
+                retained.append({'path':str(path.relative_to(scratch)), 'bytes':len(data),
+                                 'sha256':hashlib.sha256(data).hexdigest(),
+                                 'base64_bytes':base64.b64encode(data).decode('ascii')})
+            dump(slot/'application_replay_pass_artifacts.json',{'scope':'Exact per-pass complete property artifacts, raw stdout and child status receipts; diagnostic/verification evidence separate from counter matching.', 'files':retained})
         for name in ('overlay_build_outcome.json','extra_build_outcome.json'):
             receipt=scratch/name
             if receipt.is_file():
@@ -644,6 +754,8 @@ def main():
     ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
     ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT/SU3 2GiB per-file policy, full payload space and auxiliary budget required')
     ap.add_argument('--application-replay-reviewed',action='store_true',help='Source-bound atomicSystemWide application/grid/strict replay only; retains all property checks')
+    ap.add_argument('--profile-window-reviewed',action='store_true',help='Exact source/runtime-checked RBC retainedtrial2 step240 partial kernel samples only')
+    ap.add_argument('--isolated-assertion-reviewed',action='store_true',help='Source-bound assert Julia full5negative/directpositive/postjoin phases, same guardedGPUlock')
     a=ap.parse_args()
     for p in sorted(a.plan_root.glob('*/*/plan.json')):
         plan=json.loads(p.read_text())
@@ -655,7 +767,7 @@ def main():
             if selected['profiling_status']=='profile_process_completed' and selected.get('sampled_kernel_count',0)>0:
                 print(json.dumps({'benchmark':plan['benchmark'],'model':plan['model'],'status':'already_qualified_selected_capture_preserved'}),flush=True)
                 continue
-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed)
+        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed,a.profile_window_reviewed,a.isolated_assertion_reviewed)
         print(json.dumps(result),flush=True)
 
 

@@ -44,7 +44,11 @@ def freeze(slot, target, root):
                  'completion_source_proof.json','patches.json',
                  'plan_before_replay_review.json','replay_metadata_derivation.json',
                  'assert_child_diagnostics.json','remaining_infra_source_proof.json',
-                 'egs_build_manifest.json','source_proof.json','application_replay_review.json'):
+                 'egs_build_manifest.json','source_proof.json','application_replay_review.json',
+                 'application_replay_pass_artifacts.json','profile_window_review.json','isolated_assertion_review.json',
+                 'negative_prechecks.json','positive_profile_outcome.json','joined_execution_contract.json',
+                 'isolated_assertion_negative_raw.json','phase_spec.json',
+                 'pre_profile_checks.log','post_profile_checks.log'):
         source = slot/name
         if not source.is_file():
             continue

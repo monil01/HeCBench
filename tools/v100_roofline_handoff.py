@@ -48,9 +48,9 @@ def main():
     command=[sys.executable,str(root/'tools/v100_roofline_campaign.py'),
         '--source-root',str(root),'--raw-root',str(raw),'--campaign-id','003',
         '--reviews',str(root/'ontology/studies/v100_roofline_537/approved_isolation_reviews_v7.json'),
-        '--timeout','180','--asset-cap-mib','1024','--skip-frozen','--freeze-every','10',
+        '--timeout','180','--asset-cap-mib','1024','--skip-frozen','--skip-qualified-selected','--freeze-every','10',
         '--stop-file',str(stop)]
-    for name in ['bfs','maxFlops','nbody','triad']:command+=['--exclude-benchmark',name]
+    for name in ['bfs','maxFlops','nbody','triad','remap','sc','sparkler','spsm','su3','tsne','voxelization','zmddft']:command+=['--exclude-benchmark',name]
     with(raw/'campaign_003_completion_stdout.jsonl').open('a')as log:
         child=subprocess.Popen(command,cwd=root,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
         with Path('/tmp/hecbench-roofline-metadata.lock').open('a')as lock:

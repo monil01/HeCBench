@@ -6,6 +6,8 @@ The exact hash-bound historical parser is used, rather than silently substitutin
 the current implementation. Only this repository's retained parser sources run.
 """
 import argparse
+import base64
+import struct
 import collections
 import datetime
 import fcntl
@@ -17,6 +19,8 @@ from pathlib import Path
 import tempfile
 import types
 
+
+AUDIT_SOURCE = Path(__file__).read_bytes()
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
@@ -71,6 +75,92 @@ def main():
                     data = frozen(study / 'selected_contracts' / plan['benchmark'] / (name+'.gz'))
                     require(sha(data) == plan[key], 'Selected contract SHA mismatch: '+name)
                 row.update(benchmark=plan['benchmark'], model=plan['model'], status=prov['status'], manifest_files=len(files))
+                if prov.get('profile_window'):
+                    link=plan['profile_window_review'];raw=files['profile_window_review.json']
+                    require(sha(raw)==link['sha256']==prov['profile_window']['review']['sha256'], 'Marker window review SHA mismatch')
+                    record=json.loads(raw)['models'][link['entry']]
+                    require(record==prov['profile_window']['record'] and plan['benchmark']=='rayleighBenardConvection', 'Marker window record mismatch')
+                    require(record['reference_result_sha256']==plan['reference_result_sha256'] and record['raw_config_sha256']==plan['raw_config_sha256'], 'Marker window selected contract mismatch')
+                    require(record['profile_from_start'] is False and record['capture_all_launches_in_window'] is False, 'Marker coverage was promoted')
+                    require('--profile-from-start' in prov['command'] and prov['command'][prov['command'].index('--profile-from-start')+1]=='off', 'Marker window not disabled from process start')
+                    for name,digest in record['execution_bindings'].items():require(plan['execution_bindings'].get(name)==digest, 'Marker input not prospectively bound')
+                    if prov['status']=='profile_process_completed':
+                        logs=files['execution.log'].decode(errors='replace').splitlines()
+                        starts=[json.loads(l[len('RBC_PROFILE_WINDOW_BEGIN '):])for l in logs if l.startswith('RBC_PROFILE_WINDOW_BEGIN ')]
+                        ends=[json.loads(l[len('RBC_PROFILE_WINDOW_END '):])for l in logs if l.startswith('RBC_PROFILE_WINDOW_END ')]
+                        trials=[json.loads(l[len('STUDY_TRIAL '):])for l in logs if l.startswith('STUDY_TRIAL ')]
+                        require(len(starts)==len(ends)==1 and starts[0]['trial']==ends[0]['trial']==2 and starts[0]['zero_based_step']==ends[0]['zero_based_step']==240, 'Actual marker window mismatch')
+                        require(starts[0]['nu_samples_before']==1 and ends[0]['nu_samples_after']==2 and ends[0]['authored_dispatch_counts']==[3,6,2,11,5,0,1], 'Actual source window dispatch/Nu mismatch')
+                        require([t['trial']for t in trials]==list(range(1,6)) and all(t['correct'] is True for t in trials), 'Marker experiment full five checks absent')
+                        checks=prov['profile_window_runtime_checks']
+                        require(checks['all_pass'] is True and checks['begin']==starts and checks['end']==ends, 'Saved marker derivation mismatch')
+                    row['attempt_kind']='retained_scientific_timestep_partial_specializations_not_complete_ROI'
+                if prov.get('isolated_assertion_phases'):
+                    link=plan['isolated_assertion_review'];raw=files['isolated_assertion_review.json']
+                    require(sha(raw)==link['sha256']==prov['isolated_assertion_phases']['review']['sha256'], 'Isolated assertion review SHA mismatch')
+                    review=json.loads(raw)['models'][link['entry']]
+                    require(review==prov['isolated_assertion_phases']['record'] and plan['benchmark']=='assert' and plan['model'] in ('cuda_jl','ka','jacc'), 'Isolated assertion method mismatch')
+                    require(review['positive_command']==plan['profile_target_command'] and review['reference_result_sha256']==plan['reference_result_sha256'] and review['raw_config_sha256']==plan['raw_config_sha256'], 'Isolated assertion contract mismatch')
+                    passfiles={}
+                    for item in json.loads(files['isolated_assertion_negative_raw.json'])['files']:
+                        data=base64.b64decode(item['base64_bytes'],validate=True)
+                        require(len(data)==item['bytes'] and sha(data)==item['sha256'], 'Isolated negative raw SHA mismatch')
+                        require(item['path'] not in passfiles, 'Duplicate isolated negative path')
+                        passfiles[item['path']]=data
+                    if prov['status']=='profile_process_completed':
+                        pre=json.loads(files['negative_prechecks.json']);post=json.loads(files['joined_execution_contract.json']);outcome=json.loads(files['positive_profile_outcome.json'])
+                        require(pre['complete'] is True and pre['all_pass'] is True and len(pre['processes'])==5, 'Five isolated negatives missing')
+                        require(post['complete_execution_only_contract'] is True and post['numerical_agreement_claim'] is False and len(post['rows'])==5, 'Full assertion execution-only contract missing')
+                        require(outcome['plan_sha256']==sha(files['plan.json']) and outcome['command']==plan['profile_target_command'] and outcome['returncode']==0 and outcome['stop_reason'] is None and outcome['own_session_quiescent'] is True, 'Isolated positive execution not accepted')
+                        require(outcome['execution_log']['sha256']==sha(files['execution.log']), 'Isolated positive log mismatch')
+                        for phase in ('pre_profile_checks','post_profile_checks'):
+                            require(prov[phase]['returncode']==0 and prov[phase]['stop_reason'] is None, 'Isolated check phase failed')
+                        perf=[json.loads(l[len('PERF_TRIAL '):])for l in files['execution.log'].decode(errors='replace').splitlines() if l.startswith('PERF_TRIAL ')]
+                        require([r['trial']for r in perf]==list(range(1,6)), 'Direct positive five PERF trials missing')
+                        for expected_trial,(negative,positive,joined) in enumerate(zip(pre['processes'],perf,post['rows']),1):
+                            require(negative['trial']==expected_trial and negative['returncode']==0 and negative['checker_pass'] is True, 'Isolated negative failed')
+                            actual={}
+                            for key in ('stdout','stderr','combined_log'):
+                                item=negative[key];name='negative_raw/'+Path(item['path']).name;data=passfiles[name]
+                                require(sha(data)==item['sha256'] and len(data)==item['bytes'], 'Negative receipt raw join mismatch');actual[key]=data
+                            require(actual['combined_log']==actual['stdout']+actual['stderr'], 'Negative combined raw mismatch')
+                            require([line.split()for line in actual['stdout'].decode().splitlines()if line.startswith('ASSERT_STATUS ')]==[['ASSERT_STATUS','710']], 'Actual isolated CUDA status mismatch')
+                            require(all(joined[k]==v for k,v in positive.items()) and joined['correct'] is True and joined['checked_values']==0 and joined['observed_device_assertion_status']==710 and joined['expected_device_assertion_status']==710, 'Joined assertion verdict differs from actual checks')
+                    row['attempt_kind']='five_negative_contexts_plus_direct_positive_profile_and_mandatory_CPU_join'
+                if prov.get('replay_mode') == 'application':
+                    require(plan['benchmark']=='atomicSystemWide', 'Unreviewed application replay benchmark')
+                    review_bytes=files['application_replay_review.json']
+                    link=plan['application_replay_review']
+                    require(sha(review_bytes)==link['sha256']==prov['application_replay']['review']['sha256'], 'Application replay review SHA mismatch')
+                    review=json.loads(review_bytes)['models'][link['entry']]
+                    require(review==prov['application_replay']['record'], 'Application replay review record changed')
+                    require(review['configuration_id']==plan['configuration_id'] and review['reference_result_sha256']==plan['reference_result_sha256'] and review['raw_config_sha256']==plan['raw_config_sha256'], 'Application replay contract mismatch')
+                    require(review['replay_mode']=='application' and review['app_replay_match']=='grid' and review['source_reviewed'] is True, 'Application replay method unsupported')
+                    for name,digest in review['execution_bindings'].items():
+                        require(plan['execution_bindings'].get(name)==digest, 'Application replay source not prospectively bound')
+                    require(all(x in prov['command'] for x in ['--replay-mode','application','--app-replay-match','grid','--app-replay-mode','strict']), 'Application replay command missing required options')
+                    archive=json.loads(files['application_replay_pass_artifacts.json']);passfiles={}
+                    for item in archive['files']:
+                        raw=base64.b64decode(item['base64_bytes'],validate=True)
+                        require(len(raw)==item['bytes'] and sha(raw)==item['sha256'], 'Application pass artifact SHA/size mismatch')
+                        require(item['path'] not in passfiles, 'Application pass duplicate archive path')
+                        passfiles[item['path']]=raw
+                    if prov['status']=='profile_process_completed':
+                        require(prov['application_replay_visible_checks']['all_visible_groups_pass'] is True, 'Application visible checks did not pass')
+                        receipts=[(name,json.loads(raw))for name,raw in passfiles.items() if name.endswith('/pass_receipt.json')]
+                        require(bool(receipts), 'No application pass receipts')
+                        initial=[0]*10;initial[7]=initial[9]=255
+                        expected=[8,8,1000]+initial+[160000,15,0,0,0,1,65535,255]+[1,1]+[1515870810]*32
+                        for name,receipt in receipts:
+                            require(receipt['status']=='all5_property_checks_completed' and receipt['child_returncode']==0, 'Application pass failed original checks')
+                            require([r['trial']for r in receipt['STUDY_TRIAL_rows']]==[1,2,3,4,5] and all(r['correct'] is True for r in receipt['STUDY_TRIAL_rows']), 'Application pass five checks absent')
+                            require(len(receipt['artifacts'])==5, 'Application pass complete artifact list absent')
+                            for artifact in receipt['artifacts']:
+                                relative=str(Path(name).parent/Path(artifact['path']).name)
+                                raw=passfiles[relative]
+                                require(sha(raw)==artifact['sha256'] and len(raw)==220, 'Application property artifact join mismatch')
+                                require(list(struct.unpack('<55i',raw))==expected, 'Application property scores/guards mismatch')
+                    row['attempt_kind']='source_reviewed_application_replay_property_contract'
                 if prov.get('CPU_only_recovery'):
                     require(all(name in files for name in ['parent_profile_provenance.json','counter_derivation_recovery.json','recovery_tool_source.py','half_calibration_snapshot.json']), 'Recovery archive incomplete')
                     parent_bytes=files['parent_profile_provenance.json'];parent=json.loads(parent_bytes)
@@ -225,12 +315,16 @@ def main():
         if ledger_count != 537 or model_count != 2148:
             issues.append({'error': 'Unexpected population', 'names': ledger_count, 'models': model_count})
     result = dict(schema_version=1, audited_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                  audit_tool_sha256=sha(Path(__file__).read_bytes()),
+                  audit_tool_sha256=sha(AUDIT_SOURCE),
                   scope='Frozen manifests, selected contract bytes, historical counter derivations and selected observation hashes. No GPU executions, new correctness certification, complete-ROI or causal proof.',
                   benchmark_names=ledger_count, model_slots=model_count, attempts=len(attempts),
                   recomputed_kernels=sum(x.get('recomputed_kernels',0) for x in attempts),
                   parser_versions=len(parsers), issues=issues, qualifications=qualifications, records=attempts,
                   status_counts=dict(collections.Counter(x['audit_status'] for x in attempts)))
+    snapshot=study/'tool_snapshots'/(sha(AUDIT_SOURCE)+'.py.gz')
+    if snapshot.exists():require(gzip.decompress(snapshot.read_bytes())==AUDIT_SOURCE, 'Audit source snapshot collision')
+    else:snapshot.write_bytes(gzip.compress(AUDIT_SOURCE,mtime=0))
+    result['audit_source_snapshot']=str(snapshot.relative_to(root))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.output.with_suffix(args.output.suffix+'.new')
     temporary.write_text(json.dumps(result, indent=2, allow_nan=False)+'\n')

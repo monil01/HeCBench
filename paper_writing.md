@@ -134,6 +134,38 @@ and live auxiliary/reserve checks. A successful process with short payloads is
 not a complete artifact capture. Preserve prior truncated attempts, raw counters
 and failures. No global OS or device changes, privilege escalation or sudo.
 
+Only `atomicSystemWide` may opt into `--application-replay-reviewed` after an
+exact source/config/result/installed-guide method review. Use application/grid/
+strict matching, rerun the complete original CPU/GPU coexecution, retain five
+property checks and all guards in every application pass, and use unique private
+per-pass output directories. Archive exact pass receipts, raw stdout, signed
+child statuses and tiny property artifacts. An approved source method is not an
+observed successful capture; actual profiler matching, PCI identity and visible
+checks must pass. Keep this application replay context separate from cold kernel
+replay and retain prior blocked attempts. No bitwise equality claim is made for
+nondeterministic exchange/CAS states. `streamUM` requires a different reviewed
+method because its dynamic streams/order and shared launch geometries prevent
+assuming deterministic application matching. Multi-device contracts remain a
+separate method stratum; GPU6-only profiles cannot certify their original ROI.
+
+Two additional profiling methods require explicit reviewed opt-ins. RBC's
+`--profile-window-reviewed` uses source/runtime-checked markers around retained
+trial 2, step 240, including the Nu branch, while preserving all 6,000 steps and
+five complete original checks. First-per-specialization/geometry samples inside
+that window remain partial: 28 authored host dispatches and 12,167 source-counted
+cuBLAS API calls are not observed GPU launch counts or aggregate multiplicities.
+Never extrapolate these points to a complete timestep or 1,000-step ROI.
+
+For the three Julia assertion cases, `--isolated-assertion-reviewed` performs
+all five original negative contexts before NCU, profiles the unchanged direct
+positive program, and requires a CPU postjoin of all five positive records with
+the actual status-710 negative receipts. Every phase holds the same GPU lock and
+write guard; exact negative raw bytes, signed statuses, source bindings and
+joined evidence are retained. These are execution-only checks, with no invented
+numerical outputs. Negative runtime processes are not compiler/JIT attempts;
+instrumented timings never replace the original accepted performance series.
+Source review alone does not establish either method's runtime success.
+
 `v100_roofline_refresh.py` exports validated compact assessments and compressed
 large tables under `ontology/studies/v100_roofline_537`, regenerates the ontology
 explorer and updates the combined paper checkpoint. Keep all primary captures

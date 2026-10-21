@@ -23,6 +23,7 @@ def main():
     ap.add_argument('--exclude-benchmark',action='append',default=[])
     ap.add_argument('--reviews',type=Path)
     ap.add_argument('--selection-overrides',type=Path)
+    ap.add_argument('--skip-qualified-selected',action='store_true',help='Preserve successful selected captures already supplied by reviewed follow-ups')
     ap.add_argument('--timeout',type=int,default=180)
     ap.add_argument('--limit',type=int)
     ap.add_argument('--freeze-every',type=int,default=1,help='Freeze metadata after this many names; raw per-model evidence is saved immediately')
@@ -73,6 +74,7 @@ def main():
                 continue
         collector=[sys.executable,str(root/'tools/v100_roofline_collect.py'),
             '--source-root',str(root),'--plan-root',str(batch),'--timeout',str(a.timeout)]
+        if a.skip_qualified_selected:collector+=['--skip-qualified-selected']
         if a.selection_overrides:collector+=['--selection-overrides',str(a.selection_overrides)]
         result=subprocess.run(collector,cwd=root,capture_output=True,text=True)
         note({'event':'collect','benchmark':b,'ordinal':index,'returncode':result.returncode,

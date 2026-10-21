@@ -36,7 +36,7 @@ def main():
         if not proc.exists():continue
         if proc.stat().st_uid!=os.getuid():ap.error('Only own collector PIDs may be monitored')
         command=(proc/'cmdline').read_bytes()
-        if not any(name in command for name in [b'v100_roofline_campaign.py',b'v100_roofline_followups.py',b'v100_roofline_collect.py']):
+        if not any(name in command for name in [b'v100_roofline_campaign.py',b'v100_roofline_followups.py',b'v100_roofline_collect.py',b'v100_roofline_retry.py',b'v100_roofline_handoff.py']):
             ap.error('PID is not a roofline collector/controller')
         tracked[pid]=(proc/'stat').read_text().split(')')[1].split()[19]
     env=os.environ.copy();env['CUDA_VISIBLE_DEVICES']=''
