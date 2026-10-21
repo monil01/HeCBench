@@ -128,7 +128,7 @@ timing and parent evidence. Do not invent zero FLOPs, traffic or framework failu
 The integrity audit checks selected provenance joins as well as frozen bytes.
 
 Large profile observer outputs need an explicit per-file/total budget and free
-space reserve. Only reviewed Perlin and ZMDDFT collectors may use the local 2 GiB
+space reserve. Only reviewed Perlin, ZMDDFT and SU3 collectors may use the local 2 GiB
 child file limit (`--large-artifacts`), with final exact expected payload sizes
 and live auxiliary/reserve checks. A successful process with short payloads is
 not a complete artifact capture. Preserve prior truncated attempts, raw counters

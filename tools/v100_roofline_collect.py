@@ -219,9 +219,10 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,a
                     perlin=(artifact_policy['benchmark']=='perlin' and item.parent==cwd and name in ['perlin_trial'+str(i)+'.bin' for i in range(1,6)])
                     ztrial=(artifact_policy['benchmark']=='zmddft' and item.parent==cwd/'profile_outputs' and name in ['trial'+str(i)+'.bin' for i in range(1,6)])
                     zimpulse=(artifact_policy['benchmark']=='zmddft' and item.is_relative_to(cwd/'profile_outputs') and name==artifact_policy['model']+'_impulse_stages_f64.bin')
-                    if perlin or ztrial or zimpulse:
+                    su3=(artifact_policy['benchmark']=='su3' and item.parent in (cwd,cwd/'profile_outputs') and name in ['su3_trial'+str(i)+'.bin' for i in range(1,6)])
+                    if perlin or ztrial or zimpulse or su3:
                         payload+=size
-                        cap=1541441088 if perlin else 1073746496 if ztrial else 805306368
+                        cap=1541441088 if perlin else 1347849664 if su3 else 1073746496 if ztrial else 805306368
                         if size>cap:stop_reason='reviewed_payload_file_size_exceeded'
                     else:auxiliary+=size
                 if payload>artifact_policy['payload_bytes']:stop_reason='reviewed_total_payload_exceeded'
@@ -288,13 +289,36 @@ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,a
             'executed_command':executed}
 
 
-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False):
+def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False):
     plan = json.loads(plan_path.read_text())
     if plan['blocking_gates'] or not plan.get('staged'):
         return {'plan': str(plan_path), 'status': 'not_executed_plan_blocked_or_not_staged'}
     slot = plan_path.parent
     if (slot / 'profile_provenance.json').exists():
         return {'plan': str(plan_path), 'status': 'existing_profile_preserved'}
+    application_review = None
+    replay_mode = 'kernel'
+    if application_replay_reviewed:
+        if plan['benchmark'] != 'atomicSystemWide':
+            raise RuntimeError('Application replay opt-in reviewed for atomicSystemWide only')
+        link = plan['application_replay_review']
+        review_path = Path(link['path'])
+        if sha(review_path) != link['sha256']:
+            raise RuntimeError('Application replay source review changed')
+        review_bytes = review_path.read_bytes()
+        record = json.loads(review_bytes)['models'][link['entry']]
+        if link['entry'] != plan['benchmark']+'/'+plan['model'] or record['configuration_id'] != plan['configuration_id']:
+            raise RuntimeError('Application replay reviewed configuration mismatch')
+        if record['reference_result_sha256'] != plan['reference_result_sha256'] or record['raw_config_sha256'] != plan['raw_config_sha256']:
+            raise RuntimeError('Application replay selected contract mismatch')
+        if record['replay_mode'] != 'application' or record['app_replay_match'] != 'grid' or record['source_reviewed'] is not True:
+            raise RuntimeError('Application replay method approval absent')
+        check_supplemental(record['execution_bindings'])
+        if any(plan['execution_bindings'].get(name) != digest for name,digest in record['execution_bindings'].items()):
+            raise RuntimeError('Application replay review is not prospectively bound by the plan')
+        (slot/'application_replay_review.json').write_bytes(review_bytes)
+        application_review = {'review':link,'record':record,'runtime_validated_before_attempt':False}
+        replay_mode = 'application'
     tensor_loader = None
     tensor_binding_inventory = {}
     if tensor_modes:
@@ -310,12 +334,13 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         (slot/'tensor_mode_loader_source.py').write_bytes(loader_source)
     artifact_policy=None
     if large_artifacts:
-        payloads={'perlin':7707205440,'zmddft':6174038848}
+        payloads={'perlin':7707205440,'zmddft':6174038848,'su3':6739248320}
         if plan['benchmark'] not in payloads:
-            raise RuntimeError('Large-artifact opt-in reviewed for Perlin/ZMDDFT only')
+            raise RuntimeError('Large-artifact opt-in reviewed for Perlin/ZMDDFT/SU3 only')
         artifact_policy={'benchmark':plan['benchmark'],'model':plan['model'],
             'max_file_bytes':2*1024**3,'payload_bytes':payloads[plan['benchmark']],
-            'auxiliary_allowance_bytes':256*1024**2,
+            'auxiliary_allowance_bytes':256*1024**2+plan.get('runtime_asset_bytes',0),
+            'already_staged_runtime_asset_bytes':plan.get('runtime_asset_bytes',0),
             'scope':'Fresh per-process file limit and enforced per-attempt size budget; no OS/global limit changes. Full five outputs and independent checks retained.'}
     scratch = Path(plan['scratch_cwd']).resolve()
     scratch.relative_to(slot.resolve())
@@ -373,7 +398,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                 selection_override.update(retained_trial=selected['retained_trial'],source_recipe=proof,
                                           phase_proof='source_launch_ordinal_not_dynamic_range_trace')
     ncu = ['ncu', '--target-processes', 'all'] + selection + [
-           '--clock-control', 'none', '--cache-control', 'all', '--replay-mode','kernel',
+           '--clock-control', 'none', '--cache-control', 'all', '--replay-mode',replay_mode,*(['--app-replay-match','grid','--app-replay-mode','strict'] if application_review else []),
            '--metrics', ','.join(METRICS), '--csv', '--page', 'raw',
            '--print-units', 'base', '--log-file', str(csv_path)] + command
     saved_result=json.loads(Path(plan['reference_result']).read_text())
@@ -398,7 +423,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             'rule':'max(requested,min(3600,ceil(120+30*saved_reported_mean))); coarse replay/process deadline, not a timing forecast. Reported time normalization may differ. Idle queue waiting is excluded.'},
         'profiling_auxiliary_retention': 'kept' if retain_auxiliary else
             'Fresh scratch only removed after manifest; not a correctness certificate. Raw counters, logs, provenance retained.',
-        'status': 'started'}
+        'status': 'started','replay_mode':replay_mode,'application_replay':application_review}
     (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
     dump(slot/'profile_provenance.json', provenance)
     try:
@@ -407,12 +432,13 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
         if plan['benchmark'] == 'streamUM':
             provenance['status'] = 'not_started_replay_method_blocked'
             raise RuntimeError('Kernel replay against concurrent CPU writes to other managed allocations and dynamic streams is not yet validated; retain source review and use a separately reviewed concurrency method.')
-        if plan['benchmark'] == 'atomicSystemWide':
+        if plan['benchmark'] == 'atomicSystemWide' and not application_review:
             provenance['status'] = 'not_started_replay_method_blocked'
             raise RuntimeError('Kernel replay cannot reproduce concurrent CPU/GPU atomics on the same managed allocation; requires separately reviewed application replay or single-pass diagnostics.')
         with Path('/tmp/hecbench-julia-study-gpu.lock').open('a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             bindings(plan)
+            if application_review:check_supplemental(application_review['record']['execution_bindings'])
             current_bindings = supplemental_bindings(plan,root)
             for name, expected in tensor_binding_inventory.items():
                 if sha(name) != expected:
@@ -425,7 +451,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['device_before'] = wait_idle_snapshot(provenance,slot)
             if shutil.disk_usage(scratch).free < reserve_mib * 1024**2:
                 raise RuntimeError('Free space below reserve')
-            if artifact_policy and shutil.disk_usage(scratch).free < artifact_policy['payload_bytes']+artifact_policy['auxiliary_allowance_bytes']+reserve_mib*1024**2:
+            if artifact_policy and shutil.disk_usage(scratch).free < artifact_policy['payload_bytes']+artifact_policy['auxiliary_allowance_bytes']-artifact_policy.get('already_staged_runtime_asset_bytes',0)+reserve_mib*1024**2:
                 raise RuntimeError('Free space cannot hold full reviewed five-trial payload, auxiliary allowance and reserve')
             if plan['build_command']:
                 provenance['build'] = run(plan['build_command'], env, scratch,
@@ -449,6 +475,16 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
             bindings(plan)
+            if application_review:
+                check_supplemental(application_review['record']['execution_bindings'])
+                visible=[]
+                for line in (slot/'execution.log').read_text(errors='replace').splitlines():
+                    if line.startswith('STUDY_TRIAL '):visible.append(json.loads(line[len('STUDY_TRIAL '):]))
+                groups=[visible[i:i+5] for i in range(0,len(visible),5)]
+                passed=bool(groups) and all([r.get('trial') for r in g]==list(range(1,6)) and all(r.get('correct') is True and r.get('verification_contract')=='native_property_scores' for r in g) for g in groups)
+                provenance['application_replay_visible_checks']={'five_trial_groups':len(groups),'all_visible_groups_pass':passed,'scope':'Visible full-program checks only; repeated application passes retain source fail-fast checks. No bitwise equality claim for nondeterministic exchange/CAS states.'}
+                if provenance['profile']['returncode']==0 and provenance['profile']['stop_reason'] is None and not passed:
+                    raise RuntimeError('Application replay visible full five-trial property checks absent or failed')
             check_supplemental(current_bindings)
             check_supplemental(provenance['executed_target_path_bindings'])
             provenance['binding_recheck_after'] = 'unchanged'
@@ -472,7 +508,7 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
                     context = {k: plan[k] for k in ('benchmark','model','configuration_id','reference_result_sha256','raw_config_sha256')}
                     context.update(ROI_stage='unassigned', ROI_coverage='partial_first_function_geometry',
                                    first_invocation_may_be_warmup=True,
-                                   cache_policy='all_cold_replay',clock_control='none',
+                                   cache_policy='all_cold_application_replay' if application_review else 'all_cold_replay',clock_control='none',replay_mode=replay_mode,
                                    selector_scope=scope,source_context_bound_before_after=True)
                     if selection_override and selection_override.get('retained_trial'):
                         confirmed=len(groups)==selection_override['expected_matching_launches']
@@ -542,6 +578,9 @@ def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_p
             expected_files={}
             for trial in range(1,6):
                 if plan['benchmark']=='perlin':expected_files[scratch/('perlin_trial'+str(trial)+'.bin')]=1541441088
+                elif plan['benchmark']=='su3':
+                    output=scratch if plan['model']=='cuda' else scratch/'profile_outputs'
+                    expected_files[output/('su3_trial'+str(trial)+'.bin')]=1347849664
                 else:expected_files[scratch/'profile_outputs'/('trial'+str(trial)+'.bin')]=1073746496
             if plan['benchmark']=='zmddft':
                 expected_files[scratch/'profile_outputs/private_capture/diagnostics'/(plan['model']+'_impulse_stages_f64.bin')]=805306368
@@ -603,7 +642,8 @@ def main():
     ap.add_argument('--retain-auxiliary',action='store_true')
     ap.add_argument('--selection-overrides',type=Path)
     ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
-    ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT 2GiB per-file policy, full payload space and auxiliary budget required')
+    ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT/SU3 2GiB per-file policy, full payload space and auxiliary budget required')
+    ap.add_argument('--application-replay-reviewed',action='store_true',help='Source-bound atomicSystemWide application/grid/strict replay only; retains all property checks')
     a=ap.parse_args()
     for p in sorted(a.plan_root.glob('*/*/plan.json')):
         plan=json.loads(p.read_text())
@@ -615,7 +655,7 @@ def main():
             if selected['profiling_status']=='profile_process_completed' and selected.get('sampled_kernel_count',0)>0:
                 print(json.dumps({'benchmark':plan['benchmark'],'model':plan['model'],'status':'already_qualified_selected_capture_preserved'}),flush=True)
                 continue
-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts)
+        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed)
         print(json.dumps(result),flush=True)
 
 

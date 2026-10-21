@@ -21,7 +21,7 @@ def main():
     ap.add_argument('--exclude-benchmark',action='append',default=[])
     ap.add_argument('--skip-qualified-selected',action='store_true')
     ap.add_argument('--selection-overrides',type=Path,action='append',default=[])
-    ap.add_argument('--large-artifacts',action='store_true',help='Only reviewed Perlin/ZMDDFT roots; collector enforces bounded policy')
+    ap.add_argument('--large-artifacts',action='store_true',help='Only reviewed Perlin/ZMDDFT/SU3 roots; collector enforces bounded policy')
     ap.add_argument('--journal',type=Path,required=True)
     a=ap.parse_args();root=a.source_root.resolve();raw=a.raw_root.resolve()
     if not raw.is_relative_to('/tmp') or raw==Path('/tmp'):

@@ -42,7 +42,9 @@ def freeze(slot, target, root):
                  'parent_parser_source.py','half_calibration_snapshot.json',
                  'recovery_tool_source.py','counter_derivation_recovery.json',
                  'completion_source_proof.json','patches.json',
-                 'plan_before_replay_review.json','replay_metadata_derivation.json'):
+                 'plan_before_replay_review.json','replay_metadata_derivation.json',
+                 'assert_child_diagnostics.json','remaining_infra_source_proof.json',
+                 'egs_build_manifest.json','source_proof.json','application_replay_review.json'):
         source = slot/name
         if not source.is_file():
             continue
