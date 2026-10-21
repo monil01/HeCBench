@@ -2,7 +2,7 @@
 
 ## V100 method recovery and current execution frontier
 
-The current canonical supervisor is v12, including one reviewed RBC055 follower
+The current canonical supervisor is v13, including one reviewed RBC055 follower
 that waits for the exact RBC050 generation and skips qualified models. Read the
 canonical receipt rather than restarting any historical PID. A stopped supervisor
 still holds its singleton lock: v11 was rejected before work for that reason;
@@ -10,6 +10,13 @@ its failed startup is retained. Supersede only an exact owned, idle supervisor
 after no-child/no-step checks and release its lock before starting its replacement.
 The RBC observer keeps all 6000 steps, five full checks and its 3600-second
 per-phase deadline; inherited GPU idle waiting is outside that deadline.
+The five formerly uncovered slots (ASSERT CUDA.jl/JACC, atomicSystemWide
+CUDA.jl/JACC and columnarSolver CUDA.jl) now have one explicit old-method
+056/057/058 follow-up after their exact original controller generations. Their
+scientific plans reverse exactly to the originals after path/receipt-hash changes;
+all checks, selectors, replay flags and deadlines remain unchanged. A queued
+retry or controller return code is not a successful capture. Preserve the
+queue-completeness snapshot and separate new root-adoption receipt.
 
 The third source-review batch used explicit journaled ordinary renames under the
 metadata lock because this NFS filesystem rejected directory exchange. Preserve

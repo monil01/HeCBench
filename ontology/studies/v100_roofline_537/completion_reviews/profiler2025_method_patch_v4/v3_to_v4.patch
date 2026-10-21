@@ -1,0 +1,118 @@
+--- v3/tools/v100_roofline_collect.py
++++ v4/tools/v100_roofline_collect.py
+@@ -631,8 +631,37 @@
+                 if {k:env[k]for k in method['manifest']['pinned_runtime_environment']}!=method['manifest']['pinned_runtime_environment']:raise RuntimeError('Pinned runtime drift')
+             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
+                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
+-            bindings(plan)
+-            if method:method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
++            if method:
++                # run() returns only after its own session is quiescent. Preserve
++                # actual raw-byte identity BEFORE any source/SDK post-gate can fail.
++                snapshot={'schema_version':1,'captured_at':utc(),
++                    'scope':'Actual retained raw counters after source-defined own-session quiescence; no derivation/admission implied.',
++                    'profile_process':provenance['profile'],'counter_present':csv_path.is_file()}
++                if csv_path.is_file():
++                    size_before=csv_path.stat().st_size
++                    digest=sha(csv_path)
++                    if csv_path.stat().st_size!=size_before:raise RuntimeError('Counter size changed after quiescence')
++                    provenance['counters_sha256']=digest
++                    snapshot['counter']={'path':str(csv_path),'sha256':digest,'bytes':size_before}
++                dump(slot/'counter_quiescence_snapshot.json',snapshot)
++                provenance['counter_quiescence_snapshot_sha256']=sha(slot/'counter_quiescence_snapshot.json')
++                postcheck={'schema_version':1,'status':'pending','checked_at':utc(),
++                    'scope':'Post-profile source and profiler method identity check, separate from process outcome and numerical correctness.',
++                    'counter_quiescence_snapshot_sha256':provenance['counter_quiescence_snapshot_sha256'],
++                    'positions_publishable':False}
++                try:
++                    bindings(plan)
++                    method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
++                    postcheck.update(status='passed',checked_at=utc(),positions_publishable=False)
++                except Exception as post_error:
++                    postcheck.update(status='rejected',checked_at=utc(),error=repr(post_error),positions_publishable=False)
++                    provenance['status']='profile_method_post_profile_validation_hold'
++                    raise
++                finally:
++                    dump(slot/'profiler_method_post_profile_check.json',postcheck)
++                    provenance['profiler_method_post_profile_check_sha256']=sha(slot/'profiler_method_post_profile_check.json')
++            else:
++                bindings(plan)
+             if isolated_review:
+                 check_supplemental(isolated_review['record']['execution_bindings'])
+                 outcome={'plan_sha256':sha(plan_path),'command':command,
+@@ -764,7 +793,7 @@
+                     if provenance['status'] == 'profile_process_completed':
+                         provenance['status'] = 'profile_completed_counter_derivation_failed'
+     except Exception as error:
+-        if provenance['status'] != 'not_started_replay_method_blocked':
++        if provenance['status'] not in ('not_started_replay_method_blocked','profile_method_post_profile_validation_hold'):
+             provenance['status'] = 'collection_failed'
+         provenance['error'] = str(error)
+     finally:
+--- v3/tools/v100_roofline_summarize.py
++++ v4/tools/v100_roofline_summarize.py
+@@ -51,6 +51,7 @@
+                  'negative_prechecks.json','positive_profile_outcome.json','joined_execution_contract.json',
+                  'profiler_method_review.json','profiler_method_bundle.json','profiler_method_validator.py',
+                  'profiler_method_preflight.json','profiler_version.log','profiler_version_payload.bin',
++                 'counter_quiescence_snapshot.json','profiler_method_post_profile_check.json',
+                  'isolated_assertion_negative_raw.json','phase_spec.json',
+                  'pre_profile_checks.log','post_profile_checks.log',
+                  'adapter_source.py','allreduce_two_device_review.json',
+@@ -117,7 +118,8 @@
+             try:
+                 import v100_profiler_method as method_gate
+                 names=('profiler_method_review.json','profiler_method_bundle.json','profiler_method_validator.py',
+-                       'profiler_version.log','profiler_version_payload.bin','profiler_method_preflight.json','derived.json')
++                       'profiler_version.log','profiler_version_payload.bin','profiler_method_preflight.json','derived.json',
++                       'counters.csv','counter_quiescence_snapshot.json','profiler_method_post_profile_check.json')
+                 available={n:(provpath.parent/n).read_bytes() for n in names if (provpath.parent/n).is_file()}
+                 method_gate.audit_profile(prov,available)
+             except Exception as error:
+--- v3/tools/v100_profiler_method.py
++++ v4/tools/v100_profiler_method.py
+@@ -49,6 +49,10 @@
+  need(sha(files['manifest.json'])==MANIFEST,'unexpected source manifest')
+  need(sha(files['controller.py'])==CONTROLLER,'unexpected calibration controller')
+  man=json.loads(files['manifest.json']);p=json.loads(files['provenance.json'])
++ # Input-source archive only: never execute or retroactively import these bytes.
++ for name,relative in [('calibration_collector_source.py','tools/v100_roofline_collect.py'),('calibration_write_guard_source.py','tools/v100_profile_write_guard.py')]:
++  checked(files[name],man['bindings'][str(Path(man['source_root'])/relative)])
++ need(sha(files['calibration_collector_source.py'])==man['collector_sha256'],'calibration collector archive mismatch')
+  need(p['manifest']['sha256']==MANIFEST,'provenance/manifest join mismatch')
+  need(sha(files['root_review_note.txt'])==r['root_review_note_sha256']and len(files['root_review_note.txt'].strip())>=32,'root note mismatch')
+  need(len(man['bindings'])==83,'not exact83-binding experiment')
+@@ -137,6 +141,19 @@
+  need(preflight['status']=='passed'and probe['returncode']==0 and probe['stop_reason']is None and probe['log_sha256']==m['version_log_sha256'],'versionprocess receipt failed')
+  argv=probe['executed_command'];need(argv[argv.index('--')+1:]==[v['profiler']['executable'],'--version'],'versionprobe argv mismatch')
+  if provenance.get('profile'):
++  snapshot_raw=files['counter_quiescence_snapshot.json']
++  need(sha(snapshot_raw)==provenance['counter_quiescence_snapshot_sha256'],'quiescent counter snapshot SHA mismatch')
++  snapshot=json.loads(snapshot_raw)
++  need(snapshot['profile_process']==provenance['profile'],'snapshot process outcome changed')
++  need(snapshot['counter_present']is('counters.csv'in files),'snapshot/raw counter presence mismatch')
++  if snapshot['counter_present']:
++   raw=files['counters.csv'];item=snapshot['counter']
++   need(sha(raw)==item['sha256']==provenance['counters_sha256']and len(raw)==item['bytes'],'quiescent full raw counter bytes changed')
++  post_raw=files['profiler_method_post_profile_check.json']
++  need(sha(post_raw)==provenance['profiler_method_post_profile_check_sha256'],'post-profile method check SHA mismatch')
++  post=json.loads(post_raw)
++  need(post['counter_quiescence_snapshot_sha256']==sha(snapshot_raw),'postgate/snapshot join mismatch')
++  need(post['status']=='passed','Saved post-profile source/method validation rejected or incomplete; retain attempt without positions')
+   argv=provenance['profile']['executed_command'];need(argv[argv.index('--')+1:]==provenance['command']and provenance['command'][0]==v['profiler']['executable'],'actualprofile executable/argv mismatch')
+  normalized=normalize_version_log(files['profiler_version.log'],provenance['filesystem_write_guard']['write_directories'])
+  need(normalized['payload']==files['profiler_version_payload.bin']and normalized['payload_sha256']==m['version_stdout_sha256']and normalized['merged_log_sha256']==m['version_log_sha256'],'profile versionreceipt mismatch')
+--- v3/pack_method.py
++++ v4/pack_method.py
+@@ -14,6 +14,11 @@
+  manifest=a.source_manifest.read_bytes();gate.checked(manifest,gate.MANIFEST);m=json.loads(manifest);prov=(root/'profile_provenance.json').read_bytes();pr=json.loads(prov)
+  gate.need(pr.get('status')=='new_profiler_calibration_pass_root_adoption_still_required','calibration pending/failed')
+  f={'manifest.json':manifest,'provenance.json':prov,'controller.py':(root/'controller_source.py').read_bytes(),'parser.py':(root/'parser_source.py').read_bytes(),'root_review_note.txt':note,'precision/version.log':(root/'precision/version.log').read_bytes(),'precision/version.payload.bin':(root/'precision/version.payload.bin').read_bytes()}
++ # Adjacent source archive was independently copied/hash-checked against the
++ # unchanged83binding manifest. It is not executed/imported by this packer.
++ for name,relative in [('calibration_collector_source.py','tools/v100_roofline_collect.py'),('calibration_write_guard_source.py','tools/v100_profile_write_guard.py')]:
++  source=(Path(__file__).parent/'calibration_input_sources'/name).read_bytes()
++  gate.checked(source,m['bindings'][str(Path(m['source_root'])/relative)]);f[name]=source
+  for case,spec in m['cases'].items():
+   for name in ['counters.csv','execution.log','identity.log','identity.payload.bin']:f[case+'/'+name]=(root/case/name).read_bytes()
+   f[case+'/old_counters.csv']=Path(spec['old_counters']).read_bytes();f[case+'/source.cu']=Path(spec['source']).read_bytes()

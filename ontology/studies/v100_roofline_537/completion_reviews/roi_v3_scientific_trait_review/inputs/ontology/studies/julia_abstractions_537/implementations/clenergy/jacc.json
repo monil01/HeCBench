@@ -1,0 +1,479 @@
+{
+  "schema_version": 2,
+  "study": "julia_abstractions_537_v2",
+  "benchmark_id": "clenergy",
+  "implementation_model": "jacc",
+  "status": "verified_named_configuration",
+  "scientific_intent_record": "../../domains/clenergy.json",
+  "environment": {
+    "julia_release": "1.12.6",
+    "cuda_jl": "6.2.1",
+    "kernel_abstractions": "0.9.45",
+    "jacc": "1.4.0",
+    "scope": "Default study package environment only. Per-configuration declared_environment and toolchain commands override native-toolkit defaults; verify per-run snapshots before release comparisons.",
+    "gpu": "Tesla V100-PCIE-32GB sm70",
+    "release_comparison_performed": false
+  },
+  "implementation_ontology": {
+    "implementation_class": "framework_device_kernel",
+    "algorithm": "Direct sequential charge sum, source4000-atom chunking, eight x outputs per work item.",
+    "work_item_mapping": "One64-lane group; lane%8 gives source x, lane\u00f78 source y; eight outputs at x+8*k.",
+    "layout": "Float32 AoS preprocessed atom4 vectors and contiguous x-fast grid, exact guards.",
+    "storage_precision": "Float32",
+    "compute_precision": "Float32",
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float32 little-endian",
+    "memory_hierarchy": "Native constant atom buffer; Julia device array atom loads, no forced constant memory intrinsic.",
+    "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+    "resource_policy": "64lanes, JACC shmem_size0; no tuned occupancy claim.",
+    "library_boundary": "Framework device kernel; no vendor BLAS or delegated native kernel.",
+    "host_control_boundary": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+    "julia_language_version": "1.12.6",
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "bottleneck_hypothesis": "Launch/completion dominated at this one-CTA size; larger4001 atom case more arithmetic. Hypothesis only, no counters.",
+    "failure_taxonomy": [],
+    "source_evidence": [
+      {
+        "path": "src/clenergy-julia/clenergy-julia-JACC/main.jl",
+        "sha256": "cf386861bf6c3edf7a80c7301d1574640fc20967856993addf3cfcd29181432c"
+      }
+    ]
+  },
+  "implementation_ontology_normalized": {
+    "algorithm": "Direct sequential charge sum, source4000-atom chunking, eight x outputs per work item.",
+    "implementation_class": "framework_device_kernel",
+    "declared_environment": null,
+    "package_versions": {
+      "CUDA": "6.2.1",
+      "KernelAbstractions": "0.9.45",
+      "JACC": "1.4.0"
+    },
+    "julia_language_version": "1.12.6",
+    "work_item_mapping": "One64-lane group; lane%8 gives source x, lane\u00f78 source y; eight outputs at x+8*k.",
+    "layout": "Float32 AoS preprocessed atom4 vectors and contiguous x-fast grid, exact guards.",
+    "storage_precision": "Float32",
+    "compute_precision": "Float32",
+    "timed_compute_precision": null,
+    "untimed_device_compute_precision": null,
+    "host_oracle_precision": "Float64",
+    "artifact_encoding": "Float32 little-endian",
+    "memory_hierarchy_and_access": "Native constant atom buffer; Julia device array atom loads, no forced constant memory intrinsic.",
+    "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+    "atomics_and_reductions": null,
+    "resource_policy": "64lanes, JACC shmem_size0; no tuned occupancy claim.",
+    "launch_geometry": null,
+    "library_backend_boundary": "Framework device kernel; no vendor BLAS or delegated native kernel.",
+    "host_control_boundary": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+    "support_boundary": null,
+    "native_to_model_mapping": null,
+    "timing_scope": null,
+    "fidelity_status_and_scope": null,
+    "source_review_evidence": [
+      {
+        "path": "src/clenergy-julia/clenergy-julia-JACC/main.jl",
+        "sha256": "cf386861bf6c3edf7a80c7301d1574640fc20967856993addf3cfcd29181432c"
+      }
+    ],
+    "null_interpretation": "Not recorded in this source review; never assume absent feature or zero resource use."
+  },
+  "implementation_review_status": "per_model_source_review_recorded",
+  "shared_benchmark_traits": {
+    "benchmark": "clenergy",
+    "schema_version": 2,
+    "scientific_intent": {
+      "primary_family": "particle_molecular",
+      "review_status": "source_reviewed",
+      "scientific_task": "Direct Coulomb electrostatic potential on a planar grid",
+      "mathematical_operation": "Sum atom charge divided by Euclidean distance for each sample, with original4000-atom constant-memory chunks and eight x outputs per lane.",
+      "community_use_case": "Electrostatic grid evaluation building block; named microbenchmark does not certify full molecular simulation.",
+      "accuracy_requirements": "Float32 device arithmetic against independent Float64 direct sum; full output, actual inputs and guards plus exact cancellation and zero-charge controls.",
+      "source_evidence": [
+        {
+          "path": "src/clenergy-cuda/clenergy.cu",
+          "sha256": "f2147262c99bb109b9ab09800d6af620d86e51a26221ef2e0109f50e7086ac62"
+        }
+      ]
+    },
+    "primary_motif": "direct_charge_grid_sum",
+    "native_to_julia_mapping": {
+      "status": "matched_lane_geometry",
+      "reason": "CUDA8x8 block flattened to64KA/JACC lanes, eight x grid samples per lane; same chunking and ordering. Native rsqrtf versus generic inv(sqrt) is a separate arithmetic covariate."
+    },
+    "verification_contract": {
+      "configuration_id": "fp32_coulomb_64x8_atoms1_2_127_4001_64_kernel_fragments_v1",
+      "input_counts": [
+        1,
+        2,
+        127,
+        4001,
+        64
+      ],
+      "geometry": [
+        64,
+        8
+      ],
+      "block": [
+        8,
+        8
+      ],
+      "unroll_x": 8,
+      "guard": 1024.25,
+      "input_prefix_count": 19350,
+      "output_values": 2560,
+      "artifact_values": 21910,
+      "atol": 0.0002,
+      "rtol": 5e-05,
+      "oracle": "Full Float64 Coulomb directsum on raw Float32 atom coordinates and Float32-sampled grid coordinates; analytic1charge,exactpairedcancellation andzerochargecontrols.",
+      "scope": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+      "tolerance_basis": "Declared beforefirstexecution forFP32sequentialmixedchargesums/approximate native rsqrt, independentlychecked Float64reference. Sourcecontainsnofullaccuracychecker; nooriginaltoleranceweakened. Zerocharge/cancellation,deviceinputbytesandguards exact.",
+      "max_rel_error_definition": "abs(error)/max(abs(Float64 physicalreference),2e-4); conditioned diagnostic, independent from atol+rtol acceptance"
+    },
+    "implementation_class": {
+      "cuda_jl": "framework_device_kernel",
+      "ka": "framework_device_kernel",
+      "jacc": "framework_device_kernel"
+    },
+    "implementation_traits": {
+      "cuda_jl": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Direct sequential charge sum, source4000-atom chunking, eight x outputs per work item.",
+        "work_item_mapping": "One64-lane group; lane%8 gives source x, lane\u00f78 source y; eight outputs at x+8*k.",
+        "layout": "Float32 AoS preprocessed atom4 vectors and contiguous x-fast grid, exact guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant atom buffer; Julia device array atom loads, no forced constant memory intrinsic.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "64lanes, JACC shmem_size0; no tuned occupancy claim.",
+        "library_boundary": "Framework device kernel; no vendor BLAS or delegated native kernel.",
+        "host_control_boundary": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Launch/completion dominated at this one-CTA size; larger4001 atom case more arithmetic. Hypothesis only, no counters.",
+        "failure_taxonomy": [],
+        "source_evidence": [
+          {
+            "path": "src/clenergy-julia/clenergy-julia-cuda.jl/main.jl",
+            "sha256": "f535bc9aad7698f8118d7e975d8ce2eba749fa6cbd2afd11378cb94c3df18419"
+          }
+        ]
+      },
+      "ka": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Direct sequential charge sum, source4000-atom chunking, eight x outputs per work item.",
+        "work_item_mapping": "One64-lane group; lane%8 gives source x, lane\u00f78 source y; eight outputs at x+8*k.",
+        "layout": "Float32 AoS preprocessed atom4 vectors and contiguous x-fast grid, exact guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant atom buffer; Julia device array atom loads, no forced constant memory intrinsic.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "64lanes, JACC shmem_size0; no tuned occupancy claim.",
+        "library_boundary": "Framework device kernel; no vendor BLAS or delegated native kernel.",
+        "host_control_boundary": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Launch/completion dominated at this one-CTA size; larger4001 atom case more arithmetic. Hypothesis only, no counters.",
+        "failure_taxonomy": [
+          "B2: explicitreturn disallowed in KA kernel macro, removed before actualdeviceJIT"
+        ],
+        "source_evidence": [
+          {
+            "path": "src/clenergy-julia/clenergy-julia-KA/main.jl",
+            "sha256": "db22aba9541e3f7fbadbd399d82177491f9afdd8aa5327f7fa9bc59ecd9bd83d"
+          }
+        ]
+      },
+      "jacc": {
+        "implementation_class": "framework_device_kernel",
+        "algorithm": "Direct sequential charge sum, source4000-atom chunking, eight x outputs per work item.",
+        "work_item_mapping": "One64-lane group; lane%8 gives source x, lane\u00f78 source y; eight outputs at x+8*k.",
+        "layout": "Float32 AoS preprocessed atom4 vectors and contiguous x-fast grid, exact guards.",
+        "storage_precision": "Float32",
+        "compute_precision": "Float32",
+        "host_oracle_precision": "Float64",
+        "artifact_encoding": "Float32 little-endian",
+        "memory_hierarchy": "Native constant atom buffer; Julia device array atom loads, no forced constant memory intrinsic.",
+        "synchronization": "Currenttaskstreamcompletion viaCUDA.synchronize(), no authoredworkgroupbarriers; nativecudaDeviceSynchronize wholecontext. All measuredwork uses taskstream; explicit hostAPI overheadcovariate.",
+        "resource_policy": "64lanes, JACC shmem_size0; no tuned occupancy claim.",
+        "library_boundary": "Framework device kernel; no vendor BLAS or delegated native kernel.",
+        "host_control_boundary": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+        "julia_language_version": "1.12.6",
+        "package_versions": {
+          "CUDA": "6.2.1",
+          "KernelAbstractions": "0.9.45",
+          "JACC": "1.4.0"
+        },
+        "bottleneck_hypothesis": "Launch/completion dominated at this one-CTA size; larger4001 atom case more arithmetic. Hypothesis only, no counters.",
+        "failure_taxonomy": [],
+        "source_evidence": [
+          {
+            "path": "src/clenergy-julia/clenergy-julia-JACC/main.jl",
+            "sha256": "cf386861bf6c3edf7a80c7301d1574640fc20967856993addf3cfcd29181432c"
+          }
+        ]
+      }
+    },
+    "performance_scope": "One-CTA named64x8 grid with1,2,127,4001,64 atoms; sum six kernel+completion fragments, not original default768x768/1M atoms.",
+    "key_confounds": [
+      "Single-CTA launch/completion regime; cannot generalize to default scaling.",
+      "Native approximate rsqrtf versus Julia inv(sqrt), and native FMA/code generation, unprofiled.",
+      "Root translation windows include cross-benchmark coordination; excluded from clean cost calibration.",
+      "No causal abstraction-overhead or roofline positioning without counters."
+    ],
+    "timing_completion_scope_review": "src/clenergy-julia/completion_scope_review.json"
+  },
+  "shared_traits_caveat": "Legacy shared traits do not establish each implementation mapping or measured bottleneck.",
+  "source_syntax_evidence": {
+    "method": "syntax-pattern evidence only; not a reviewed algorithm or bottleneck",
+    "path": "src/clenergy-julia/clenergy-julia-JACC/main.jl",
+    "sha256": "cf386861bf6c3edf7a80c7301d1574640fc20967856993addf3cfcd29181432c",
+    "syntax_features": {
+      "cuda_kernel_launch": [],
+      "ka_kernel": [],
+      "jacc_parallel_loop": [
+        16
+      ],
+      "local_storage": [],
+      "barrier": [],
+      "atomic": [],
+      "vendor_library": [],
+      "explicit_zero_dynamic_shared": [
+        15
+      ]
+    },
+    "placeholder_signals": {
+      "include_alias": false,
+      "tiny_source": false
+    }
+  },
+  "configurations": [
+    {
+      "configuration_id": "fp32_coulomb_64x8_atoms1_2_127_4001_64_kernel_fragments_v1",
+      "run_id": "20261019T161938262000Z_clenergy",
+      "result": ".porting-state/portable_julia/runs/20261019T161938262000Z_clenergy/result.json",
+      "configuration_role": "primary",
+      "numerical_agreement_kind": "declared_numeric_artifact_contract",
+      "verification_contract": null,
+      "numerical_agreement_claim": true,
+      "raw_output_identity_claim": null,
+      "scoped_effort_records": [],
+      "timing_region_metadata_adjudication": null,
+      "native_reference_repaired": false,
+      "verification_contract_revised": false,
+      "native_behavior_known_scientific_defect": false,
+      "gpu_visibility": "6",
+      "hardware_stratum": "single_v100",
+      "untouched_single_gpu_aggregate_eligible": true,
+      "input_contract_metadata_erratum": null,
+      "reported_metric_definition_erratum": null,
+      "source_scope_adjudication": null,
+      "reference_provenance": null,
+      "configuration_classification_adjudication": null,
+      "result_sha256": "daf11fc4a39be4bd8ad9a04648eccc6e1da695aaedb1cd228a4a8ec1e4743c65",
+      "source_hash": "294da4f9c602de20c87d6ed78598ada676f70001da185b2fc50d23f489ac8be9",
+      "declared_environment": null,
+      "hardware_snapshot_path": ".porting-state/portable_julia/runs/20261019T161938262000Z_clenergy/hardware.txt",
+      "trials_correct": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "trials_seconds": [
+        0.035198176,
+        0.004790576,
+        0.004705923,
+        0.004700743,
+        0.004695712
+      ],
+      "mean_last_four_seconds": 0.0047232385,
+      "contract": {
+        "configuration_id": "fp32_coulomb_64x8_atoms1_2_127_4001_64_kernel_fragments_v1",
+        "input_counts": [
+          1,
+          2,
+          127,
+          4001,
+          64
+        ],
+        "geometry": [
+          64,
+          8
+        ],
+        "block": [
+          8,
+          8
+        ],
+        "unroll_x": 8,
+        "guard": 1024.25,
+        "input_prefix_count": 19350,
+        "output_values": 2560,
+        "artifact_values": 21910,
+        "atol": 0.0002,
+        "rtol": 5e-05,
+        "oracle": "Full Float64 Coulomb directsum on raw Float32 atom coordinates and Float32-sampled grid coordinates; analytic1charge,exactpairedcancellation andzerochargecontrols.",
+        "scope": "Original sourcecenergy bodyunchanged; allsourcechunking(MAXATOMS4000) retained; CPU preprocessing/H2D/reset/observations excluded uniformly. Sum6hosttimed launch+completionfragments over5fixtures; notoriginal1M-atoms768x768wholeCLI or hostpipeline timing.",
+        "tolerance_basis": "Declared beforefirstexecution forFP32sequentialmixedchargesums/approximate native rsqrt, independentlychecked Float64reference. Sourcecontainsnofullaccuracychecker; nooriginaltoleranceweakened. Zerocharge/cancellation,deviceinputbytesandguards exact.",
+        "max_rel_error_definition": "abs(error)/max(abs(Float64 physicalreference),2e-4); conditioned diagnostic, independent from atol+rtol acceptance"
+      },
+      "configuration_implementation_class": null,
+      "implementation_ontology_override": null,
+      "shared_configuration_traits_override": null,
+      "configuration_ontology_semantics": "Explicit configuration-level source review overrides benchmark-wide descriptive labels; null means no separate override recorded.",
+      "numerical_evidence_strength": "full_output_artifacts"
+    }
+  ],
+  "failure_taxonomy": {
+    "events": [],
+    "observed_failure_event_count": 0,
+    "history_completeness": "unknown",
+    "missing_history_is_zero": false
+  },
+  "effort": {
+    "candidate_attempts": 1,
+    "compiler_checks": 1,
+    "compiler_feedback_repairs": 0,
+    "runtime_repairs": 0,
+    "numerical_repairs": 0,
+    "translation_tokens": {
+      "status": "observed_context_inclusive_activity_window",
+      "input_tokens": 1461966,
+      "cached_input_tokens": 1444480,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9212,
+      "reasoning_output_tokens": 4051,
+      "total_tokens": 1471178,
+      "boundary_file": ".porting-state/portable_julia/usage_boundaries_300/clenergy/jacc_translation.jsonl",
+      "measurement_kind": "observed_harness_cumulative_usage_boundary",
+      "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+      "marker_lag_begin_seconds": 29.884932,
+      "marker_lag_end_seconds": 15.220655,
+      "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+      "observed_model_metadata": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "metadata_timestamp": "2026-10-19T16:04:11.283Z",
+        "scope": "Observed configured identifier; exact serving snapshot/seed/temperature unknown."
+      },
+      "estimates": null
+    },
+    "observed_harness_activity_windows": [
+      {
+        "event_id": "1d464c59f391955c9f89a96e",
+        "begin_event_id": "a4de1bf2e792ad8887eec710",
+        "agent": "/root",
+        "implementation_model": "jacc",
+        "phase": "translation",
+        "boundary": "end",
+        "recorded_at": "2026-10-19T16:23:13.925655+00:00",
+        "usage_event_timestamp": "2026-10-19T16:22:58.705Z",
+        "elapsed_usage_event_start": "2026-10-19T16:19:08.281Z",
+        "delta_usage": {
+          "input_tokens": 1461966,
+          "cached_input_tokens": 1444480,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 9212,
+          "reasoning_output_tokens": 4051,
+          "total_tokens": 1471178
+        },
+        "positive_counter_span": true,
+        "source_identity_sha256": "535f2bf02d60cf977c4b748623f89dd86af938bbb8df8c108845627c1a866b34",
+        "marker_lag_seconds": 15.220655,
+        "accounting_level": "declared_activity_window; interleaving must be disclosed",
+        "source_token_event_sha256": "64003e9f412cefd6e85449f76406413f9aed2c35ca1cb104020cbfa13f97548d",
+        "meter_driver_sha256": "709250f613707c472ae55c56dc50a7f668fc761533d3f97c722a0c0b316348ab",
+        "note": "JACCcandidate1 accepted5fullartifacts/dualrefs, bitidenticalCUDAjl+KA; originalnativeapprox rsqrt drift bounded. 64threads/1block/0dynamicshared explicit. Rootcalibrationtool/commitcoordination interleaved; notclean calibration. Cached/reasoningsubsets.",
+        "measurement_status": null,
+        "scope": "Consumed inference tokens during declared phase, including repeated/cached context and any coordination. Marker-turn alignment is approximate; not exclusive source translation or monetary billing. Cached input and reasoning are subsets, not extra totals. No historical recovery. Parent/shared workflow spans overlap subphases and must not be added to them.",
+        "observed_model_metadata": {
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "medium",
+          "metadata_timestamp": "2026-10-19T16:04:11.283Z",
+          "scope": "Observed configured identifier; exact serving snapshot/seed/temperature unknown."
+        },
+        "begin_marker_lag_seconds": 29.884932,
+        "evidence_path": ".porting-state/portable_julia/usage_boundaries_300/clenergy/jacc_translation.jsonl",
+        "evidence_sha256": "916619751c75d4f65d917518c0b57bd85556ce1fc90ba02870ecbb63abc10f86",
+        "counter_span_interpretation": "Observed counter difference; alignment and interleaving prevent exclusive billed-cost claims. Zero/no-new-event spans cannot imply zero translation effort."
+      }
+    ]
+  },
+  "effort_field_provenance": {
+    "candidate_attempts": {
+      "raw_alias_values": {
+        "candidate_attempts": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_checks": {
+      "raw_alias_values": {
+        "compiler_check_invocations": 1
+      },
+      "status": "recorded"
+    },
+    "compiler_feedback_repairs": {
+      "raw_alias_values": {
+        "compiler_feedback_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "runtime_repairs": {
+      "raw_alias_values": {
+        "runtime_repairs": 0
+      },
+      "status": "recorded"
+    },
+    "numerical_repairs": {
+      "raw_alias_values": {
+        "numerical_repairs": 0
+      },
+      "status": "recorded"
+    }
+  },
+  "effort_manifest_provenance": {
+    "selected_path": ".porting-state/porting_logs/clenergy-julia-jacc/manifest.json",
+    "selected_sha256": "b0d411fc939df914204d98dd3b14f269cad6a210f859b171a82d32147c259dba",
+    "candidate_alias_records": [
+      {
+        "path": ".porting-state/porting_logs/clenergy-julia-jacc/manifest.json",
+        "sha256": "b0d411fc939df914204d98dd3b14f269cad6a210f859b171a82d32147c259dba"
+      }
+    ],
+    "selection_rule": "Prefer source_sha256 matching current main, then latest mtime; aliases preserved separately, historical records not merged."
+  },
+  "source_commit": "d583ca0c3a5cd0fba29573e420d5436048f42350",
+  "source_commit_field": "source_commit",
+  "source_commit_scope": "Recorded implementation commit only; null is unknown/unjoined, not evidence of uncommitted code. Actual executed dependency hashes are separate.",
+  "explicit_outcome_evidence": {
+    "status": "verified_named_configuration",
+    "configuration_id": "fp32_coulomb_64x8_atoms1_2_127_4001_64_kernel_fragments_v1",
+    "result": ".porting-state/portable_julia/runs/20261019T161938262000Z_clenergy/result.json",
+    "verification_method": "full_actual_inputprefix_output_guards_Float64_physics_oracle_and_dual_GPU_references",
+    "native_reference_repaired": false,
+    "native_behavior_known_scientific_defect": false,
+    "unsupported_features": []
+  },
+  "declared_model_implementation_class": {
+    "value": "framework_device_kernel",
+    "annotation_path": ".porting-state/portable_julia/traits/clenergy.json",
+    "annotation_sha256": "2cb10c12777a8382b650bef8de977cdcd60070c3529db96c9128ed186684d9e7",
+    "field": "implementation_class.jacc",
+    "scope": "Explicit model-indexed source review, not a syntax-inferred class; configuration overrides take precedence."
+  }
+}
