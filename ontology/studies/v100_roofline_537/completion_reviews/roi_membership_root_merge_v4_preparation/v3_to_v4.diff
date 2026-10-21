@@ -1,0 +1,137 @@
+--- /tmp/roofline-completion-20261021/roi_membership_root_merge_v3_preparation/merge_reviews.py
++++ /tmp/roofline-completion-20261021/roi_membership_root_merge_v4_preparation/merge_reviews_v4.py
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env python3
+ """Validate private source-ROI packets; default mode writes private reports only.
+ --apply is a root-coordinator action: exact preapproved plan, EX metadata lock,
+-archive, whole-directory atomic exchange. No GPU, processes or study imports.
++archive, explicitly non-atomic two-renames under the metadata lock. No GPU, processes or study imports.
+ """
+ import argparse,base64,collections,copy,datetime,fcntl,gzip,hashlib,json,os,re,stat,uuid
+ from pathlib import Path
+@@ -37,6 +37,19 @@
+  for p in sorted(folder.iterdir()):
+   need(p.is_file()and not p.is_symlink(),'Unexpected directory/symlink in review tree '+str(p));out[p.name]=file_bytes(p)
+  return out
++
++def filesystem_preflight(target):
++ target=Path(target);parent=target.parent
++ need(target.stat().st_dev==parent.stat().st_dev,'Canonical target is a separate mount; same-filesystem rename not proved')
++ # Read only the current mount table. Longest enclosing mount is reported, not inferred.
++ rows=[]
++ for line in Path('/proc/self/mountinfo').read_text().splitlines():
++  left,right=line.split(' - ',1);fields=left.split();mount=fields[4].replace('\\040',' ').replace('\\011','\t').replace('\\134','\\')
++  if target.resolve().is_relative_to(Path(mount)):rows.append((len(mount),{'mountpoint':mount,'filesystem_type':right.split()[0],'mount_options':fields[5],'device_major_minor':fields[2]}))
++ need(rows,'Filesystem type could not be read from mountinfo')
++ fs=max(rows,key=lambda x:x[0])[1]
++ need('ro'not in fs['mount_options'].split(','),'Repository filesystem mounted readonly')
++ return dict(fs,device_id=parent.stat().st_dev,target_and_parent_same_filesystem=True,rename_capability='Not executed by preparer; ordinary rename remains a root runtime prerequisite.',readers_require_metadata_lock=True)
+ 
+ def validate(root,packets,transaction):
+  study=root/'ontology/studies/v100_roofline_537';reviewdir=study/'roi_reviews';oldtree=tree_bytes(reviewdir)
+@@ -183,15 +196,8 @@
+  for path,h in source_hashes.items():need(sha(file_bytes(path))==h,'Source changed during validation')
+  need(file_bytes(scientific_path)==scientific_raw,'Root scientific review changed during validation')
+  need(tree_bytes(reviewdir)==oldtree,'Canonical review directory changed during validation')
+- plan={'schema_version':1,'transaction':transaction,'source_root':str(root),'script_sha256':sha(SOURCE),'input_packets':packet_receipts,'root_scientific_review':scientific_binding,'counts':counts,'old_tree':{n:sha(b)for n,b in oldtree.items()},'new_tree':{n:sha(b)for n,b in proposed.items()},'commit_method':'Linux renameat2 RENAME_EXCHANGE whole roi_reviews directory; no sequential fallback','source_bindings':source_hashes}
++ plan={'schema_version':1,'transaction':transaction,'filesystem_preflight':filesystem_preflight(reviewdir),'source_root':str(root),'script_sha256':sha(SOURCE),'input_packets':packet_receipts,'root_scientific_review':scientific_binding,'counts':counts,'old_tree':{n:sha(b)for n,b in oldtree.items()},'new_tree':{n:sha(b)for n,b in proposed.items()},'commit_method':'EXPLICIT v4 metadata-lock-serialized journaled two ordinary same-filesystem directory renames; NOT atomic directory exchange','source_bindings':source_hashes}
+  return plan,receipt,oldtree,proposed
+-
+-def exchange(a,b):
+- # No execution occurs in dry-run. Root apply only; no privilege or processes.
+- import ctypes
+- libc=ctypes.CDLL(None,use_errno=True);fn=getattr(libc,'renameat2',None);need(fn is not None,'renameat2 unavailable; no sequential replacement fallback')
+- fn.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint];fn.restype=ctypes.c_int
+- if fn(-100,os.fsencode(a),-100,os.fsencode(b),2)!=0:raise OSError(ctypes.get_errno(),'Atomic directory exchange failed')
+ 
+ def sync_directory(path):
+  fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY)
+@@ -205,40 +211,69 @@
+  if a.apply:
+   need(a.approval_plan is not None and a.approval_plan_sha256,'Root apply requires exact reviewed dry-run plan')
+   raw=file_bytes(a.approval_plan);need(sha(raw)==a.approval_plan_sha256,'Approval-plan SHA');approval=json.loads(raw)
+- token=approval['transaction']if approval else'roi-v3-'+uuid.uuid4().hex[:16];need(re.fullmatch(r'roi-v3-[0-9a-f]{16}',token)is not None,'Transaction token')
+- result={'started_at':utc(),'apply_requested':a.apply,'shared_mutations':False,'transaction':token,'script_sha256':sha(SOURCE)}
++ token=approval['transaction']if approval else'roi-v4-'+uuid.uuid4().hex[:16];need(re.fullmatch(r'roi-v4-[0-9a-f]{16}',token)is not None,'Fresh v4 transaction token required')
++ result={'started_at':utc(),'apply_requested':a.apply,'shared_mutations':False,'transaction':token,'script_sha256':sha(SOURCE),'commit_engine':'explicit_non_atomic_lock_serialized_two_renames'}
++ study=root/'ontology/studies/v100_roofline_537';marker=study/'.roi-v4-active-commit.json'
+  try:
+   with LOCK.open('r')as lock:
+    fcntl.flock(lock,fcntl.LOCK_EX if a.apply else fcntl.LOCK_SH)
++   need(not marker.exists()and not marker.is_symlink(),'UNFINISHED TRANSACTION: root recovery review required; do not start another merge')
+    plan,receipt,old,new=validate(root,[x.resolve()for x in a.packets],token)
+    atomic_file(out/'merge_plan.json',encoded(plan));atomic_file(out/'validated_receipt.json',encoded(receipt))
+    if not a.apply:
+     result.update(status='dry_run_validated_no_shared_writes',counts=plan['counts'],merge_plan_sha256=sha(encoded(plan)));atomic_file(out/'validation_report.json',encoded(result));print(json.dumps(result));return 0
+-   need(plan==approval,'Reviewed plan no longer matches complete fresh validation')
+-   study=root/'ontology/studies/v100_roofline_537';target=study/'roi_reviews';stage=study/('.'+token+'-staged');history=study/'roi_review_history';need(not stage.exists(),'Refuse existing transaction staging path')
+-   # Stage whole regular-file tree. Existing symlinks/subdirectories were rejected.
++   need(plan==approval,'Reviewed v4 plan no longer matches complete fresh validation')
++   target=study/'roi_reviews';stage=study/('.'+token+'-staged');backup=study/('.'+token+'-rollback');history=study/'roi_review_history'
++   need(not stage.exists()and not stage.is_symlink()and not backup.exists()and not backup.is_symlink(),'Refuse existing transaction staging/backup path')
++   need(not history.is_symlink()and(not history.exists()or history.is_dir()),'History directory must not be a symlink/non-directory')
+    stage.mkdir(mode=stat.S_IMODE(target.stat().st_mode));history.mkdir(exist_ok=True)
++   need(stage.stat().st_dev==target.stat().st_dev==study.stat().st_dev,'Stage/target/backup-parent must use the same filesystem')
+    for name,data in new.items():atomic_file(stage/name,data)
+-   need(tree_bytes(stage)==new,'Staged tree mismatch');need(tree_bytes(target)==old,'Initial tree drift before commit')
++   need(tree_bytes(stage)==new and tree_bytes(target)==old,'Staging or initial tree mismatch')
+    for name,data in old.items():
+     if name not in new or new[name]!=data:
+-     suffix='.json.gz'if name.endswith('.json.gz')else'.'+name
+-     dest=history/(sha(data)+suffix)
++     suffix='.json.gz'if name.endswith('.json.gz')else'.'+name;dest=history/(sha(data)+suffix)
+      if dest.exists():need(file_bytes(dest)==data,'History archive collision')
+      else:atomic_file(dest,data)
+-   journal={'transaction':token,'state':'prepared_before_atomic_exchange','target':str(target),'staged':str(stage),'old_tree':plan['old_tree'],'new_tree':plan['new_tree']};atomic_file(out/'transaction_journal.json',encoded(journal))
+-   committed=False
++   journal={'schema_version':1,'transaction':token,'state':'prepared_before_first_rename','commit_engine':'NONATOMIC_TWO_RENAMES_REQUIRES_METADATA_LOCK','target':str(target),'staged':str(stage),'backup':str(backup),'approval_plan_sha256':sha(encoded(plan)),'old_tree':plan['old_tree'],'new_tree':plan['new_tree'],'readers_require_metadata_lock':True}
++   # The in-repository marker survives private output loss and a process crash.
++   with marker.open('xb')as f:f.write(encoded(journal));f.flush();os.fsync(f.fileno())
++   sync_directory(study)
++   def phase(name):
++    journal['state']=name;atomic_file(marker,encoded(journal));atomic_file(out/'transaction_journal.json',encoded(journal))
+    try:
+-    exchange(target,stage);committed=True
+-    sync_directory(target.parent)
+-    need(tree_bytes(target)==new and tree_bytes(stage)==old,'Post-exchange tree mismatch')
+-    journal['state']='committed_atomic_directory_exchange';atomic_file(out/'transaction_journal.json',encoded(journal))
+-    result.update(status='applied_atomic_directory_exchange_pending_annotation_audit',shared_mutations=True,counts=plan['counts'],rollback_tree=str(stage),merge_plan_sha256=sha(encoded(plan)))
++    phase('before_target_to_backup')
++    os.rename(target,backup);sync_directory(study)
++    phase('original_moved_canonical_temporarily_absent')
++    need(tree_bytes(backup)==old and tree_bytes(stage)==new and not target.exists(),'Pre-install tree mismatch')
++    phase('before_stage_to_target')
++    os.rename(stage,target);sync_directory(study)
++    phase('new_canonical_installed_pending_verification')
++    need(tree_bytes(target)==new and tree_bytes(backup)==old,'Post-install tree mismatch')
++    phase('committed_verified_whole_new_tree')
++    result.update(status='applied_journaled_two_renames_pending_annotation_audit',shared_mutations=True,counts=plan['counts'],rollback_tree=str(backup),merge_plan_sha256=sha(encoded(plan)))
+     atomic_file(out/'validation_report.json',encoded(result))
+-   except BaseException:
+-    if committed:
+-     exchange(target,stage);sync_directory(target.parent);need(tree_bytes(target)==old,'Rollback verification failed');journal['state']='rolled_back_complete_original_tree';atomic_file(out/'transaction_journal.json',encoded(journal))
+-    raise
++    marker.unlink();sync_directory(study)
++   except BaseException as original_error:
++    # Inspect actual content, not only a possibly stale journal state. Unknown
++    # content is never overwritten or guessed; leave the active marker intact.
++    try:
++     if target.exists():
++      actual=tree_bytes(target)
++      if actual==new:
++       need(backup.exists()and tree_bytes(backup)==old and not stage.exists(),'Cannot safely undo installed tree')
++       phase('rollback_before_new_to_stage');os.rename(target,stage);sync_directory(study)
++      else:need(actual==old and not backup.exists(),'Unknown canonical tree; root manual recovery required')
++     if not target.exists():
++      need(backup.exists()and tree_bytes(backup)==old,'Missing exact old rollback tree')
++      phase('rollback_before_backup_to_target');os.rename(backup,target);sync_directory(study)
++     need(tree_bytes(target)==old,'Rollback content verification failed')
++     phase('rolled_back_verified_complete_original_tree');marker.unlink();sync_directory(study)
++     result['shared_mutations']=False;result['rollback']='verified_original_restored'
++    except BaseException as recovery_error:
++     result.update(shared_mutations=True,recovery_required=True,recovery_error=repr(recovery_error),active_marker=str(marker))
++     atomic_file(out/'recovery_required.json',encoded(result))
++    raise original_error
+    fcntl.flock(lock,fcntl.LOCK_UN)
+   print(json.dumps(result));return 0
+  except BaseException as e:

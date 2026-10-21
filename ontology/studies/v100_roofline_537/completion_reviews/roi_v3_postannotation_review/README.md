@@ -1,0 +1,13 @@
+# Independent postannotation validation
+
+Actual CPU-only read-only validation passed under one existing metadata LOCK_SH snapshot, after PROGRESS updated beyond successful root v4 adoption start. All read input bytes were checked again before lock release. No GPU/build/tests, source/ledger/ontology changes, or numerical recertification were performed.
+
+Exact whole old rollback tree and new canonical tree match the approved v4 plan. Reconstructing every changed document from old records plus whitelisted packet updates reproduces the new documents exactly: all record-wide fields, untouched stages, earlier 25-name reviews, and other review files are preserved. INDEX/receipt match approved new bytes. The exact canonical receipt joins the successful root transaction. Approved original source hashes are rechecked; AMG discarded overlays remain supported by immutable retained selected-plan bytes, not recreated files.
+
+Validated 56 models / 14 names: 162 stage updates comprising 124 inclusion declarations, 13 exclusions and 25 pure alias-null updates. Two inclusion declarations also null a shared-family alias, so 122 non-null inclusion stages. No independent measured-family count is inferred from declarations.
+
+All 163 selected derived rows were compared with their frozen unannotated derived records: measured counters, durations, precision projections and other nonannotation values are unchanged. New annotations correctly show 141 source-included rows, 4 source-excluded rows and 18 unresolved rows. These are kernel observations (possibly several geometries), not stage/family/population counts. No actual sample-in-timed-invocation flag was promoted; all remain the original unknown, with no retained trial invented. Sample phase still says first source family invocation / partial, not complete ROI.
+
+Global whole_ROI_classifications=0 and measured_causal_bottleneck_classifications=0. Selected model position/region/bottleneck fields remain null. Strict retained ROI audit has exactly unchanged bytes (SHA75ea92997f6b1cf9e1eb0992edc0940d81a07cb97e156ada845b1aeb0fbc19c1), with only triad/babelstream/jacobi times four models: 12 admitted scientific families, zero elapsed host ROI positions and zero whole-benchmark causal claims. This private review does not replace root's full integrity audit.
+
+The first private validation_001 passed and is retained; validation_002 adds approved current-source rechecks and precise wording that annotation record measurement VALUES are unchanged (serialized annotation bytes intentionally change). Use validation_002/validation.json as final evidence. The script is reproducible, default read-only, and always requires a fresh /tmp output.

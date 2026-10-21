@@ -2,6 +2,22 @@
 
 ## V100 method recovery and current execution frontier
 
+The current canonical supervisor is v12, including one reviewed RBC055 follower
+that waits for the exact RBC050 generation and skips qualified models. Read the
+canonical receipt rather than restarting any historical PID. A stopped supervisor
+still holds its singleton lock: v11 was rejected before work for that reason;
+its failed startup is retained. Supersede only an exact owned, idle supervisor
+after no-child/no-step checks and release its lock before starting its replacement.
+The RBC observer keeps all 6000 steps, five full checks and its 3600-second
+per-phase deadline; inherited GPU idle waiting is outside that deadline.
+
+The third source-review batch used explicit journaled ordinary renames under the
+metadata lock because this NFS filesystem rejected directory exchange. Preserve
+its original tree and transaction journals. An existing `.roi-v4-active-commit.json`
+requires exact tree/journal recovery before another merge; never guess a missing
+canonical tree. The successful transaction left no active marker. These metadata
+operations and startup failures are not translation/compiler/GPU attempts.
+
 The canonical active supervisor receipt is
 `ontology/studies/v100_roofline_537/completion_reviews/completion_supervisor/root_adoption_command.json`.
 Its corresponding raw `checkpoint.json` must show the actual state; older versioned
@@ -72,9 +88,13 @@ numerical failures; preserve the unsuccessful attempt and use a fresh equivalent
 plan. Resolve source/plan/guard paths before changing a child's working directory.
 
 Source-family inclusion proofs are separate from sampled-invocation phase proofs.
-The two root-adopted `completion_reviews/roi_membership_root_merge*` receipts bind
-94 selected model records across 25 names and 118 timed-family source inclusions.
-They do not add 94 complete ROI profiles. Duplicate legacy aliases may be disabled
+The three root-adopted `completion_reviews/roi_membership_root_merge*` receipts bind
+150 selected model records across 39 names and 242 source callsite inclusion
+declarations. Aliases can share a compiled family; these are not 242 independent
+kernels. They add no GPU executions or complete elapsed-ROI profiles. The third
+batch passed the frozen-evidence and independent postannotation audits without
+promoting actual timed-sample, whole-ROI or causal flags; the twelve strict
+integrated scientific-family captures remain separate. Duplicate legacy aliases may be disabled
 for matching while their historical bytes and unresolved membership remain
 preserved. A selector-only refinement must not become an exclusion or inclusion.
 Preserve timer/reset placement, branch predicates, callback identity, scientific
