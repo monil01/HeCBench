@@ -1,0 +1,60 @@
+--- calibration001_controller.py
++++ calibration002_controller.py
+@@ -22,6 +22,26 @@
+  return{'checked_at':utc(),'bindings':bindings,'all_unchanged':True}
+ def module(path,name):
+  obj=types.ModuleType(name);obj.__file__=str(path);exec(compile(Path(path).read_bytes(),str(path),'exec'),obj.__dict__);return obj
++def guarded_payload(path,expected_write_directories):
++ """Exact one-prefix normalization; full merged log remains unchanged.
++ Only the source-defined LLguard line is removed, never arbitrary warnings.
++ """
++ path=Path(path);raw=path.read_bytes();prefix,separator,payload=raw.partition(b'\n')
++ if not separator or not prefix.startswith(b'V100_WRITE_GUARD '):raise RuntimeError('Exact LLguard preface missing '+str(path))
++ guard=json.loads(prefix[len(b'V100_WRITE_GUARD '):])
++ if set(guard)!={'landlock_abi','write_directories','privilege'}:raise RuntimeError('Unexpected LLguard schema')
++ if type(guard['landlock_abi'])is not int or guard['landlock_abi']<3:raise RuntimeError('LLguard ABI mismatch')
++ if guard['write_directories']!=expected_write_directories:raise RuntimeError('LLguard write directory differs from actual freshoutput')
++ if guard['privilege']!='existing unprivileged user; no_new_privs':raise RuntimeError('LLguard privilege mismatch')
++ if not payload or any(line.startswith(b'V100_WRITE_GUARD ')for line in payload.splitlines()):raise RuntimeError('Empty or repeated LLguard payload')
++ normalized=path.with_name(path.stem+'.payload.bin');normalized.write_bytes(payload)
++ receipt={'raw_log':str(path),'raw_log_sha256':sha(path),'raw_log_bytes':len(raw),
++          'exact_guard_preface_sha256':hashlib.sha256(prefix+b'\n').hexdigest(),
++          'normalized_payload':str(normalized),'normalized_payload_sha256':sha(normalized),'normalized_payload_bytes':len(payload),
++          'normalization':'Remove exactly one first source-defined LLguard JSON line; preserve every remaining byte; merged stdout/stderr not retroactively separated',
++          'guard':guard}
++ return payload,receipt
++
+ def shape(value):
+  n=[int(x)for x in re.findall(r'\d+',value or'')]
+  if len(n)!=3:raise RuntimeError('Unrecognized launch shape '+repr(value))
+@@ -123,14 +143,26 @@
+     # UUID/PCI query only physicalGPU6, guarded and foreign monitored like target.
+     cp['identity_query']=collector.run([manifest['nvidia_smi_executable'],'-i','6','--query-gpu=uuid,pci.bus_id','--format=csv,noheader'],env,slot,slot/'identity.log',60,a.reserve_mib*1024**2,guard,monitor_gpu=True)
+     if cp['identity_query']['returncode']!=0 or cp['identity_query']['stop_reason']is not None:raise RuntimeError('Identity query process failed')
+-    ident=list(csv.reader((slot/'identity.log').read_text().splitlines()))
++    identity_payload,identity_receipt=guarded_payload(slot/'identity.log',guard['write_directories'])
++    cp['identity_output_normalization']=identity_receipt;dump(out/'profile_provenance.json',prov)
++    identity_text=identity_payload.decode('utf-8')
++    if not identity_payload.endswith(b'\n') or len(identity_text.splitlines())!=1:raise RuntimeError('Exactly one identity payload row required')
++    ident=list(csv.reader(identity_text.splitlines()))
+     if len(ident)!=1 or len(ident[0])!=2 or ident[0][0].strip()!=UUID:raise RuntimeError('GPU6 identity differs')
+     domain,bus,device=ident[0][1].strip().split(':');pci=(int(domain,16),int(bus,16),int(device.split('.')[0],16));cp['expected_PCI']=pci
+     if case=='precision':
+      cp['profiler_version_process']=collector.run([ncu,'--version'],env,slot,slot/'version.log',60,a.reserve_mib*1024**2,guard,monitor_gpu=True)
+-     text=(slot/'version.log').read_text()
+-     if cp['profiler_version_process']['returncode']!=0 or cp['profiler_version_process']['stop_reason']is not None or 'Version 2025.2.0.0'not in text:raise RuntimeError('Exactprofiler runtimeversion checkfailed')
+-     prov['actual_profiler_version_text']=text
++     if cp['profiler_version_process']['returncode']!=0 or cp['profiler_version_process']['stop_reason']is not None:raise RuntimeError('Profiler runtimeversion process failed')
++     version_payload,version_receipt=guarded_payload(slot/'version.log',guard['write_directories'])
++     cp['version_output_normalization']=version_receipt;dump(out/'profile_provenance.json',prov)
++     text=version_payload.decode('utf-8');version_lines=text.splitlines()
++     if not version_payload.endswith(b'\n') or len(version_lines)!=3:raise RuntimeError('Unexpected profiler version payload shape')
++     if version_lines[0]!='NVIDIA (R) Nsight Compute Command Line Profiler':raise RuntimeError('Unexpected profiler header')
++     if re.fullmatch(r'Copyright \(c\) 2018-20[0-9]{2} NVIDIA Corporation',version_lines[1])is None:raise RuntimeError('Unexpected profiler copyright')
++     if re.fullmatch(r'Version 2025\.2\.0\.0 \(build [0-9]+\) \(public-release\)',version_lines[2])is None:raise RuntimeError('Unexpected exact profiler version/build')
++     prov['actual_profiler_version_text']=(slot/'version.log').read_text()
++     prov['actual_profiler_version_payload_text']=text
++     prov['actual_profiler_version_payload_sha256']=version_receipt['normalized_payload_sha256']
+     command=[ncu,'--target-processes','all','--filter-mode','per-launch-config','--kernel-name-base','mangled','--kernel-id','::regex:.*:1','--clock-control','none','--cache-control','all','--replay-mode','kernel','--metrics',','.join(metrics),'--csv','--page','raw','--print-units','base','--log-file',str(slot/'counters.csv'),paths['binary']]
+     cp['command']=command;dump(out/'profile_provenance.json',prov)
+     cp['profile']=collector.run(command,env,slot,slot/'execution.log',a.timeout,a.reserve_mib*1024**2,guard,monitor_gpu=True)

@@ -1,0 +1,231 @@
+{
+  "cuda": {
+    "original": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_native.cu",
+      "sha256": "577a698c25cff2208e3528e00fff8955095c4246f425412edf4e99851e971489",
+      "bytes": 4142
+    },
+    "copy": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/cuda/study_native.cu",
+      "sha256": "7d5cae1e10b9f5251420cf533736834aa9115b0b1ecb6feac9c6d40ca0fc646a",
+      "bytes": 4421
+    },
+    "inverse_exact": true,
+    "patches": [
+      {
+        "before": "#include <cuda_runtime.h>",
+        "after": "#include <cuda_runtime.h>\n#include \"/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/profile_window.h\""
+      },
+      {
+        "before": "#include \"study_support.h\"",
+        "after": "#include \"/home/imo/HeCBench_julia/src/allreduce-julia/study_support.h\""
+      },
+      {
+        "before": "#include \"../allreduce-cuda/collectives.cu\"",
+        "after": "#include \"/home/imo/HeCBench_julia/src/allreduce-cuda/collectives.cu\""
+      },
+      {
+        "before": "kernel_add<<<32,256,0,stream>>>(tmp,out+starts[recv],lens[recv],out+starts[recv]);CK(cudaGetLastError());CK(cudaDeviceSynchronize());",
+        "after": "profile_before_add(c.n,rank,starts[recv],lens[recv]);kernel_add<<<32,256,0,stream>>>(tmp,out+starts[recv],lens[recv],out+starts[recv]);CK(cudaGetLastError());CK(cudaDeviceSynchronize());profile_after_add();"
+      },
+      {
+        "before": "for(int trial=1;trial<=5;trial++){study_mpi_guard();",
+        "after": "for(int trial=1;trial<=5;trial++){profile_set_trial(trial);study_mpi_guard();"
+      },
+      {
+        "before": "study_mpi_finish();return 0;",
+        "after": "profile_finish(rank);study_mpi_finish();return 0;"
+      }
+    ],
+    "native_kernel_source_unchanged": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-cuda/collectives.cu",
+      "sha256": "e76355afce07e04c523ce815248923577ededbf16559b6675d65c89080e969bb",
+      "bytes": 16865
+    },
+    "native_MPI_protocol_source_unchanged": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_mpi_shim.cpp",
+      "sha256": "54817350dd03b03fe30bfb9712aa9e26adbb622750f37aa81e253bbe3c42fa87",
+      "bytes": 2109
+    },
+    "host_marker_header": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/profile_window.h",
+      "sha256": "a13d68f8953caab91220f29e28b624b6e5ef2622708fdac222becae75039966c",
+      "bytes": 3773
+    },
+    "host_only_attestation_addition": "Before first warmup add and after all5fullchecks, query current CUDA device/PCI/UUID and assert exact rank/device mapping; unchanged add kernel and MPI algorithm bytes. No build/runtime observation."
+  },
+  "cuda_jl": {
+    "original": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/allreduce-julia-cuda.jl/main.jl",
+      "sha256": "cfd9e39451a2db8871c0136cd2c8449424a61f0c7ab6c316baea70f65b7a1cd7",
+      "bytes": 430
+    },
+    "copy": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/cuda_jl/main.jl",
+      "sha256": "bb4fba613f8a46cc4eed0b9e60eb9002233d58bfa9f154b39a2486483a918ac2",
+      "bytes": 476
+    },
+    "inverse_exact": true,
+    "only_entry_change": "include literal redirects to instrumented host common controller",
+    "kernel_and_reduce_allocation_prefix_sha256": "79cd573a4b03d1e6aa52c794b797c613159fdbafc2ffd78f3e283d3360aa7b2e",
+    "prefix_byte_identical": true,
+    "common_host_proof": {
+      "original": {
+        "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_common.jl",
+        "sha256": "ee21de5e0a79fb36e2ad7130a9e36aea80af96cfdd3226f582fba10e47c6dd24",
+        "bytes": 3785
+      },
+      "copy": {
+        "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/study_common.jl",
+        "sha256": "d2d4f2529a51ba55420606787388e2ddb8edfbb541eabad889975d88f29892aa",
+        "bytes": 4329
+      },
+      "inverse_exact": true,
+      "patches": [
+        {
+          "before": "using CUDA,Libdl",
+          "after": "using CUDA,Libdl\nconst PROFILE_LIBRARY=Libdl.dlopen(joinpath(pwd(),\"profile_window.so\"))\nconst PROFILE_SET=Libdl.dlsym(PROFILE_LIBRARY,:profile_set_trial)\nconst PROFILE_BEFORE=Libdl.dlsym(PROFILE_LIBRARY,:profile_before_add)\nconst PROFILE_AFTER=Libdl.dlsym(PROFILE_LIBRARY,:profile_after_add)\nconst PROFILE_FINISH=Libdl.dlsym(PROFILE_LIBRARY,:profile_finish)"
+        },
+        {
+          "before": " reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)",
+          "after": " ccall(PROFILE_BEFORE,Cvoid,(Cint,Cint,Cint,Cint),c.n,rank,starts[recv+1],lens[recv+1])\n reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)\n ccall(PROFILE_AFTER,Cvoid,())"
+        },
+        {
+          "before": " for trial in 1:5\n",
+          "after": " for trial in 1:5\n  ccall(PROFILE_SET,Cvoid,(Cint,),trial)\n"
+        },
+        {
+          "before": " ccall(MS[\"finish\"],Cvoid,())",
+          "after": " ccall(PROFILE_FINISH,Cvoid,(Cint,),rank)\n ccall(MS[\"finish\"],Cvoid,())"
+        }
+      ]
+    },
+    "MPI_protocol_source_unchanged": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_mpi_shim.cpp",
+      "sha256": "54817350dd03b03fe30bfb9712aa9e26adbb622750f37aa81e253bbe3c42fa87",
+      "bytes": 2109
+    },
+    "host_marker_header": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/profile_window.h",
+      "sha256": "a13d68f8953caab91220f29e28b624b6e5ef2622708fdac222becae75039966c",
+      "bytes": 3773
+    },
+    "host_only_attestation_addition": "Before first warmup add and after all5fullchecks, query current CUDA device/PCI/UUID and assert exact rank/device mapping; unchanged add kernel and MPI algorithm bytes. No build/runtime observation."
+  },
+  "ka": {
+    "original": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/allreduce-julia-KA/main.jl",
+      "sha256": "5205c0dd0bf9c1ebc515b3e8047284b814b7a61f5d4f895eb56b4458ec84215d",
+      "bytes": 503
+    },
+    "copy": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/ka/main.jl",
+      "sha256": "c283789810de936a5360f705285a77b17b1c91ce8846778182a8b3ed9e60fa54",
+      "bytes": 549
+    },
+    "inverse_exact": true,
+    "only_entry_change": "include literal redirects to instrumented host common controller",
+    "kernel_and_reduce_allocation_prefix_sha256": "83799b99aaf4a0474be52d50b04e4bdee9dfe868799fc60a58b9bb44545e15e0",
+    "prefix_byte_identical": true,
+    "common_host_proof": {
+      "original": {
+        "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_common.jl",
+        "sha256": "ee21de5e0a79fb36e2ad7130a9e36aea80af96cfdd3226f582fba10e47c6dd24",
+        "bytes": 3785
+      },
+      "copy": {
+        "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/study_common.jl",
+        "sha256": "d2d4f2529a51ba55420606787388e2ddb8edfbb541eabad889975d88f29892aa",
+        "bytes": 4329
+      },
+      "inverse_exact": true,
+      "patches": [
+        {
+          "before": "using CUDA,Libdl",
+          "after": "using CUDA,Libdl\nconst PROFILE_LIBRARY=Libdl.dlopen(joinpath(pwd(),\"profile_window.so\"))\nconst PROFILE_SET=Libdl.dlsym(PROFILE_LIBRARY,:profile_set_trial)\nconst PROFILE_BEFORE=Libdl.dlsym(PROFILE_LIBRARY,:profile_before_add)\nconst PROFILE_AFTER=Libdl.dlsym(PROFILE_LIBRARY,:profile_after_add)\nconst PROFILE_FINISH=Libdl.dlsym(PROFILE_LIBRARY,:profile_finish)"
+        },
+        {
+          "before": " reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)",
+          "after": " ccall(PROFILE_BEFORE,Cvoid,(Cint,Cint,Cint,Cint),c.n,rank,starts[recv+1],lens[recv+1])\n reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)\n ccall(PROFILE_AFTER,Cvoid,())"
+        },
+        {
+          "before": " for trial in 1:5\n",
+          "after": " for trial in 1:5\n  ccall(PROFILE_SET,Cvoid,(Cint,),trial)\n"
+        },
+        {
+          "before": " ccall(MS[\"finish\"],Cvoid,())",
+          "after": " ccall(PROFILE_FINISH,Cvoid,(Cint,),rank)\n ccall(MS[\"finish\"],Cvoid,())"
+        }
+      ]
+    },
+    "MPI_protocol_source_unchanged": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_mpi_shim.cpp",
+      "sha256": "54817350dd03b03fe30bfb9712aa9e26adbb622750f37aa81e253bbe3c42fa87",
+      "bytes": 2109
+    },
+    "host_marker_header": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/profile_window.h",
+      "sha256": "a13d68f8953caab91220f29e28b624b6e5ef2622708fdac222becae75039966c",
+      "bytes": 3773
+    },
+    "host_only_attestation_addition": "Before first warmup add and after all5fullchecks, query current CUDA device/PCI/UUID and assert exact rank/device mapping; unchanged add kernel and MPI algorithm bytes. No build/runtime observation."
+  },
+  "jacc": {
+    "original": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/allreduce-julia-JACC/main.jl",
+      "sha256": "1b6037fbb48f3a81562c4f7f6e61e32be4b6b22c446dcebc26d8cd77f2fa54a2",
+      "bytes": 517
+    },
+    "copy": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/jacc/main.jl",
+      "sha256": "fa7abe0b95438383c1d7d6387c23ffd8dc0e017b3c2737b0436fffa988dd77e1",
+      "bytes": 563
+    },
+    "inverse_exact": true,
+    "only_entry_change": "include literal redirects to instrumented host common controller",
+    "kernel_and_reduce_allocation_prefix_sha256": "c1196686d878695d7906a5438cf7152b9ff70dd9ff3e0223b644ee4bb4c8c6e2",
+    "prefix_byte_identical": true,
+    "common_host_proof": {
+      "original": {
+        "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_common.jl",
+        "sha256": "ee21de5e0a79fb36e2ad7130a9e36aea80af96cfdd3226f582fba10e47c6dd24",
+        "bytes": 3785
+      },
+      "copy": {
+        "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/prepared/study_common.jl",
+        "sha256": "d2d4f2529a51ba55420606787388e2ddb8edfbb541eabad889975d88f29892aa",
+        "bytes": 4329
+      },
+      "inverse_exact": true,
+      "patches": [
+        {
+          "before": "using CUDA,Libdl",
+          "after": "using CUDA,Libdl\nconst PROFILE_LIBRARY=Libdl.dlopen(joinpath(pwd(),\"profile_window.so\"))\nconst PROFILE_SET=Libdl.dlsym(PROFILE_LIBRARY,:profile_set_trial)\nconst PROFILE_BEFORE=Libdl.dlsym(PROFILE_LIBRARY,:profile_before_add)\nconst PROFILE_AFTER=Libdl.dlsym(PROFILE_LIBRARY,:profile_after_add)\nconst PROFILE_FINISH=Libdl.dlsym(PROFILE_LIBRARY,:profile_finish)"
+        },
+        {
+          "before": " reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)",
+          "after": " ccall(PROFILE_BEFORE,Cvoid,(Cint,Cint,Cint,Cint),c.n,rank,starts[recv+1],lens[recv+1])\n reduce(c,starts[recv+1],lens[recv+1]);CUDA.device_synchronize(blocking=true)\n ccall(PROFILE_AFTER,Cvoid,())"
+        },
+        {
+          "before": " for trial in 1:5\n",
+          "after": " for trial in 1:5\n  ccall(PROFILE_SET,Cvoid,(Cint,),trial)\n"
+        },
+        {
+          "before": " ccall(MS[\"finish\"],Cvoid,())",
+          "after": " ccall(PROFILE_FINISH,Cvoid,(Cint,),rank)\n ccall(MS[\"finish\"],Cvoid,())"
+        }
+      ]
+    },
+    "MPI_protocol_source_unchanged": {
+      "path": "/home/imo/HeCBench_julia/src/allreduce-julia/study_mpi_shim.cpp",
+      "sha256": "54817350dd03b03fe30bfb9712aa9e26adbb622750f37aa81e253bbe3c42fa87",
+      "bytes": 2109
+    },
+    "host_marker_header": {
+      "path": "/tmp/roofline-completion-20261021/allreduce_two_gpu_proposal/profile_window.h",
+      "sha256": "a13d68f8953caab91220f29e28b624b6e5ef2622708fdac222becae75039966c",
+      "bytes": 3773
+    },
+    "host_only_attestation_addition": "Before first warmup add and after all5fullchecks, query current CUDA device/PCI/UUID and assert exact rank/device mapping; unchanged add kernel and MPI algorithm bytes. No build/runtime observation."
+  }
+}

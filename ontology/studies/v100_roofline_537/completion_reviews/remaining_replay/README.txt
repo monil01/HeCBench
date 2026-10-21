@@ -1,0 +1,11 @@
+Read FINAL_INDEX.json first, then terminal_method_proposals.json and the standalone application/window receipts. The initial assessment.json predates successful nativeTSNE/SU3 path staging; completion_addendum.json supersedes their path-readiness blockers, without claiming measurements.
+
+Initial remaining review staged21path plans,4voxel plans,3JuliaTSNEplans. Root reproduced those using stable helpers into028/031/032. Subsequent authorized raw staging:033SU3all4,034nativeTSNE1,035atomic applicationreplay4,036RBCretainedwindow4. Total41CPUplans staged by this worker; zeroGPU/build/test/targetruns. Failed staging versions/partialdirectories preserved.
+
+Allfive selectedmultidevicefamilies need physical5+6 and communication-aware methods; they are not new nativehardwarefailures or runtimeNAcounts. Atomic kernelreplay remainsblocked; its new reviewed applicationreplay candidate reruns full hostparticipant and all5checks eachpass, with perprocess isolated complete outputs. Runtimevalidation stillfalse. StreamUM disjointmanagedCPU/GPUtasks are not sameaddresshandshakes, but dynamicworker/contextstream/kernelmatching andlivehostmemory checkpoint remainunvalidated; no automaticalternateapproval.
+
+SU3 budgets include all5full1.347849664GB outputs and native673919456Bfixturecopies. NativeTSNE exactselectedbuildrecipe+loggedargv source set checked, compiler currenthash onlyprospective; no historicalcompilerhash invented. FullI1/all5/allfields/guards/codec retained.
+
+RBC sourcehistory: all4retainedtrial2artifacts sameSHA, Float32dt replay exactlyevents38/240/879. Markers atstep240 include Nu; sourceall7GPUfunctionbytes unchanged, inversehostpatch proven. Expectedauthoreddispatchvector[3,6,2,11,5,0,1]28, actualNCUcountnull. Runtimeentered/exitedonce/counts/Nuasserts; whole1000stepwarmup+5*1000steps/alloracles remain. ALLactualwindowlaunches, no firstperfunction dedup. ManytinycuBLAScalls stillcostly, actualruntime/limits rootowned; no wholetrajectorypoint orcausaldiagnosis.
+
+Sourcehelpergenerations are not benchmark translation or mathematicalcandidate/devicecompilation evaluations. Prospective shared usage receipt follows separately; cached/reasoning counters subsets, perbenchmarkallocationunknown, initialassignmentexposurecensored.

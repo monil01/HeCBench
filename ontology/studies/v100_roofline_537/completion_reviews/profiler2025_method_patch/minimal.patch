@@ -1,0 +1,311 @@
+--- a/tools/v100_roofline_collect.py
++++ b/tools/v100_roofline_collect.py
+@@ -290,7 +290,7 @@
+             'executed_command':executed}
+ 
+ 
+-def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False):
++def collect(plan_path, root, timeout, reserve_mib, retain_auxiliary, selection_path=None, tensor_modes=False, large_artifacts=False, application_replay_reviewed=False, profile_window_reviewed=False, isolated_assertion_reviewed=False, profiler_executable=None, profiler_method_review=None, profiler_method_review_sha256=None):
+     # Child execution changes cwd to private scratch; repository/plan paths must
+     # already be absolute before constructing the guarded launcher or evidence links.
+     root = Path(root).resolve()
+@@ -420,6 +420,24 @@
+     # NCU's injected process needs Julia's bundled C++ runtime as well as libjulia.
+     julia = Path('/home/imo/.julia/juliaup/julia-1.12.6+0.x64.linux.gnu')
+     env['LD_LIBRARY_PATH'] = str(julia/'lib/julia') + ':' + str(julia/'lib') + ':' + env.get('LD_LIBRARY_PATH', '')
++    # New method is opt-in and fail-closed before any target build/profile.
++    ncu_path = str(Path(profiler_executable or shutil.which('ncu')).resolve())
++    version_text = subprocess.run([ncu_path,'--version'],env=env,capture_output=True,text=True,check=True).stdout
++    method = None
++    if profiler_method_review:
++        import v100_profiler_method as method_gate
++        method, method_review_raw, method_bundle_raw = method_gate.load(
++            profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
++        (slot/'profiler_method_review.json').write_bytes(method_review_raw)
++        (slot/'profiler_method_bundle.json').write_bytes(method_bundle_raw)
++        method_source=Path(method_gate.__file__).read_bytes()
++        (slot/'profiler_method_validator.py').write_bytes(method_source)
++        method_label={k:method[k] for k in ('method_id','review_sha256','bundle_sha256','calibration_provenance_sha256')}
++        method_label['validator_sha256']=hashlib.sha256(method_source).hexdigest()
++    elif 'Version 2025.' in version_text:
++        raise RuntimeError('NCU2025 requires explicit passed/root-approved method receipt and SHA')
++    elif profiler_executable or profiler_method_review_sha256:
++        raise RuntimeError('Explicit alternate profiler requires method receipt')
+     command = list(plan['profile_target_command'])
+     if command[0] == 'julia':
+         command[0] = '/home/imo/.juliaup/bin/julia'
+@@ -456,7 +474,7 @@
+         if selection_path:raise RuntimeError('Marker window uses only its reviewed selector')
+         selection+=['--profile-from-start','off']
+         scope='Partial first-per-specialization/geometry observations inside source-checked retainedtrial2 step240; not complete timestep or1000step ROI'
+-    ncu = ['ncu', '--target-processes', 'all'] + selection + [
++    ncu = [ncu_path, '--target-processes', 'all'] + selection + [
+            '--clock-control', 'none', '--cache-control', 'all', '--replay-mode',replay_mode,*(['--app-replay-match','grid','--app-replay-mode','strict'] if application_review else []),
+            '--metrics', ','.join(METRICS), '--csv', '--page', 'raw',
+            '--print-units', 'base', '--log-file', str(csv_path)] + command
+@@ -483,6 +501,8 @@
+         'profiling_auxiliary_retention': 'kept' if retain_auxiliary else
+             'Fresh scratch only removed after manifest; not a correctness certificate. Raw counters, logs, provenance retained.',
+         'status': 'started','replay_mode':replay_mode,'application_replay':application_review,'profile_window':window_review,'isolated_assertion_phases':isolated_review}
++    if method:
++        provenance.update(profiler_method=method_label,profiler_version=version_text,profiler_executable=ncu_path,profiler_executable_sha256=sha(ncu_path))
+     (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
+     dump(slot/'profile_provenance.json', provenance)
+     try:
+@@ -560,14 +580,17 @@
+             domain,bus,device=pci_text.strip().split(':')
+             expected_pci=(int(domain,16),int(bus,16),int(device.split('.')[0],16))
+             provenance['expected_device_pci']=dict(domain=expected_pci[0],bus=expected_pci[1],device=expected_pci[2])
+-            provenance['profiler_version'] = subprocess.run(['ncu', '--version'],
+-                capture_output=True, text=True, check=True).stdout
+-            provenance['profiler_executable'] = str(Path(shutil.which('ncu')).resolve())
++            provenance['profiler_version'] = version_text
++            provenance['profiler_executable'] = ncu_path
++            if method:
++                provenance['profiler_method']=method_label
+             provenance['profiler_executable_sha256'] = sha(provenance['profiler_executable'])
+             provenance['executed_target_path_bindings']=target_path_bindings(command,scratch,env)
+             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
+                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
+             bindings(plan)
++            if method:
++                method_gate.load(profiler_method_review,profiler_method_review_sha256,ncu_path,version_text)
+             if isolated_review:
+                 check_supplemental(isolated_review['record']['execution_bindings'])
+                 outcome={'plan_sha256':sha(plan_path),'command':command,
+@@ -651,6 +674,10 @@
+                         'sha256':sha(calibration),'half_lane_factor':2,
+                         'default_tensor_conversion_enabled':False,
+                         'reason':'Each tensor conversion requires explicit per-row typed approval; default disabled. See tensor_mode_decisions when opt-in enabled.'}
++                    if method:
++                        prior_calibration=provenance['operation_calibration']
++                        provenance['operation_calibration']={**method_label,'path':str(Path(profiler_method_review).resolve()),'sha256':method['review_sha256'],'half_lane_factor':2,'default_tensor_conversion_enabled':False,'prior_source_mode_calibration':prior_calibration}
++                        context.update(profiler_method=method_label)
+                     context.update(gpu_sm70=True,
+                         fp16_work_semantics='Physical executed packed lanes, including unused scalarhalf high lanes; distinct from useful work.')
+                     records = []
+@@ -685,6 +712,7 @@
+                         'kernel_count': len(records), 'records': records,
+                         'benchmark_bottleneck': 'not_aggregated',
+                         'raw_metrics': groups}
++                    if method:derived['profiler_method']=method_label
+                     dump(slot/'derived.json', derived)
+                     provenance['kernel_count'] = len(records)
+                     if selection_override:
+@@ -781,6 +809,9 @@
+     ap.add_argument('--timeout',type=int,default=300)
+     ap.add_argument('--reserve-mib',type=int,default=2048)
+     ap.add_argument('--retain-auxiliary',action='store_true')
++    ap.add_argument('--profiler-executable',type=Path)
++    ap.add_argument('--profiler-method-review',type=Path)
++    ap.add_argument('--profiler-method-review-sha256')
+     ap.add_argument('--selection-overrides',type=Path)
+     ap.add_argument('--tensor-modes',action='store_true',help='Explicit per-row source-bound WMMA mode approval')
+     ap.add_argument('--large-artifacts',action='store_true',help='Reviewed Perlin/ZMDDFT/SU3 2GiB per-file policy, full payload space and auxiliary budget required')
+@@ -798,7 +829,7 @@
+             if selected['profiling_status']=='profile_process_completed' and selected.get('sampled_kernel_count',0)>0:
+                 print(json.dumps({'benchmark':plan['benchmark'],'model':plan['model'],'status':'already_qualified_selected_capture_preserved'}),flush=True)
+                 continue
+-        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed,a.profile_window_reviewed,a.isolated_assertion_reviewed)
++        result=collect(p,a.source_root,a.timeout,a.reserve_mib,a.retain_auxiliary,a.selection_overrides,a.tensor_modes,a.large_artifacts,a.application_replay_reviewed,a.profile_window_reviewed,a.isolated_assertion_reviewed,a.profiler_executable,a.profiler_method_review,a.profiler_method_review_sha256)
+         print(json.dumps(result),flush=True)
+ 
+ 
+--- a/tools/v100_roofline_summarize.py
++++ b/tools/v100_roofline_summarize.py
+@@ -47,6 +47,7 @@
+                  'egs_build_manifest.json','source_proof.json','application_replay_review.json',
+                  'application_replay_pass_artifacts.json','profile_window_review.json','isolated_assertion_review.json',
+                  'negative_prechecks.json','positive_profile_outcome.json','joined_execution_contract.json',
++                 'profiler_method_review.json','profiler_method_bundle.json','profiler_method_validator.py',
+                  'isolated_assertion_negative_raw.json','phase_spec.json',
+                  'pre_profile_checks.log','post_profile_checks.log'):
+         source = slot/name
+@@ -103,6 +104,10 @@
+         prov=json.loads(provpath.read_text())
+         if not prov.get('finished_at'):
+             continue
++        if prov.get('profiler_method') or 'Version 2025.' in prov.get('profiler_version',''):
++            import v100_profiler_method as method_gate
++            names=('profiler_method_review.json','profiler_method_bundle.json')
++            method_gate.audit_profile(prov,{n:(provpath.parent/n).read_bytes() for n in names})
+         slot=provpath.parent;plan=json.loads((slot/'plan.json').read_text())
+         benchmark=plan['benchmark'];model=plan['model'];batch=slot.parent.parent.name
+         target=study/'profiles'/benchmark/model/batch
+@@ -135,7 +140,9 @@
+                  'finished_at':prov['finished_at'],'evidence_manifest':manifest,
+                  'collector_sha256':prov['collector_sha256'],
+                  'counters_sha256':prov.get('counters_sha256'),
+-                 'selector_scope':prov['selector_scope']}
++                 'selector_scope':prov['selector_scope'],
++                 'profiler_method':prov.get('profiler_method'),
++                 'profiler_version':prov.get('profiler_version')}
+         if not any(x['profile_id']==attempt['profile_id']for x in attempts):
+             attempts.append(attempt)
+         if attempt['finished_at']>=state.get('latest_profile_attempt',{}).get('finished_at',''):
+@@ -223,7 +230,8 @@
+                     regimes[precision+':'+point['roofline_regime']]+=1
+             if record.get('tensor_convention_enabled') and record.get('tensor_flops',0):
+                 regimes['tensor_fp16_inputs_fp32_accumulation:'+record['tensor_precision_projections']['dram']['roofline_regime']]+=1
+-        state.update(profiling_status=effective_status,
++        state.update(profiler_method=prov.get('profiler_method'),
++            profiler_version=prov.get('profiler_version'),profiling_status=effective_status,
+             profile_provenance_sha256=sha(provpath.read_bytes()),
+             profile_applicability_review=({'path':str(applicability_path.relative_to(root)),
+                 'sha256':applicability_sha,'entry':benchmark+'/'+model,
+@@ -277,6 +285,9 @@
+                 'sampled_resource_prediction_counts':json.dumps(state.get('sampled_kernel_predicted_resource_limits',{}),sort_keys=True),
+                 'classification_scope':'Kernel samples only; whole elapsed ROI and causal bottleneck require separate evidence.',
+                 'selected_capture_policy':state.get('selected_capture_policy'),
++                'profiler_method_id':(state.get('profiler_method')or{}).get('method_id','legacy2022_recorded_or_identity_incomplete'),
++                'profiler_version':state.get('profiler_version'),
++                'method_review_sha256':(state.get('profiler_method')or{}).get('review_sha256'),
+                 'gpu_uuid':'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d',
+                 'primary_unprofiled_mean_seconds':(ledger.get('accepted_named_contract')or{}).get('models',{}).get(model,{}).get('mean'),
+                 'kernel_count':state.get('sampled_kernel_count',0),
+@@ -288,7 +299,10 @@
+             if not obs or obs.get('compression')!='gzip':continue
+             derived=json.loads(gzip.decompress((root/obs['path']).read_bytes()))
+             for k in derived['records']:
+-                common={'benchmark':ledger['benchmark'],'model':model,
++                common={'profiler_method_id':slots[-1]['profiler_method_id'],
++                        'profiler_version':slots[-1]['profiler_version'],
++                        'method_review_sha256':slots[-1]['method_review_sha256'],
++                        'benchmark':ledger['benchmark'],'model':model,
+                         'configuration_id':slots[-1]['configuration_id'],
+                         'profiling_status':status,
+                         'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
+@@ -335,7 +349,10 @@
+                                 'projection_only':p['projection_only'],'causal_bottleneck':'unknown'})
+                 for precision,p in k['scalar_precision_projections'].items():
+                     if p['executed_scalar_flops'] is None or p['executed_scalar_flops']==0:continue
+-                    points.append({'benchmark':ledger['benchmark'],'model':model,
++                    points.append({'profiler_method_id':slots[-1]['profiler_method_id'],
++                        'profiler_version':slots[-1]['profiler_version'],
++                        'method_review_sha256':slots[-1]['method_review_sha256'],
++                        'benchmark':ledger['benchmark'],'model':model,
+                         'configuration_id':slots[-1]['configuration_id'],
+                         'profiling_status':status,
+                         'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
+--- a/tools/v100_roofline_audit.py
++++ b/tools/v100_roofline_audit.py
+@@ -186,9 +186,19 @@
+                         require(files['counters.csv'].startswith(snapshot) and len(snapshot)==recovery['recovered_snapshot_bytes'], 'Recovered prefix bytes mismatch')
+                         require('derived.json' not in files and prov['status']!='profile_process_completed', 'Late recovery cannot certify accepted derivations')
+                         qualifications.append({'profile_id':identity,'qualification':'Timed-out NCU descendants appended after provenance hash. Exact original snapshot recovered by SHA-matching retained byte prefix; late data remains diagnostic only.'})
++                if prov.get('profiler_method') or 'Version 2025.' in prov.get('profiler_version',''):
++                    method_source=files['profiler_method_validator.py']
++                    require(sha(method_source)==prov['profiler_method']['validator_sha256'],'Method validator SHA mismatch')
++                    method_module=types.ModuleType('frozen_profiler_method')
++                    exec(compile(method_source,'frozen_profiler_method','exec'),method_module.__dict__)
++                    method_module.audit_profile(prov,files)
++                    row['profiler_method']=prov['profiler_method']
+                 if 'derived.json' in files:
+                     report = json.loads(files['derived.json'])
+                     require(report['input_sha256'] == sha(files['counters.csv']), 'Derivation input SHA mismatch')
++                    if prov.get('profiler_method'):
++                        require(report.get('profiler_method')==prov['profiler_method'],'Derived method mismatch')
++                        require(all(x.get('scope_context',{}).get('profiler_method')==prov['profiler_method'] for x in report['records']),'Kernel method mismatch')
+                     parser_sha = report['parser_sha256']
+                     source = files.get('parser_source.py', snapshots.get(parser_sha))
+                     require(source is not None and sha(source) == parser_sha, 'Exact parser source unavailable')
+--- /dev/null
++++ b/tools/v100_profiler_method.py
+@@ -0,0 +1,97 @@
++"""Private proposal: CPU-only exact NCU2025 method gate. Never invokes processes.
++Root must create an approved receipt+bundle after successful saved calibration.
++Historical audit needs only these frozen bytes, not today's SDK installation.
++"""
++import ast,base64,hashlib,json,math,re,tempfile,types
++from pathlib import Path
++METHOD='ncu2025_2_0_V100_sm70_raw_v1'
++UUID='GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d'
++CONTROLLER='eaf532a0ac9ef114045fc7e12842191edcd667a29821eecace88f387d646a630'
++MANIFEST='a28e3e67be537b85f77223379e6335abfba0c48e1e8648711928f0aeef27abae'
++
++def sha(b):return hashlib.sha256(b).hexdigest()
++def need(v,msg):
++ if not v:raise ValueError('Profiler method: '+msg)
++def checked(data,digest):
++ need(isinstance(digest,str)and re.fullmatch('[a-f0-9]{64}',digest),'missing/invalid SHA')
++ need(sha(data)==digest,'SHA mismatch');return data
++def _module(source,name):
++ m=types.ModuleType(name);m.__file__=name;exec(compile(source,name,'exec'),m.__dict__);return m
++
++def validate_saved(review_bytes,review_sha,bundle_bytes):
++ """Validate saved root receipt and exact science; no current-file requirement."""
++ checked(review_bytes,review_sha);r=json.loads(review_bytes)
++ need(r.get('schema_version')==1 and r.get('method_id')==METHOD,'unrecognized method')
++ need(r.get('status')=='root_approved_after_saved_calibration_pass','root adoption absent')
++ checked(bundle_bytes,r['bundle_sha256']);packed=json.loads(bundle_bytes);files={}
++ for name,item in packed['files'].items():
++  need(not Path(name).is_absolute()and '..'not in Path(name).parts,'unsafe archive path')
++  data=base64.b64decode(item['base64'],validate=True);checked(data,item['sha256']);files[name]=data
++ need(sha(files['manifest.json'])==MANIFEST,'unexpected source manifest')
++ need(sha(files['controller.py'])==CONTROLLER,'unexpected calibration controller')
++ man=json.loads(files['manifest.json']);p=json.loads(files['provenance.json'])
++ need(p['manifest']['sha256']==MANIFEST,'provenance/manifest join mismatch')
++ need(sha(files['root_review_note.txt'])==r['root_review_note_sha256']and len(files['root_review_note.txt'].strip())>=32,'root note mismatch')
++ need(len(man['bindings'])==83,'not exact83-binding experiment')
++ need(p.get('status')=='new_profiler_calibration_pass_root_adoption_still_required'and bool(p.get('finished_at')),'calibration incomplete/failed')
++ need(p.get('gpu_uuid')==UUID and p.get('registry_or_method_adopted')is False,'device/adoption mismatch')
++ for key in ('source_tool_ELF_before','source_tool_ELF_final'):
++  need(p[key]['all_unchanged']is True and p[key]['bindings']==man['bindings'],'calibration identity drift')
++ identity=r['profiler'];need(identity['version_stdout']==p['actual_profiler_version_text']and 'Version 2025.2.0.0'in identity['version_stdout'],'version/build mismatch')
++ need(identity['executable']==man['ncu_executable']and identity['target_ELF']==man['ncu_target_ELF'],'profiler paths mismatch')
++ for path,digestkey in ((identity['executable'],'executable_sha256'),(identity['target_ELF'],'target_ELF_sha256')):
++  need(identity[digestkey]==man['bindings'][path],'profiler binary SHA mismatch')
++ need(p['physical_half_lane_factor']==2 and p['physical_half_fma_ops_per_instruction']==4 and p['tensor_FLOPs_per_HMMA884_instruction']==512,'arithmetic factors changed')
++ # Only pure source-count validation functions are extracted. Never controller.main.
++ tree=ast.parse(files['controller.py']);names={'shape','key','rows_by_key','instr','positive_number','validate'}
++ nodes=[x for x in tree.body if isinstance(x,ast.FunctionDef)and x.name in names]
++ need({x.name for x in nodes}==names,'pure calibration functions missing')
++ ns={'re':re,'math':math};exec(compile(ast.Module(body=nodes,type_ignores=[]),'frozen_calibration_validation','exec'),ns)
++ need(sha(files['parser.py'])==man['bindings'][str(Path(man['source_root'])/'tools/v100_roofline_classify.py')],'calibration parser SHA mismatch')
++ parser=_module(files['parser.py'],'frozen_method_parser');allrows=[]
++ metrics=eval(compile(ast.parse(man['metrics_source_expression'],mode='eval'),'frozen_metric_inventory','eval'),{'__builtins__':{}},{})
++ with tempfile.TemporaryDirectory(prefix='ncu-method-audit-')as temp:
++  for case in ('precision','half_arithmetic'):
++   cp=p['cases'][case];need(cp['status']=='calibration_case_pass','case incomplete')
++   need(cp['profile']['returncode']==0 and cp['profile']['stop_reason']is None,'case process failed')
++   need(cp['source_bindings_before']['bindings']==man['bindings']and cp['source_tool_ELF_after']['bindings']==man['bindings'],'case83bindings mismatch')
++   log=files[case+'/execution.log'].decode(errors='replace');line=man['cases'][case]['expected_host_check_line']
++   need([x for x in log.splitlines()if x.startswith('calibration_correct=')]==[line]and cp['full_host_check']['pass']is True,'full host check missing')
++   need(cp['command'][0]==identity['executable'],'calibration command executable mismatch')
++   new=files[case+'/counters.csv'];old=files[case+'/old_counters.csv']
++   need(sha(new)==cp['counters_sha256']==cp['new_counter_sha256'],'new counters SHA mismatch')
++   need(sha(old)==cp['old_counter_sha256']==man['bindings'][man['cases'][case]['old_counters']],'old counters SHA mismatch')
++   need(sha(files[case+'/source.cu'])==man['bindings'][man['cases'][case]['source']],'canary source SHA mismatch')
++   for tag,data in [('new',new),('old',old)]:Path(temp,tag+'.csv').write_bytes(data)
++   groups,_=parser.read_csv(Path(temp,'new.csv'));previous,_=parser.read_csv(Path(temp,'old.csv'))
++   need(tuple(cp['expected_PCI'])==(0,203,0),'actual calibration PCI mismatch')
++   rows=ns['validate'](case,groups,previous,metrics,(0,203,0))
++   # JSON canonicalization compares tuple/list identities faithfully after serialization.
++   need(json.dumps(rows,sort_keys=True)==json.dumps(cp['counter_comparisons'],sort_keys=True),'saved scientific validation differs')
++   allrows.extend(rows)
++ need(len(allrows)==9 and json.dumps(allrows,sort_keys=True)==json.dumps(p['calibration_rows'],sort_keys=True),'nine-row science missing')
++ return {'method_id':METHOD,'review_sha256':review_sha,'bundle_sha256':sha(bundle_bytes),'calibration_provenance_sha256':sha(files['provenance.json']),'profiler':identity,'manifest':man}
++
++def load(review_path,review_sha,executable,version_stdout):
++ """Runtime preflight: validate archived science, then check live SDK files only."""
++ path=Path(review_path).resolve();review=path.read_bytes();r=json.loads(checked(review,review_sha))
++ bundle=(path.parent/r['bundle_file']).resolve();need(bundle.is_relative_to(path.parent),'bundle escapes receipt directory')
++ raw=bundle.read_bytes();v=validate_saved(review,review_sha,raw);ident=v['profiler']
++ need(str(Path(executable).resolve())==ident['executable']and version_stdout==ident['version_stdout'],'actual profiler identity differs')
++ sdk=str(Path(ident['executable']).parent)+'/'
++ for name,digest in v['manifest']['bindings'].items():
++  if name==ident['executable']or name.startswith(sdk):checked(Path(name).read_bytes(),digest)
++ return v,review,raw
++
++def audit_profile(provenance,files):
++ """New2025 profiles must archive method; historical2022 is unchanged."""
++ m=provenance.get('profiler_method');version=provenance.get('profiler_version','')
++ if not m:
++  need('Version 2025.'not in version,'2025 profile missing method receipt');return None
++ need(m['method_id']==METHOD,'unknown explicit method')
++ v=validate_saved(files['profiler_method_review.json'],m['review_sha256'],files['profiler_method_bundle.json'])
++ need(m['method_id']==v['method_id']and m['bundle_sha256']==v['bundle_sha256'],'method metadata mismatch')
++ if 'derived.json'in files:
++  op=provenance['operation_calibration'];need(op['sha256']==v['review_sha256']and op['half_lane_factor']==2,'operation calibration notjoined')
++ ident=v['profiler'];need(provenance['profiler_version']==ident['version_stdout']and provenance['profiler_executable']==ident['executable']and provenance['profiler_executable_sha256']==ident['executable_sha256'],'profile/calibration identity mismatch')
++ return v

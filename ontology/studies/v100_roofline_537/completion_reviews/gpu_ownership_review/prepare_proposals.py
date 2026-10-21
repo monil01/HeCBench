@@ -1,0 +1,34 @@
+"""Create private prospective copies/diffs only; never execute their code."""
+from pathlib import Path
+import ast,hashlib,json,difflib
+R=Path('/home/imo/HeCBench_julia');OUT=Path(__file__).resolve().parent;C=R/'tools/v100_roofline_collect.py';H=Path('/tmp/roofline-completion-20261021/assert_split037/assert_split_phases.py');EXPECTED='32a9cfeba983dc3ae8e5d9b8bb85ca4e7736821be0a9c206bb57b80c7471da4c'
+def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+if sha(C)!=EXPECTED:raise RuntimeError('Pinned32a9collectorchanged; no proposal applied')
+original=C.read_text();probe=(OUT/'ownership_probe.py').read_text();functions=probe[probe.index('def _profile_ownership_identity'):]
+candidate=original.replace('\ndef run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,artifact_policy=None):','\n'+functions+'\n\ndef run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,artifact_policy=None):',1)
+candidate=candidate.replace('        external_activity=[];last_gpu_check=0','        external_activity=[];last_gpu_check=0\n        ownership_leader_birth=_profile_ownership_identity(process.pid)\n        ownership_observations=[];ownership_queries=[];ownership_known={}',1)
+candidate=candidate.replace('                    observed=gpu_processes()','                    ownership_query={\'started_at\':utc(),\'started_monotonic_ns\':time.monotonic_ns()}\n                    observed=gpu_processes()\n                    ownership_query.update(finished_at=utc(),finished_monotonic_ns=time.monotonic_ns(),raw_parsed_NVML_rows=observed)',1)
+candidate=candidate.replace("                for item in observed:","                ownership_query.setdefault('finished_at',utc());ownership_query.setdefault('finished_monotonic_ns',time.monotonic_ns());ownership_queries.append(ownership_query)\n                for item in observed:",1)
+candidate=candidate.replace("                    if not owned:external_activity.append({**item,'observed_at':utc()})", "                    ownership_proof=_profile_ownership_observation(pid,ownership_leader_birth,ownership_known)\n                    ownership_observations.append({'NVML_query':ownership_query,'NVML_row':item,'legacy_guard_owned':owned,'prospective_identity_evidence':ownership_proof})\n                    # Strict intersection only: never admit any row the old guard rejected.\n                    owned=owned and ownership_proof['stable_current_owned_identity']\n                    if not owned:external_activity.append({**item,'observed_at':utc(),'ownership_classification':ownership_proof['classification'],'current_identity_ownership_not_proved':not ownership_proof['stable_current_owned_identity']})",1)
+candidate=candidate.replace("            'external_gpu_activity':external_activity,", "            'external_gpu_activity':external_activity,\n            'ownership_leader_birth':ownership_leader_birth,\n            'ownership_observations':ownership_observations,\n            'ownership_queries':ownership_queries,",1)
+(OUT/'collector_instrumentation_candidate.py').write_text(candidate)
+# Retain original helper assertions/checks, command, stdin/stdout/environment and waits.
+old=H.read_text();helper=old.replace('def pre(s,sp):',functions+'\n\ndef pre(s,sp):',1)
+helper=helper.replace('import argparse,ast,datetime,hashlib,json,math,os,pathlib,subprocess,sys','import argparse,ast,datetime,hashlib,json,math,os,pathlib,subprocess,sys,time\nfrom pathlib import Path')
+needle="    child=subprocess.run(command,cwd=s['scratch_cwd'],env=os.environ.copy(),stdout=out,stderr=err)\n   row['returncode']=child.returncode"
+replacement="    row['parent_identity_before_spawn']=_profile_ownership_identity(os.getpid())\n    r['active_process']=row;save(target,r)\n    child=subprocess.Popen(command,cwd=s['scratch_cwd'],env=os.environ.copy(),stdout=out,stderr=err)\n    row['child_pid']=child.pid\n    row['child_identity_before_wait']=_profile_ownership_identity(child.pid)\n    r['active_process']=row;save(target,r)  # persist PID/epoch/SID/PPID before wait/reap\n    row['returncode']=child.wait()\n    row['child_identity_after_reap']=_profile_ownership_identity(child.pid)\n   r['active_process']=None"
+if needle not in helper:raise RuntimeError('Helper exact subprocess source changed')
+helper=helper.replace(needle,replacement,1)
+(OUT/'phase_helper_telemetry_candidate.py').write_text(helper)
+for f in ['ownership_probe.py','collector_instrumentation_candidate.py','phase_helper_telemetry_candidate.py']:ast.parse((OUT/f).read_text())
+for name,src,new in [('collector',C,OUT/'collector_instrumentation_candidate.py'),('phase_helper',H,OUT/'phase_helper_telemetry_candidate.py')]:
+ (OUT/(name+'.diff')).write_text(''.join(difflib.unified_diff(src.read_text().splitlines(True),new.read_text().splitlines(True),fromfile=str(src),tofile=str(new))))
+# Historical evidence only; no absent PID identities are reconstructed.
+slot=Path('/tmp/hecbench-roofline-v100-20261020/batch045-assert-isolated-phases/assert/cuda_jl');paths=[slot/'profile_provenance.json',slot/'negative_prechecks.json',slot/'pre_profile_checks.log',slot/'plan.json',slot/'phase_spec.json']
+for d in (slot/'negative_raw').glob('*'):
+ if d.is_file():paths.append(d)
+prov=json.loads((slot/'profile_provenance.json').read_text());neg=json.loads((slot/'negative_prechecks.json').read_text());rows=neg.get('processes',[])
+history={'parent_files':{str(p):{'sha256':sha(p),'bytes':p.stat().st_size}for p in paths},'actual_pre_phase':prov.get('pre_profile_checks'),'negative_receipt_complete':neg.get('complete'),'recorded_negative_processes':len(rows),'rows':rows,'child_PID_startticks_SID_PPID_recorded':False,'NVML_PID1286308_relation_to_negative_children':'unknown; no join identity in original receipts','not_a_proved_false_positive':True,'partial_raw_host_PID_evidence':[{'trial':4,'path':str(slot/'negative_raw/4.stderr'),'sha256':sha(slot/'negative_raw/4.stderr'),'self_reported_PID':1286419,'signal':15,'scope':'Julia system-image initialization, allocations0; no birthticks/SID/PPID. ThisPID differs from observed NVML1286308; no join to completedchildren1-3.'}],'historical_stop_and_acceptance_unchanged':True,'new_GPU_runs':0}
+(OUT/'historical_evidence.json').write_text(json.dumps(history,indent=2)+'\n')
+delivery={'collector_parent_sha256':EXPECTED,'helper_parent_sha256':sha(H),'files':{p.name:{'sha256':sha(p),'bytes':p.stat().st_size}for p in OUT.iterdir()if p.is_file()},'scope':'Prospective source-only telemetry and stricter identity gate candidate. No active tools/helpers/source bindings/ledgers edited. No implementation of zombie lease or runtime adoption.','GPU_build_tests':0,'commands_executed':'This preparation script hashes/reads/ASTparses only; candidates/probe not imported or executed.'}
+(OUT/'delivery.json').write_text(json.dumps(delivery,indent=2)+'\n');print(json.dumps({k:v for k,v in delivery.items()if k!='files'}))

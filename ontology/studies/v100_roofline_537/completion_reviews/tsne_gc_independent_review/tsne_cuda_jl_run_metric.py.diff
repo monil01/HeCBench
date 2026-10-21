@@ -1,0 +1,23 @@
+--- /home/imo/HeCBench_julia/src/tsne-julia/run_metric.py
++++ /tmp/hecbench-roofline-v100-20261020/batch053-tsne-julia-python/tsne/cuda_jl/scratch/profile_source/run_metric.py
+@@ -1,16 +1,16 @@
+ #!/usr/bin/env python3
+ """Run unchanged computation, then losslessly change four output units outside ROI."""
+ import pathlib,json,hashlib,subprocess,sys,os
+-from power2_codec import convert,digest
+-P=pathlib.Path(__file__).resolve().parent
++sys.path.insert(0,"/home/imo/HeCBench_julia/src/tsne-julia");from power2_codec import convert,digest
++P=pathlib.Path("/home/imo/HeCBench_julia/src/tsne-julia")
+ 
+ def main():
+  args=sys.argv[1:];assert len(args)>2 and args[1]=='--';model=args[0];command=args[2:]
+- process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);stdout,_=process.communicate();private=pathlib.Path('/tmp/hecbench-portable-infrastructure-private/tsne/metric')/model/('pid'+str(process.pid));private.mkdir(parents=True,exist_ok=True);(private/'original_child_complete.log').write_text(stdout)
++ process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);stdout,_=process.communicate();private=pathlib.Path('/tmp/hecbench-roofline-v100-20261020/batch053-tsne-julia-python/tsne/cuda_jl/scratch/profile_outputs/private_capture/tsne/metric')/model/('pid'+str(process.pid));private.mkdir(parents=True,exist_ok=True);(private/'original_child_complete.log').write_text(stdout)
+  units=json.load(open(P/'Fourier_metric_units.json'));failed=False
+  for line in stdout.splitlines():
+   if not line.startswith('STUDY_TRIAL '):print(line,flush=True);continue
+-  row=json.loads(line[len('STUDY_TRIAL '):]);trial=row['trial'];source=pathlib.Path(row['output_artifact']['path']);child_private=pathlib.Path('/tmp/hecbench-portable-infrastructure-private/tsne')/('native'if model=='cuda'else model)/('pid'+str(process.pid));layout_path=child_private/f'trial{trial}_layout.json';audit_path=child_private/f'trial{trial}_independent_audit.json';layout=json.load(open(layout_path));layout_copy=private/f'trial{trial}_layout.json';layout_copy.write_bytes(layout_path.read_bytes());(private/f'trial{trial}_independent_audit.json').write_bytes(audit_path.read_bytes());dest=source.with_name(source.stem+'_pow2units.f32')
++  row=json.loads(line[len('STUDY_TRIAL '):]);trial=row['trial'];source=pathlib.Path(row['output_artifact']['path']);child_private=pathlib.Path('/tmp/hecbench-roofline-v100-20261020/batch053-tsne-julia-python/tsne/cuda_jl/scratch/profile_outputs/private_capture/tsne')/('native'if model=='cuda'else model)/('pid'+str(process.pid));layout_path=child_private/f'trial{trial}_layout.json';audit_path=child_private/f'trial{trial}_independent_audit.json';layout=json.load(open(layout_path));layout_copy=private/f'trial{trial}_layout.json';layout_copy.write_bytes(layout_path.read_bytes());(private/f'trial{trial}_independent_audit.json').write_bytes(audit_path.read_bytes());dest=source.with_name(source.stem+'_pow2units.f32')
+   try:
+    proof=convert(source,layout,units,dest);proof.update(model=model,trial=trial,units_sha256=digest(P/'Fourier_metric_units.json'),layout_sha256=digest(layout_copy),child_complete_log_sha256=digest(private/'original_child_complete.log'),ROI_timings_unchanged=True,decoded_raw_available_via='power2_codec.py --decode withfixedunits+layout; exactoriginalGPU32-bitstream, notreconstructionfromoracle.');pf=private/f'trial{trial}_codec_proof.json';pf.write_text(json.dumps(proof,indent=2)+'\n');row['output_artifact']['path']=str(dest);row['lossless_raw_GPU_codec_proof']=str(pf);row['output_representation']='AllrawFloat32values retainedlosslessly;4Fourierfields expressedinfixedCPU-derivedpower2units; other31fields/rawinputprefixunchanged.';row['independent_raw_audit']=str(private/f'trial{trial}_independent_audit.json');row['raw_GPU_sha256']=proof['source_sha256']
+   except Exception as e:

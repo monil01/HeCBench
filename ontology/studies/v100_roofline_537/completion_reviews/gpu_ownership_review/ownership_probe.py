@@ -1,0 +1,57 @@
+"""Prospective read-only process identity telemetry. Not executed by this review.
+No PID allowlist acceptance, no GPU queries, no signals, no runtime policy bypass.
+"""
+import hashlib,os,time
+from pathlib import Path
+
+def _profile_ownership_identity(pid):
+    result={'pid':int(pid),'captured_monotonic_ns':time.monotonic_ns(),'available':False}
+    try:
+        path=Path('/proc')/str(pid)
+        a=(path/'stat').read_bytes();uid=path.stat().st_uid
+        b=(path/'stat').read_bytes()
+        def fields(raw):
+            tail=raw.decode(errors='replace').rsplit(')',1)[1].split()
+            return {'state':tail[0],'ppid':int(tail[1]),'pgrp':int(tail[2]),'sid':int(tail[3]),'start_ticks':tail[19]}
+        aa,bb=fields(a),fields(b)
+        result.update(before=aa,after=bb,uid=uid,boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+        result['stable_instance']=all(aa[k]==bb[k]for k in ['start_ticks','ppid','pgrp','sid'])
+        result['available']=True
+        try:result['cmdline_sha256']=hashlib.sha256((path/'cmdline').read_bytes()).hexdigest()
+        except OSError as error:result['cmdline_error']=repr(error)
+    except (OSError,ValueError,IndexError)as error:result['identity_error']=repr(error)
+    return result
+
+def _profile_ownership_observation(pid,leader_birth,known):
+    target=_profile_ownership_identity(pid);leader_now=_profile_ownership_identity(leader_birth['pid'])
+    result={'target':target,'leader_birth':leader_birth,'leader_now':leader_now,'stable_current_owned_identity':False,'classification':'unknown_identity','ancestry':[],'known_same_PID_start_ticks':known.get(str(pid))}
+    if not all(x.get('available')and x.get('stable_instance')for x in [target,leader_birth,leader_now]):return result
+    if leader_now['after']['start_ticks']!=leader_birth['after']['start_ticks']or leader_now['boot_id']!=leader_birth['boot_id']:
+        result['classification']='leader_identity_changed';return result
+    tick=target['after']['start_ticks'];prior=known.get(str(pid))
+    if prior is not None and prior!=tick:
+        result['classification']='PID_reuse_observed_fail_closed';return result
+    if target['uid']!=os.getuid()or target['boot_id']!=leader_birth['boot_id']:
+        result['classification']='different_UID_or_boot';return result
+    if target['after']['sid']==leader_birth['pid']:
+        result.update(stable_current_owned_identity=True,classification='stable_current_owned_session_identity')
+    else:
+        ancestor=pid;visited=set()
+        for _ in range(128):
+            if ancestor in visited:result['classification']='ancestry_cycle';break
+            visited.add(ancestor);entry=_profile_ownership_identity(ancestor);result['ancestry'].append(entry)
+            if not entry.get('available')or not entry.get('stable_instance'):break
+            if entry['uid']!=os.getuid()or entry['boot_id']!=leader_birth['boot_id']:break
+            if ancestor==leader_birth['pid']:
+                if entry['after']['start_ticks']==leader_birth['after']['start_ticks']:
+                    result.update(stable_current_owned_identity=True,classification='stable_current_owned_ancestry')
+                break
+            if ancestor<=1:result['classification']='current_ancestry_not_owned';break
+            ancestor=entry['after']['ppid']
+    # Recheck the target after walking; no history-only acceptance for an exited PID.
+    result['target_after_walk']=_profile_ownership_identity(pid)
+    end=result['target_after_walk']
+    if not end.get('available')or not end.get('stable_instance')or any(end['after'][field]!=target['after'][field]for field in ['start_ticks','ppid','pgrp','sid']):
+        result.update(stable_current_owned_identity=False,classification='target_disappeared_or_changed_during_evidence')
+    if result['stable_current_owned_identity']:known[str(pid)]=tick
+    return result

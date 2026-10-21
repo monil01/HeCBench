@@ -1,0 +1,31 @@
+--- /home/imo/HeCBench_julia/src/tsne-julia/guarded_I1/study_common.jl
++++ /tmp/hecbench-roofline-v100-20261020/batch053-tsne-julia-python/tsne/jacc/scratch/profile_source/study_common.jl
+@@ -1,7 +1,7 @@
+ using CUDA, Printf
+-include(joinpath(@__DIR__,"..","pointwise.jl"))
+-include(joinpath(@__DIR__,"guarded_arrays.jl"))
+-const STUDY_SOURCE_ROOT=normpath(joinpath(@__DIR__,"..","..",".."))
++include(joinpath("/home/imo/HeCBench_julia/src/tsne-julia/guarded_I1","..","pointwise.jl"))
++include(joinpath("/home/imo/HeCBench_julia/src/tsne-julia/guarded_I1","guarded_arrays.jl"))
++const STUDY_SOURCE_ROOT=normpath(joinpath("/home/imo/HeCBench_julia/src/tsne-julia/guarded_I1","..","..",".."))
+ const SOURCE_DATA=joinpath(STUDY_SOURCE_ROOT,"src","tsne-cuda","data")
+ const OUTPUT_NAMES=["pij_indices_device","pij_symmetric_device","attractive_forces_device","repulsive_forces_device","gains_device","old_forces_device","ones_device","normalization_vec_device","pij_workspace_device","points_device","point_box_idx_device","x_in_box_device","y_in_box_device","y_tilde_values","x_interpolated_values_device","y_interpolated_values_device","potentialsQij_device","w_coefficients_device","chargesQij_device","box_lower_bounds_device","box_upper_bounds_device","kernel_tilde_device","fft_kernel_tilde_device","fft_scratchpad_device","fft_input","fft_w_coefficients","fft_output","y_tilde_spacings_device","denominator_device"]
+ const OUTPUT_KEYS=[:idx,:sym,:attr,:rep,:gains,:old,:ones,:norm,:workspace,:points,:boxidx,:xin,:yin,:tilde,:xinterp,:yinterp,:potential,:w,:charges,:boxlo,:boxhi,:kernel,:fkernel,:scratch,:fin,:fw,:fout,:spacing,:den]
+@@ -75,7 +75,7 @@
+     rawdist=reinterpret(Float32,read(joinpath(SOURCE_DATA,"mnist_faissed","distances")))|>collect;rawidx=reinterpret(Int64,read(joinpath(SOURCE_DATA,"mnist_faissed","indices")))|>collect;initial=parse.(Float32,split(read(joinpath(SOURCE_DATA,"points.txt"),String)))
+     @assert length(rawdist)==60000*32 && length(rawidx)==60000*32 && length(initial)==120000
+     tsne_pipeline(rawdist,rawidx,initial,iterations) # all device specializations JIT outside selected series
+-    out=get(ENV,"STUDY_OUTPUT_DIR",mktempdir());private="/tmp/hecbench-portable-infrastructure-private/tsne/"*MODEL*"/pid"*string(getpid());mkpath(private)
++    out=get(ENV,"STUDY_OUTPUT_DIR",mktempdir());private="/tmp/hecbench-roofline-v100-20261020/batch053-tsne-julia-python/tsne/jacc/scratch/profile_outputs/private_capture/tsne/"*MODEL*"/pid"*string(getpid());mkpath(private)
+     for trial in 1:5
+         captured,seconds,guard_record=tsne_pipeline(rawdist,rawidx,initial,iterations);@assert isfinite(seconds)&&seconds>0
+         prefix=["input_distances","input_indices","input_points"];names=vcat(prefix,sort(setdiff(collect(keys(captured)),prefix)));path=joinpath(out,"trial$(trial).f32");offset=0;rows=String[]
+@@ -86,7 +86,7 @@
+         end
+         guard_path=joinpath(private,"trial$(trial)_allocation_guards.json");write(guard_path,guard_record)
+         layout=joinpath(private,"trial$(trial)_layout.json");write(layout,"["*join(rows,",")*"]\n");audit=joinpath(private,"trial$(trial)_independent_audit.json")
+-        cmd=setenv(`python3 $(joinpath(@__DIR__,"..","audit_native.py")) --artifact $path --layout $layout --oracle $oracle --output $audit`,"PYTHONPATH"=>"/tmp/pasc-julia-plot-tools");pass=success(pipeline(cmd,stdout=stdout,stderr=stderr))
++        cmd=setenv(`python3 $(joinpath("/home/imo/HeCBench_julia/src/tsne-julia/guarded_I1","..","audit_native.py")) --artifact $path --layout $layout --oracle $oracle --output $audit`,"PYTHONPATH"=>"/tmp/pasc-julia-plot-tools");pass=success(pipeline(cmd,stdout=stdout,stderr=stderr))
+         println("STUDY_TRIAL {\"trial\":$trial,\"time_seconds\":$seconds,\"correct\":$pass,\"checked_values\":$offset,\"max_abs_error\":null,\"max_rel_error\":null,\"jit_excluded\":true,\"timing_valid\":true,\"timing_region\":\"complete_RunTsne_minus_source_file_IO_and_observer\",\"output_artifact\":{\"path\":\"$path\",\"dtype\":\"float32\",\"count\":$offset},\"allocation_guard_pass\":true,\"allocation_guards\":\"$guard_path\",\"independent_audit\":\"$audit\"}");flush(stdout);pass||exit(2)
+     end
+ end

@@ -1,6 +1,53 @@
 # Julia Correctness Check
 
+## V100 method recovery and current execution frontier
+
+The canonical active supervisor receipt is
+`ontology/studies/v100_roofline_537/completion_reviews/completion_supervisor/root_adoption_command.json`.
+Its corresponding raw `checkpoint.json` must show the actual state; older versioned
+receipts and duplicated historical PID fields do not authorize restarting jobs.
+Waiting supervisors may be superseded only after exact owned PID/start/argv,
+no-child and no-executed-step checks. Preserve the replacement receipts.
+
+Fresh t-SNE batch054 binds both the outer codec dependencies and the unchanged
+inner numerical audit dependencies, including existing bytecode. Julia's inner
+`setenv` replaces the inherited environment; it does not preserve the outer private
+cache settings. Its shared dependencies are read-only and shared writes remain
+denied. Hash inventories identify prospective inputs, not actual imported modules
+or a historical interpreter. Preserve051/053 and their unexecuted cancellation
+receipts; do not backfill their missing dependency records.
+
+Profiler calibration001 stopped before a kernel because its identity parser read
+the write-guard prefix as a device row. Fresh calibration002 retains full merged
+logs and normalizes exactly one validated guard prefix for identity/version
+parsing. A queued calibration or CPU source review does not admit a new profiler.
+Require all nine exact canary cases, full host checks, immutable source/runtime
+joins, a passed root review, and a separate method/version label before adoption.
+
+The prepared allreduce two-device method is restricted to one source-marked rank1
+private add on GPU6 while the original two ranks execute on physicalGPU5+6. It is
+not a collective or communication roofline. The campaign's GPU6-only authorization
+does not authorize GPU5. CPU staging, admission tooling, or accepted earlier
+numerical results do not grant execution permission. The canonical prospective
+CPU review is `completion_reviews/allreduce_two_device/root_cpu_review.json`
+under the V100 study; an explicit user authorization receipt is separately
+required. Admission must re-read the complete actual parent tree and all five
+full artifacts, compare saved native/CUDA.jl references, and verify both-rank
+identity/markers/counters. Missing raw evidence creates a validation hold with no
+published positions. CPU adaptation creates zero new GPU/build processes;
+original parent process facts remain separate and cannot be double-counted.
+
+Record actual shared recovery/review/paper usage windows and preserve their raw
+receipts. Overlapping context-inclusive windows are not additive exclusive costs
+and must not be allocated retrospectively to individual benchmark translations.
+
 ## Ongoing V100 completion: storage, source proof and profiler identity
+
+A recorded GPU ownership-guard stop is not independent proof of foreign contention.
+Preserve the raw historical reason and unknown identity when process ancestry was
+not retained. Do not infer ownership from a missing process name, an old PID or
+GPU thread coordinates. Telemetry proposals remain unvalidated until actual
+prospective observations; unknown/reused identities must still fail closed.
 
 Resume the current controller identities and finite supervisor from
 `.porting-state/portable_julia/active_work_537.json` and the joint checkpoint;

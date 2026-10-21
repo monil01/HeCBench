@@ -1,0 +1,108 @@
+--- /home/imo/HeCBench_julia/tools/v100_roofline_collect.py
++++ /tmp/roofline-completion-20261021/gpu_ownership_review/collector_instrumentation_candidate.py
+@@ -191,6 +191,59 @@
+     return members
+ 
+ 
++def _profile_ownership_identity(pid):
++    result={'pid':int(pid),'captured_monotonic_ns':time.monotonic_ns(),'available':False}
++    try:
++        path=Path('/proc')/str(pid)
++        a=(path/'stat').read_bytes();uid=path.stat().st_uid
++        b=(path/'stat').read_bytes()
++        def fields(raw):
++            tail=raw.decode(errors='replace').rsplit(')',1)[1].split()
++            return {'state':tail[0],'ppid':int(tail[1]),'pgrp':int(tail[2]),'sid':int(tail[3]),'start_ticks':tail[19]}
++        aa,bb=fields(a),fields(b)
++        result.update(before=aa,after=bb,uid=uid,boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip())
++        result['stable_instance']=all(aa[k]==bb[k]for k in ['start_ticks','ppid','pgrp','sid'])
++        result['available']=True
++        try:result['cmdline_sha256']=hashlib.sha256((path/'cmdline').read_bytes()).hexdigest()
++        except OSError as error:result['cmdline_error']=repr(error)
++    except (OSError,ValueError,IndexError)as error:result['identity_error']=repr(error)
++    return result
++
++def _profile_ownership_observation(pid,leader_birth,known):
++    target=_profile_ownership_identity(pid);leader_now=_profile_ownership_identity(leader_birth['pid'])
++    result={'target':target,'leader_birth':leader_birth,'leader_now':leader_now,'stable_current_owned_identity':False,'classification':'unknown_identity','ancestry':[],'known_same_PID_start_ticks':known.get(str(pid))}
++    if not all(x.get('available')and x.get('stable_instance')for x in [target,leader_birth,leader_now]):return result
++    if leader_now['after']['start_ticks']!=leader_birth['after']['start_ticks']or leader_now['boot_id']!=leader_birth['boot_id']:
++        result['classification']='leader_identity_changed';return result
++    tick=target['after']['start_ticks'];prior=known.get(str(pid))
++    if prior is not None and prior!=tick:
++        result['classification']='PID_reuse_observed_fail_closed';return result
++    if target['uid']!=os.getuid()or target['boot_id']!=leader_birth['boot_id']:
++        result['classification']='different_UID_or_boot';return result
++    if target['after']['sid']==leader_birth['pid']:
++        result.update(stable_current_owned_identity=True,classification='stable_current_owned_session_identity')
++    else:
++        ancestor=pid;visited=set()
++        for _ in range(128):
++            if ancestor in visited:result['classification']='ancestry_cycle';break
++            visited.add(ancestor);entry=_profile_ownership_identity(ancestor);result['ancestry'].append(entry)
++            if not entry.get('available')or not entry.get('stable_instance'):break
++            if entry['uid']!=os.getuid()or entry['boot_id']!=leader_birth['boot_id']:break
++            if ancestor==leader_birth['pid']:
++                if entry['after']['start_ticks']==leader_birth['after']['start_ticks']:
++                    result.update(stable_current_owned_identity=True,classification='stable_current_owned_ancestry')
++                break
++            if ancestor<=1:result['classification']='current_ancestry_not_owned';break
++            ancestor=entry['after']['ppid']
++    # Recheck the target after walking; no history-only acceptance for an exited PID.
++    result['target_after_walk']=_profile_ownership_identity(pid)
++    end=result['target_after_walk']
++    if not end.get('available')or not end.get('stable_instance')or any(end['after'][field]!=target['after'][field]for field in ['start_ticks','ppid','pgrp','sid']):
++        result.update(stable_current_owned_identity=False,classification='target_disappeared_or_changed_during_evidence')
++    if result['stable_current_owned_identity']:known[str(pid)]=tick
++    return result
++
++
+ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,artifact_policy=None):
+     began = time.monotonic()
+     started_at=utc()
+@@ -206,6 +259,8 @@
+                                    preexec_fn=lambda:limits(artifact_policy['max_file_bytes'] if artifact_policy else 1024**3))
+         stop_reason = None
+         external_activity=[];last_gpu_check=0
++        ownership_leader_birth=_profile_ownership_identity(process.pid)
++        ownership_observations=[];ownership_queries=[];ownership_known={}
+         last_artifact_check=0
+         while process.poll() is None:
+             if time.monotonic() - began > timeout:
+@@ -231,10 +286,13 @@
+             if monitor_gpu and not stop_reason and time.monotonic()-last_gpu_check>=2:
+                 last_gpu_check=time.monotonic()
+                 try:
++                    ownership_query={'started_at':utc(),'started_monotonic_ns':time.monotonic_ns()}
+                     observed=gpu_processes()
++                    ownership_query.update(finished_at=utc(),finished_monotonic_ns=time.monotonic_ns(),raw_parsed_NVML_rows=observed)
+                 except (OSError,ValueError,subprocess.SubprocessError) as error:
+                     observed=[];stop_reason='GPU_activity_monitor_failed'
+                     external_activity.append({'monitor_error':str(error),'observed_at':utc()})
++                ownership_query.setdefault('finished_at',utc());ownership_query.setdefault('finished_monotonic_ns',time.monotonic_ns());ownership_queries.append(ownership_query)
+                 for item in observed:
+                     owned=False;pid=item['pid']
+                     try:
+@@ -247,7 +305,11 @@
+                             fields=(Path('/proc')/str(ancestor)/'stat').read_text().split(')')[-1].split()
+                             ancestor=int(fields[1])
+                     except (OSError,ValueError):pass
+-                    if not owned:external_activity.append({**item,'observed_at':utc()})
++                    ownership_proof=_profile_ownership_observation(pid,ownership_leader_birth,ownership_known)
++                    ownership_observations.append({'NVML_query':ownership_query,'NVML_row':item,'legacy_guard_owned':owned,'prospective_identity_evidence':ownership_proof})
++                    # Strict intersection only: never admit any row the old guard rejected.
++                    owned=owned and ownership_proof['stable_current_owned_identity']
++                    if not owned:external_activity.append({**item,'observed_at':utc(),'ownership_classification':ownership_proof['classification'],'current_identity_ownership_not_proved':not ownership_proof['stable_current_owned_identity']})
+                 if external_activity:stop_reason='external_gpu_activity_detected_own_profile_stopped'
+             if stop_reason:
+                 # Only the fresh session created above; never discover/kill by name.
+@@ -284,6 +346,9 @@
+     return {'returncode': code, 'stop_reason': stop_reason,
+             'started_at':started_at,'finished_at':utc(),
+             'external_gpu_activity':external_activity,
++            'ownership_leader_birth':ownership_leader_birth,
++            'ownership_observations':ownership_observations,
++            'ownership_queries':ownership_queries,
+             'own_session_quiescence_seconds':time.monotonic()-quiescence_started,
+             'own_descendants_cleaned':sorted(set(descendant_cleanup)),
+             'wall_seconds': time.monotonic() - began, 'log_sha256': sha(log),

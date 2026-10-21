@@ -1,0 +1,124 @@
+--- a/tools/v100_roofline_summarize.py
++++ b/tools/v100_roofline_summarize.py
+@@ -15,6 +15,7 @@
+ import copy
+ import fcntl
+ from pathlib import Path
++from v100_roofline_allreduce_admission import METHOD as ALLREDUCE_METHOD, HOLD as ALLREDUCE_HOLD, read_raw_slot as allreduce_files, validate as validate_allreduce_method
+ 
+ 
+ def sha(data):
+@@ -48,7 +49,10 @@
+                  'application_replay_pass_artifacts.json','profile_window_review.json','isolated_assertion_review.json',
+                  'negative_prechecks.json','positive_profile_outcome.json','joined_execution_contract.json',
+                  'isolated_assertion_negative_raw.json','phase_spec.json',
+-                 'pre_profile_checks.log','post_profile_checks.log'):
++                 'pre_profile_checks.log','post_profile_checks.log',
++                 'adapter_source.py','allreduce_two_device_review.json',
++                 'allreduce_cpu_review.json','allreduce_admission_source.py',
++                 'allreduce_execution_authorization.json'):
+         source = slot/name
+         if not source.is_file():
+             continue
+@@ -110,6 +114,16 @@
+         if quality and quality['raw_provenance_sha256']!=sha(provpath.read_bytes()):
+             raise RuntimeError('Profile quality review provenance mismatch')
+         effective_status=('profile_completed_quality_unverified' if quality and prov['status']=='profile_process_completed' else prov['status'])
++        method_admission=None;method_hold=False
++        if prov.get('allreduce_two_device_method'):
++            try:
++                method_admission=validate_allreduce_method(allreduce_files(slot),root)
++            except Exception as error:
++                method_hold=True
++                effective_status=ALLREDUCE_HOLD
++                method_admission={'status':'validation_hold','error':str(error),
++                    'method_id':prov.get('allreduce_two_device_method',{}).get('method_id'),
++                    'positions_publishable':False,'underlying_process_status':prov['status']}
+         runtime_review=applicability.get((benchmark,model))
+         runtime_applicable=(runtime_review is not None and runtime_review['parent_profile']['sha256']==sha(provpath.read_bytes())
+             and prov['status']=='profile_completed_counter_derivation_failed'
+@@ -131,20 +145,25 @@
+         path=study/'benchmarks'/(benchmark+'.json');ledger=json.loads(path.read_text())
+         state=ledger['models'][model]
+         attempts=state.setdefault('profile_attempts',[])
+-        attempt={'profile_id':str(target.relative_to(root)),'status':prov['status'],
++        attempt={'profile_id':str(target.relative_to(root)),'status':effective_status if prov.get('allreduce_two_device_method') else prov['status'],
++                 'recorded_status':prov['status'],'method_admission':method_admission,
+                  'finished_at':prov['finished_at'],'evidence_manifest':manifest,
+                  'collector_sha256':prov['collector_sha256'],
+                  'counters_sha256':prov.get('counters_sha256'),
+                  'selector_scope':prov['selector_scope']}
+-        if not any(x['profile_id']==attempt['profile_id']for x in attempts):
++        previous=next((x for x in attempts if x['profile_id']==attempt['profile_id']),None)
++        if previous is None:
+             attempts.append(attempt)
++        elif prov.get('allreduce_two_device_method'):
++            # Revalidation is fresh metadata, not a new process/capture attempt.
++            previous.update(status=effective_status,recorded_status=prov['status'],method_admission=method_admission)
+         if attempt['finished_at']>=state.get('latest_profile_attempt',{}).get('finished_at',''):
+             state['latest_profile_attempt']=attempt
+         observation=slot/'derived.json'
+-        records=json.loads(observation.read_text())['records'] if observation.exists() else []
++        records=json.loads(observation.read_text())['records'] if observation.exists() and not method_hold else []
+         review=reviews.get((benchmark,model))
+         annotated_selected = False
+-        if review and observation.is_file() and review['configuration_id']==plan['configuration_id']:
++        if review and observation.is_file() and not method_hold and review['configuration_id']==plan['configuration_id']:
+             if review['reference_result']['sha256']!=plan['reference_result_sha256']:
+                 raise RuntimeError('ROI selected result mismatch')
+             annotated=copy.deepcopy(records)
+@@ -224,6 +243,9 @@
+             if record.get('tensor_convention_enabled') and record.get('tensor_flops',0):
+                 regimes['tensor_fp16_inputs_fp32_accumulation:'+record['tensor_precision_projections']['dram']['roofline_regime']]+=1
+         state.update(profiling_status=effective_status,
++            measurement_method=(ALLREDUCE_METHOD if prov.get('allreduce_two_device_method') else 'ordinary_collector_profile_see_scope'),
++            profile_method_admission=method_admission,
++            process_unit_accounting=(method_admission.get('process_unit_accounting') if method_admission else None),
+             profile_provenance_sha256=sha(provpath.read_bytes()),
+             profile_applicability_review=({'path':str(applicability_path.relative_to(root)),
+                 'sha256':applicability_sha,'entry':benchmark+'/'+model,
+@@ -240,14 +262,16 @@
+             sampled_kernel_precision_regimes=dict(regimes),
+             sampled_kernel_predicted_resource_limits=({key.replace('memory_side','memory_bound_roofline_prediction').replace('compute_side','compute_bound_roofline_prediction').replace('near_ridge','ridge_transition'):count for key,count in regimes.items()} if effective_status=='profile_process_completed' and not quality and benchmark not in ('zerocopy','halo-finder') else {}),
+             dram_roofline_applicability=('not_applicable_host_mapped_primary_data_requires_PCIe_tier' if benchmark in ('zerocopy','halo-finder') else 'HBM_tier_projection_only_primary_memory_domain_requires_source_review'),
+-            roi_coverage=('not_applicable_no_profiled_device_kernels_source_reviewed' if runtime_applicable else 'not_collected_no_derived_counter_report' if not observation.is_file() else
++            roi_coverage=('allreduce_method_validation_hold_no_publishable_positions' if method_hold else
++                          'single_source_marked_rank1_private_add_not_collective_ROI' if prov.get('allreduce_two_device_method') else
++                          'not_applicable_no_profiled_device_kernels_source_reviewed' if runtime_applicable else 'not_collected_no_derived_counter_report' if not observation.is_file() else
+                           'source_counted_retained_trial2_scientific_family_not_elapsed_ROI' if prov.get('retained_window_expected_count_confirmed') else
+                           'partial_source_candidates_only_ROI_unresolved' if review and review.get('_candidate_review_only') else
+                           'partial_source_family_reviewed_not_complete_ROI' if review else
+                           'partial_first_specialization_geometry_unreviewed'),
+             roofline_position=None,roofline_region=None,observed_bottleneck=None,
+             reason=prov['selector_scope']+'; whole elapsed-ROI placement and causal bottleneck require separate review.')
+-        if observation.exists():
++        if observation.exists() and not method_hold:
+             selected=target/('annotated.json.gz' if annotated_selected else 'derived.json.gz')
+             state['kernel_observations']={'path':str(selected.relative_to(root)),
+                 'sha256':sha(selected.read_bytes()),
+@@ -276,6 +300,9 @@
+                 'sampled_precision_regime_counts':json.dumps(state.get('sampled_kernel_precision_regimes',{}),sort_keys=True),
+                 'sampled_resource_prediction_counts':json.dumps(state.get('sampled_kernel_predicted_resource_limits',{}),sort_keys=True),
+                 'classification_scope':'Kernel samples only; whole elapsed ROI and causal bottleneck require separate evidence.',
++                'measurement_method':state.get('measurement_method','ordinary_collector_profile_see_scope'),
++                'method_admission_status':(state.get('profile_method_admission')or{}).get('status'),
++                'process_unit_accounting':state.get('process_unit_accounting'),
+                 'selected_capture_policy':state.get('selected_capture_policy'),
+                 'gpu_uuid':'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d',
+                 'primary_unprofiled_mean_seconds':(ledger.get('accepted_named_contract')or{}).get('models',{}).get(model,{}).get('mean'),
+@@ -291,6 +318,7 @@
+                 common={'benchmark':ledger['benchmark'],'model':model,
+                         'configuration_id':slots[-1]['configuration_id'],
+                         'profiling_status':status,
++                        'measurement_method':state.get('measurement_method','ordinary_collector_profile_see_scope'),
+                         'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
+                         'gpu_uuid':slots[-1]['gpu_uuid'],
+                         'kernel_id':k['identity']['ID'],'kernel':k['identity']['Kernel Name'],
+@@ -338,6 +366,7 @@
+                     points.append({'benchmark':ledger['benchmark'],'model':model,
+                         'configuration_id':slots[-1]['configuration_id'],
+                         'profiling_status':status,
++                        'measurement_method':state.get('measurement_method','ordinary_collector_profile_see_scope'),
+                         'dram_roofline_applicability':state.get('dram_roofline_applicability','unreviewed'),
+                         'kernel_id':k['identity']['ID'],'kernel':k['identity']['Kernel Name'],
+                         'process_id':k['identity'].get('Process ID'),'context_id':k['identity'].get('Context'),
