@@ -36,19 +36,28 @@ are not current authority. Preserve old2022 data, failed001/002 calibrations,
 raw units, original compiler unknowns, all primary five-run means and all guards.
 GPU5 remains unauthorized. No OS/package installation or privilege operation.
 
-## Current source authority: eight audited batches and RBC follow-up
+## Current source authority: nine audited batches and RBC follow-ups
 
-Eight root-adopted source batches cover417 distinct selected model records across107
-names, with727 callsite inclusion declarations. The eighth adds25 records/7names,
-45 inclusions and13 exclusions. Evidence:
-`completion_reviews/roi_membership_root_merge_batch8/root_adoption.json` under
+Nine root-adopted source batches cover469 distinct selected model records across120
+names, with827 callsite inclusion declarations. The ninth adds52 records/13names,
+100 inclusions and35 exclusions. Evidence:
+`completion_reviews/roi_membership_root_merge_batch9/root_adoption.json` under
  the V100 study. Frozen-counter integrity and separate postannotation reconstruction
-passed. Halo-finder's pinned-memory force window is not an HBM roofline claim;
-heartwall's frame-dependent initialization/template update must remain distinct.
-Goulash KA's unexplained saved signature, native kurtosis vendor association and
-GELS vendor associations remain withheld; numerical results are unchanged.
-Two exact heartwall avilib source files have hash-bound reversible Latin-1 decode
-exceptions. Their bytes are unchanged; no generic decoding fallback is permitted.
+passed. Lanczos includes CPU recurrence and eigensolver work; Langford's integer
+DFS specializations are not floating-point arithmetic. Laplace's stopping criterion,
+equation residual and solution error are separate. KMC vendor-family associations
+remain withheld. No sampled phase, launch multiplicity, wholeROI or causal flag is
+promoted by these annotations. Preserve all earlier reviewed scope/encoding holds.
+
+RBC050 now has separate successful CUDA.jl and JACC partial captures, each with27
+sampled records and five full13,720,023-value checks. JACC observer wall is
+2542.404161512037seconds; original unprofiled JACC mean27.43673091025seconds is
+unchanged. Evidence: `completion_reviews/rbc050_jacc_success/root_review.json`.
+These are not complete timestep/1000-step ROI captures or translation attempts.
+KA and native recovery outcomes must be read separately; never infer them from
+CUDA.jl/JACC. Storage-only tmpfs proposals remain unexecuted pending exact tool,
+plan and controller-frontier adoption; native failure-path relocation needs its own
+narrow source proof. No external scratch write or pass is implied by a proposal.
 
 The method-aware summarizer adds profiler metadata to the twelve strict family
 audit records and their three source ledgers. Their audit bytes therefore differ
@@ -64,7 +73,7 @@ The exact flip reconciliation now joins all four profiles to the unchanged froze
 configuration and historical result. That old result lacks a configuration-ID
 field; canonical null and historical bytes remain unchanged. The exception is
 restricted to flip's exact config/result hashes and explicit root review. Never
-use a generic missing-ID fallback. fdtd3d4 is outside these eight indexed source
+use a generic missing-ID fallback. fdtd3d4 is outside these nine indexed source
 batches: it already has four records in the separate legacy ROI_REVIEW authority.
 Never create a duplicate cohort or alter the legacy receipt to inflate coverage.
 Review legacy membership and phase evidence separately. GELS vendor symbols
