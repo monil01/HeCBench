@@ -1,0 +1,21 @@
+--- base/v100_roofline_audit.py
++++ proposed/v100_roofline_audit.py
+@@ -77,6 +77,18 @@
+                     data = frozen(study / 'selected_contracts' / plan['benchmark'] / (name+'.gz'))
+                     require(sha(data) == plan[key], 'Selected contract SHA mismatch: '+name)
+                 row.update(benchmark=plan['benchmark'], model=plan['model'], status=prov['status'], manifest_files=len(files))
++                if prov.get('reviewed_tmpfs_storage') or prov.get('tmpfs_storage_evidence'):
++                    # Use exact frozen validator; never consult volatile scratch/SDK.
++                    source=files['tmpfs_evidence_validator.py']
++                    require(sha(source)==prov['tmpfs_storage_evidence']['validator_sha256'],'Tmpfs frozen validator SHA mismatch')
++                    gate=types.ModuleType('frozen_tmpfs_evidence')
++                    exec(compile(source,'<frozen_tmpfs_evidence>','exec'),gate.__dict__)
++                    admission=gate.validate(prov,files)
++                    require(admission is not None,'Tmpfs admission absent')
++                    row['tmpfs_storage_admission']=admission
++                    if admission['status']!='validated':
++                        require(prov['status']=='not_started_tmpfs_storage_preflight_hold','Unapproved tmpfs attempt')
++                        qualifications.append({'profile_id':identity,'reason':'Retained tmpfs preflight rejection; no GPU/build/profile attempt admitted'})
+                 if prov.get('profile_window'):
+                     link=plan['profile_window_review'];raw=files['profile_window_review.json']
+                     require(sha(raw)==link['sha256']==prov['profile_window']['review']['sha256'], 'Marker window review SHA mismatch')

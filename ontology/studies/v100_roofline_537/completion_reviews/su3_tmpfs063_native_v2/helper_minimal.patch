@@ -1,0 +1,66 @@
+--- v1/v100_tmpfs_scratch.py
++++ v2/v100_tmpfs_scratch.py
+@@ -93,6 +93,50 @@
+             out[key]=replace_paths(v,old,new)
+         return out
+     return value
++
++
++# Exactly one root-directed source-path exception. No generic source-hash rewriting.
++def normalize_exact_native_failure_overlay(normalized, plan, old_plan, row):
++    proof=row.get('native_failure_diagnostic_overlay')
++    if plan['model']!='cuda':
++        if proof is not None: fail('native exception forbidden on Julia models')
++        return normalized
++    if not isinstance(proof,dict) or proof.get('explicit_root_approval') is not True:
++        fail('native exact failure-path source review required')
++    old_prefix='/tmp/hecbench-roofline-v100-20261020/batch046-su3-native/su3/cuda/scratch'; new_prefix='/dev/shm/hecbench-v100-uid10384-su3_batch063_root_review_pending/cuda/scratch'
++    old_source='/tmp/hecbench-roofline-v100-20261020/batch046-su3-native/su3/cuda/scratch/profile_source/study_native.cu'; new_source='/dev/shm/hecbench-v100-uid10384-su3_batch063_root_review_pending/cuda/scratch/profile_source/study_native.cu'
++    old_sha='4bcc6f1d276dddb360012adbcf4720272d38087aa1c3bf00260f3ea3639a3c1a'; new_sha='962d5ef1adea899be41796266072ae385fba401f45bbd4b15050414147b07e5c'
++    required={'old_scratch_prefix':old_prefix,'new_scratch_prefix':new_prefix,
++        'original_source_path':old_source,'original_source_sha256':old_sha,
++        'fresh_source_path':new_source,'fresh_source_sha256':new_sha,
++        'matched_occurrences':1,'only_failure_diagnostic_literal_changed':True,
++        'kernel_math_timer_checker_bytes_unchanged':True,
++        'retained_completion_proof_copy_sha256_is_historical':True}
++    if any(proof.get(k)!=v for k,v in required.items()): fail('native exception identity differs')
++    if (plan['benchmark'],plan['scratch_cwd'],old_plan['scratch_cwd'])!=('su3',new_prefix,old_prefix):
++        fail('native exception restricted to exact046-to063 pair')
++    if old_plan['execution_bindings'].get(old_source)!=old_sha:
++        fail('original source not prospectively bound by exact original plan')
++    archive=Path(proof['original_source_archive']); fresh=Path(new_source)
++    if row['read_only_bindings'].get(str(archive))!=old_sha or sha(archive)!=old_sha:
++        fail('retained original source archive absent/changed')
++    if row['read_only_bindings'].get(new_source)!=new_sha or sha(fresh)!=new_sha:
++        fail('fresh native source absent/changed')
++    if Path(old_source).exists() and sha(old_source)!=old_sha:
++        fail('present original source changed')
++    original_bytes=archive.read_bytes(); fresh_bytes=fresh.read_bytes()
++    before=(old_prefix+'/profile_outputs/private_capture/native_warm_').encode()
++    after=(new_prefix+'/profile_outputs/private_capture/native_warm_').encode()
++    if original_bytes.count(before)!=1 or original_bytes.count(old_prefix.encode())!=1:
++        fail('original failure prefix occurrence differs')
++    if fresh_bytes.count(after)!=1 or fresh_bytes.count(new_prefix.encode())!=1:
++        fail('fresh failure prefix occurrence differs')
++    if original_bytes.replace(before,after,1)!=fresh_bytes or fresh_bytes.replace(after,before,1)!=original_bytes:
++        fail('native source differs beyond exact failure-path prefix')
++    if normalized['execution_bindings'].get(old_source)!=new_sha:
++        fail('only approved fresh source binding may normalize')
++    normalized['execution_bindings'][old_source]=old_sha
++    return normalized
+ 
+ class Policy:
+     def __init__(self, review_path, review_sha, plan_path, plan, slot,
+@@ -116,8 +160,10 @@
+         original=Path(row['original_plan_path'])
+         if sha(original)!=row['original_plan_sha256']: fail('original plan changed')
+         old=json.loads(original.read_bytes()); new_scratch=plan['scratch_cwd']
+-        if replace_paths(plan,new_scratch,old['scratch_cwd'])!=old:
+-            fail('fresh plan must be ONLY exact scratch-prefix substitution')
++        normalized=replace_paths(plan,new_scratch,old['scratch_cwd'])
++        normalized=normalize_exact_native_failure_overlay(normalized,plan,old,row)
++        if normalized!=old:
++            fail('fresh plan differs beyond exact scratch prefix and approved native binding')
+         if any(row[k]!=plan[k] for k in ('configuration_id','raw_config_sha256','reference_result_sha256')):
+             fail('selected contract changed')
+         if row['path_roles_independently_reviewed'] is not True: fail('path role review absent')

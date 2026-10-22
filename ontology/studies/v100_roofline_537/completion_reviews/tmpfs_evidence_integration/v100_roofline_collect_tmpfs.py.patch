@@ -1,0 +1,88 @@
+--- base/v100_roofline_collect_tmpfs.py
++++ proposed/v100_roofline_collect_tmpfs.py
+@@ -418,18 +418,63 @@
+     scratch = Path(plan['scratch_cwd']).resolve()
+     storage_policy=None
+     storage_source=None
++    storage_evidence=None
+     if tmpfs_scratch_review or tmpfs_scratch_review_sha256:
+         if not(tmpfs_scratch_review and tmpfs_scratch_review_sha256):
+             raise RuntimeError('Tmpfs opt-in requires exact review path AND SHA')
+         # Import only this opt-in branch; legacy branch remains unchanged.
+         import v100_tmpfs_scratch as storage_gate
+         storage_source=Path(storage_gate.__file__).read_bytes()
+-        storage_policy=storage_gate.Policy(tmpfs_scratch_review,tmpfs_scratch_review_sha256,
+-            plan_path,plan,slot,COLLECTOR_SHA256,hashlib.sha256(storage_source).hexdigest(),
+-            sha(root/'tools/v100_profile_write_guard.py'),retain_auxiliary,artifact_policy,
+-            reserve_mib*1024**2)
+-        (slot/'tmpfs_storage_policy_source.py').write_bytes(storage_source)
+-        (slot/'tmpfs_storage_review.json').write_bytes(storage_policy.review_bytes)
++        # Snapshot only tiny source/plan bytes; no payload relocation or SDK reads.
++        snapshots={}
++        validator_path=Path(__file__).with_name('v100_tmpfs_evidence.py')
++        validator_bytes=validator_path.read_bytes()
++        def snapshot(name,path,expected=None):
++            data=Path(path).read_bytes()
++            if expected is not None and hashlib.sha256(data).hexdigest()!=expected:
++                raise RuntimeError('Tmpfs snapshot SHA mismatch: '+name)
++            (slot/name).write_bytes(data)
++            snapshots[name]={'path':str(path),'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
++        def snapshot_manifest():
++            data={'schema_version':1,'scope':'Storage review/source evidence only; original plan and tiny native source retained, no new numerical verdict.','snapshots':snapshots}
++            dump(slot/'tmpfs_storage_evidence.json',data)
++            return {'manifest_sha256':sha(slot/'tmpfs_storage_evidence.json'),
++                    'validator_sha256':hashlib.sha256(validator_bytes).hexdigest()}
++        try:
++            snapshot('tmpfs_evidence_validator.py',validator_path)
++            (slot/'tmpfs_storage_policy_source.py').write_bytes(storage_source)
++            snapshots['tmpfs_storage_policy_source.py']={'path':storage_gate.__file__,
++                'sha256':hashlib.sha256(storage_source).hexdigest(),'bytes':len(storage_source)}
++            snapshot('tmpfs_storage_review.json',tmpfs_scratch_review,tmpfs_scratch_review_sha256)
++            storage_review=json.loads((slot/'tmpfs_storage_review.json').read_bytes())
++            if storage_review['evidence_validator_sha256']!=hashlib.sha256(validator_bytes).hexdigest():
++                raise RuntimeError('Tmpfs evidence validator not approved')
++            row=storage_review['models'][plan['benchmark']+'/'+plan['model']]
++            snapshot('tmpfs_original_plan.json',row['original_plan_path'],row['original_plan_sha256'])
++            if plan['model']=='cuda':
++                proof=row['native_failure_diagnostic_overlay']
++                snapshot('tmpfs_native_original.cu',proof['original_source_archive'],proof['original_source_sha256'])
++                snapshot('tmpfs_native_overlay.cu',proof['fresh_source_path'],proof['fresh_source_sha256'])
++            storage_evidence=snapshot_manifest()
++            storage_policy=storage_gate.Policy(tmpfs_scratch_review,tmpfs_scratch_review_sha256,
++                plan_path,plan,slot,COLLECTOR_SHA256,hashlib.sha256(storage_source).hexdigest(),
++                sha(root/'tools/v100_profile_write_guard.py'),retain_auxiliary,artifact_policy,
++                reserve_mib*1024**2)
++        except Exception as storage_error:
++            # Retain rejected available inputs too; no target/build/profile began.
++            storage_evidence=snapshot_manifest()
++            (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
++            (slot/'write_guard_source.py').write_bytes((root/'tools/v100_profile_write_guard.py').read_bytes())
++            hold={'benchmark':plan['benchmark'],'model':plan['model'],'gpu_uuid':UUID,
++                'plan_sha256':sha(plan_path),'collector_sha256':COLLECTOR_SHA256,
++                'status':'not_started_tmpfs_storage_preflight_hold','finished_at':utc(),
++                'selector_scope':'No target/build/profile launch; tmpfs preflight rejected',
++                'command':[],'error':repr(storage_error),'new_gpu_processes':0,'new_build_processes':0,
++                'reviewed_tmpfs_storage':{'review_sha256':tmpfs_scratch_review_sha256},
++                'tmpfs_storage_evidence':storage_evidence}
++            dump(slot/'profile_provenance.json',hold)
++            return {'benchmark':plan['benchmark'],'model':plan['model'],'status':hold['status'],'error':repr(storage_error)}
++
+     else:
+         scratch.relative_to(slot.resolve())
+         scratch.relative_to(Path('/tmp'))
+@@ -516,6 +561,7 @@
+             'method_preflight_sha256':sha(slot/'profiler_method_preflight.json')}
+         if storage_policy:
+             hold['reviewed_tmpfs_storage']=storage_policy.summary()
++            hold['tmpfs_storage_evidence']=storage_evidence
+             if getattr(storage_policy,'last_failure',None):
+                 hold['status']='not_started_tmpfs_storage_hold'
+         (slot/'collector_source.py').write_bytes(COLLECTOR_SOURCE)
+@@ -585,6 +631,7 @@
+         'status': 'started','replay_mode':replay_mode,'application_replay':application_review,'profile_window':window_review,'isolated_assertion_phases':isolated_review}
+     if storage_policy:
+         provenance['reviewed_tmpfs_storage']=storage_policy.summary()
++        provenance['tmpfs_storage_evidence']=storage_evidence
+     if method:
+         provenance.update(profiler_method=method_label,profiler_runtime_environment={k:env[k]for k in method['manifest']['pinned_runtime_environment']},profiler_version=version_text,profiler_executable=ncu_path,profiler_executable_sha256=sha(ncu_path))
+     provenance['method_preflight_sha256']=sha(slot/'profiler_method_preflight.json')

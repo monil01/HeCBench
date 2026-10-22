@@ -36,18 +36,32 @@ are not current authority. Preserve old2022 data, failed001/002 calibrations,
 raw units, original compiler unknowns, all primary five-run means and all guards.
 GPU5 remains unauthorized. No OS/package installation or privilege operation.
 
-## Current source authority: nine audited batches and RBC follow-ups
+## Current source authority: ten audited batches and RBC follow-ups
 
-Nine root-adopted source batches cover469 distinct selected model records across120
-names, with827 callsite inclusion declarations. The ninth adds52 records/13names,
-100 inclusions and35 exclusions. Evidence:
-`completion_reviews/roi_membership_root_merge_batch9/root_adoption.json` under
- the V100 study. Frozen-counter integrity and separate postannotation reconstruction
-passed. Lanczos includes CPU recurrence and eigensolver work; Langford's integer
-DFS specializations are not floating-point arithmetic. Laplace's stopping criterion,
-equation residual and solution error are separate. KMC vendor-family associations
-remain withheld. No sampled phase, launch multiplicity, wholeROI or causal flag is
-promoted by these annotations. Preserve all earlier reviewed scope/encoding holds.
+Ten root-adopted source batches cover593 distinct selected model records across152
+names, with1157 callsite inclusion declarations. The tenth adds124 records/32names,
+330 inclusions and158 exclusions; four included aliases share existing families.
+Evidence: `completion_reviews/roi_membership_root_merge_batch10/root_adoption.json`
+under the V100 study. Frozen-counter integrity and separate postannotation
+reconstruction passed. Seven linearprobing retained path overlays have independently
+proved full forward/inverse source-byte equality; no new source was reconstructed.
+MarchingCubes times generation stage5, with preprocessing1--4 outside. LIBOR257
+logical paths differ from256 physical launch threads; LULESH includes adaptive
+host work. Preserve these scopes. Native MatrixT, local-ht JACC and two
+logic-rewrite source-family associations remain withheld, without changing numerical
+acceptance. Aliases are not independent kernels; no sampled phase, launch
+multiplicity, wholeROI or causal flag is promoted.
+
+A separate frozen execution-log audit of1436 selected completed profiles found
+1432 exact five-trial groups with all correctness flags true, one passing
+application-replay grouped protocol and three assertion protocols joined to the
+zero-issue dedicated frozen audit. Evidence:
+`completion_reviews/selected_profile_check_log_audit_001/`.
+This observes runtime checks and receipt joins; it does not independently recompare
+raw binary output values. Primary numerical acceptance remains separate. Require
+both passing checks and complete output manifests for new storage captures;
+process return code alone is insufficient. Preserve the original frozen campaign
+snapshot when publishing these separately dated follow-ups.
 
 RBC050 now has separate successful CUDA.jl and JACC partial captures, each with27
 sampled records and five full13,720,023-value checks. JACC observer wall is
@@ -73,7 +87,7 @@ The exact flip reconciliation now joins all four profiles to the unchanged froze
 configuration and historical result. That old result lacks a configuration-ID
 field; canonical null and historical bytes remain unchanged. The exception is
 restricted to flip's exact config/result hashes and explicit root review. Never
-use a generic missing-ID fallback. fdtd3d4 is outside these nine indexed source
+use a generic missing-ID fallback. fdtd3d4 is outside these ten indexed source
 batches: it already has four records in the separate legacy ROI_REVIEW authority.
 Never create a duplicate cohort or alter the legacy receipt to inflate coverage.
 Review legacy membership and phase evidence separately. GELS vendor symbols

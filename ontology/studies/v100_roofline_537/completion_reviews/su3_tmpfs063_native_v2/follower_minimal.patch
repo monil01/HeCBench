@@ -1,0 +1,79 @@
+--- v1/wait_then_collect.py
++++ v2/wait_then_collect.py
+@@ -2,12 +2,12 @@
+ """UNEXECUTED private batch063 proposal. Root approval/new frontier required.
+ Creates fresh tmpfs only after --execute plus two exact root-approved receipts.
+ Never installs tools, queries/signals GPUs, deletes raw data or launches a master.
+-One collector call, Julia3 only; native remains explicitly held.
++One collector call, all4 only after exact native source-overlay approval.
+ """
+ import argparse,datetime,fcntl,hashlib,json,os,shutil,stat,subprocess,time
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+-MODELS=('cuda_jl','ka','jacc')
++MODELS=('cuda','cuda_jl','ka','jacc')
+ 
+ def sha(path):
+  h=hashlib.sha256()
+@@ -39,7 +39,7 @@
+   ledger=source/'ontology/studies/v100_roofline_537/benchmarks/su3.json'
+   obj=json.loads(ledger.read_bytes());digest=sha(ledger)
+   rows={m:{'status':obj['models'][m]['profiling_status'],
+-       'sampled_kernel_count':obj['models'][m].get('sampled_kernel_count',0)}for m in ('cuda',*MODELS)}
++       'sampled_kernel_count':obj['models'][m].get('sampled_kernel_count',0)}for m in MODELS}
+  return {'time':utc(),'ledger_sha256':digest,'models':rows}
+ def qualified(row):return row['status']=='profile_process_completed'and row['sampled_kernel_count']>0
+ def no_symlinks(path):
+@@ -68,17 +68,18 @@
+  need(sha(__file__)==review['controller_sha256'],'Follower source drift')
+  verify(review['packet_bindings'])
+  if not a.execute:
+-  print(json.dumps({'not_executed':True,'root_approval_required':True,'models':list(MODELS),'native_held':True,'maximum_collector_invocations':1}));return
++  print(json.dumps({'not_executed':True,'root_approval_required':True,'models':list(MODELS),'native_held':False,'maximum_collector_invocations':1}));return
+  need(review.get('root_reviewed')is True and storage.get('root_reviewed')is True,'Both independent root approvals required')
+  need(review['root_authorizes_fresh_tmpfs_staging']is True,'External fresh-staging authorization absent')
+  need(storage['execution_permission']is True,'Explicit reviewed tmpfs execution permission absent')
+- need(set(storage['models'])=={'su3/'+m for m in MODELS},'Only Julia3 approved; native held')
++ need(storage['models']['su3/cuda']['native_failure_diagnostic_overlay']['explicit_root_approval']is True,'Explicit native source overlay approval required before staging')
++ need(set(storage['models'])=={'su3/'+m for m in MODELS},'All4 exact reviewed models required')
+  need(review['storage_review_required_plan_sha256']=={k:v['fresh_plan_sha256']for k,v in storage['models'].items()},'Approved plan map changed')
+  source=Path(review['source_root']);raw=Path(review['raw_root']);destination=Path(review['future_plan_root']);owned=Path(review['owned_tmpfs_root'])
+  need(destination==raw/'batch063-su3-tmpfs','Reserved exact raw batch required')
+  receipt=HERE/'controller_receipt.json';need(not receipt.exists(),'One-shot receipt exists; no reconstruction/relaunch')
+  state={'started_at':utc(),'status':'waiting_exact_predecessors','collector_invocations':0,'maximum_collector_invocations':1,
+-        'native_held':True,'launch_review_sha256':a.launch_review_sha256,'tmpfs_review_sha256':a.tmpfs_review_sha256,
++        'native_held':False,'launch_review_sha256':a.launch_review_sha256,'tmpfs_review_sha256':a.tmpfs_review_sha256,
+         'GPU_queries':0,'signals':0,'no_primary_timing_replacement':True,'no_primary_raw_deletion':True,
+         'reviewed_plan_sha256':review['storage_review_required_plan_sha256'],
+         'reviewed_tool_sha256':review['future_tool_bindings'],
+@@ -103,17 +104,28 @@
+    no_symlinks(destination);no_symlinks(owned)
+    need(owned.parent==Path('/dev/shm')and str(owned)==review['owned_tmpfs_root'],'Exact reviewed external namespace required')
+    need(os.statvfs('/tmp').f_bavail*os.statvfs('/tmp').f_frsize>=2*1024**3,'/tmp2GiB floor before staging')
+-   # No payload copies: eligible Julia targets retain canonical read-only sources/assets.
++   # No payload copies. Julia sources remain canonical; native exact4507B host-path copy only.
+    # Root-approved collector policy performs full memory/cgroup/tmpfs admission before any child.
+    mkdir_private(destination);mkdir_private(owned)
+    created=[]
+    for model in MODELS:
+     parent=owned/model;mkdir_private(parent);scratch=parent/'scratch';mkdir_private(scratch)
+     for sub in ('profile_outputs','ncu_tmp'):mkdir_private(scratch/sub)
++    copied=0
++    if model=='cuda':
++     overlay=storage['models']['su3/cuda']['native_failure_diagnostic_overlay']
++     need(overlay['explicit_root_approval']is True,'Separate native path-only approval required')
++     mkdir_private(scratch/'profile_source');mkdir_private(scratch/'profile_outputs/private_capture')
++     archived=Path(overlay['fresh_source_archive'])
++     need(sha(archived)==overlay['fresh_source_sha256'],'Native approved copy bytes changed')
++     target=scratch/'profile_source/study_native.cu'
++     need(str(target)==overlay['fresh_source_path'],'Exact native source destination required')
++     with target.open('xb')as f:f.write(archived.read_bytes());f.flush();os.fsync(f.fileno())
++     need(sha(target)==overlay['fresh_source_sha256'],'Staged native copy differs');copied=target.stat().st_size
+     out=destination/'su3'/model;out.mkdir(parents=True,mode=0o700)
+     original=HERE/'collector_plans'/'su3'/model/'plan.json';need(sha(original)==storage['models']['su3/'+model]['fresh_plan_sha256'],'Draft plan changed')
+     with(out/'plan.json').open('xb')as f:f.write(original.read_bytes());f.flush();os.fsync(f.fileno())
+-    created.append({'path':str(out/'plan.json'),'sha256':sha(out/'plan.json'),'external_scratch':str(scratch),'source_copy_bytes':0})
++    created.append({'path':str(out/'plan.json'),'sha256':sha(out/'plan.json'),'external_scratch':str(scratch),'source_copy_bytes':copied})
+    state.update(status='staged_no_children_started',created=created);save(receipt,state)
+    verify(review['packet_bindings']);tool_gate(review)
+    need(all(generation(x)!='same_owned_generation_live'for x in review['predecessors']),'Predecessor generation still live')
