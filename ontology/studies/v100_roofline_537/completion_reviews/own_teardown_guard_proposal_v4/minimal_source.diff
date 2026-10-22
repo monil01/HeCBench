@@ -1,0 +1,562 @@
+--- /home/imo/HeCBench_julia/tools/v100_roofline_collect.py
++++ /tmp/roofline-completion-20261021/own_teardown_guard_proposal_v4/v100_roofline_collect_ownership_proposal.py
+@@ -24,6 +24,7 @@
+ import sys
+ import csv
+ import math
++import select
+ 
+ UUID = 'GPU-c122ecbd-d9f3-18a5-42d4-1535af37e56d'
+ METRICS = [
+@@ -191,6 +192,230 @@
+     return members
+ 
+ 
++class ProcessGenerationOwnership:
++    """Live generation proof, never permission to admit a vanished numeric NVML PID.
++
++    pidfds stay open until run's quiescence decision. A dead pidfd identifies the
++    cached process that exited; it cannot identify a subsequent NVML numeric row.
++    """
++    def __init__(self, leader):
++        if not hasattr(os, 'pidfd_open') or not hasattr(signal, 'pidfd_send_signal'):
++            raise RuntimeError('pidfd support required; no name/PID-only fallback')
++        self.leader = leader
++        self.boot_id = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
++        self.pid_namespace = Path('/proc/self/ns/pid').stat().st_ino
++        self.records = {}
++        self.events = []
++        self.closed = False
++        identity = self.read_identity(leader)
++        if identity['uid'] != os.getuid() or identity['session'] != leader:
++            raise RuntimeError('Fresh Popen root UID/session differs')
++        self.root = self.pin(identity, {'kind':'fresh_Popen_start_new_session_anchor'})
++
++    def read_identity(self, pid):
++        path = Path('/proc') / str(pid)
++        first = (path/'stat').read_text()
++        left, fields = first.rsplit(')', 1)
++        values = fields.split()
++        record = {'pid':int(first.split(' ',1)[0]), 'ppid':int(values[1]),
++                  'session':int(values[3]), 'start_ticks':values[19],
++                  'state':values[0], 'uid':path.stat().st_uid,
++                  'pid_namespace':(path/'ns/pid').stat().st_ino,
++                  'raw_stat':first, 'observed_at':utc()}
++        second = (path/'stat').read_text().rsplit(')',1)[1].split()
++        if (record['pid'] != pid or record['start_ticks'] != second[19]
++                or record['ppid'] != int(second[1]) or record['session'] != int(second[3])
++                or record['uid'] != path.stat().st_uid
++                or record['pid_namespace'] != self.pid_namespace):
++            raise RuntimeError('Process identity changed during proc snapshot')
++        return record
++
++    @staticmethod
++    def generation(identity):
++        return (identity['pid'], identity['start_ticks'], identity['uid'], identity['pid_namespace'])
++
++    @staticmethod
++    def fd_live(record):
++        watcher = select.poll()
++        watcher.register(record['pidfd'], select.POLLIN | select.POLLHUP | select.POLLERR)
++        return not watcher.poll(0)
++
++    def pin(self, identity, proof):
++        pid = identity['pid']
++        previous = self.records.get(pid)
++        if previous:
++            if self.generation(previous['identity']) != self.generation(identity):
++                raise RuntimeError('Numeric PID reuse; cached ownership never transfers')
++            if not self.fd_live(previous):
++                raise RuntimeError('Exited cached generation cannot be repinned')
++            previous['last_live_identity'] = identity
++            return previous
++        fd = os.pidfd_open(pid, 0)
++        try:
++            os.set_inheritable(fd, False)
++            second = self.read_identity(pid)
++            record = {'identity':identity, 'last_live_identity':second,
++                      'pidfd':fd, 'proof':proof, 'pinned_at':utc()}
++            if (self.generation(identity) != self.generation(second)
++                    or second['state'] in ('Z','X') or not self.fd_live(record)):
++                raise RuntimeError('Generation exited or changed while pinning')
++            self.records[pid] = record
++            return record
++        except BaseException:
++            os.close(fd)
++            raise
++
++    def cached_live(self, pid):
++        record = self.records.get(pid)
++        if record is None or not self.fd_live(record):
++            return False
++        current = self.read_identity(pid)
++        if (self.generation(current) != self.generation(record['identity'])
++                or current['state'] in ('Z','X')):
++            return False
++        record['last_live_identity'] = current
++        return self.fd_live(record)
++
++    def live_proof(self, identity):
++        if identity['uid'] != os.getuid():
++            return None
++        # The live pinned fresh root's session is an owned process boundary.
++        if self.cached_live(self.leader) and identity['session'] == self.leader:
++            return {'kind':'same_live_generation_session', 'anchor':self.root['identity'],
++                    'member':identity}
++        chain = [identity]
++        seen = {identity['pid']}
++        current = identity
++        for unused in range(128):
++            parent = current['ppid']
++            if parent <= 1 or parent in seen:
++                return None
++            seen.add(parent)
++            parent_identity = self.read_identity(parent)
++            if (parent_identity['uid'] != os.getuid()
++                    or int(parent_identity['start_ticks']) > int(current['start_ticks'])):
++                return None
++            chain.append(parent_identity)
++            if self.cached_live(parent):
++                return {'kind':'live_parent_chain_to_pinned_own_generation', 'chain':chain,
++                        'anchor':self.records[parent]['identity']}
++            current = parent_identity
++        return None
++
++    def classify(self, pid):
++        prior = self.records.get(pid)
++        try:
++            identity = self.read_identity(pid)
++            if prior:
++                if self.generation(identity) != self.generation(prior['identity']):
++                    return {'class':'PID_reuse_or_identity_change_hold', 'pid':pid,
++                            'prior':prior['identity'], 'current':identity}
++                if self.cached_live(pid):
++                    return {'class':'live_generation_owned', 'pid':pid, 'identity':identity,
++                            'proof':prior['proof']}
++                return {'class':'prior_own_generation_exited_NVML_generation_unresolved',
++                        'pid':pid, 'prior':prior['identity'], 'current':identity}
++            proof = self.live_proof(identity)
++            if proof is None:
++                return {'class':('live_process_outside_owner_uid' if identity['uid'] != os.getuid()
++                                 else 'live_unproven_ancestry_generation_unresolved'),
++                        'pid':pid, 'identity':identity}
++            record = self.pin(identity, proof)
++            if not self.cached_live(pid):
++                raise RuntimeError('Owned generation exited before classification')
++            return {'class':'live_generation_owned', 'pid':pid, 'identity':identity,
++                    'proof':record['proof']}
++        except (OSError, ValueError, IndexError, RuntimeError) as error:
++            return {'class':('prior_own_generation_NVML_generation_unresolved' if prior
++                             else 'unknown_NVML_generation_unresolved'),
++                    'pid':pid, 'error':repr(error),
++                    'prior':prior['identity'] if prior else None}
++
++    def refresh(self):
++        # Record real live descendants before teardown, even between GPU queries.
++        # Failed proc reads do not register ownership or transfer an old PID token.
++        for path in Path('/proc').iterdir():
++            if not path.name.isdigit():
++                continue
++            try:
++                identity = self.read_identity(int(path.name))
++                if identity['uid'] != os.getuid():
++                    continue
++                if int(path.name) in self.records:
++                    self.cached_live(int(path.name))
++                elif identity['session'] == self.leader:
++                    proof = self.live_proof(identity)
++                    if proof is not None:
++                        self.pin(identity, proof)
++            except (OSError, ValueError, IndexError, RuntimeError):
++                continue
++
++    def signal_fresh_session(self, sig):
++        # pidfd_send_signal targets the pinned task generation, never a numeric
++        # PID/PGID that might have been reused between validation and delivery.
++        targets=[]
++        rejected=[]
++        try:
++            self.refresh()
++            members=own_session_members(self.leader)
++        except (OSError,ValueError,IndexError,RuntimeError) as error:
++            return {'delivered':[],'rejected':[{'error':repr(error),'class':'signal_scan_unresolved'}]}
++        for pid in members:
++            try:
++                result=self.classify(pid)
++                if result['class']!='live_generation_owned':
++                    rejected.append(result)
++                    continue
++                current=self.read_identity(pid)
++                if current['session']!=self.leader or not self.cached_live(pid):
++                    rejected.append({'pid':pid,'class':'signal_session_or_generation_unresolved'})
++                    continue
++                targets.append(pid)
++            except (OSError,ValueError,IndexError,RuntimeError) as error:
++                rejected.append({'pid':pid,'error':repr(error)})
++        delivered=[]
++        for pid in sorted(targets, key=lambda p:p==self.leader):
++            try:
++                current=self.read_identity(pid)
++                if current['session']!=self.leader or not self.cached_live(pid):
++                    rejected.append({'pid':pid,'class':'signal_identity_changed'})
++                    continue
++                signal.pidfd_send_signal(self.records[pid]['pidfd'],sig,None,0)
++                delivered.append(pid)
++            except ProcessLookupError:
++                pass
++            except (OSError,ValueError,IndexError,RuntimeError) as error:
++                rejected.append({'pid':pid,'error':repr(error)})
++        self.events.append({'kind':'owned_fresh_session_pidfd_signal',
++                            'signal':int(sig),'delivered_generations':delivered,
++                            'rejected_no_signal':rejected,'observed_at':utc()})
++        return {'delivered':delivered,'rejected':rejected}
++
++    def signal_cached_member(self, pid, sig):
++        current=self.read_identity(pid)
++        if current['session']!=self.leader or not self.cached_live(pid):
++            raise RuntimeError('Cleanup session/generation unproved; no signal')
++        signal.pidfd_send_signal(self.records[pid]['pidfd'],sig,None,0)
++
++    def snapshot(self):
++        return {'policy':'live_generation_only_no_dead_numeric_PID_admission',
++                'boot_id':self.boot_id, 'pid_namespace':self.pid_namespace,
++                'leader':self.leader,
++                'generations':[{'identity':r['identity'],
++                                'last_live_identity':r['last_live_identity'],
++                                'proof':r['proof'], 'pinned_at':r['pinned_at'],
++                                'pidfd_live_at_snapshot':self.fd_live(r)}
++                               for r in self.records.values()],
++                'GPU_observations':self.events,
++                'vanished_cached_PID_is_not_proven_foreign_or_admissibly_owned':True}
++
++    def close(self):
++        if not self.closed:
++            for record in self.records.values():
++                os.close(record['pidfd'])
++            self.closed = True
++
++
+ def run(command, env, cwd, log, timeout, reserve, guard=None,monitor_gpu=False,artifact_policy=None):
+     began = time.monotonic()
+     started_at=utc()
+@@ -204,10 +429,20 @@
+         process = subprocess.Popen(executed, cwd=cwd, env=env, stdout=out,
+                                    stderr=subprocess.STDOUT, start_new_session=True,
+                                    preexec_fn=lambda:limits(artifact_policy['max_file_bytes'] if artifact_policy else 1024**3))
+-        stop_reason = None
++        ownership=None;ownership_bootstrap_error=None
++        if monitor_gpu:
++            try:ownership=ProcessGenerationOwnership(process.pid)
++            except (OSError,ValueError,IndexError,RuntimeError) as error:ownership_bootstrap_error=repr(error)
++        stop_reason = 'ownership_generation_bootstrap_failed' if ownership_bootstrap_error else None
++        unresolved_ownership=[];leader_signal_identity_hold=False
+         external_activity=[];last_gpu_check=0
+         last_artifact_check=0
+         while process.poll() is None:
++            if ownership is not None and not stop_reason:
++                try:ownership.refresh()
++                except (OSError,ValueError,IndexError,RuntimeError) as error:
++                    stop_reason='ownership_cache_refresh_failed'
++                    unresolved_ownership.append({'error':repr(error),'observed_at':utc()})
+             if time.monotonic() - began > timeout:
+                 stop_reason = 'wall_timeout'
+             elif shutil.disk_usage(cwd).free < reserve:
+@@ -234,43 +469,78 @@
+                     observed=gpu_processes()
+                 except (OSError,ValueError,subprocess.SubprocessError) as error:
+                     observed=[];stop_reason='GPU_activity_monitor_failed'
+-                    external_activity.append({'monitor_error':str(error),'observed_at':utc()})
++                    unresolved_ownership.append({'monitor_error':str(error),'observed_at':utc()})
+                 for item in observed:
+-                    owned=False;pid=item['pid']
+-                    try:
+-                        owned=os.getsid(pid)==process.pid
+-                        ancestor=pid
+-                        for _ in range(128):
+-                            if owned or ancestor==process.pid:
+-                                owned=True;break
+-                            if ancestor<=1:break
+-                            fields=(Path('/proc')/str(ancestor)/'stat').read_text().split(')')[-1].split()
+-                            ancestor=int(fields[1])
+-                    except (OSError,ValueError):pass
+-                    if not owned:external_activity.append({**item,'observed_at':utc()})
++                    result=(ownership.classify(item['pid']) if ownership is not None else
++                            {'class':'ownership_bootstrap_unresolved','pid':item['pid']})
++                    event={**item,'observed_at':utc(),'ownership':result}
++                    if ownership is not None:ownership.events.append(event)
++                    if result['class']=='live_generation_owned':
++                        continue
++                    if result['class']=='live_process_outside_owner_uid':external_activity.append(event)
++                    else:unresolved_ownership.append(event)
+                 if external_activity:stop_reason='external_gpu_activity_detected_own_profile_stopped'
++                elif unresolved_ownership and not stop_reason:stop_reason='GPU_process_generation_unresolved_own_profile_stopped'
+             if stop_reason:
+                 # Only the fresh session created above; never discover/kill by name.
+                 if process.poll() is not None:break
+-                if os.getsid(process.pid) != process.pid:
++                if monitor_gpu:
++                    try:safe_leader=ownership is not None and ownership.cached_live(process.pid)
++                    except (OSError,ValueError,IndexError,RuntimeError):safe_leader=False
++                    if not safe_leader:
++                        leader_signal_identity_hold=True
++                        stop_reason='own_leader_generation_unresolved_no_signal'
++                        break
++                if not monitor_gpu and os.getsid(process.pid) != process.pid:
+                     raise RuntimeError('Own child session guard failed')
+-                os.killpg(process.pid, signal.SIGTERM)
++                if monitor_gpu:
++                    result=ownership.signal_fresh_session(signal.SIGTERM)
++                    if result['rejected']:
++                        leader_signal_identity_hold=True
++                        stop_reason='own_signal_generation_unresolved_no_unknown_signals'
++                        break
++                else:os.killpg(process.pid, signal.SIGTERM)
+                 try:
+                     process.wait(timeout=10)
+                 except subprocess.TimeoutExpired:
+-                    if os.getsid(process.pid) != process.pid:
++                    if monitor_gpu:
++                        try:safe_leader=ownership is not None and ownership.cached_live(process.pid)
++                        except (OSError,ValueError,IndexError,RuntimeError):safe_leader=False
++                        if not safe_leader:
++                            leader_signal_identity_hold=True
++                            stop_reason='own_leader_generation_unresolved_no_signal'
++                            break
++                    if not monitor_gpu and os.getsid(process.pid) != process.pid:
+                         raise RuntimeError('Own child session guard failed')
+-                    os.killpg(process.pid, signal.SIGKILL)
++                    if monitor_gpu:
++                        result=ownership.signal_fresh_session(signal.SIGKILL)
++                        if result['rejected']:
++                            leader_signal_identity_hold=True
++                            stop_reason='own_signal_generation_unresolved_no_unknown_signals'
++                            break
++                    else:os.killpg(process.pid, signal.SIGKILL)
+                 break
+             time.sleep(0.5)
+-        code = process.wait()
++        code = process.poll() if leader_signal_identity_hold else process.wait()
+         # NCU can leave a target/flusher alive after a timeout leader exits.
+         # Do not hash/freeze counters or remove scratch until that own session
+         # is quiescent. No other session, process name or user's work is signaled.
+         quiescence_started=time.monotonic();descendant_cleanup=[]
+-        while True:
+-            members=own_session_members(process.pid)
++        quiescence_unknowns=[];own_session_quiescent=not leader_signal_identity_hold
++        while own_session_quiescent:
++            try:members=own_session_members(process.pid)
++            except (OSError,ValueError,IndexError,RuntimeError) as error:
++                if not monitor_gpu:raise
++                own_session_quiescent=False;quiescence_unknowns.append({'error':repr(error)});break
++            if ownership is not None:
++                try:members=sorted(set(members)|{pid for pid,r in ownership.records.items() if ownership.fd_live(r)})
++                except (OSError,ValueError,IndexError,RuntimeError) as error:
++                    own_session_quiescent=False;quiescence_unknowns.append({'error':repr(error)});break
+             if not members:break
++            if monitor_gpu and time.monotonic()-quiescence_started>20:
++                own_session_quiescent=False
++                quiescence_unknowns.append({'members':members,'reason':'bounded_quiescence_not_established'})
++                break
+             if time.monotonic()-quiescence_started>10:
+                 if stop_reason is None:stop_reason='own_descendants_outlived_profile_leader'
+                 for pid in members:
+@@ -278,15 +548,79 @@
+                         path=Path('/proc')/str(pid)
+                         if path.stat().st_uid!=os.getuid() or os.getsid(pid)!=process.pid:
+                             raise RuntimeError('Own session cleanup identity changed')
+-                        os.kill(pid,signal.SIGKILL);descendant_cleanup.append(pid)
++                        if monitor_gpu:
++                            result=ownership.classify(pid) if ownership is not None else {'class':'ownership_bootstrap_unresolved','pid':pid}
++                            if result['class']!='live_generation_owned' or not ownership.cached_live(pid):
++                                quiescence_unknowns.append(result);own_session_quiescent=False
++                                break
++                        if monitor_gpu:ownership.signal_cached_member(pid,signal.SIGKILL)
++                        else:os.kill(pid,signal.SIGKILL)
++                        descendant_cleanup.append(pid)
+                     except ProcessLookupError:pass
+-            time.sleep(.5)
++                    except (OSError,ValueError,IndexError,RuntimeError) as error:
++                        if not monitor_gpu:raise
++                        quiescence_unknowns.append({'pid':pid,'error':repr(error)})
++                        own_session_quiescent=False;break
++            if own_session_quiescent:time.sleep(.5)
++        ownership_quiescence_hold=None
++        if monitor_gpu and not own_session_quiescent:
++            # Both monitored callers are inside collect's existing GPU flock.
++            # Never unwind that lock while a known/potential own writer remains.
++            # No signal, GPU query, data hash/freeze or deletion occurs here.
++            ownership_quiescence_hold={'started_at':utc(),'GPU_lock_release_permitted':False,
++                'scope':'Unbounded safety/quiescence hold, outside process deadline; ambiguous interval is never admitted'}
++            stop_reason='ownership_quiescence_was_unresolved_no_admission'
++            while True:
++                pending=[];errors=[]
++                try:
++                    if process.poll() is None:pending.append({'pid':process.pid,'basis':'fresh_Popen_child_not_reaped'})
++                except (OSError,ValueError,IndexError,RuntimeError) as error:errors.append(repr(error))
++                try:
++                    for pid in own_session_members(process.pid):pending.append({'pid':pid,'basis':'fresh_session_membership_not_yet_quiescent'})
++                    if ownership is not None:
++                        for pid,record in ownership.records.items():
++                            if ownership.fd_live(record):pending.append({'pid':pid,'basis':'pinned_own_generation_alive'})
++                except (OSError,ValueError,IndexError,RuntimeError) as error:errors.append(repr(error))
++                # Unknown generation is never signaled or assumed foreign. A
++                # newly reused PID may conservatively prolong this safety hold.
++                for event in unresolved_ownership+quiescence_unknowns:
++                    pid=event.get('pid')
++                    if pid is None:continue
++                    try:
++                        (Path('/proc')/str(pid)).stat()
++                        pending.append({'pid':pid,'basis':'recorded_unresolved_PID_still_exists_no_generation_admission'})
++                    except (FileNotFoundError,ProcessLookupError):pass
++                    except OSError as error:errors.append(repr(error))
++                ownership_quiescence_hold.update(last_checked_at=utc(),pending=pending,errors=errors)
++                if not pending and not errors:
++                    own_session_quiescent=True
++                    ownership_quiescence_hold.update(finished_at=utc(),GPU_lock_release_permitted=True,
++                        outcome='quiescence_observed_after_hold_attempt_remains_failed')
++                    code=process.wait()
++                    try:dump(cwd.parent/'ownership_quiescence_hold.json',ownership_quiescence_hold)
++                    except OSError:pass
++                    break
++                try:dump(cwd.parent/'ownership_quiescence_hold.json',ownership_quiescence_hold)
++                except OSError:pass
++                time.sleep(1)
++        try:ownership_evidence=ownership.snapshot() if ownership is not None else {'bootstrap_error':ownership_bootstrap_error}
++        except (OSError,ValueError,IndexError,RuntimeError) as error:
++            ownership_evidence={'snapshot_error':repr(error)};stop_reason='ownership_evidence_snapshot_failed'
++        finally:
++            if ownership is not None:ownership.close()
++        if not own_session_quiescent:stop_reason='own_session_generation_quiescence_unresolved_hold'
+     return {'returncode': code, 'stop_reason': stop_reason,
+             'started_at':started_at,'finished_at':utc(),
+             'external_gpu_activity':external_activity,
++            'unresolved_GPU_ownership':unresolved_ownership,
++            'process_generation_ownership':ownership_evidence,
++            'own_session_quiescent':own_session_quiescent,
++            'own_session_quiescence_unknowns':quiescence_unknowns,
++            'ownership_quiescence_hold':ownership_quiescence_hold,
+             'own_session_quiescence_seconds':time.monotonic()-quiescence_started,
+             'own_descendants_cleaned':sorted(set(descendant_cleanup)),
+-            'wall_seconds': time.monotonic() - began, 'log_sha256': sha(log),
++            'wall_seconds': time.monotonic() - began, 'log_sha256': sha(log) if own_session_quiescent else None,
++            'execution_log_freeze_status':'quiescent_hash' if own_session_quiescent else 'unfrozen_live_writer_ownership_hold',
+             'executed_command':executed}
+ 
+ 
+@@ -631,6 +965,8 @@
+                 if {k:env[k]for k in method['manifest']['pinned_runtime_environment']}!=method['manifest']['pinned_runtime_environment']:raise RuntimeError('Pinned runtime drift')
+             provenance['profile'] = run(ncu, env, scratch, slot/'execution.log',
+                                         timeout, reserve_mib*1024**2,guard,monitor_gpu=True,artifact_policy=artifact_policy)
++            if not provenance['profile'].get('own_session_quiescent',False):
++                raise RuntimeError('Own-session generation/quiescence unresolved: no counter freeze or scratch cleanup')
+             if method:
+                 # run() returns only after its own session is quiescent. Preserve
+                 # actual raw-byte identity BEFORE any source/SDK post-gate can fail.
+@@ -801,53 +1137,60 @@
+             provenance['status'] = 'collection_failed'
+         provenance['error'] = str(error)
+     finally:
+-        if artifact_policy:
+-            expected_files={}
+-            for trial in range(1,6):
+-                if plan['benchmark']=='perlin':expected_files[scratch/('perlin_trial'+str(trial)+'.bin')]=1541441088
+-                elif plan['benchmark']=='su3':
+-                    output=scratch if plan['model']=='cuda' else scratch/'profile_outputs'
+-                    expected_files[output/('su3_trial'+str(trial)+'.bin')]=1347849664
+-                else:expected_files[scratch/'profile_outputs'/('trial'+str(trial)+'.bin')]=1073746496
+-            if plan['benchmark']=='zmddft':
+-                expected_files[scratch/'profile_outputs/private_capture/diagnostics'/(plan['model']+'_impulse_stages_f64.bin')]=805306368
+-            validation=[{'path':str(path),'expected_bytes':expected,'actual_bytes':path.stat().st_size if path.is_file() else None}
+-                for path,expected in expected_files.items()]
+-            complete=all(row['actual_bytes']==row['expected_bytes'] for row in validation)
+-            provenance['large_artifact_validation']={'all_declared_payload_files_complete':complete,'files':validation,
+-                'scope':'Size completeness only, independent of numerical checks and rawcounter validity; auxiliary bytes are disposable only after hash manifest.'}
+-            if not complete and provenance['status']=='profile_process_completed':
+-                provenance['status']='profile_process_completed_artifact_incomplete'
+-        if isolated_review:
+-            retained=[]
+-            directory=slot/'negative_raw'
+-            for path in sorted(directory.iterdir()) if directory.is_dir() else []:
+-                if not path.is_file() or path.is_symlink():continue
+-                data=path.read_bytes();retained.append({'path':str(path.relative_to(slot)),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'base64_bytes':base64.b64encode(data).decode('ascii')})
+-            dump(slot/'isolated_assertion_negative_raw.json',{'scope':'Exact fresh five-negative stdout/stderr/status logs, retained before any rejection; not numerical outputs or historical recovery.','files':retained})
+-        if application_review:
+-            passes=scratch/'profile_outputs/application_passes'
+-            retained=[]
+-            for path in sorted(passes.rglob('*')) if passes.is_dir() else []:
+-                if not path.is_file() or path.is_symlink():continue
+-                data=path.read_bytes()
+-                retained.append({'path':str(path.relative_to(scratch)), 'bytes':len(data),
+-                                 'sha256':hashlib.sha256(data).hexdigest(),
+-                                 'base64_bytes':base64.b64encode(data).decode('ascii')})
+-            dump(slot/'application_replay_pass_artifacts.json',{'scope':'Exact per-pass complete property artifacts, raw stdout and child status receipts; diagnostic/verification evidence separate from counter matching.', 'files':retained})
+-        for name in ('overlay_build_outcome.json','extra_build_outcome.json'):
+-            receipt=scratch/name
+-            if receipt.is_file():
+-                shutil.copy2(receipt,slot/'build_outcome.json')
+-        manifest = []
+-        for path in sorted(scratch.rglob('*')):
+-            if path.is_file() and not path.is_symlink():
+-                manifest.append({'path': str(path.relative_to(scratch)),
+-                                 'bytes': path.stat().st_size, 'sha256': sha(path)})
+-        dump(slot/'profiling_auxiliary_manifest.json', manifest)
+-        provenance['auxiliary_manifest_sha256'] = sha(slot/'profiling_auxiliary_manifest.json')
+-        if not retain_auxiliary:
+-            shutil.rmtree(scratch)
++        ownership_hold=any(isinstance(provenance.get(k),dict) and provenance[k].get('own_session_quiescent') is False
++                           for k in ('profile','pre_profile_checks','build'))
++        if ownership_hold:
++            provenance['status']='collection_failed_ownership_quiescence_unresolved'
++            provenance['scratch_retained_unfrozen_ownership_hold']=True
++            provenance['scratch_freeze_cleanup']='Not performed: live/unknown session generation prevents stable evidence or disposable-scratch cleanup'
++        else:
++            if artifact_policy:
++                expected_files={}
++                for trial in range(1,6):
++                    if plan['benchmark']=='perlin':expected_files[scratch/('perlin_trial'+str(trial)+'.bin')]=1541441088
++                    elif plan['benchmark']=='su3':
++                        output=scratch if plan['model']=='cuda' else scratch/'profile_outputs'
++                        expected_files[output/('su3_trial'+str(trial)+'.bin')]=1347849664
++                    else:expected_files[scratch/'profile_outputs'/('trial'+str(trial)+'.bin')]=1073746496
++                if plan['benchmark']=='zmddft':
++                    expected_files[scratch/'profile_outputs/private_capture/diagnostics'/(plan['model']+'_impulse_stages_f64.bin')]=805306368
++                validation=[{'path':str(path),'expected_bytes':expected,'actual_bytes':path.stat().st_size if path.is_file() else None}
++                    for path,expected in expected_files.items()]
++                complete=all(row['actual_bytes']==row['expected_bytes'] for row in validation)
++                provenance['large_artifact_validation']={'all_declared_payload_files_complete':complete,'files':validation,
++                    'scope':'Size completeness only, independent of numerical checks and rawcounter validity; auxiliary bytes are disposable only after hash manifest.'}
++                if not complete and provenance['status']=='profile_process_completed':
++                    provenance['status']='profile_process_completed_artifact_incomplete'
++            if isolated_review:
++                retained=[]
++                directory=slot/'negative_raw'
++                for path in sorted(directory.iterdir()) if directory.is_dir() else []:
++                    if not path.is_file() or path.is_symlink():continue
++                    data=path.read_bytes();retained.append({'path':str(path.relative_to(slot)),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'base64_bytes':base64.b64encode(data).decode('ascii')})
++                dump(slot/'isolated_assertion_negative_raw.json',{'scope':'Exact fresh five-negative stdout/stderr/status logs, retained before any rejection; not numerical outputs or historical recovery.','files':retained})
++            if application_review:
++                passes=scratch/'profile_outputs/application_passes'
++                retained=[]
++                for path in sorted(passes.rglob('*')) if passes.is_dir() else []:
++                    if not path.is_file() or path.is_symlink():continue
++                    data=path.read_bytes()
++                    retained.append({'path':str(path.relative_to(scratch)), 'bytes':len(data),
++                                     'sha256':hashlib.sha256(data).hexdigest(),
++                                     'base64_bytes':base64.b64encode(data).decode('ascii')})
++                dump(slot/'application_replay_pass_artifacts.json',{'scope':'Exact per-pass complete property artifacts, raw stdout and child status receipts; diagnostic/verification evidence separate from counter matching.', 'files':retained})
++            for name in ('overlay_build_outcome.json','extra_build_outcome.json'):
++                receipt=scratch/name
++                if receipt.is_file():
++                    shutil.copy2(receipt,slot/'build_outcome.json')
++            manifest = []
++            for path in sorted(scratch.rglob('*')):
++                if path.is_file() and not path.is_symlink():
++                    manifest.append({'path': str(path.relative_to(scratch)),
++                                     'bytes': path.stat().st_size, 'sha256': sha(path)})
++            dump(slot/'profiling_auxiliary_manifest.json', manifest)
++            provenance['auxiliary_manifest_sha256'] = sha(slot/'profiling_auxiliary_manifest.json')
++            if not retain_auxiliary:
++                shutil.rmtree(scratch)
+         provenance['finished_at'] = utc()
+         dump(slot/'profile_provenance.json', provenance)
+     # Root is the only measurement-field writer. Never call this from parallel GPU workers.

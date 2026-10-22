@@ -1,0 +1,11 @@
+--- canonical_original_study_bridge.cu
++++ prospective_postROI_output_stream_copy.cu
+@@ -68,7 +68,7 @@
+  p[0]=out;a[4]=1;a[5]=1024;a[6]=1;a[7]=4;launch(3,-1);
+  if(ft)fclose(ft);
+  // All surviving state, exact categorical outputs and redzones after ROI.
+- if(fo){FILE*tmp=tmpfile();write_state(tmp,c,h[0],h[1],out,ys,lut,ne,rows,cnt);long bytes=ftell(tmp);rewind(tmp);std::vector<uint32_t>s(bytes/4);fread(s.data(),4,s.size(),tmp);fclose(tmp);size_t nf=2*c.M*c.H+c.M*10;for(size_t j=0;j<s.size();j++){double d;if(j<nf){float v;memcpy(&v,&s[j],4);valid &=std::isfinite(v);d=v;}else d=int32_t(s[j]);fwrite(&d,8,1,fo);checked++;}
++ if(fo){std::string temp_path=std::string(outdir)+"/state_serialization_t"+std::to_string(trial)+"_c"+std::to_string(c.id)+".tmp";FILE*tmp=fopen(temp_path.c_str(),"w+b");if(!tmp){perror("SNICIT_SERIALIZATION_TMP_OPEN");abort();}write_state(tmp,c,h[0],h[1],out,ys,lut,ne,rows,cnt);long bytes=ftell(tmp);rewind(tmp);std::vector<uint32_t>s(bytes/4);fread(s.data(),4,s.size(),tmp);fclose(tmp);size_t nf=2*c.M*c.H+c.M*10;for(size_t j=0;j<s.size();j++){double d;if(j<nf){float v;memcpy(&v,&s[j],4);valid &=std::isfinite(v);d=v;}else d=int32_t(s[j]);fwrite(&d,8,1,fo);checked++;}
+  for(int row=0;row<c.M;row++){int pred=0;for(int j=1;j<10;j++)if(out[row*10+j]>out[row*10+pred])pred=j;double d=pred;fwrite(&d,8,1,fo);checked++;}
+  int actual=0;for(int row=0;row<c.M;row++){int pred=0;for(int j=1;j<10;j++)if(out[row*10+j]>out[row*10+pred])pred=j;actual+=pred==label[row];}valid &=cnt[0]==actual;
+  for(auto e:allocations){std::vector<unsigned char>g(G*e.size);ck(cudaMemcpy(g.data(),(char*)e.p+e.n*e.size,g.size(),cudaMemcpyDeviceToHost));for(int j=0;j<G;j++){double d;if(e.size==1)d=g[j];else if(e.isfloat){float v;memcpy(&v,g.data()+j*4,4);d=v;}else{int v;memcpy(&v,g.data()+j*4,4);d=v;}valid &=d==91;fwrite(&d,8,1,fo);checked++;}}

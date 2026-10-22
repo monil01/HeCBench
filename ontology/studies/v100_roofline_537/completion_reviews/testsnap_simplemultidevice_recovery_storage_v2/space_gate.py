@@ -1,0 +1,4 @@
+"""Read-only free-space gate; never launches a process or removes any path."""
+from pathlib import Path
+import argparse,json,shutil,sys,hashlib
+p=argparse.ArgumentParser();p.add_argument('--benchmark',required=True,choices=['testSNAP','simpleMultiDevice']);a=p.parse_args();path=Path(__file__).with_name('storage_policy.json');raw=path.read_bytes();policy=json.loads(raw);free=shutil.disk_usage('/tmp').free;need=policy['per_benchmark_prelaunch_required_free_bytes'][a.benchmark];passed=free>=need;print(json.dumps({'benchmark':a.benchmark,'passed':passed,'free_bytes':free,'required_bytes':need,'policy_sha256':hashlib.sha256(raw).hexdigest(),'scope':'Read-only capacity observation; no launch, cleanup or GPU authorization. Must be followed only by root-reviewed serial collector job.'}));sys.exit(0 if passed else 2)

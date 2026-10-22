@@ -1,0 +1,42 @@
+from pathlib import Path
+import json,hashlib,gzip,fcntl,copy
+O=Path(__file__).parent;P=O.with_name('foreign072_continuation_and065_import_v2');W=Path('/home/imo/HeCBench_julia');R=Path('/tmp/hecbench-roofline-v100-20261020');checks=[];cache={}
+def H(p):
+ p=Path(p);s=p.stat();k=(str(p),s.st_size,s.st_mtime_ns)
+ if k not in cache:
+  h=hashlib.sha256()
+  with p.open('rb')as f:
+   for b in iter(lambda:f.read(4<<20),b''):h.update(b)
+  cache[k]=h.hexdigest()
+ return cache[k]
+def ck(n,v,d=None):
+ checks.append({'check':n,'passed':bool(v),'detail':d})
+ if not v:raise ValueError((n,d))
+def load(p):p=Path(p);return json.loads(gzip.decompress(p.read_bytes())if p.suffix=='.gz'else p.read_bytes())
+def sub(v,a,b):
+ if isinstance(v,str):return v.replace(a,b)
+ if isinstance(v,list):return [sub(x,a,b)for x in v]
+ if isinstance(v,dict):return {sub(k,a,b):sub(x,a,b)for k,x in v.items()}
+ return v
+ck('controller_exact',H(P/'controller072.py')=='aceb0f07f99c920a49adfc2da3fcd00dc4417a2352b004a06bd64eee246b62cf');ck('proposal_exact',H(P/'proposal072.json')=='26ad9d25733c219a190458fbd76981c768c405ba938ed73643c862e9cd6e140a');ck('adapter_exact',H(P/'import_nested065.py')=='bdd3b20c190e2934c82a86ee6ccb930bafbc5ddbbfec7aeaf4259b0e7990c828');ck('delivery_exact',H(P/'DELIVERY.json')=='d6209b65b491d78c52453e132d985f3bd483a4876f0909d40a5e0acf9588fcdb');delivery=load(P/'DELIVERY.json');r=load(P/'proposal072.json');data=load(P/'continuation_jobs.json');parentreview=load(data['parent_review']['path']);parentreceipt=load(data['parent065_receipt']['path']);jobs=r['jobs'];oldjobs={j['job_id']:j for j in parentreview['jobs']};expected={j['job_id']for j in parentreview['jobs']if j['group']=='foreign'and not j['issues']}-{'atomicSystemWide__cuda_jl'}
+ck('parent_receipt_final_exact',H(data['parent065_receipt']['path'])==data['parent065_receipt']['sha256']and parentreceipt['status']=='new_foreign_activity_stop_remaining_jobs_unattempted_no_retry'and bool(parentreceipt['finished_at']));ck('only_one_previous_attempt',parentreceipt['collector_invocations']==1 and len(parentreceipt['steps'])==1 and parentreceipt['steps'][0]['jobs']==['atomicSystemWide__cuda_jl']);ck('26exact_unattempted_set',len(jobs)==26 and len(expected)==26 and {j['job_id']for j in jobs}==expected);ck('no_atomicCUDAjl_or_TGVNN',all(j['job_id']!='atomicSystemWide__cuda_jl'and j['benchmark']!='tgvnn'for j in jobs));ck('held_tsne_not_recreated','tsne__ka'not in expected)
+for name,e in delivery['files'].items():ck('delivery_frozen_file',H(P/name)==e['sha256']and(P/name).stat().st_size==e['bytes'],name)
+with open('/tmp/hecbench-roofline-metadata.lock','r')as lock:
+ fcntl.flock(lock,fcntl.LOCK_SH)
+ for typ in ['tool_bindings','packet_bindings']:
+  for path,h in r[typ].items():ck(typ,H(path)==h,path)
+ g=r['parent065_generation_authority'];ck('generation_authority_exact_bytes',H(g['original_path'])==H(g['immutable_copy'])==g['sha256']==g['original_sha256']);ck('generation_source_actual319164',"319164"in Path(g['immutable_copy']).read_text()and "83719861"in Path(g['immutable_copy']).read_text());ck('exact_generation_registered',{'pid':319164,'start_ticks':'83719861'}in r['predecessors'])
+ for j in jobs:
+  tag=j['job_id'];parent=oldjobs[tag];new=load(j['prepared_plan']['path']);old=load(parent['prepared_plan']['path']);ck('newplan_exactSHA',H(j['prepared_plan']['path'])==j['prepared_plan']['sha256'],tag);ck('former065_plan_exactSHA',H(j['former065_prospective_plan']['path'])==j['former065_prospective_plan']['sha256']==H(parent['prepared_plan']['path']),tag);ck('full_inverse_to_original065_prospective',sub(new,j['plan_root'],parent['plan_root'])==old,tag);ck('flat_reserved072root',j['plan_root']==str(R/('batch072-'+tag)));ck('fresh072root_uncreated',not Path(j['plan_root']).exists());ck('old065slot_never_staged',not Path(j['former065_future_plan_path']).parent.exists());ck('exact_one_model_root_layout',Path(j['future_plan_path'])==Path(j['plan_root'])/j['benchmark']/j['model']/'plan.json')
+  ledger=load(W/'ontology/studies/v100_roofline_537/benchmarks'/f"{j['benchmark']}.json");ct=ledger['accepted_named_contract'];ck('current_named_contract',all(ct[k]==v for k,v in j['expected_contract'].items()),tag);ck('current_latest_capture',ledger['models'][j['model']]['latest_profile_attempt']['profile_id']==j['expected_latest_profile_id'],tag)
+  for path,h in j['readonly_bindings'].items():ck('actual_readonly_sourcebinding',H(path)==h,path)
+  for cp in j['source_copies']:
+   raw=Path(cp['frozen_copy']['path']).read_bytes();ck('exact_frozen_wrapper',H(cp['frozen_copy']['path'])==cp['future_sha256']);ck('wrapper_has_no065_literal',b'batch065'not in raw);ck('wrapper_dest_ownfreshscratch',Path(cp['future_copy']).is_relative_to(j['scratch']))
+  argv=j['argv'];ck('unchanged_per_job_flags',sub(argv,j['plan_root'],parent['plan_root'])==parent['argv'],tag);ck('retained_cleanup_skip_guard', '--retain-auxiliary'not in argv and '--skip-qualified-selected'in argv and new['environment_overrides']['CUDA_VISIBLE_DEVICES']=='6');ck('no_blocking_gate_removed',new['blocking_gates']==old['blocking_gates']==[])
+ spec=load(P/'nested065_import_inventory.json');source=Path(spec['original_slot']);ck('exact_nested_source_slot',source==R/'batch065/atomicSystemWide__cuda_jl/atomicSystemWide/cuda_jl');ck('exact19files',len(spec['files'])==spec['file_count']==19 and sum(x['bytes']for x in spec['files'])==spec['byte_total']==817554);ck('no_source_inventory_extra',{p.name for p in source.iterdir()}=={x['name']for x in spec['files']})
+ for x in spec['files']:ck('raw_file_immutable',not(source/x['name']).is_symlink()and H(source/x['name'])==x['sha256']and(source/x['name']).stat().st_size==x['bytes'],x['name'])
+ pv=load(source/'profile_provenance.json');pl=load(source/'plan.json');ck('one_finished_failed_actual_profile',pv['status']=='profile_process_failed'and pv['profile']['returncode']==-15 and pv['profile']['stop_reason']=='external_gpu_activity_detected_own_profile_stopped'and bool(pv['finished_at']));ck('raw_plan_counter_log_SHA_joins',H(source/'profile_provenance.json')==spec['source_provenance_sha256']and H(source/'plan.json')==pv['plan_sha256']==spec['source_plan_sha256']and H(source/'counters.csv')==pv['counters_sha256']and H(source/'execution.log')==pv['profile']['log_sha256']);ck('no_derived_positions',not(source/'derived.json').exists());ck('exact_original_contract',pl['configuration_id']==spec['configuration_id']and pl['raw_config_sha256']==spec['raw_config_sha256']and pl['reference_result_sha256']==spec['reference_result_sha256']);ck('alias_uncreated',not Path(spec['prospective_flat_alias_root']).exists());ck('alias_frozen_uncreated',not(W/spec['prospective_frozen_profile']).exists())
+ frozen=(W/spec['prospective_frozen_profile']).parent
+ for p in frozen.glob('*/profile_provenance.json.gz'):ck('no_duplicate_actual_failed_attempt',hashlib.sha256(gzip.decompress(p.read_bytes())).hexdigest()!=spec['source_provenance_sha256'],str(p))
+ fcntl.flock(lock,fcntl.LOCK_UN)
+report={'source_review_passed':True,'root_admissible_subject_to_final_atomic_revalidation':True,'static_checks':len(checks),'checks':checks,'continuation_jobs':26,'attempted_atomicCUDAjl_retried':False,'parent_actual_invocations':1,'import_raw_files':19,'import_raw_bytes':817554,'new_import_process_count':0,'GPU_queries_launches_build_tests_candidate_imports_sharededits':0,'scope':['26exactunattempted jobs only,flat072job roots; no065restart/atomicCUDAjlretry/TGVNNrelease','All26completeplaninverses to frozen065proposals,6unchangedwrappercontents no065paths; flags/sourcebindings preserved','Stableidle is a prospective root-only exactGPU6 query gate under commonlock6samples/10sec, released beforeC21 independentrecheck; wait may be unbounded','Controllermax26onecall/model/no retries, foreignhalt before nextjob, per-job rawroot exactlyone model','Adapter exact19file817554B lossless sameactualprocess alias, no imports/derivation/ledgerwrite; oldnestedraw unchanged and originalplan/prov paths intentionally retained','AdaptermetadataEX/fsync/atomicrename/checkduplicatefrozenprovenance; not a newexecution or acceptance','No live collector/parser/helper SHA changes while064runs; frozenlegacyC21pins kept','DefaultNEWscratchpostmanifestcleanup, primarydata/cache/oldfailedhistory untouched; binaryrecert not claimed']};(O/'independent_review.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({'checks':len(checks),'review_sha256':H(O/'independent_review.json')}))

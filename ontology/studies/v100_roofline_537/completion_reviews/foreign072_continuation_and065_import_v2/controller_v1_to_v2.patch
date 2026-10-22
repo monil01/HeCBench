@@ -1,0 +1,22 @@
+--- private_v1/controller072.py
++++ private_v2/controller072.py
+@@ -79,7 +79,7 @@
+    while True:
+     need(shutil.disk_usage('/tmp').free>=2*1024**3,'Storage reserve below2GiB during idle wait')
+     results=[]
+-    for fields in ['--query-gpu=uuid,memory.used,utilization.gpu','--query-compute-apps=pid,process_name']:
++    for fields in ['--query-gpu=uuid,memory.used,utilization.gpu','--query-compute-apps=pid']:
+      cmd=['/usr/bin/nvidia-smi','-i',UUID,fields,'--format=csv,noheader,nounits'];proc=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=15)
+      results.append({'command':cmd,'returncode':proc.returncode,'stdout':proc.stdout,'stderr':proc.stderr});need(proc.returncode==0,'GPU6 idle-query failure; no launch')
+     data=list(csv.reader(results[0]['stdout'].splitlines()));need(len(data)==1 and len(data[0])==3,'Unknown GPU6 identity/idle record');u,mem,util=[v.strip()for v in data[0]];need(u==UUID,'GPU6 UUID changed');mem=int(mem);util=int(util)
+@@ -97,8 +97,8 @@
+  delivery=load(HERE/'DELIVERY.json')
+  for name,e in delivery['files'].items():need(sha(HERE/name)==e['sha256']and(HERE/name).stat().st_size==e['bytes'],'Packet changed: '+name)
+  review=load(HERE/'proposal072.json');need(sha(__file__)==review['controller_sha256'],'Controller drift');verify(review['tool_bindings']);verify(review['packet_bindings']);root=Path(review['source_root']);jobs=review['jobs'];need(len(jobs)==26 and len({j['job_id']for j in jobs})==26,'Exact26 job set required');need(all(j['job_id']!='atomicSystemWide__cuda_jl'and j['benchmark']!='tgvnn'for j in jobs),'Attempted atomic or independentTGVNN forbidden');need(set(auth.get('allowed_job_ids',[]))=={j['job_id']for j in jobs},'Root exact26 authorization mismatch')
+- # Parent ended receipt is immutable; its PID startticks were not recorded, never invented.
+- need(not Path('/proc/319164').exists(),'Ended parent PID currently present/reused; hold for explicit review, no signals');generations(review)
++ # Parent ended receipt and exact root-recorded generation are immutable bindings.
++ generations(review)
+  pending=[];skips=[]
+  for j in jobs:
+   need(Path(j['plan_root'])==RAW/('batch072-'+j['job_id']),'Nonflat or unreserved raw root');need(not Path(j['plan_root']).exists(),'Already-created072 root: preserve/hold, never resume');need(not Path(j['former065_future_plan_path']).parent.exists(),'Old065 job was staged/attempted; no continuation allowed');verify(j['readonly_bindings']);need(sha(j['prepared_plan']['path'])==j['prepared_plan']['sha256'],'Plan changed');(skips if current(j,root)=='qualified_skip'else pending).append(j)

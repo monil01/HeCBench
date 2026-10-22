@@ -1,0 +1,9 @@
+# Independent batch15 source review
+
+Frozen proposal `f32cd34141b62ad82b67f16a7e1289860319c39d1e40f4354f44f91043f33c34` passes 85,969 independent checks: 80,622 primary parent/source/quote/match checks plus 5,347 byte-offset/execution-binding/current INDEX/contract checks. All32 model records across eight names retain 195 inclusions and12 exclusions;636 saved rows match included families and225 remain unassigned. Five aliases avoid duplicate attribution, and unresolved placeholders are unchanged. Saxpy-ompt allfour upfront null-CID holds remain valid.
+
+Exact root-note approval is required before adoption: `/home/imo/HeCBench_julia/src/scan2-cuda/main.cu`, SHA `b4ebfd20e21181df297456e8d162de10ca5b13e1850b383b0df7b022e78aa177`, encoding `latin-1`. Full10,291-byte inverse and every quoted line's byte span match the original. This is a single hash-bound decoding rule, not a generic fallback or source transformation. `scan.h` remains explicitly unquoted with its captured SHA retained; this does not assert that its device definitions are uncalled.
+
+S8N three-rank ternary callback selection and nine CUDA.jl SA entry selectors are supported by exact source launchers and positive saved families. Timers differ materially: SA includes recursive construction/vendor operations; SC includes hybrid CPU workers and GPU completion; scans retain their segmented/global source semantics. S3D sourceformula agreement does not independently validate chemistry or a coupled flow model. SAD corrected-native and sampling's limited operator scope are preserved.
+
+Adoption remains conditional on exact root encoding approval and atomic parent/selection revalidation. No sampled invocation phase, fullROI, causal bottleneck, new numerical recertification or vendor-kernel identity is claimed. No GPU/query, build, tests, target imports, Git or shared scientific edits occurred.

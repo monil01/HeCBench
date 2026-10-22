@@ -1,0 +1,11 @@
+# Private descriptive-table exporter correction
+
+Original target: `2026-PASC-Hecbench-Julia-paper/tools/prepare_v100_failure_tables.py`. Proposed source SHA is recorded in source_bindings.json; minimal.patch is source-only, not applied or executed/imported.
+
+Changes are restricted to caption metadata and descriptive operational-taxonomy accounting: dynamic bound progressUTC label or explicit --snapshot-label; full known category mapping; display-sum invariants537/model in selected/latest; separate historical attempt units; exact raw unknown categories preserved with an explicit review-needed row, unknown_categories.json, publication_ready=false and a nonzero exit after writing that held packet. This prevents silent omissions without pretending unknown causes are known. No collector, metric, derivation, acceptance, numerical, source-science or historical outcome is modified.
+
+With `--snapshot-label '21 October 2026, 18:38 UTC'`, the old literal caption is unchanged. Added zero-count mappings do not change old table row values. Actual saved-JSON validation used the paper's own bound final_snapshot1732 (not a mixed ancillary review folder) and the finalv19 snapshot2666. Every selected/latest model still totals537 and all historical records are represented. Existing code would omit5selected,8latest and16historical outcomes from v19 displayed category rows; corrected mappings cover them all. All19 current classifier constant-return codes are mapped. The unknown branch was source-reviewed, not runtime exercised. No proposed exporter was run or imported.
+
+The newly root-adopted12 runtime-only rows are authoritative for the *next* refreshed census; older snapshots retain their old7. Their exact root receipt and scope are in saved_json_mapping_validation.json. Do not manually add5 to old exported statistics.
+
+Source authoring caught a snapshot-label loop-variable shadowing error before delivery; that draft is retained. Data validation initially selected an ancillary historical directory whose summary and member generations differ; the rejected-input script is retained. Final validation uses the immutable old input path named by the paper's own provenance. These are shared CPU analysis/preparation events, not benchmark/compiler/JIT attempts.

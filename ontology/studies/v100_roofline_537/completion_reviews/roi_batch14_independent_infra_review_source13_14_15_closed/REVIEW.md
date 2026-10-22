@@ -1,0 +1,21 @@
+# Independent sourcebatch14 review
+
+**No root-adoption blocker found in the exact frozen proposal** e9ce4c4114c7e29c34d1fdcba6beffe6edd498e5e67590add63aa101ed2d490a, delivery inventory2c893cae4b8554272bb9055c271eeaacafbf70ce99d1291ca287d8ec690f838d. This is source membership annotation only, not process/counter/numerical recertification or root admission.
+
+Independent stdlib-only saved-data review (no author-tool/candidate/target imports or execution) verified31models/8names,148updates=109inclusions+39exclusions,22included aliases with null regex,208positive family-matched rows among292actual saved rows. Every selected observation identity/hit list was independently recomputed;84unassigned rows remain unassigned. All metadata files were read under short beginning/end shared-lock snapshots; the sequential snapshots and126source files were stable. Canonical INDEX and compressed/raw parent joins, record/stage canonical hashes, frozen config/result/current contract CIDs, captured plan/provenance/counter/manifest bindings,148exact callsite contexts and74788source-line evidence checks passed. Quote count repeats material used as evidence and timer boundaries; it is not a count of independent scientific arguments. Additional330checks covered full retained source byte texts, narrow update whitelist, held authorities and aliases. Details and exact input SHAs remain in the frozen author packet and independent static_audit.json/additional_checks.json.
+
+## Source/science checks
+
+- RBC: configured_source.cuh timer begins before full RK3 loop (898), ends after synchronized completion (965); cuBLAS operations, dt host transfer and conditional Nusselt calculation are inside. The18native configured callsites map to timed closure;18archived host-driver callsites are excluded. All3Julia callbacks have six emitting source operations0,1,2,3,4,6; op5 add_x is defined but absent from every RBCall emitter. The checked dispatch-count vector includes exactly0atop5. Correctly exclude that stage instead of calling every definition executed. This supplies no generic vendor-kernel identity, no pureJulia full controller, and no new sampled-phase assertion. Existing runtime phase qualifiers survive unchanged.
+- Reaction: dependent axis derivatives/Laplacian/reaction/update batches retain resets and full-state scientific checks outside the timer. No arbitrary long-time physical claim is introduced.
+- RecursiveGaussian: the same recurrence/transpose helper appears in timed pipeline and untimed oracle replay. Family inclusion alone leaves actual sampled invocation unproved. Native missing executed copy remains held; current canonical source was not substituted.
+- ReLU: Float16 gradient gating and packed signedInt8 activation remain separate source arithmetic, not inferred FP32/tensor work. Cache reshape performs explicit Float32 scale/conversion into finite E4M3 bytes and integer layout work; payload names do not establish actual floating ceilings.
+- Resize preserves the qualified corrected-native Float32 ratio/weight policy and rounding boundaries. ResNet's six operator/block paths do not certify a complete model. Reverse2D preserves UInt widths/layouts/axis behavior and captured STUDY_FIX_VECTOR build qualification.
+
+## Holds and limits
+
+All4reverse canonical accepted contracts still have nullCID and are excluded; no fallback repairs that field. Replacement reverse2D joins exact named contracts. Native recursiveGaussian is separately held because actual selected copied source is unavailable. These5holds are independently hash-bound and are not framework unsupported findings.
+
+Only permitted membership/proof/regex-disable/alias metadata changes occur; no original stage definition, scientific obligation, source arithmetic, selected capture, metric math, full-ROI/steady-state/launch-census/bottleneck qualification or actual invocation phase is promoted. Root must revalidate under its exclusive merge lock and hold any changed selection, parent or source. This independent review does not authorize any GPU execution or acceptance of old fragments.
+
+No GPU query, process probe, source recreation, build, test, target import, shared mutation or Git action occurred. The saved-JSON/source comparisons are the authorized scientific evidence review, not benchmark execution.

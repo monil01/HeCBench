@@ -1,6 +1,37 @@
 # Julia Correctness Check
 
-## Current profiler and controller authority: v19 finished; targeted gap review
+## Latest continuation checkpoint — 2026-10-22 15:59 UTC
+
+The coherent saved-data snapshot contains **2047 completed captures**, **509
+benchmarks with all four captures**, and **2682 frozen attempts**. Its independent
+audit recomputes32945 kernel records with zero issues. Remaining selected slots:
+45 process failures,20 plan holds,20 native-hardware holds,12 scoped runtime
+cases with no device kernels, and4 replay-method holds. Whole-ROI and causal
+classifications remain zero; captures are partial samples.
+
+TSNE KA, TGVNN CUDA.jl, SPSORT native CUDA, and SLU KA passed all five full
+checks and were committed separately. Read
+`completion_reviews/targeted_recovery_20261022/` for their model-specific receipts.
+Do not promote failed native TGVNN or native Sparkler to profiling success.
+Source batches13–15 are now adopted after the independent counter audit and
+exact RBC-preservation validation passed. The fifteen batches cover **883 model
+records across229 names**, with2080 source-callsite inclusion declarations.
+RBC's108 existing trial2/step240 partial-specialization records are unchanged;
+the original failed validator and the narrow correction are preserved. Read
+`completion_reviews/roi_membership_root_merge_batch13_14_15/root_adoption.json`.
+Source membership adds no new timed-phase, whole-ROI or causal classifications;
+aliases and callsite declarations are not independent scientific kernel counts.
+
+The existing finite064/069–074 queues remain authoritative. Inspect their actual
+receipts and process identities before continuing; do not duplicate them.075 is
+still execution-held. The private ownership-monitor proposals are not canonical
+or launch authority. GPU6 accounting was observed Disabled; do not enable it or
+change global settings. No sudo or privilege escalation. Never signal unknown
+processes or modify a live pinned collector. Shared token receipts remain
+nonexclusive, nonadditive profiling/review effort, not translation cost.
+
+
+## Earlier profiler checkpoint: v19 finished; targeted gap review
 
 The finite v19 campaign and both bounded rounds039/041 finished successfully.
 Its checkpoint is `/tmp/hecbench-roofline-v100-20261020/completion_20261021_v19/checkpoint.json`
@@ -12,13 +43,49 @@ Only exact owned idle CPU parents were superseded; no GPU collector was signaled
 The SU3 fallback063 found all eligible models already qualified and performed
 zero collector invocations, zero staging and zero GPU execution.
 
-At2026-10-22T14:16:24UTC, the selected campaign has2034 completed model captures,
-503 names with four completed captures, and2666 retained attempts. Frozen-counter
-integrity recomputed32696 kernels with zero issues. The114 noncompleted slots
-comprise20 plan holds,57 process failures,20 native-hardware holds,7 no-device-kernel
-cases,5 counter derivation failures,1 collection failure and4 replay-method holds.
-These categories are not numerical translation failures. No complete-ROI or causal
-bottleneck claim follows from a completed partial capture.
+At2026-10-22T15:01:39UTC, the ingested campaign has2043 completed model captures
+and507 names with four completed captures. The2675 frozen attempts recompute32750
+kernels with zero issues. The105 slots without a selected completed kernel capture
+comprise20 plan holds,49 process failures,20 native-hardware holds,12 scoped
+runtime/no-device-kernel cases and4 replay-method holds. Metrics for the runtime
+cases remain null, not zero. Original CSV diagnostics and all25 passing trial
+records for the five newest applicability rows remain preserved.
+
+Root066 completed native RSC and Secp256k1; root067/068 completed all seven
+selected testSNAP Julia and simpleMultiDevice single-GPU6 captures. Each has all
+five actual checks passing; no primary translation/timing verdict changes.
+Root065 ended after one guard stop, leaving26 jobs UNATTEMPTED. Its nested raw
+attempt still requires explicit frozen import; do not describe2675 as every raw
+attempt until that receipt is included. Never restart065 or silently retry atomic.
+The old064 follower ended with zero launches. A separate exact root release
+passed13 idle GPU6 samples over60seconds and admitted one reviewed all-four
+TGVNN traversal with the original five checks and3600-second process deadlines.
+Read `/tmp/roofline-completion-20261021/root064_stable_idle_release_receipt.json`
+and `active_work_537.json`; do not restart either follower or duplicate this run.
+Root069/070 (TSNE KA, SPSORT all4),071 (Sparkler all4),072 (the26 NEVERATTEMPTED
+jobs),073/074 (SLU KA, dispatch all4) are now independently reviewed and launched
+as finite queues. Read their exact root execution receipts in
+`/tmp/roofline-completion-20261021/` and the targeted recovery section in
+`active_work_537.json`; never duplicate them or restart ended065. The exact
+nineteen-file stopped065 attempt has a lossless flat raw alias for the existing
+scanner; this represents the SAME one process, not another execution.075 SNICIT
+is a frozen conditional source proposal and its controller rejects execution
+pending separate reviewed ownership-monitor authority. Source13/14/15 proposals
+are frozen or under independent review and not yet adopted.
+
+Actual064 native completed all five passing trial records but its guard stopped
+PID333309, also recorded by the source-bound benchmark as its own output writer.
+This is evidence for an owned-teardown classification problem; do not recast it
+as proved foreign ownership or retroactively pass the failed profile. A future
+monitor proposal must preserve strict unknown/PID-reuse handling and complete
+source/evidence review. NEVER change live C21/parser/guard bytes while these
+queues pin them, silently substitute a collector, or signal a GPU collector.
+Historical guard categories are observed stops, not universal root-cause proof.
+A queued call or completed target checks alone do not admit counter fragments.
+New profiling scratch may use established canonical collector cleanup only after
+its complete path/size/SHA manifest. Preserve original primary data, caches,
+failed histories and counter/log/provenance files. Discarded fresh binary values
+cannot subsequently be numerically recertified from their hashes.
 
 Continue with root-reviewed finite one-shot recoveries of the actual remaining
 failures. Recheck source, exact selected contract, method, five checks, GPU6 idle
@@ -47,7 +114,7 @@ hours from the long session pause. Use the joint checkpoint for source and paper
 GPU6 only; GPU5 remains unauthorized. Never invoke sudo, install OS packages,
 change global GPU settings, or stop foreign GPU processes.
 
-## Current source authority: twelve audited batches and RBC follow-ups
+## Prior source authority: twelve audited batches and RBC follow-ups
 
 Twelve root-adopted source batches cover790 distinct selected model records
 across205 names, with1697 callsite inclusion declarations. Batches11 and12 were
