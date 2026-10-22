@@ -1,0 +1,9 @@
+# Dated coherent V100 publication data (r2)
+
+Actual exports/plots; no GPU/build/tests. Snapshot PROGRESS16:16:16UTC and frozen audit2684attempts/33023recomputedkernels/zeroissues. Retains537names×4models. 2047valid selected frozen captures,509namesallfour; 1471 modelslots withFPpositions and576no-countedFP slots. SourceNA12/hardware20 remain separate;69slots have no eligible selected capture. These are model-slot counts, not causal/wholeROI classifications.
+
+One CUDA.jl SPSORT selected report awaits frozen audit. The distinct descriptive table row is prospectively root-approved; no live raw contents, success/failure/cause or missing values were inferred. Prior frozen latest-attempt history is a different view. The originalr2 held table remains local unchanged. Selected/latest each2148slots; historical2684records are not additive independent executions/JIT counts. Unknown ANYothercategory still holds publication.
+
+Source15adoption binds883records/229names/2080inclusion declarations (aliases not independentfamilies), with native/CUDAjl/KA/JACC source-reviewed records212/221/226/224. No new phasepromotion/GPUrun. Existing RBCtrial2step240 scope is preserved;27specialization samples are not a fulltimestep. Twelve strictscientific-family intensities retain exactly the old plotted scientific fields, separate from old useful-workTriad/primarymeans. No2022/2025rate pooling, wholeelapsedROI or causal/performance correlation.
+
+Tables, CSV, PDF/SVG and exact sources/inputsSHA comprise this compact paper pack. Full local exports remain in ../{family,assessment,failures}; no raw research uploaded. figures/provenance records actual Python3.9/NumPy/Matplotlib versions. Root alone copies to newdated paperpaths and builds/pushes. Oldpaper data/figures and r1heldhistory remain untouched.

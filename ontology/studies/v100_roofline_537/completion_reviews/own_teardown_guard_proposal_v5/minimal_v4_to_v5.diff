@@ -1,0 +1,167 @@
+--- /tmp/roofline-completion-20261021/own_teardown_guard_proposal_v4/v100_roofline_collect_ownership_proposal.py
++++ /tmp/roofline-completion-20261021/own_teardown_guard_proposal_v5/v100_roofline_collect_ownership_proposal.py
+@@ -192,6 +192,59 @@
+     return members
+ 
+ 
++def monitored_session_scan(session, tracked=()):
++    """Membership evidence only; errors never authorize ownership or signals.
++
++    Known other sessions/UIDs are excluded before full identity reads. An unknown
++    candidate that cannot be excluded is retained until confirmed /proc absence.
++    """
++    result={'members':[], 'unresolved':[], 'disappeared':[], 'excluded':0}
++    tracked=set(tracked)
++    try:
++        pids={int(p.name) for p in Path('/proc').iterdir() if p.name.isdigit()}|tracked
++    except OSError as error:
++        result['unresolved'].append({'pid':None,'stage':'proc_enumeration','error':repr(error)})
++        return result
++    for pid in sorted(pids):
++        path=Path('/proc')/str(pid)
++        sid=None;uid=None;errors=[]
++        try:sid=os.getsid(pid)
++        except OSError as error:errors.append({'stage':'getsid','error':repr(error)})
++        try:uid=path.stat().st_uid
++        except OSError as error:errors.append({'stage':'directory_stat','error':repr(error)})
++        if pid not in tracked and ((sid is not None and sid!=session) or (uid is not None and uid!=os.getuid())):
++            result['excluded']+=1
++            continue
++        try:
++            # Confirm directory absence explicitly; a missing stat/ns file while
++            # the directory exists is unresolved, not a disappeared process.
++            path.stat()
++        except (FileNotFoundError,ProcessLookupError):
++            result['disappeared'].append({'pid':pid,'basis':'proc_directory_absent','errors':errors})
++            continue
++        except OSError as error:errors.append({'stage':'absence_confirmation','error':repr(error)})
++        if pid in tracked and ((sid is not None and sid!=session) or (uid is not None and uid!=os.getuid())):
++            errors.append({'stage':'tracked_candidate_boundary_changed','error':'No generation transfer or detached-writer exclusion from numeric PID'})
++        if not errors:
++            try:
++                raw=(path/'stat').read_text()
++                fields=raw.rsplit(')',1)[1].split()
++                if int(raw.split(' ',1)[0])!=pid or int(fields[3])!=sid:
++                    raise RuntimeError('Session/PID changed during membership snapshot')
++                if sid==session and uid==os.getuid() and fields[0] not in ('Z','X'):
++                    result['members'].append(pid)
++            except (OSError,ValueError,IndexError,RuntimeError) as error:
++                errors.append({'stage':'membership_stat','error':repr(error)})
++        if errors:
++            try:path.stat()
++            except (FileNotFoundError,ProcessLookupError):
++                result['disappeared'].append({'pid':pid,'basis':'proc_directory_absent_after_error','errors':errors})
++                continue
++            except OSError as error:errors.append({'stage':'final_absence_confirmation','error':repr(error)})
++            result['unresolved'].append({'pid':pid,'session':sid,'uid':uid,'errors':errors})
++    return result
++
++
+ class ProcessGenerationOwnership:
+     """Live generation proof, never permission to admit a vanished numeric NVML PID.
+ 
+@@ -205,6 +258,7 @@
+         self.boot_id = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+         self.pid_namespace = Path('/proc/self/ns/pid').stat().st_ino
+         self.records = {}
++        self.scan_unknown_pids = set()
+         self.events = []
+         self.closed = False
+         identity = self.read_identity(leader)
+@@ -331,24 +385,33 @@
+                     'pid':pid, 'error':repr(error),
+                     'prior':prior['identity'] if prior else None}
+ 
++    def scan_members(self):
++        scan=monitored_session_scan(self.leader, set(self.records)|self.scan_unknown_pids)
++        self.scan_unknown_pids.update(e['pid'] for e in scan['unresolved'] if e.get('pid') is not None)
++        self.scan_unknown_pids.difference_update(e['pid'] for e in scan['disappeared'])
++        if scan['unresolved'] or scan['disappeared']:
++            self.events.append({'kind':'strict_monitored_session_scan','scan':scan,'observed_at':utc()})
++        return scan
++
+     def refresh(self):
+-        # Record real live descendants before teardown, even between GPU queries.
+-        # Failed proc reads do not register ownership or transfer an old PID token.
+-        for path in Path('/proc').iterdir():
+-            if not path.name.isdigit():
+-                continue
++        scan=self.scan_members()
++        if scan['unresolved']:
++            raise RuntimeError('Relevant monitored session scan unresolved: '+repr(scan['unresolved']))
++        for pid in sorted(set(scan['members'])|set(self.records)):
+             try:
+-                identity = self.read_identity(int(path.name))
+-                if identity['uid'] != os.getuid():
++                if pid in self.records:
++                    if self.fd_live(self.records[pid]):self.cached_live(pid)
+                     continue
+-                if int(path.name) in self.records:
+-                    self.cached_live(int(path.name))
+-                elif identity['session'] == self.leader:
+-                    proof = self.live_proof(identity)
+-                    if proof is not None:
+-                        self.pin(identity, proof)
+-            except (OSError, ValueError, IndexError, RuntimeError):
+-                continue
++                identity=self.read_identity(pid)
++                proof=self.live_proof(identity)
++                if proof is None:raise RuntimeError('Live session member ownership proof unresolved')
++                self.pin(identity,proof)
++            except (OSError,ValueError,IndexError,RuntimeError) as error:
++                # Retain the numeric candidate for quiescence only, never as an
++                # ownership token or permission to signal a later generation.
++                self.scan_unknown_pids.add(pid)
++                self.events.append({'kind':'refresh_identity_unresolved','pid':pid,'error':repr(error),'observed_at':utc()})
++                raise RuntimeError('Relevant refresh identity unresolved: '+str(pid)) from error
+ 
+     def signal_fresh_session(self, sig):
+         # pidfd_send_signal targets the pinned task generation, never a numeric
+@@ -357,7 +420,10 @@
+         rejected=[]
+         try:
+             self.refresh()
+-            members=own_session_members(self.leader)
++            scan=self.scan_members()
++            if scan['unresolved']:
++                return {'delivered':[],'rejected':scan['unresolved']}
++            members=scan['members']
+         except (OSError,ValueError,IndexError,RuntimeError) as error:
+             return {'delivered':[],'rejected':[{'error':repr(error),'class':'signal_scan_unresolved'}]}
+         for pid in members:
+@@ -407,6 +473,7 @@
+                                 'pidfd_live_at_snapshot':self.fd_live(r)}
+                                for r in self.records.values()],
+                 'GPU_observations':self.events,
++                'unresolved_session_candidate_pids':sorted(self.scan_unknown_pids),
+                 'vanished_cached_PID_is_not_proven_foreign_or_admissibly_owned':True}
+ 
+     def close(self):
+@@ -528,7 +595,13 @@
+         quiescence_started=time.monotonic();descendant_cleanup=[]
+         quiescence_unknowns=[];own_session_quiescent=not leader_signal_identity_hold
+         while own_session_quiescent:
+-            try:members=own_session_members(process.pid)
++            try:
++                if monitor_gpu:
++                    scan=ownership.scan_members() if ownership is not None else monitored_session_scan(process.pid)
++                    if scan['unresolved']:
++                        own_session_quiescent=False;quiescence_unknowns.extend(scan['unresolved']);break
++                    members=scan['members']
++                else:members=own_session_members(process.pid)
+             except (OSError,ValueError,IndexError,RuntimeError) as error:
+                 if not monitor_gpu:raise
+                 own_session_quiescent=False;quiescence_unknowns.append({'error':repr(error)});break
+@@ -576,7 +649,11 @@
+                     if process.poll() is None:pending.append({'pid':process.pid,'basis':'fresh_Popen_child_not_reaped'})
+                 except (OSError,ValueError,IndexError,RuntimeError) as error:errors.append(repr(error))
+                 try:
+-                    for pid in own_session_members(process.pid):pending.append({'pid':pid,'basis':'fresh_session_membership_not_yet_quiescent'})
++                    tracked={event['pid'] for event in unresolved_ownership+quiescence_unknowns if event.get('pid') is not None}
++                    if ownership is not None:tracked.update(ownership.records);tracked.update(ownership.scan_unknown_pids)
++                    scan=monitored_session_scan(process.pid,tracked)
++                    pending.extend({'pid':pid,'basis':'fresh_session_membership_not_yet_quiescent'} for pid in scan['members'])
++                    pending.extend(dict(event,basis='strict_session_scan_unresolved_no_signal') for event in scan['unresolved'])
+                     if ownership is not None:
+                         for pid,record in ownership.records.items():
+                             if ownership.fd_live(record):pending.append({'pid':pid,'basis':'pinned_own_generation_alive'})

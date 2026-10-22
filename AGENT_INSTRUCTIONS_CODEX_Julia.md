@@ -1,10 +1,10 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
-## Latest continuation checkpoint — 2026-10-22 15:59 UTC
+## Latest continuation checkpoint — 2026-10-22 16:17 UTC
 
 The coherent saved-data snapshot contains **2047 completed captures**, **509
-benchmarks with all four captures**, and **2682 frozen attempts**. Its independent
-audit recomputes32945 kernel records with zero issues. Remaining selected slots:
+benchmarks with all four captures**, and **2684 frozen attempts**. Its independent
+audit recomputes33023 kernel records with zero issues. Remaining selected slots:
 45 process failures,20 plan holds,20 native-hardware holds,12 scoped runtime
 cases with no device kernels, and4 replay-method holds. Whole-ROI and causal
 classifications remain zero; captures are partial samples.
@@ -30,6 +30,66 @@ change global settings. No sudo or privilege escalation. Never signal unknown
 processes or modify a live pinned collector. Shared token receipts remain
 nonexclusive, nonadditive profiling/review effort, not translation cost.
 
+
+## Current paper and evidence checkpoint — 22 October 2026
+
+The compact paper repository main is pushed at
+`75308706168af61d3683395b8d1dcb62e4405cac`. Both PDFs compiled after independent
+scientific consistency review: `2026-PASC-Hecbench-Julia-paper/build/main.pdf`
+(12pages) and `build/technical_companion.pdf` (57pages). Actual dated charts,
+per-version failure tables, source-ontology counts and receipts are in
+`data/v100_assessment_20261022/`; older data and figures remain unchanged.
+One explicitly displayed CUDA.jl SPSORT report awaits frozen audit. Current
+snapshot values are2047 valid frozen captures/509all-four names/2684attempts,
+not a claim of complete elapsed-ROI or causal coverage. Profiler strata remain
+separate:2040 selected captures use2022.4.1 and7 use2025.2.0.
+
+Saved-log audit003 joins exactly the2047 plotted capture IDs:2043 standard
+five-check records, one application-replay protocol and three dedicated assertion
+protocols. Dedicated saved raw evidence confirms15expected-error contexts and
+15positive trial joins. No removed binary values were recomputed, no primary
+acceptance or five-run mean was replaced, and execution-only checks are not
+numerical-value equality. Source artifact:
+`completion_reviews/current2047_execution_checks_and_refresh003/`.
+
+Prospective077 Sparkler recovery passed independent source review and is NOT
+launched. It redirects UCX POSIX backing files to a fresh owned ordinary directory;
+MPIranks/backends/math/timers/checks remain unchanged. Original071 permission
+errors and segfault are preserved; unique fault cause/recovery remain unproved.
+Read `completion_reviews/sparkler077_private_UCX_proposal/` and
+`completion_reviews/sparkler077_independent_review/`. Mandatory071all-four
+completion/reaping, raw-success adoption and exact approval gates remain.
+075 SNICIT is still held.076 remains a separate queued calibration, not deployment.
+GPU6's other job has delayed these queues; never signal it or change GPUsettings.
+
+The root shared work window is closed at this checkpoint: BEGIN
+`a5f977aa03274241cc1e5e93` to END `5d4ae81c1a6ac5d82c13fb46`.
+The176distinct closed receipts include its actual inclusive harness delta.
+These are nonexclusive profiling/review/paper windows, not additive per-benchmark
+translation costs or exclusive hours. Cached/reasoning counts are subsets.
+Open a NEW prospective shared window before new scientific work on resume;
+post-END archive/Git/checkpoint packaging is excluded. Never backdate/reopen it.
+
+## Active one-shot ownership calibration076 — pause canonical refreshes
+
+Root076 was explicitly approved and launched as PID416896/start84288787 using
+private candidate `c1c9ffda9a34d23eeea2275ae8fe96c56e0a5b82fa05b9e3cde0d0b11c3449dd`,
+with an independent private metadata copy. Canonical C21 is unchanged. Read
+`/tmp/roofline-completion-20261021/root076_execution_launch_receipt.json`.
+This is ONE scientific triad fixture with all five complete checks; a queued
+call is not validation, deployment, SNICIT075 approval or evidence about foreign
+processes/PID reuse. The process budget is600seconds per build/profile;
+GPU-lock/idle waiting and unknown-writer safety holds can be unbounded.
+
+**Do not run canonical summarize/refresh or rewrite the canonical triad ledger
+while076 is queued/active**: it pins119 bindings, including that ledger.
+Do not automatically ingest `batch076-ownership-calibration` via the summarizer's
+`batch*` glob after it ends. Root must first review the actual outcome and a
+byte-preserving, fully manifested relocation outside discovery, only after
+controller termination and proved writer quiescence. Never move live outputs,
+signal a collector/unknown process, or turn a calibration into selected evidence.
+The new review is source-only until actual runtime admission. Existing064 and
+069–074 queues remain unchanged and can continue against their pinned C21.
 
 ## Earlier profiler checkpoint: v19 finished; targeted gap review
 

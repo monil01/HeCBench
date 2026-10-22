@@ -1,0 +1,21 @@
+--- /tmp/roofline-completion-20261021/own_teardown_guard_proposal_v5/v100_roofline_collect_ownership_proposal.py
++++ /tmp/roofline-completion-20261021/own_teardown_guard_proposal_v5_1/v100_roofline_collect_ownership_proposal.py
+@@ -643,6 +643,7 @@
+             ownership_quiescence_hold={'started_at':utc(),'GPU_lock_release_permitted':False,
+                 'scope':'Unbounded safety/quiescence hold, outside process deadline; ambiguous interval is never admitted'}
+             stop_reason='ownership_quiescence_was_unresolved_no_admission'
++            hold_unknown_pids=set()
+             while True:
+                 pending=[];errors=[]
+                 try:
+@@ -651,7 +652,10 @@
+                 try:
+                     tracked={event['pid'] for event in unresolved_ownership+quiescence_unknowns if event.get('pid') is not None}
+                     if ownership is not None:tracked.update(ownership.records);tracked.update(ownership.scan_unknown_pids)
++                    tracked.update(hold_unknown_pids)
+                     scan=monitored_session_scan(process.pid,tracked)
++                    hold_unknown_pids.update(event['pid'] for event in scan['unresolved'] if event.get('pid') is not None)
++                    hold_unknown_pids.difference_update(event['pid'] for event in scan['disappeared'])
+                     pending.extend({'pid':pid,'basis':'fresh_session_membership_not_yet_quiescent'} for pid in scan['members'])
+                     pending.extend(dict(event,basis='strict_session_scan_unresolved_no_signal') for event in scan['unresolved'])
+                     if ownership is not None:
