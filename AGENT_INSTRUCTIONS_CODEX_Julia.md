@@ -1,56 +1,71 @@
 # HeCBench Julia Porting — Agent Instructions (Codex)
 
-## Current profiler and controller authority: v18
+## Current profiler and controller authority: v19 finished; targeted gap review
 
-Actual calibration003 completed all nine source/geometry cases and both full host
-checks on GPU6 with83 unchanged historical input bindings. The root packer
-independently recomputed the saved rows. The admitted separate method is
-`ncu2025_2_0_V100_sm70_raw_v1`; exact review SHA is
-`65145043726f06195ef78dc89e72ca996b8fbb9217e4f2b8a3226e24e93b5eca`
-under `ontology/studies/v100_roofline_537/profiler_methods/`.
-Corev5 and presentationv3 are now deployed. Actual2025 benchmark captures still
-require explicit reviewed invocation and complete original checks; calibration
-is not a benchmark pass, performance-equivalence claim, or fullROI diagnosis.
+The finite v19 campaign and both bounded rounds039/041 finished successfully.
+Its checkpoint is `/tmp/hecbench-roofline-v100-20261020/completion_20261021_v19/checkpoint.json`
+with status `ready_for_root_review`. Do not restart historical controllers,
+039/041, the CPU refresh, the SU3 fallback, or a whole-suite master. v19 pinned
+26 source inputs and monitored43 controller identities. Canonical adoption:
+`completion_reviews/completion_supervisor/tmpfs063_v19/` under the V100 study.
+Only exact owned idle CPU parents were superseded; no GPU collector was signaled.
+The SU3 fallback063 found all eligible models already qualified and performed
+zero collector invocations, zero staging and zero GPU execution.
 
-Supervisorv18 monitors the40 historical controllers plus root-reviewed
-059/060 and062 method-recovery followers (42total), retaining finite039/041 retry bounds. It pins23 core/presentation source inputs, forwards and resume-binds
-both display authority and exact publication stratum. The root adoption is in
-`completion_reviews/completion_supervisor/method_v5_presentation_v3_v16`.
-Only exact owned idle CPU parents were retired with generation handles; no GPU
-collector was signaled. A new CPU refresh preserves the original allowed PID
-wait list. Read current canonical receipts and actual checkpoint; never restart
-v15/v16/v17 or any historical controller. The new follower waits exact040/043/056--058
-predecessors, skips qualified models and makes at most two collector invocations.
-The062 follower waits the whole exact021 generation and makes at most one
-collector invocation for columnarSolver KA/JACC with a3600-second timeout.
-Its original timeout cause and new SDK compatibility remain unknown until actual runs.
-Further one-shot method recovery followers need
-separate source/runtime review and explicit frontier readoption.
+At2026-10-22T14:16:24UTC, the selected campaign has2034 completed model captures,
+503 names with four completed captures, and2666 retained attempts. Frozen-counter
+integrity recomputed32696 kernels with zero issues. The114 noncompleted slots
+comprise20 plan holds,57 process failures,20 native-hardware holds,7 no-device-kernel
+cases,5 counter derivation failures,1 collection failure and4 replay-method holds.
+These categories are not numerical translation failures. No complete-ROI or causal
+bottleneck claim follows from a completed partial capture.
 
-Plots and publication exports are separated by method/fullversion/review tuple.
-The explicitly selected historical diagnostic stratum is
-`bb70165f0fb0b0236774f801c42dd584f264d2f20b8b7b3ffe72193502cc77ef`:
-recorded2022 version, unknown method identity/review. Do not fill those unknowns.
-Validate canonical authority manifests and input/output hashes; old PDFs alone
-are not current authority. Preserve old2022 data, failed001/002 calibrations,
-raw units, original compiler unknowns, all primary five-run means and all guards.
-GPU5 remains unauthorized. No OS/package installation or privilege operation.
+Continue with root-reviewed finite one-shot recoveries of the actual remaining
+failures. Recheck source, exact selected contract, method, five checks, GPU6 idle
+and output manifests. Preserve original failed histories. Longer CPU build or
+observer deadlines and path-only overlays require separate recorded review;
+never silently weaken inputs, checks, timing boundaries or counter selection.
 
-## Current source authority: ten audited batches and RBC follow-ups
+Calibration003 admitted `ncu2025_2_0_V100_sm70_raw_v1` with review SHA
+`65145043726f06195ef78dc89e72ca996b8fbb9217e4f2b8a3226e24e93b5eca`.
+Its nine cases and both host checks passed with83 unchanged historical bindings.
+The canonical collector remains C21; separately reviewed tmpfs tooling does not
+imply any tmpfs run. Preserve frozen method/version/review strata and raw units.
+Publication diagnostic stratum remains
+`bb70165f0fb0b0236774f801c42dd584f264d2f20b8b7b3ffe72193502cc77ef`.
+Do not replace unknown historical method identities. Validate authority manifests
+and hashes before publication; refresh a complete paper snapshot consistently.
 
-Ten root-adopted source batches cover593 distinct selected model records across152
-names, with1157 callsite inclusion declarations. The tenth adds124 records/32names,
-330 inclusions and158 exclusions; four included aliases share existing families.
-Evidence: `completion_reviews/roi_membership_root_merge_batch10/root_adoption.json`
-under the V100 study. Frozen-counter integrity and separate postannotation
-reconstruction passed. Seven linearprobing retained path overlays have independently
-proved full forward/inverse source-byte equality; no new source was reconstructed.
-MarchingCubes times generation stage5, with preprocessing1--4 outside. LIBOR257
-logical paths differ from256 physical launch threads; LULESH includes adaptive
-host work. Preserve these scopes. Native MatrixT, local-ht JACC and two
-logic-rewrite source-family associations remain withheld, without changing numerical
-acceptance. Aliases are not independent kernels; no sampled phase, launch
-multiplicity, wholeROI or causal flag is promoted.
+A new read-only frozen execution-log audit of2034 selected completed profiles
+observes2030 exact five-trial passing groups, one passing application-replay
+protocol and three dedicated assertion protocols requiring their frozen audit
+joins. It does not recompare binary values or replace primary numerical acceptance.
+Runtime return code alone is insufficient. Keep older1436-profile evidence dated
+separately. Record shared agent token receipts as nonexclusive and nonadditive;
+do not assign these costs to per-benchmark translation or infer exclusive work
+hours from the long session pause. Use the joint checkpoint for source and paper.
+GPU6 only; GPU5 remains unauthorized. Never invoke sudo, install OS packages,
+change global GPU settings, or stop foreign GPU processes.
+
+## Current source authority: twelve audited batches and RBC follow-ups
+
+Twelve root-adopted source batches cover790 distinct selected model records
+across205 names, with1697 callsite inclusion declarations. Batches11 and12 were
+adopted together in one journaled transaction against unchanged source10 parents,
+preserving all four original proposals and the superseded batch11-only dry run.
+They add197 records across53 names,540 inclusions and152 exclusions;16 included
+aliases share existing families. Evidence:
+`completion_reviews/roi_membership_root_merge_batch11_12/root_adoption.json`.
+Frozen-counter integrity and postannotation reconstruction both passed. The only
+new decoder exception is the exact hash-bound reversible Latin1 Projectile header;
+never use a generic fallback or alter original bytes. Native PNS/NTT ambiguity,
+Projectile CUDA.jl and unresolved vendor/placeholders remain withheld. Muon BF16
+storage does not prove vendor instruction precision. Selected particle contracts,
+miniWeather diagnostics, MMCSF host/device timer scope, morphology enum branches
+and myocyte overload identity remain explicit scientific qualifiers. Aliases are
+not independent kernel families. No actual sample phase, wholeROI, causal or
+primary numerical acceptance flags were promoted. Keep earlier source10 findings
+and their immutable receipts as historical evidence.
 
 A separate frozen execution-log audit of1436 selected completed profiles found
 1432 exact five-trial groups with all correctness flags true, one passing

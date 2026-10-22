@@ -1,0 +1,21 @@
+--- v1/v100_roofline_audit.py
++++ v2/v100_roofline_audit.py
+@@ -80,6 +80,9 @@
+                 if prov.get('reviewed_tmpfs_storage') or prov.get('tmpfs_storage_evidence'):
+                     # Use exact frozen validator; never consult volatile scratch/SDK.
+                     source=files['tmpfs_evidence_validator.py']
++                    # Admit known root-reviewed validator identity BEFORE executing retained bytes.
++                    # This constant is source-pinned by the root-adopted audit/frontier, not archive self-attestation.
++                    require(sha(source)=='8dcbeed48e8426d28e6e7b8bcb11c79b960ceb90e235edabe5519bfca3d19d06','Tmpfs validator is not the exact source-reviewed version')
+                     require(sha(source)==prov['tmpfs_storage_evidence']['validator_sha256'],'Tmpfs frozen validator SHA mismatch')
+                     gate=types.ModuleType('frozen_tmpfs_evidence')
+                     exec(compile(source,'<frozen_tmpfs_evidence>','exec'),gate.__dict__)
+@@ -89,6 +92,8 @@
+                     if admission['status']!='validated':
+                         require(prov['status']=='not_started_tmpfs_storage_preflight_hold','Unapproved tmpfs attempt')
+                         qualifications.append({'profile_id':identity,'reason':'Retained tmpfs preflight rejection; no GPU/build/profile attempt admitted'})
++                    elif prov['status']!='profile_process_completed':
++                        qualifications.append({'profile_id':identity,'reason':'Retained tmpfs failed/held process evidence; full-success checks not inferred and no positions admitted'})
+                 if prov.get('profile_window'):
+                     link=plan['profile_window_review'];raw=files['profile_window_review.json']
+                     require(sha(raw)==link['sha256']==prov['profile_window']['review']['sha256'], 'Marker window review SHA mismatch')

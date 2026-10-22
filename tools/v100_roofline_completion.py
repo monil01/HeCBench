@@ -31,6 +31,9 @@ TOOLS=('v100_roofline_summarize.py','v100_roofline_audit.py','v100_roofline_retr
 # Existing generic verification and immutable resume comparison cover these too.
 SOURCE_INPUTS=(
  'tools/v100_roofline_collect.py',
+ 'tools/v100_roofline_collect_tmpfs.py',
+ 'tools/v100_tmpfs_scratch.py',
+ 'tools/v100_tmpfs_evidence.py',
  'tools/v100_profiler_method.py',
  'tools/v100_roofline_classify.py',
  'tools/v100_profile_write_guard.py',

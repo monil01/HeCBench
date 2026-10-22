@@ -1,0 +1,192 @@
+{
+  "status": "source_interpretation_consistent_pending_root_adoption",
+  "findings": [
+    {
+      "case": "mixbench CUDAjl",
+      "finding": "Exact selected source wrapper calls benchmark_kernel!; approve only this callable value and its matching saved family. No generic selector broadening.",
+      "evidence": {
+        "path": "/home/imo/HeCBench_julia/src/mixbench-julia/mixbench-julia-cuda.jl/study.jl",
+        "sha256": "d280656b41ef7bb6cdc657c4512764422e208f0ffb57e064ab38802b003caed8",
+        "spans": [
+          {
+            "line": 3,
+            "start_byte": 157,
+            "end_byte": 250,
+            "text": "launch_julia!(a,ci,blocks)=(@cuda threads=256 blocks=blocks benchmark_kernel!(a,ci);nothing)\n"
+          },
+          {
+            "line": 4,
+            "start_byte": 250,
+            "end_byte": 331,
+            "text": "include(joinpath(@__DIR__,\"..\",\"study_common.jl\"));mixbench_study(launch_julia!)\n"
+          }
+        ]
+      }
+    },
+    {
+      "case": "MMCSF",
+      "finding": "Secondary FP64 output allocation/initialization and per-mode D2H projection to Float32/H2D/free occur before Observe starts. Four full source cases and final completion minus excluded observation intervals form net host-inclusive timer; not original pure FP32 or ALS feedback.",
+      "evidence": {
+        "path": "/home/imo/HeCBench_julia/src/mmcsf-julia/secondary_fp64_atomic/full_study.cpp",
+        "sha256": "d0733870f709366ba2a94d6bcd2a93cc1ec5b285284415a7ac382cf5e2847155",
+        "spans": [
+          {
+            "line": 21,
+            "start_byte": 1339,
+            "end_byte": 1474,
+            "text": "struct Observe{Clock::time_point start=Clock::now();~Observe(){excluded+=std::chrono::duration<double>(Clock::now()-start).count();}};\n"
+          },
+          {
+            "line": 35,
+            "start_byte": 7235,
+            "end_byte": 9726,
+            "text": "void mm_mode_begin(int mode,float*dU,const unsigned int*,const TiledTensor*parts){ck(cudaDeviceSynchronize());if(double_base)throw std::runtime_error(\"LivepreviousmodeDoubleOut\");if(mm_rank>32)throw std::runtime_error(\"Secondaryrankgreaterthan32notcertified\");double_count=dims[mode]*mm_rank;original_output=dU+offsets[mode];std::vector<double> initial(double_count+2*GUARD,0);std::fill(initial.begin(),initial.begin()+GUARD,GUARD_VALUE);std::fill(initial.end()-GUARD,initial.end(),GUARD_VALUE);ck(cudaMalloc((void**)&double_base,initial.size()*8));double_out=double_base+GUARD;ck(cudaMemcpy(double_base,initial.data(),initial.size()*8,cudaMemcpyHostToDevice));ck(cudaDeviceSynchronize());Observe timer;std::vector<double> actual(initial.size());ck(cudaMemcpy(actual.data(),double_base,actual.size()*8,cudaMemcpyDeviceToHost));if(actual!=initial)throw std::runtime_error(\"ActualDoubleOutinitialbits\");prefix.insert(prefix.end(),actual.begin(),actual.end());if(mode==0){mm_check_csf(parts,ndim,dims,coo,prepare);check_inputs(true);if(prepare){std::ofstream f(aux_dir+\"/format_proof_\"+case_name+\".json\");f<<\"{\\\"ndims\\\":\"<<ndim<<\",\\\"nnz\\\":\"<<coo.size()<<\",\\\"full_CSF_coordinate_and_exact_COO_multiset_pass\\\":true,\\\"source_contribution_statements_unchanged_output_atomic_precision_promoted\\\":true}\";}}else check_inputs(false);before.resize(offsets.back());ck(cudaMemcpy(before.data(),dU,before.size()*4,cudaMemcpyDeviceToHost));for(size_t j=offsets[mode];j<offsets[mode+1];j++)if(before[j]!=0.0f)throw std::runtime_error(\"Targetoutputnotzeroatmodeinput\");prefix.insert(prefix.end(),{double(case_id),double(mode)});for(auto v:before){if(!std::isfinite(v))throw std::runtime_error(\"Nonfiniteactualfactorinput\");prefix.push_back(v);}bool repeated=true;for(int m=0;m<ndim;m++)if(m!=mode)for(size_t row=0;row<dims[m];row++)for(int r=1;r<mm_rank;r++){uint32_t a,b;memcpy(&a,&before[offsets[m]+row*mm_rank],4);memcpy(&b,&before[offsets[m]+row*mm_rank+r],4);repeated&=a==b;}reports.back().repeated&=repeated;gold.assign(dims[mode]*mm_rank,0);if(repeated){std::vector<long double>g(dims[mode],0);for(auto&x:coo){long double v=x.v;for(int m=0;m<ndim;m++)if(m!=mode)v*=before[offsets[m]+size_t(x.i[m])*mm_rank];g[x.i[mode]]+=v;}for(size_t row=0;row<dims[mode];row++)for(int r=0;r<mm_rank;r++)gold[row*mm_rank+r]=g[row];}else for(auto&x:coo)for(int r=0;r<mm_rank;r++){long double v=x.v;for(int m=0;m<ndim;m++)if(m!=mode)v*=before[offsets[m]+size_t(x.i[m])*mm_rank+r];gold[size_t(x.i[mode])*mm_rank+r]+=v;}}\n"
+          },
+          {
+            "line": 36,
+            "start_byte": 9726,
+            "end_byte": 11530,
+            "text": "void mm_mode_end(int mode,float*dU,const unsigned int*,const TiledTensor*){ck(cudaDeviceSynchronize());double_readback.resize(double_count+2*GUARD);ck(cudaMemcpy(double_readback.data(),double_base,double_readback.size()*8,cudaMemcpyDeviceToHost));std::vector<float> projected(double_count);for(size_t j=0;j<double_count;j++)projected[j]=(float)double_readback[GUARD+j];ck(cudaMemcpy(original_output,projected.data(),projected.size()*4,cudaMemcpyHostToDevice));ck(cudaFree(double_base));double_base=nullptr;double_out=nullptr;ck(cudaDeviceSynchronize());Observe timer;for(size_t j=0;j<GUARD;j++)if(double_readback[j]!=GUARD_VALUE||double_readback[GUARD+double_count+j]!=GUARD_VALUE)scientific_ok=false;for(size_t j=0;j<double_count;j++){long double delta=fabsl((long double)double_readback[GUARD+j]-gold[j]),budget=.01L+2e-5L*fabsl(gold[j]);if(!std::isfinite(delta)||delta>budget)scientific_ok=false;}outputs.insert(outputs.end(),double_readback.begin(),double_readback.end());std::vector<float>got(offsets.back());ck(cudaMemcpy(got.data(),dU,got.size()*4,cudaMemcpyDeviceToHost));check_inputs(false);auto&rep=reports.back();for(size_t j=0;j<got.size();j++){if(!std::isfinite(got[j]))scientific_ok=false;if(j<offsets[mode]||j>=offsets[mode+1]){uint32_t a,b;memcpy(&a,&got[j],4);memcpy(&b,&before[j],4);if(a!=b)scientific_ok=false;}}for(size_t j=0;j<gold.size();j++){long double delta=fabsl((long double)got[offsets[mode]+j]-gold[j]),budget=.01L+2e-5L*fabsl(gold[j]);rep.max_abs=std::max(rep.max_abs,(double)delta);rep.max_budget_ratio=std::max(rep.max_budget_ratio,(double)(delta/budget));if(!std::isfinite(delta)||delta>budget)scientific_ok=false;}outputs.insert(outputs.end(),{double(case_id),double(mode)});for(auto v:got)outputs.push_back(v);for(auto v:gold)outputs.push_back((double)v);rep.modes++;}\n"
+          },
+          {
+            "line": 39,
+            "start_byte": 12577,
+            "end_byte": 14592,
+            "text": " for(trial_id=0;trial_id<=(prepare?0:5);trial_id++){prefix.clear();outputs.clear();reports.clear();scientific_ok=true;excluded=0;auto start=Clock::now();for(case_id=0;case_id<4;case_id++){auto&q=cases[case_id];case_name=q.name;std::vector<std::string>args={\"mmcsf\",\"-i\",std::string(fixture)+\"/\"+q.name+\".tns\",\"-m\",\"0\",\"-R\",std::to_string(q.r),\"-w\",std::to_string(q.w),\"-s\",std::to_string(q.s),\"-f\",std::to_string(q.f),\"-b\",\"128\"};std::vector<char*>argv;for(auto&s:args)argv.push_back(s.data());int status=original_mmcsf_main(argv.size(),argv.data());if(status||reports.back().modes!=reports.back().nd||!allocations.empty())scientific_ok=false;}ck(cudaDeviceSynchronize());double seconds=std::chrono::duration<double>(Clock::now()-start).count()-excluded;std::vector<double>values=prefix;values.insert(values.end(),outputs.begin(),outputs.end());if(trial_id==0){printf(\"STUDY_PREPARE_OR_WARMUP correct=%s prefix_values=%zu output_values=%zu cases=\",scientific_ok?\"true\":\"false\",prefix.size(),values.size());print_reports();printf(\"\\n\");fflush(stdout);if(!scientific_ok){raw(aux_dir+\"/rejected_warmup_fullstate.bin\",values.data(),values.size()*8);return 2;}continue;}std::string out=\"output_trial\"+std::to_string(trial_id)+\".bin\";raw(out,values.data(),values.size()*8);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.17g,\\\"correct\\\":%s,\\\"checked_values\\\":%zu,\\\"max_abs_error\\\":null,\\\"max_rel_error\\\":null,\\\"timing_region\\\":\\\"qualified_full_source_pipeline_including_FP64_output_allocation_projection_minus_added_observations\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":1,\\\"full_actual_CSF_inputs_bit_identical\\\":true,\\\"all_readonly_tensor_storage_unchanged\\\":true,\\\"all_nontarget_factor_fields_unchanged\\\":%s,\\\"cases\\\":\",trial_id,seconds,scientific_ok?\"true\":\"false\",values.size(),scientific_ok?\"true\":\"false\");print_reports();printf(\",\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float64\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",out.c_str(),values.size());fflush(stdout);if(!scientific_ok)return 3;}\n"
+          }
+        ]
+      }
+    },
+    {
+      "case": "MNIST",
+      "finding": "Pause/paused synchronizes before accounting elapsed time, so completion belongs to timed interval; snapshots/readbacks inside paused body excluded. Actual bounded learn2/test workflow retains source host/data/memset work. Native repeated apply-step/apply-grad selectors are aliases, not removed source invocations.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/mnist-julia/study_observer.h",
+          "sha256": "62cc80dd1095c59a6a10fc34caee7f2c6c7cecbe6031c0e16e3f1022bcd500d3",
+          "spans": [
+            {
+              "line": 20,
+              "start_byte": 810,
+              "end_byte": 1120,
+              "text": "struct Pause{bool active;Pause(){auto&s=state();active=s.running;if(active){check(cudaDeviceSynchronize());s.seconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-s.tick).count();s.running=false;}}~Pause(){if(active){auto&s=state();s.tick=std::chrono::steady_clock::now();s.running=true;}}};\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/mnist-julia/study_common.jl",
+          "sha256": "758e1ddcda853d9b148c6b49d0120e429005b9cd941d886bd74c692101c4d241",
+          "spans": [
+            {
+              "line": 15,
+              "start_byte": 776,
+              "end_byte": 868,
+              "text": " if active;CUDA.device_synchronize();s.seconds+=(time_ns()-s.mark)*1e-9;s.running=false;end\n"
+            },
+            {
+              "line": 136,
+              "start_byte": 6642,
+              "end_byte": 6814,
+              "text": "  s.mark=time_ns();s.running=true;learn!(s,ls,images,labels);test!(s,ls,testimages,testlabels);CUDA.device_synchronize();s.seconds+=(time_ns()-s.mark)*1e-9;s.running=false\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "MiniBUDE",
+      "finding": "One Work.run/run_bude warmup invocation per case precedes five trials. Each invocation has seven internal launches, timed as per-repeat mean; six case means summed. Draft300? wording is not observed warmup evidence and cannot enter paper as fact; MLP separately has actual300 source warmups.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/minibude-julia/study_native.cu",
+          "sha256": "67ff12bf8184d913e2e54cfea18a2d92c9681620896225ecc844b4ed97d4ae77",
+          "spans": [
+            {
+              "line": 32,
+              "start_byte": 2796,
+              "end_byte": 3198,
+              "text": " double run(){C(cudaDeviceSynchronize());auto t=std::chrono::steady_clock::now();for(int r=0;r<R;r++)fasten_main<<<(n+255)/256,256,nf*sizeof(FFParams)>>>(nf,n,nl,np,protein.p,ligand.p,poses[0]->p,poses[1]->p,poses[2]->p,poses[3]->p,poses[4]->p,poses[5]->p,ff.p,out.p);C(cudaGetLastError());C(cudaDeviceSynchronize());return std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count()/R;}\n"
+            },
+            {
+              "line": 36,
+              "start_byte": 4659,
+              "end_byte": 6088,
+              "text": "int main(){static_assert(sizeof(Atom)==16&&sizeof(FFParams)==16,\"sourceABI\");std::vector<Work*>w;for(int k=0;k<NCASES;k++)w.push_back(new Work(k));for(auto x:w)x->run();for(int trial=1;trial<=5;trial++){for(auto x:w)x->reset();double seconds=0;for(auto x:w)seconds+=x->run();std::vector<double>record;record.reserve(COUNT);for(auto x:w)x->capture(record);if(record.size()!=PREFIX)return 5;bool good=true;double maxabs=0,maxbudget=0;std::string raw=std::string(getenv(\"STUDY_RAW_DIR\"))+\"/native_pid\"+std::to_string((long long)getpid())+\"_trial\"+std::to_string(trial);for(auto x:w)good&=x->tail(record,raw+\"_case\"+std::to_string(x->id),maxabs,maxbudget);if(record.size()!=COUNT)return 6;std::string path=std::string(getenv(\"STUDY_OUTPUT_DIR\"))+\"/minibude_trial\"+std::to_string(trial)+\".bin\";save(path,record);printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.17g,\\\"correct\\\":%s,\\\"checked_values\\\":%zu,\\\"max_abs_error\\\":%.17g,\\\"max_rel_error\\\":null,\\\"maximum_independent_error_over_budget\\\":%.17g,\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":7,\\\"kernel_launches\\\":42,\\\"timing_region\\\":\\\"sixcase_sourceR7_regionmean_sum_completedwarmup_contextsync\\\",\\\"raw_state_prefix\\\":\\\"%s\\\",\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float64\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,seconds,good?\"true\":\"false\",record.size(),maxabs,maxbudget,raw.c_str(),path.c_str(),record.size());fflush(stdout);if(!good)return 8;}return 0;}\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/minibude-julia/study_common.jl",
+          "sha256": "7bae6f55b2dc5087c35a378c52506ddfa6de4f333912eec9d882992f37b2b03a",
+          "spans": [
+            {
+              "line": 4,
+              "start_byte": 147,
+              "end_byte": 163,
+              "text": "const REPEATS=7\n"
+            },
+            {
+              "line": 38,
+              "start_byte": 1837,
+              "end_byte": 1871,
+              "text": "    for w in work;run_bude(w);end\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "outside diagnostics",
+      "finding": "Michalewicz full objective capture and MiniWeather mass/energy diagnostics lie outside timers; MIS init-priority replay occurs after timed final state is read. Same family may appear in both contexts, so sampled phase remains unproved.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/michalewicz-julia/study_common.jl",
+          "sha256": "9c2078d43bca59f1971a92303ab24d328560bbf1125660aec9d891360164b112",
+          "spans": [
+            {
+              "line": 18,
+              "start_byte": 1154,
+              "end_byte": 1468,
+              "text": "   CUDA.device_synchronize(blocking=true);push!(times,(time_ns()-start)*1e-9/R);capture!();CUDA.device_synchronize(blocking=true);actual=Array(values);ok &=reinterpret(UInt32,actual)==reinterpret(UInt32,host);got=Array(out);mb=Array(minbits);minback=collect(reinterpret(Float32,mb));capturedmin=0f0;expectedmin=0.\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/miniWeather-julia/study_native.cu",
+          "sha256": "cd2b12b608f722ae345fd6a80e92dd81cff2f8d290683d90d3058acf13a69893",
+          "spans": [
+            {
+              "line": 27,
+              "start_byte": 3598,
+              "end_byte": 3861,
+              "text": "for(auto&c:cases){reset(c);auto d0=diag(c);ck(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();integrate(c);double tm=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();total+=tm;times.push_back(tm);auto d1=diag(c);\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/mis-julia/study_common.jl",
+          "sha256": "5f55814ff7596743c73ecf275d9c950842609eff89c26e4ee6cc51a7482c5f89",
+          "spans": [
+            {
+              "line": 22,
+              "start_byte": 1458,
+              "end_byte": 1556,
+              "text": "   final=Array(c.sr) # Actual timedfinalstatus captured BEFORE deterministicinitializationreplay.\n"
+            },
+            {
+              "line": 23,
+              "start_byte": 1556,
+              "end_byte": 1646,
+              "text": "   launch(1,c.n,c.e,c.id,c.ld,c.pd);CUDA.synchronize(CUDA.context());priority=Array(c.pr)\n"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "four_MNIST_alias_nulls_verified": true,
+  "seven_model_holds_and_ten_unresolved_stages_preserved": true,
+  "sample_phase": "unproved",
+  "whole_ROI": false,
+  "causal_claim": false
+}

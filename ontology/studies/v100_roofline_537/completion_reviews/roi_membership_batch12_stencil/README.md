@@ -1,0 +1,9 @@
+# Private source-membership batch12: remaining m/o
+
+Frozen proposal SHA89b1b9201b4fac3983ad4743c5a5b7c01953a81029fd6a1e0bc71aa421337d74.62models/16names,222updates155included67excluded,368/388savedrowsmatched20unassigned. Twoholds MPCJACC(noexistingcallsite despiteauthoredgeneratedwrapper) andMTFnative(libraryplaceholder). No newstages or unsupported/noSMwork inference. Final2044locked checks verifyINDEX,parents/canonicalstages,sources,selectedcaptures/canonicalCIDcfgresult andincluded-positivefamilies. Bothlegacy/indexedauthorities andbothpendingbatch11reservations excluded.
+
+Entry points prepare_proposals.py,final_scope_enrichment.py,final_unquoted_scope.py,freeze_review.py. NativeMorphology enumtemplates splitDILATE1/ERODE0; Myocyte exactnativefloat signature joined selectedtimedlaunch; MuonCUDAjl ambiguouscallbackunions narrowed andJACCexplicit8authoredcallbacks mappedwithoutvendorrows; selectedMoESumvec4JACC andMultinomialCUDAjl callback identities sourceproved. Two true samefamilyaliases retainednullwithoutcounterdoublecount. Rootvalueapprovals inselector_and_alias_changes.json.
+
+Source quote exception explicitlyunquoted_source_scope.json: myocyte-cuda/main.cu isunusedoriginalstandaloneCLI, nonUTF8copyright prefix, fullSHAretainedbutALLtextquotes omitted. Actualselecteddrivers,ECC/CaM/kernels/callbacks quoted exactly. No header skipping/transcoding or executable-source reconstruction. Four scientific observations inJSON/TEX, no actualtimedsample/fullROI/causal/numericalrecertification claim. Nativeoriginal/correctedandknownhistorical defects remain scoped by existingcontract.
+
+NoGPU/query/build/tests/targetimports/sharedsourcewrites/Git/sudo. Rootatomicallyrevalidates/adopts only. Sharedobservedusage closedbeforereceipt/inventorypackaging.

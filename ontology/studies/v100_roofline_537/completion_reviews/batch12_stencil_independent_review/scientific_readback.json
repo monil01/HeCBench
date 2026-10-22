@@ -1,0 +1,368 @@
+{
+  "status": "SOURCE_CONSISTENT_PENDING_ROOT_ADOPTION",
+  "findings": [
+    {
+      "case": "Muon",
+      "finding": "Selected four shapes include tall and wide branches; two optimizer steps each execute explicit eight authored callbacks with five Newton-Schulz iterations and pinned same-stream vendor GEMM. BF16 iterates stored as UInt16 decode to Float32 authored arithmetic and reencode; parameters/momentum/reduction Float32. This is source arithmetic/storage evidence, not emitted vendor instruction precision or tensor-family identity. CUDAjl correction resolves exactly sumsq/normalize/combine/update; JACC generic wrapper resolves only its eight literal callers.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/muon-julia/muon-julia-JACC/main.jl",
+          "sha256": "a67374784f86ccd91aed845210e9b26f823da79ed03ea5eb8ddd58b68dcda911",
+          "spans": [
+            {
+              "line": 5,
+              "start_byte": 185,
+              "end_byte": 253,
+              "text": "function launch(f,N,args...;threads=256,blocks=cld(N,256),shared=0)\n"
+            },
+            {
+              "line": 10,
+              "start_byte": 508,
+              "end_byte": 676,
+              "text": " if P>Q;blocks=(cld(Q,32),cld(P,32));launch(momentum_transpose_jacc!,(blocks[1]*32,blocks[2]*8),m,g,x,.95f0,P,Q,TILE_TEMPLATE;threads=(32,8),blocks=blocks,shared=2048)\n"
+            },
+            {
+              "line": 12,
+              "start_byte": 726,
+              "end_byte": 861,
+              "text": " CUDA.fill!(ss,0f0);launch(sumsq_jacc!,65536,x,ss,n,SUM_TEMPLATE;threads=256,blocks=256,shared=1024);launch(normalize_jacc!,gn,x,ss,n)\n"
+            },
+            {
+              "line": 14,
+              "start_byte": 875,
+              "end_byte": 1023,
+              "text": "  gemm(0,1,mm,mm,nn,x,x,a);gemm(0,0,mm,mm,mm,a,a,a2);launch(combine_jacc!,gm,b,a,a2,mm*mm);gemm(0,0,mm,nn,mm,b,x,bx);launch(update_jacc!,gn,x,bx,n)\n"
+            },
+            {
+              "line": 16,
+              "start_byte": 1028,
+              "end_byte": 1205,
+              "text": " if P>Q;blocks=(cld(P,32),cld(Q,32));launch(transpose_parameter_jacc!,(blocks[1]*32,blocks[2]*8),p,x,.02f0,0f0,scale,P,Q,TILE_TEMPLATE;threads=(32,8),blocks=blocks,shared=2048)\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/muon-julia/study_common.jl",
+          "sha256": "526d8e0325dda26dd0c16c605ac5f983461a02a3beece808e9768614fa29ca93",
+          "spans": [
+            {
+              "line": 3,
+              "start_byte": 79,
+              "end_byte": 148,
+              "text": "const SHAPES=((16,32,false),(32,16,false),(17,33,true),(33,17,true))\n"
+            },
+            {
+              "line": 21,
+              "start_byte": 1702,
+              "end_byte": 1905,
+              "text": "  push!(cases,(P,Q,p,m,CuArray(p),CuArray(m),CuArray(g),CUDA.zeros(UInt16,n),CUDA.zeros(UInt16,mm*mm),CUDA.zeros(UInt16,mm*mm),CUDA.zeros(UInt16,mm*mm),CUDA.zeros(UInt16,n),CUDA.zeros(Float32,1),scale))\n"
+            },
+            {
+              "line": 25,
+              "start_byte": 2043,
+              "end_byte": 2170,
+              "text": "  for _ in 1:2;run(p,m,g,x,a,a2,b,bx,ss,Int32(P),Int32(Q),scale,(oa,ob,M,N,K,A,B,C)->rowgemm(fn,href[],oa,ob,M,N,K,A,B,C));end\n"
+            },
+            {
+              "line": 26,
+              "start_byte": 2170,
+              "end_byte": 2248,
+              "text": "  CUDA.synchronize(CUDA.context());elapsed=(time_ns()-t)*1e-9/2;out=Float64[]\n"
+            },
+            {
+              "line": 17,
+              "start_byte": 1242,
+              "end_byte": 1385,
+              "text": " ccall(Libdl.dlsym(lib,:cublasSetStream_v2),Cint,(Ptr{Cvoid},Ptr{Cvoid}),href[],Ptr{Cvoid}(CUDA.stream().handle))==0||error(\"SetStreamFailed\")\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/muon-julia/study_reference_kernels.jl",
+          "sha256": "66c2c510eabcd99f7d8d5bc92618e4fd46774428cea92fe661441929287b4528",
+          "spans": [
+            {
+              "line": 5,
+              "start_byte": 253,
+              "end_byte": 383,
+              "text": "function normalize_cuda!(x,ss,n);inv=1f0/(sqrt(@inbounds ss[1])+1f-7);vector_body!(linear0(),x,x,x,inv,0f0,n,Int32(0));return;end\n"
+            },
+            {
+              "line": 6,
+              "start_byte": 383,
+              "end_byte": 479,
+              "text": "function combine_cuda!(b,a,a2,n);vector_body!(linear0(),b,a,a2,NS_B,NS_C,n,Int32(1));return;end\n"
+            },
+            {
+              "line": 7,
+              "start_byte": 479,
+              "end_byte": 571,
+              "text": "function update_cuda!(x,bx,n);vector_body!(linear0(),x,x,bx,NS_A,0f0,n,Int32(2));return;end\n"
+            },
+            {
+              "line": 12,
+              "start_byte": 877,
+              "end_byte": 1026,
+              "text": "  a=decode_bf(@inbounds x[j*4+1]);b=decode_bf(@inbounds x[j*4+2]);c=decode_bf(@inbounds x[j*4+3]);d=decode_bf(@inbounds x[j*4+4]);v+=a*a+b*b+c*c+d*d\n"
+            },
+            {
+              "line": 15,
+              "start_byte": 1050,
+              "end_byte": 1123,
+              "text": "  for i in n4*Int32(4)+Int32(1):n;t=decode_bf(@inbounds x[i]);v+=t*t;end\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Morphology",
+      "finding": "Enum declaration orders ERODE then DILATE (0/1), so exact four horizontal/vertical template regexes separate dilation1 and erosion0. Selected cycle includes two temporary zero resets and all four launches; original wrappers uncalled. Source repair and naive portable versus vHGW native algorithm distinction remain qualified.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/morphology-cuda/morphology.cu",
+          "sha256": "52f3ce9267011c304464d01503061e939c22760bfbfef4e77c8db2609eba6c66",
+          "spans": [
+            {
+              "line": 3,
+              "start_byte": 27,
+              "end_byte": 53,
+              "text": "enum class MorphOpType {\r\n"
+            },
+            {
+              "line": 4,
+              "start_byte": 53,
+              "end_byte": 63,
+              "text": "  ERODE,\r\n"
+            },
+            {
+              "line": 5,
+              "start_byte": 63,
+              "end_byte": 74,
+              "text": "  DILATE,\r\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/morphology-julia/study_cuda.cu",
+          "sha256": "939a46f6446eda8ae0166ea98cb5d6c661c41fe538a830c9502bfea2707ad2a6",
+          "spans": [
+            {
+              "line": 6,
+              "start_byte": 591,
+              "end_byte": 954,
+              "text": "void cycle(unsigned char*a,unsigned char*b,int W,int H){dim3 hb(5,1),hg(W/5,H),vb(1,5),vg(W,H/5);cudaMemset(b,0,W*H);vhgw_horiz<MorphOpType::DILATE><<<hg,hb,20>>>(b,a,W,H,5);vhgw_vert<MorphOpType::DILATE><<<vg,vb,20>>>(a,b,W,H,5);cudaMemset(b,0,W*H);vhgw_horiz<MorphOpType::ERODE><<<hg,hb,20>>>(b,a,W,H,5);vhgw_vert<MorphOpType::ERODE><<<vg,vb,20>>>(a,b,W,H,5);}\n"
+            },
+            {
+              "line": 11,
+              "start_byte": 1682,
+              "end_byte": 2257,
+              "text": "  for(int c=0;c<2;c++){cudaMemcpy(a,inputs[c].data(),n,cudaMemcpyHostToDevice);cudaMemset(b,0,n);cudaDeviceSynchronize();auto start=std::chrono::steady_clock::now();for(int k=0;k<repeats;k++)cycle(a,b,W,H);auto status=cudaDeviceSynchronize();total+=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();std::vector<unsigned char>got(n);cudaMemcpy(got.data(),a,n,cudaMemcpyDeviceToHost);ok &=status==cudaSuccess;for(int i=0;i<n;i++){int e=abs(int(got[i])-expected[c][i]);ma=std::max(ma,e);ok &=e==0;}allgot.insert(allgot.end(),got.begin(),got.end());}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Exact selected callbacks",
+      "finding": "MoeSum captured vec4 argv resolves factory to moe_vec4_jacc!; multinomial selected CUDAjl wrapper directly names sample_multinomial_once_kernel!. No generic dispatcher family broadening is supported.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/moe-sum-julia/moe-sum-julia-JACC/main.jl",
+          "sha256": "4d0c0bab95c596828f8ae096b75e0b4d744c55d1ddbac756fe6d8affb90cfc07",
+          "spans": [
+            {
+              "line": 43,
+              "start_byte": 1440,
+              "end_byte": 1491,
+              "text": "    kernel=vec ? moe_vec4_jacc! : moe_scalar_jacc!\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/multinomial-julia/multinomial-julia-cuda.jl/study.jl",
+          "sha256": "d35713e126178e3d1b512319ea94c53f8624600290ac91ce832094dab6ebe6f0",
+          "spans": [
+            {
+              "line": 3,
+              "start_byte": 157,
+              "end_byte": 260,
+              "text": "launch_julia!(args...)=(@cuda threads=256 blocks=512 sample_multinomial_once_kernel!(args...);nothing)\n"
+            },
+            {
+              "line": 4,
+              "start_byte": 260,
+              "end_byte": 344,
+              "text": "include(joinpath(@__DIR__,\"..\",\"study_common.jl\"));multinomial_study(launch_julia!)\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Outside observations/hybrid timing",
+      "finding": "MT uniform replay and myocyte host coupling/oracle occur after recorded device windows; opticalFlow device completion before pause remains timed while observer bodies excluded. MRIQ Q windows include tile upload, and MTF times CPU alphabet updates plus H2D search input and scalar D2H. These facts bar pure-kernel/wholeROI/actualphase claims.",
+      "evidence": [
+        {
+          "path": "/home/imo/HeCBench_julia/src/mt-julia/study_common.jl",
+          "sha256": "5295e97a2aac9cf31462619f486b0facc025d78cfe4c324a658de7214cd13e09",
+          "spans": [
+            {
+              "line": 44,
+              "start_byte": 2676,
+              "end_byte": 2747,
+              "text": "   CUDA.device_synchronize();seconds=(time_ns()-begin_ns)*1e-9/repeats\n"
+            },
+            {
+              "line": 49,
+              "start_byte": 2999,
+              "end_byte": 3091,
+              "text": "   dispatch_mt!(P.data,R.data,Int32(n));CUDA.device_synchronize();uniform=read_gpu(R,count)\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/myocyte-julia/study_native.cu",
+          "sha256": "1a742e07082f546699a629eb94416c9c170055be935d8666cf08188b091a80e8",
+          "spans": [
+            {
+              "line": 27,
+              "start_byte": 1678,
+              "end_byte": 1964,
+              "text": "   for(int repeat=0;repeat<R;repeat++){cudaDeviceSynchronize();auto start=std::chrono::steady_clock::now();kernel<<<2,32>>>((int)in[109],arrays[0],arrays[2],arrays[1],arrays[3]);cudaDeviceSynchronize();dt+=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();}\n"
+            },
+            {
+              "line": 31,
+              "start_byte": 2413,
+              "end_byte": 2565,
+              "text": "   std::vector<float>coupled(actual[2].begin(),actual[2].begin()+91);study_couple32(actual[0].data(),actual[1].data(),coupled.data(),actual[3].data());\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/opticalFlow-julia/study_common.jl",
+          "sha256": "70ae34441bbb67f15540c0592086debd39b67514656c840658984cf8018505cc",
+          "spans": [
+            {
+              "line": 15,
+              "start_byte": 839,
+              "end_byte": 931,
+              "text": " if active;CUDA.device_synchronize();s.seconds+=(time_ns()-s.mark)*1e-9;s.running=false;end\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/mriQ-julia/study_common.jl",
+          "sha256": "a61bcaf6c2d89a5aa0bc91063caba3b2fba93b0cc9f9019787d64352ba3080ad",
+          "spans": [
+            {
+              "line": 51,
+              "start_byte": 2593,
+              "end_byte": 2815,
+              "text": "            t=time_ns();copyto!(view(tile,1:4count),hosttile);launchq(tile,Int32(k),Int32(base),inputs[6].payload,inputs[7].payload,inputs[8].payload,gr.payload,gi.payload,n);CUDA.synchronize();seconds+=(time_ns()-t)*1e-9\n"
+            }
+          ]
+        },
+        {
+          "path": "/home/imo/HeCBench_julia/src/mtf-julia/study_common.jl",
+          "sha256": "1103f0a033c12fec6d57a922b8172a9eedcc51e10cb73f6172aa3bc50c633a8b",
+          "spans": [
+            {
+              "line": 21,
+              "start_byte": 1095,
+              "end_byte": 1194,
+              "text": "  n,hraw,oraw,wraw,d_raw,d,r_raw,rank,ref=c;CUDA.device_synchronize(blocking=true);start=time_ns()\n"
+            },
+            {
+              "line": 24,
+              "start_byte": 1250,
+              "end_byte": 1378,
+              "text": "   copyto!(d,1,hraw,33,256);search(d,wraw[i+32],rank);j=Int(Array(rank)[1]);0<=j<256||error(\"AlphabetFind\");oraw[i+32]=UInt8(j)\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Unquoted legacy source",
+      "finding": "Exact nonUTF8 original myocyte CLI bytes remain hash-bound, without text transformation. Selected native driver includes ECC/correctedCaM/kernel and does not include CLI; only uncalled historical CLI is unquoted. No timed callsite or whole header section is excised or reinterpreted.",
+      "evidence": {
+        "path": "/home/imo/HeCBench_julia/src/myocyte-julia/study_native.cu",
+        "sha256": "1a742e07082f546699a629eb94416c9c170055be935d8666cf08188b091a80e8",
+        "spans": [
+          {
+            "line": 10,
+            "start_byte": 154,
+            "end_byte": 171,
+            "text": "#define fp float\n"
+          },
+          {
+            "line": 11,
+            "start_byte": 171,
+            "end_byte": 238,
+            "text": "#include \"/home/imo/HeCBench_julia/src/myocyte-cuda/kernel_ecc.cu\"\n"
+          },
+          {
+            "line": 12,
+            "start_byte": 238,
+            "end_byte": 323,
+            "text": "#include \"/home/imo/HeCBench_julia/src/myocyte-julia/native_corrected/kernel_cam.cu\"\n"
+          },
+          {
+            "line": 13,
+            "start_byte": 323,
+            "end_byte": 386,
+            "text": "#include \"/home/imo/HeCBench_julia/src/myocyte-cuda/kernel.cu\"\n"
+          }
+        ]
+      }
+    }
+  ],
+  "required_exact_native_selector_approvals": [
+    {
+      "benchmark": "morphology",
+      "model": "cuda",
+      "stage_id": "morphology/cuda/source_callsite_001",
+      "exact_regex": "\\bvhgw_horiz<\\(MorphOpType\\)1>"
+    },
+    {
+      "benchmark": "morphology",
+      "model": "cuda",
+      "stage_id": "morphology/cuda/source_callsite_002",
+      "exact_regex": "\\bvhgw_vert<\\(MorphOpType\\)1>"
+    },
+    {
+      "benchmark": "morphology",
+      "model": "cuda",
+      "stage_id": "morphology/cuda/source_callsite_003",
+      "exact_regex": "\\bvhgw_horiz<\\(MorphOpType\\)0>"
+    },
+    {
+      "benchmark": "morphology",
+      "model": "cuda",
+      "stage_id": "morphology/cuda/source_callsite_004",
+      "exact_regex": "\\bvhgw_vert<\\(MorphOpType\\)0>"
+    },
+    {
+      "benchmark": "myocyte",
+      "model": "cuda",
+      "stage_id": "myocyte/cuda/source_callsite_002",
+      "exact_regex": "^kernel\\(int, float \\*, float \\*, float \\*, float \\*\\)$"
+    }
+  ],
+  "unquoted_legacy_binding_and_no_quotes_verified": [
+    {
+      "path": "/home/imo/HeCBench_julia/src/myocyte-cuda/main.cu",
+      "sha256": "6feecf4b0ae4fa18ed321fadd8aa0e83dfca91527d8d3666eeed4fd6ef0ebe54",
+      "role": "Uncalled original standalone CLI main, not selected driver/kernel/callback; selected study_native.cu includes ECC/CaM/kernel only. Julia factory includes study_common and device code, not originalCLI.",
+      "reason": "NonUTF8 copyright prefix in unused file; keep exact full-byte binding, omit all textquote rather than skip or transcode header.",
+      "timed_stage_source_omitted": false
+    }
+  ],
+  "two_inclusion_alias_nulls_verified": true,
+  "two_held_models_current_completed_contract_joins_pass": true,
+  "all_original_review_input_bytes_stable": true,
+  "sample_phase": "unproved",
+  "whole_ROI": false,
+  "causal_claim": false
+}

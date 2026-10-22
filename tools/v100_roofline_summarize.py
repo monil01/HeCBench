@@ -56,7 +56,9 @@ def freeze(slot, target, root):
                  'pre_profile_checks.log','post_profile_checks.log',
                  'adapter_source.py','allreduce_two_device_review.json',
                  'allreduce_cpu_review.json','allreduce_admission_source.py',
-                 'allreduce_execution_authorization.json'):
+                 'allreduce_execution_authorization.json',
+                 'tmpfs_storage_policy_source.py','tmpfs_storage_review.json','tmpfs_original_plan.json',
+                 'tmpfs_native_original.cu','tmpfs_native_overlay.cu','tmpfs_evidence_validator.py','tmpfs_storage_evidence.json'):
         source = slot/name
         if not source.is_file():
             continue
@@ -141,6 +143,18 @@ def main():
                 method_admission={'status':'validation_hold','error':str(error),
                     'method_id':prov.get('allreduce_two_device_method',{}).get('method_id'),
                     'positions_publishable':False,'underlying_process_status':prov['status']}
+        storage_admission=None;storage_error=None
+        if prov.get('reviewed_tmpfs_storage') or prov.get('tmpfs_storage_evidence'):
+            try:
+                import v100_tmpfs_evidence as storage_gate
+                available={n:(slot/n).read_bytes()for n in (*storage_gate.NAMES,'plan.json','collector_source.py','write_guard_source.py','profiling_auxiliary_manifest.json','execution.log')if(slot/n).is_file()}
+                if available.get('tmpfs_evidence_validator.py')!=Path(storage_gate.__file__).read_bytes():
+                    raise ValueError('Unreviewed tmpfs evidence-validator bytes')
+                storage_admission=storage_gate.validate(prov,available)
+                if not storage_admission or storage_admission['status']!='validated':
+                    raise ValueError('Retained tmpfs preflight hold; no target admission')
+            except Exception as error:
+                storage_error=repr(error)
         runtime_review=applicability.get((benchmark,model))
         runtime_applicable=(runtime_review is not None and runtime_review['parent_profile']['sha256']==sha(provpath.read_bytes())
             and prov['status']=='profile_completed_counter_derivation_failed'
@@ -171,6 +185,9 @@ def main():
                  'raw_process_status':prov['status'],
                  'profiler_method':prov.get('profiler_method'),
                  'profiler_version':prov.get('profiler_version')}
+        if storage_error:
+            attempt.update(status='tmpfs_storage_evidence_validation_hold',storage_validation_error=storage_error)
+        if storage_admission is not None:attempt['tmpfs_storage_admission']=storage_admission
         if method_error:
             attempt.update(status='profile_method_unapproved',method_validation_error=method_error)
         previous=next((x for x in attempts if x['profile_id']==attempt['profile_id']),None)
@@ -181,6 +198,15 @@ def main():
             previous.update(status=effective_status,recorded_status=prov['status'],method_admission=method_admission)
         if attempt['finished_at']>=state.get('latest_profile_attempt',{}).get('finished_at',''):
             state['latest_profile_attempt']=attempt
+        if storage_error:
+            # Retain failed attempt evidence; do not poison another selected capture.
+            for saved_attempt in attempts:
+                if saved_attempt['profile_id']==attempt['profile_id']:saved_attempt.update(attempt)
+            if str(target.relative_to(root))in state.get('profile_ids',[]):
+                state.update(profiling_status='tmpfs_storage_evidence_validation_hold',profile_ids=[],sampled_kernel_count=0,sampled_kernel_precision_regimes={},sampled_kernel_predicted_resource_limits={},roi_coverage='tmpfs_evidence_hold_no_positioning',roofline_position=None,roofline_region=None,observed_bottleneck=None)
+                state.pop('kernel_observations',None)
+            dump(path,ledger)
+            continue
         if method_error:
             for saved_attempt in attempts:
                 if saved_attempt['profile_id']==attempt['profile_id']:saved_attempt.update(attempt)

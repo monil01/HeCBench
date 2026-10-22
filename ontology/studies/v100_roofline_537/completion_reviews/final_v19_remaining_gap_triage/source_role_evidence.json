@@ -1,0 +1,240 @@
+{
+  "/home/imo/HeCBench_julia/src/testSNAP-julia/study_common.jl": {
+    "sha256": "462eac3c0e4cb26d1f60e5f93e2db5ba56233db9755e06a9cebf357a8e52863a",
+    "bytes": 5291,
+    "lines": [
+      {
+        "line": 4,
+        "text": "const SNAP_START=Libdl.dlsym(OBSLIB,:snap_start)"
+      },
+      {
+        "line": 38,
+        "text": " capture=normpath(joinpath(ROOT,\"../../.porting-state/portable_julia/testSNAP_primary\"))"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/testSNAP-julia/study_observer.cpp": {
+    "sha256": "051b4e3f2c943341ac9a92b55b8cdd75ec0e3b39efde28e2b86a5050f1b8b6ce",
+    "bytes": 8216,
+    "lines": [
+      {
+        "line": 18,
+        "text": "static std::vector<std::unique_ptr<SnapInput>>cfg;static std::vector<std::vector<double>>oracles,hin;static std::filesystem::path root,casdir;static std::string model,nonce;static int trial_;static std::ofstream guards_,ledger_;static std::vector<double>prefix_,out_;static double error_,normalized_,sse_[3];static int outputs_[3];static const int orders[]={14,4,2},steps_[]={100,3,3};"
+      },
+      {
+        "line": 23,
+        "text": "extern \"C\" void snap_start(const char*m,const char*source,const char*captures){safe([&](){model=m;root=std::filesystem::path(captures)/model;casdir=std::filesystem::path(captures)/\"CAS\";std::filesystem::create_directories(root);std::filesystem::create_directories(casdir);nonce=std::to_string(std::chrono::system_clock::now().time_since_epoch().count())+\"_\"+std::to_string(getpid());for(int j:orders){auto stem=std::string(\"J\")+std::to_string(j);cfg.emplace_back(std::make_unique<SnapInput>((std::filesystem::path(source)/\"data\"/(stem+\"_source_fixture.bin\")).string()));auto&s=*cfg.back();std::ifstream f(std::filesystem::path(source)/\"data\"/(stem+\"_independent_oracle.bin\"),std::ios::binary);std::vector<double>v(3*s.na*s.nb+3*s.nt);f.read((char*)v.data(),v.size()*8);need(bool(f),\"independent oracle length\");char b;need(!f.read(&b,1),\"oracle trailing\");oracles.push_back(std::move(v));hin.emplace_back(s.inside.begin(),s.inside.end());}});}"
+      },
+      {
+        "line": 24,
+        "text": "extern \"C\" void snap_begin(int t){safe([&](){trial_=t;prefix_.clear();out_.clear();error_=normalized_=0;memset(outputs_,0,sizeof(outputs_));memset(sse_,0,sizeof(sse_));if(guards_.is_open())guards_.close();if(ledger_.is_open())ledger_.close();auto stem=nonce+\"_trial\"+std::to_string(t);guards_.open(root/(stem+\".guards.bin\"),std::ios::binary);ledger_.open(root/(stem+\".inputs.jsonl\"));need(bool(guards_)&&bool(ledger_),\"capture file open\");printf(\"SNAP_CAPTURES model=%s trial=%d guards=%s inputs=%s\\n\",model.c_str(),t,(root/(stem+\".guards.bin\")).c_str(),(root/(stem+\".inputs.jsonl\")).c_str());fflush(stdout);});}"
+      },
+      {
+        "line": 33,
+        "text": "extern \"C\" void snap_write(int trial,double seconds){safe([&](){need(trial==trial_,\"trial identity\");for(int i=0;i<3;i++)need(outputs_[i]==steps_[i],\"case coverage\");guards_.flush();ledger_.flush();prefix_.insert(prefix_.end(),out_.begin(),out_.end());std::string file=\"trial\"+std::to_string(trial)+\".bin\";std::ofstream f(file,std::ios::binary);f.write((char*)prefix_.data(),prefix_.size()*8);f.close();need(bool(f),\"primary output write\");printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.17g,\\\"correct\\\":true,\\\"checked_values\\\":%zu,\\\"max_abs_error\\\":%.17g,\\\"max_rel_error\\\":null,\\\"max_normalized_independent_budget\\\":%.17g,\\\"jit_excluded\\\":true,\\\"timing_region\\\":\\\"sum3case_full_source_step_pipelines_100plus3plus3_observer_paused\\\",\\\"internal_repeats\\\":1,\\\"case_internal_steps\\\":[100,3,3],\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"float64\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",trial,seconds,prefix_.size(),error_,normalized_,file.c_str(),prefix_.size());fflush(stdout);});}"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/simpleMultiDevice-julia/study_guard.jl": {
+    "sha256": "0fdbbabcc86d69674167f76c1d8d9fdc05929c71cd23054a3d9f72a0f1e93433",
+    "bytes": 712,
+    "lines": [
+      {
+        "line": 2,
+        "text": " visibility=get(ENV,\"CUDA_VISIBLE_DEVICES\",\"\")"
+      },
+      {
+        "line": 3,
+        "text": " visibility in (\"6\",\"5,6\")||error(\"OnlyauthorizedGPU6or5,6visibility\")"
+      },
+      {
+        "line": 4,
+        "text": " if visibility==\"5,6\""
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/simpleMultiDevice-julia/study_native.cu": {
+    "sha256": "0dde0f5e5dd69e5de9fb5b71da19a022372e841c0599c67382cf2f6723542d52",
+    "bytes": 6799,
+    "lines": [
+      {
+        "line": 14,
+        "text": "void guard(bool initial=false){const char*v=getenv(\"CUDA_VISIBLE_DEVICES\");if(!v||(strcmp(v,\"6\")&&strcmp(v,\"5,6\")))exit(3);if(!strcmp(v,\"6\"))return;FILE*f=popen(\"nvidia-smi -i 5 --query-compute-apps=pid --format=csv,noheader,nounits\",\"r\");if(!f)exit(3);char line[128];while(fgets(line,sizeof(line),f)){char*end;long pid=strtol(line,&end,10);if(end==line&&strspn(line,\" \\n\\r\\t\")!=strlen(line))exit(3);if(pid>0&&pid!=getpid()){fprintf(stderr,\"ExternalGPU5PID %ld\\n\",pid);exit(3);}}if(pclose(f)!=0)exit(3);if(initial){f=popen(\"nvidia-smi -i 5 --query-gpu=memory.used --format=csv,noheader,nounits\",\"r\");if(!f||!fgets(line,sizeof(line),f)||strtol(line,nullptr,10)!=0)exit(3);if(pclose(f)!=0)exit(3);}}"
+      },
+      {
+        "line": 20,
+        "text": "void pipeline(Case&c){for(auto&p:c.plans){ck(cudaSetDevice(p.d));ck(cudaMemcpyAsync(p.din+G,p.hin+G,p.n*4,cudaMemcpyHostToDevice,p.stream));reduceKernel<<<32,256,0,p.stream>>>(p.dout+G,p.din+G,p.n);ck(cudaGetLastError());ck(cudaMemcpyAsync(p.hout+G,p.dout+G,PART*4,cudaMemcpyDeviceToHost,p.stream));}for(auto&p:c.plans){ck(cudaSetDevice(p.d));ck(cudaStreamSynchronize(p.stream));}}"
+      },
+      {
+        "line": 22,
+        "text": " auto oracle=load(g);std::vector<Case>cases;size_t prefix=1;const int sizes[4]={3,8193,131079,33554432};const int flavors[4]={1,1,1,0};for(int ci=0;ci<4;ci++){Case c;c.n=sizes[ci];c.flavor=flavors[ci];int offset=0;prefix+=2+c.n;for(int d=0;d<g;d++){Plan p;p.d=d;p.n=c.n/g+(d<c.n%g);p.offset=offset;offset+=p.n;ck(cudaSetDevice(d));ck(cudaStreamCreate(&p.stream));ck(cudaMallocHost(&p.hin,(p.n+2*G)*4));ck(cudaMallocHost(&p.checkin,(p.n+2*G)*4));ck(cudaMallocHost(&p.hout,(PART+2*G)*4));ck(cudaMallocHost(&p.checkout,(PART+2*G)*4));std::fill(p.hin,p.hin+p.n+2*G,SENT);std::fill(p.hout,p.hout+PART+2*G,SENT);for(int i=0;i<p.n;i++)p.hin[G+i]=value(p.offset+i,c.flavor);ck(cudaMalloc(&p.din,(p.n+2*G)*4));ck(cudaMalloc(&p.dout,(PART+2*G)*4));ck(cudaMemcpy(p.din,p.hin,(p.n+2*G)*4,cudaMemcpyDefault));ck(cudaMemcpy(p.dout,p.hout,(PART+2*G)*4,cudaMemcpyDefault));c.plans.push_back(p);}cases.push_back(c);}std::vector<uint64_t>payload;payload.reserve(prefix+oracle.size());std::vector<uint64_t>suffix;suffix.reserve(oracle.size());for(auto&c:cases){poison(c);pipeline(c);}for(int trial=1;trial<=5;trial++){guard();payload.clear();suffix.clear();payload.push_back(bits(float(cases.size())));double total=0;bool ok=true;std::vector<double>times;for(auto&c:cases){poison(c);auto start=std::chrono::steady_clock::now();pipeline(c);double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();total+=elapsed;times.push_back(elapsed);payload.push_back(bits(float(c.n)));payload.push_back(bits(float(c.flavor)));std::vector<float>locals;double cpu=0;for(auto&p:c.plans){ck(cudaSetDevice(p.d));ck(cudaMemcpy(p.checkin,p.din,(p.n+2*G)*4,cudaMemcpyDefault));ck(cudaMemcpy(p.checkout,p.dout,(PART+2*G)*4,cudaMemcpyDefault));for(int i=0;i<p.n;i++){float v=p.checkin[G+i];ok &=bits(v)==bits(p.hin[G+i])&&v==value(p.offset+i,c.flavor);payload.push_back(bits(v));cpu+=p.hin[G+i];}float sum=0;for(int i=0;i<PART;i++){float v=p.hout[G+i];suffix.push_back(bits(v));sum+=v;}for(int i=0;i<PART;i++)suffix.push_back(bits(p.checkout[G+i]));suffix.push_back(bits(sum));locals.push_back(sum);for(float*a:{p.hin,p.checkin,p.hout,p.checkout}){int n=(a==p.hin||a==p.checkin)?p.n:PART;for(int i=0;i<G;i++){ok &=a[i]==SENT;suffix.push_back(bits(a[i]));}for(int i=0;i<G;i++){ok &=a[G+n+i]==SENT;suffix.push_back(bits(a[G+n+i]));}}}float gpu=0;for(float v:locals)gpu+=v;double diff=fabs(cpu-double(gpu))/fabs(cpu);ok &=std::isfinite(diff)&&diff<1e-5;suffix.push_back(bits(gpu));suffix.push_back(bits(cpu));suffix.push_back(bits(diff));}ok &=suffix==oracle;payload.insert(payload.end(),suffix.begin(),suffix.end());std::string path=\"trial_\"+std::to_string(trial)+\".bin\";std::ofstream out(path,std::ios::binary);out.write((char*)payload.data(),payload.size()*8);out.close();guard();printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.17g,\\\"correct\\\":%s,\\\"checked_values\\\":%zu,\\\"max_abs_error\\\":%d,\\\"max_rel_error\\\":null,\\\"timing_region\\\":\\\"sum4_async_pinned_H2D_stridedpartials_D2H_all_stream_completion\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":1,\\\"timed_kernel_calls\\\":%d,\\\"active_devices\\\":%d,\\\"case_times_seconds\\\":[\",trial,total,ok?\"true\":\"false\",payload.size(),ok?0:1,4*g,g);for(size_t i=0;i<times.size();i++)printf(\"%s%.17g\",i?\",\":\"\",times[i]);printf(\"],\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"uint64\\\",\\\"count\\\":%zu,\\\"byte_order\\\":\\\"little\\\"}}\\n\",path.c_str(),payload.size());if(!ok)return 9;}for(auto&c:cases)for(auto&p:c.plans){ck(cudaSetDevice(p.d));ck(cudaStreamSynchronize(p.stream));ck(cudaFree(p.din));ck(cudaFree(p.dout));ck(cudaFreeHost(p.hin));ck(cudaFreeHost(p.hout));ck(cudaFreeHost(p.checkin));ck(cudaFreeHost(p.checkout));ck(cudaStreamDestroy(p.stream));}return 0;}"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/rsc-julia/study_cuda.cu": {
+    "sha256": "ca9e375f3e3ae2859146fe4ccb8c844bbe879abd088cb43d743704de69bfe2c1",
+    "bytes": 6641,
+    "lines": [
+      {
+        "line": 17,
+        "text": "#ifndef RAW_DIR"
+      },
+      {
+        "line": 18,
+        "text": "#error RAW_DIR required"
+      },
+      {
+        "line": 31,
+        "text": "RANSAC_kernel_block<<<blocks,threads,4>>>(p.data,(flowvector*)f.data,n,m,e,conv,ident.data,c.data,o.data);CK(cudaDeviceSynchronize());stage();"
+      },
+      {
+        "line": 42,
+        "text": "std::filesystem::create_directories(RAW_DIR);"
+      },
+      {
+        "line": 43,
+        "text": "for(int trial=1;trial<=5;++trial){auto art=pre;std::vector<double>raw,stages,paths;bool ok=true;for(auto c:cases){double secs;auto vals=c->execute(raw,stages,secs,ok);paths.push_back(secs);art.insert(art.end(),vals.begin(),vals.end());}if(art.size()!=pre.size()+gold.size())return 3;for(size_t i=0;i<gold.size();++i)ok&=art[pre.size()+i]==gold[i];std::string path=\"output_trial\"+std::to_string(trial)+\".bin\",rp=std::string(RAW_DIR)+\"/raw_trial\"+std::to_string(trial)+\"_pid\"+std::to_string(getpid())+\".bin\";for(auto q:{std::make_pair(path,&art),std::make_pair(rp,&raw)}){std::ofstream f(q.first,std::ios::binary);f.write((char*)q.second->data(),q.second->size()*8);if(!f)return 3;}double total=0;for(double s:paths)total+=s;"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/memcpy-julia/study_native.cu": {
+    "sha256": "d3e905056ed7c41a7e1682df824ca66677c3e146154deb28a9ce46e969510cfa",
+    "bytes": 4101,
+    "lines": [
+      {
+        "line": 15,
+        "text": "int main(){std::vector<int>pattern(1<<19);std::ifstream f(\"/home/imo/HeCBench_julia/src/memcpy-julia/pattern_u32.bin\",std::ios::binary);f.read((char*)pattern.data(),pattern.size()*4);if(!f)throw std::runtime_error(\"fixture read\");std::vector<Case>cases;std::vector<int>prefix;size_t sizes[16];setup(sizes);for(int mode=0;mode<2;mode++)for(int s=0;s<16;s++){Case a;a.sz=sizes[s];a.n=a.sz/4;a.payload.assign(a.n,1);if(mode)std::copy(pattern.begin(),pattern.begin()+a.n,a.payload.begin());a.initial.assign(a.n+2*G,GUARD);std::fill(a.initial.begin()+G,a.initial.begin()+G+a.n,POISON);a.host=(int*)malloc((a.n+2*G)*4);if(!a.host)throw std::runtime_error(\"host malloc\");std::fill(a.host,a.host+a.n+2*G,GUARD);std::copy(a.payload.begin(),a.payload.end(),a.host+G);check(cudaMalloc(&a.dev,(a.n+2*G)*4));check(cudaMemcpy(a.dev,a.initial.data(),(a.n+2*G)*4,cudaMemcpyHostToDevice));prefix.insert(prefix.end(),a.host,a.host+a.n+2*G);prefix.insert(prefix.end(),a.initial.begin(),a.initial.end());prefix.insert(prefix.end(),a.initial.begin(),a.initial.end());cases.push_back(a);}for(auto&a:cases){check(cudaMemcpyAsync(a.dev+G,a.host+G,a.sz,cudaMemcpyHostToDevice,0));check(cudaDeviceSynchronize());check(cudaMemcpyAsync(a.host+G,a.dev+G,a.sz,cudaMemcpyDeviceToHost,0));check(cudaDeviceSynchronize());}for(int trial=1;trial<=5;trial++){std::vector<int>out;std::vector<double>dt;bool ok=true;for(auto&a:cases){std::copy(a.payload.begin(),a.payload.end(),a.host+G);check(cudaMemcpy(a.dev,a.initial.data(),(a.n+2*G)*4,cudaMemcpyHostToDevice));check(cudaDeviceSynchronize());auto start=std::chrono::steady_clock::now();for(int r=0;r<R;r++)check(cudaMemcpyAsync(a.dev+G,a.host+G,a.sz,cudaMemcpyHostToDevice,0));check(cudaDeviceSynchronize());dt.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/R);std::vector<int>v(a.n+2*G);check(cudaMemcpy(v.data(),a.dev,v.size()*4,cudaMemcpyDeviceToHost));for(size_t i=0;i<v.size();i++){int expected=i>=G&&i<G+a.n?a.payload[i-G]:GUARD;ok&=v[i]==expected&&a.host[i]==expected;}out.insert(out.end(),v.begin(),v.end());std::copy(a.initial.begin(),a.initial.end(),a.host);check(cudaDeviceSynchronize());start=std::chrono::steady_clock::now();for(int r=0;r<R;r++)check(cudaMemcpyAsync(a.host+G,a.dev+G,a.sz,cudaMemcpyDeviceToHost,0));check(cudaDeviceSynchronize());dt.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()/R);for(size_t i=0;i<v.size();i++)ok&=a.host[i]==v[i];out.insert(out.end(),a.host,a.host+v.size());std::vector<int>again(v.size());check(cudaMemcpy(again.data(),a.dev,again.size()*4,cudaMemcpyDeviceToHost));ok&=again==v;out.insert(out.end(),again.begin(),again.end());}double sum=0;for(double t:dt)sum+=t;std::string path=\"/tmp/memcpy_\"+std::to_string(getpid())+\"_\"+std::to_string(trial)+\".bin\";std::ofstream fout(path,std::ios::binary);fout.write((char*)prefix.data(),prefix.size()*4);fout.write((char*)out.data(),out.size()*4);fout.close();printf(\"STUDY_TRIAL {\\\"trial\\\":%d,\\\"time_seconds\\\":%.12g,\\\"correct\\\":%s,\\\"max_abs_error\\\":null,\\\"max_rel_error\\\":null,\\\"exact_word_mismatches\\\":%d,\\\"jit_excluded\\\":true,\\\"timing_region\\\":\\\"sum_32_cases_two_pageable_transfer_batches_plus_device_completion_per_repeat\\\",\\\"internal_repeats\\\":20,\\\"component_time_seconds\\\":[\",trial,sum,ok?\"true\":\"false\",ok?0:-1);for(int i=0;i<(int)dt.size();i++)printf(\"%s%.12g\",i?\",\":\"\",dt[i]);printf(\"],\\\"output_artifact\\\":{\\\"path\\\":\\\"%s\\\",\\\"dtype\\\":\\\"int32\\\",\\\"count\\\":%zu,\\\"shape\\\":[%zu],\\\"byte_order\\\":\\\"little\\\"}}\\n\",path.c_str(),prefix.size()+out.size(),prefix.size()+out.size());}for(auto&a:cases){check(cudaFree(a.dev));free(a.host);}}"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/memcpy-julia/study_common.jl": {
+    "sha256": "b100f1d08bad3f2a2323898a62531594a6d63b8b06bcfa27d86003bdffcdcffd",
+    "bytes": 2600,
+    "lines": []
+  },
+  "/home/imo/HeCBench_julia/src/streamCreateCopyDestroy-julia/study_native.cu": {
+    "sha256": "0d99a73026a519ae4822da12dc3a0ac372834c0e567df4bff0e99215336308e9",
+    "bytes": 3932,
+    "lines": [
+      {
+        "line": 18,
+        "text": "std::array<U,4> pipeline(Case&c){std::array<U,4> calls{};for(int i=0;i<c.it;i++){if(c.mode){for(auto&s:c.streams){ck(cudaStreamCreate(&s));calls[1]++;}for(auto s:c.streams)for(auto d:c.d){ck(cudaMemcpyAsync(d+G,c.h.data()+G,N*4,cudaMemcpyHostToDevice,s));calls[0]++;}for(auto s:c.streams){ck(cudaStreamSynchronize(s));calls[3]++;ck(cudaStreamDestroy(s));calls[2]++;}}else{for(int s=0;s<c.s;s++)for(auto d:c.d){ck(cudaMemcpyAsync(d+G,c.h.data()+G,N*4,cudaMemcpyHostToDevice));calls[0]++;}ck(cudaDeviceSynchronize());calls[3]++;}}return calls;}"
+      },
+      {
+        "line": 20,
+        "text": "for(auto&c:cases){reset(c);pipeline(c);}for(int trial=1;trial<=5;trial++){std::vector<U> out;out.reserve(51574089);out.push_back(8);for(auto&c:cases){out.insert(out.end(),{U(c.test),U(c.mode),U(c.s),U(c.b),U(c.it)});for(int i=0;i<N;i++)out.push_back(raw(c.h[G+i]));}double total=0;std::vector<double>times;bool ok=true;for(auto&c:cases){reset(c);auto a=std::chrono::steady_clock::now();auto calls=pipeline(c);auto z=std::chrono::steady_clock::now();double dt=std::chrono::duration<double>(z-a).count();total+=dt;times.push_back(dt);std::vector<float>h(N+2*G);for(auto d:c.d){ck(cudaMemcpy(h.data(),d,h.size()*4,cudaMemcpyDeviceToHost));for(int i=0;i<N+2*G;i++){U v=raw(h[i]);ok &=v==((i<G||i>=G+N)?raw(SENT):oracle[i-G]);out.push_back(v);}}for(int i=0;i<N;i++)ok &=raw(c.h[G+i])==oracle[i];for(int i=0;i<G;i++)ok &=c.h[i]==SENT&&c.h[G+N+i]==SENT;out.insert(out.end(),calls.begin(),calls.end());}std::string path=\"trial_\"+std::to_string(trial)+\".bin\";std::ofstream o(path,std::ios::binary);o.write((char*)out.data(),out.size()*4);if(!o)throw std::runtime_error(\"capture write\");std::cout.precision(17);std::cout<<\"STUDY_TRIAL {\\\"trial\\\":\"<<trial<<\",\\\"time_seconds\\\":\"<<total<<\",\\\"correct\\\":\"<<(ok?\"true\":\"false\")<<\",\\\"checked_values\\\":\"<<out.size()<<\",\\\"max_abs_error\\\":\"<<(ok?0:1)<<\",\\\"max_rel_error\\\":null,\\\"timing_region\\\":\\\"sum8_pageable_H2D_stream_create_sync_destroy_runtime_pipeline\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":1,\\\"authored_device_kernel_calls\\\":0,\\\"case_times_seconds\\\":[\";for(int i=0;i<8;i++)std::cout<<(i?\",\":\"\")<<times[i];std::cout<<\"],\\\"output_artifact\\\":{\\\"path\\\":\\\"\"<<path<<\"\\\",\\\"dtype\\\":\\\"uint32\\\",\\\"count\\\":\"<<out.size()<<\",\\\"byte_order\\\":\\\"little\\\"}}\\n\";if(!ok)throw std::runtime_error(\"copy input output guards mismatch\");}for(auto&c:cases)for(auto d:c.d)ck(cudaFree(d));return 0;}catch(std::exception&e){std::cerr<<e.what()<<\"\\n\";return 1;}}"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/streamCreateCopyDestroy-julia/study_common.jl": {
+    "sha256": "66ca088f295a8069665a3c1e2dc5549cb41109ed12e8ce3fb643a0b2bad6a9b0",
+    "bytes": 4129,
+    "lines": [
+      {
+        "line": 7,
+        "text": "function pipeline(c)"
+      },
+      {
+        "line": 50,
+        "text": " for c in cases;reset(c);pipeline(c);end"
+      },
+      {
+        "line": 57,
+        "text": "   reset(c);start=time_ns();calls=pipeline(c);dt=(time_ns()-start)*1e-9;push!(times,dt)"
+      },
+      {
+        "line": 70,
+        "text": "  println(\"STUDY_TRIAL {\\\"trial\\\":\",trial,\",\\\"time_seconds\\\":\",sum(times),\",\\\"correct\\\":\",ok,\",\\\"checked_values\\\":\",length(out),\",\\\"max_abs_error\\\":\",ok ? 0 : 1,\",\\\"max_rel_error\\\":null,\\\"timing_region\\\":\\\"sum8_pageable_H2D_stream_create_sync_destroy_runtime_pipeline\\\",\\\"jit_excluded\\\":true,\\\"internal_repeats\\\":1,\\\"authored_device_kernel_calls\\\":0,\\\"case_times_seconds\\\":[\",join(times,\",\"),\"],\\\"output_artifact\\\":{\\\"path\\\":\\\"\",path,\"\\\",\\\"dtype\\\":\\\"uint32\\\",\\\"count\\\":\",length(out),\",\\\"byte_order\\\":\\\"little\\\"}}\")"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/streamCreateCopyDestroy-julia/streamCreateCopyDestroy-julia-cuda.jl/main.jl": {
+    "sha256": "215422e1501f3efeaeb138326d14fb104f07dcbd9527d70a62be53d86fb40889",
+    "bytes": 127,
+    "lines": []
+  },
+  "/home/imo/HeCBench_julia/src/streamCreateCopyDestroy-julia/streamCreateCopyDestroy-julia-KA/main.jl": {
+    "sha256": "8d0b3dba42e3fa453b31405b622cc350ee02228290d9863db84a783552718d45",
+    "bytes": 258,
+    "lines": []
+  },
+  "/home/imo/HeCBench_julia/src/streamCreateCopyDestroy-julia/streamCreateCopyDestroy-julia-JACC/main.jl": {
+    "sha256": "f7f5902117120b687933a4bfd9b47dd4205c4f6d6d0c8550fa51ef25e0792699",
+    "bytes": 227,
+    "lines": []
+  },
+  "/home/imo/HeCBench_julia/src/snicit-julia/study_run_model.py": {
+    "sha256": "c783823f9ac0d498b27162b4d91055d570bf0a762bf472a2b31f9be5faf00fa5",
+    "bytes": 694,
+    "lines": [
+      {
+        "line": 2,
+        "text": "import subprocess,sys,os,shutil,json,hashlib"
+      },
+      {
+        "line": 5,
+        "text": "r=subprocess.run(sys.argv[1:])"
+      },
+      {
+        "line": 7,
+        "text": "r=subprocess.run([sys.executable,str(p/'audit_model.py'),os.environ['STUDY_OUTPUT_DIR']])"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/snicit-julia/study_bridge.cu": {
+    "sha256": "c24c12641727670925cac1455470253a5b055c0bc19a011512b8817008b61f77",
+    "bytes": 8630,
+    "lines": [
+      {
+        "line": 25,
+        "text": " switch(op){case 0:dense_input<<<gr,b,sh,st>>>(F(0),F(1),F(2),M,N,K,F(3));break;"
+      },
+      {
+        "line": 26,
+        "text": " case 1:sparse_hidden<<<gr,b,sh,st>>>(F(0),I(4),I(5),F(6),F(2),M,N,K,F(3));break;"
+      },
+      {
+        "line": 27,
+        "text": " case 2:dense_output<<<gr,b,sh,st>>>(F(0),F(1),F(2),M,N,K,F(3));break;"
+      },
+      {
+        "line": 28,
+        "text": " case 3:check_acc<<<gr,b,sh,st>>>(F(0),K,M,I(11),I(12));break;"
+      },
+      {
+        "line": 29,
+        "text": " case 4:y_star_gen<<<gr,b,sh,st>>>(F(0),I(10),M,N,128);break;"
+      },
+      {
+        "line": 30,
+        "text": " case 5:coarse_cluster<<<gr,b,sh,st>>>(F(0),I(10),B(9),C,I(8),N);break;"
+      },
+      {
+        "line": 31,
+        "text": " case 6:sparse_hidden_post<<<gr,b,sh,st>>>(I(7),F(0),I(4),I(5),F(6),M,N,K,F(3));break;"
+      },
+      {
+        "line": 32,
+        "text": " case 7:update_post<<<gr,b,sh,st>>>(I(7),I(8),F(0),F(2),N,B(9),F(3));break;"
+      },
+      {
+        "line": 33,
+        "text": " case 8:recover<<<gr,b,sh,st>>>(F(0),I(8),N);break;}"
+      },
+      {
+        "line": 71,
+        "text": " if(fo){FILE*tmp=tmpfile();write_state(tmp,c,h[0],h[1],out,ys,lut,ne,rows,cnt);long bytes=ftell(tmp);rewind(tmp);std::vector<uint32_t>s(bytes/4);fread(s.data(),4,s.size(),tmp);fclose(tmp);size_t nf=2*c.M*c.H+c.M*10;for(size_t j=0;j<s.size();j++){double d;if(j<nf){float v;memcpy(&v,&s[j],4);valid &=std::isfinite(v);d=v;}else d=int32_t(s[j]);fwrite(&d,8,1,fo);checked++;}"
+      }
+    ]
+  },
+  "/home/imo/HeCBench_julia/src/sparkler-julia/study_launch.py": {
+    "sha256": "0f98ad40b784efae3db8afa7f1134af492c8b31d84243a998d578cdfc93ce7a9",
+    "bytes": 956,
+    "lines": [
+      {
+        "line": 5,
+        "text": "if os.environ.get('CUDA_VISIBLE_DEVICES')!='6':raise SystemExit('Require recorded GPU6-only visibility')"
+      }
+    ]
+  }
+}
